@@ -12,7 +12,7 @@ function FadeToLight() {
     <div
       aria-hidden="true"
       className="pointer-events-none absolute bottom-0 inset-x-0"
-      style={{ height: 380, background: "linear-gradient(to bottom, rgba(240,242,245,0) 0%, rgba(240,242,245,0.55) 50%, #F0F2F5 100%)" }}
+      style={{ height: 500, background: "linear-gradient(to bottom, rgba(240,242,245,0) 0%, rgba(240,242,245,0.4) 40%, rgba(240,242,245,0.8) 70%, #F0F2F5 100%)" }}
     />
   );
 }
@@ -21,7 +21,7 @@ function FadeToDark() {
     <div
       aria-hidden="true"
       className="pointer-events-none absolute bottom-0 inset-x-0"
-      style={{ height: 380, background: "linear-gradient(to bottom, rgba(12,12,12,0) 0%, rgba(12,12,12,0.55) 50%, #0c0c0c 100%)" }}
+      style={{ height: 500, background: "linear-gradient(to bottom, rgba(12,12,12,0) 0%, rgba(12,12,12,0.4) 40%, rgba(12,12,12,0.8) 70%, #0c0c0c 100%)" }}
     />
   );
 }
@@ -157,7 +157,7 @@ export default function Home() {
         </div>
 
         <div className="hero-phone relative z-10 w-full max-w-[210px] md:max-w-[230px] flex-shrink-0">
-          <PhoneFrame src="/screenshots/home.webp" alt="WhatYouAte home screen" tilt="rotateY(14deg) rotateX(3deg)" />
+          <PhoneFrame src="/screenshots/home.webp" alt="WhatYouAte home screen" tilt="rotateY(18deg) rotateX(5deg)" />
         </div>
 
         <FadeToLight />
@@ -189,7 +189,7 @@ export default function Home() {
               key={f.headline}
               className={`relative z-10 mx-auto max-w-5xl flex flex-col md:flex-row items-center gap-12 md:gap-24 py-20 md:py-28 ${i > 0 ? "border-t border-white/[0.06]" : ""} ${isEven ? "" : "md:flex-row-reverse"}`}
             >
-              <Reveal className="flex-shrink-0 w-full max-w-[175px] md:max-w-[195px] mx-auto md:mx-0">
+              <Reveal className="flex-shrink-0 w-full max-w-[175px] md:max-w-[195px] mx-auto md:mx-0 order-first md:order-none">
                 <PhoneFrame src={f.screenshot} alt={f.headline} tilt={f.tilt} />
               </Reveal>
               <Reveal delay={0.12} className="flex flex-col gap-4 text-center md:text-left max-w-[340px] mx-auto md:mx-0">

@@ -72,7 +72,7 @@ export default function PillarGrid() {
           className="pillar flex flex-col items-center text-center gap-3 px-3 py-5"
           style={{ transitionDelay: `${i * 0.1}s` }}
         >
-          <div className="flex items-center justify-center w-14 h-14 rounded-full bg-[#6FA8FF]/12 border border-[#6FA8FF]/20 text-[#6FA8FF]">
+          <div className="flex items-center justify-center w-14 h-14 rounded-full text-[#6FA8FF]" style={{ background: "rgba(111,168,255,0.22)", border: "1.5px solid rgba(111,168,255,0.4)" }}>
             {p.icon}
           </div>
           <p className="text-[13px] font-semibold text-[#0c0c0c] leading-tight">{p.label}</p>
