@@ -75,8 +75,8 @@ export default function PillarGrid() {
           <div className="flex items-center justify-center w-14 h-14 rounded-full text-[#6FA8FF]" style={{ background: "rgba(111,168,255,0.22)", border: "1.5px solid rgba(111,168,255,0.4)" }}>
             {p.icon}
           </div>
-          <p className="text-[13px] font-semibold text-[#0c0c0c] leading-tight">{p.label}</p>
-          <p className="text-[12px] text-[#6b7280] leading-relaxed">{p.sub}</p>
+          <p className="text-[13px] font-semibold text-white leading-tight">{p.label}</p>
+          <p className="text-[12px] text-white/45 leading-relaxed">{p.sub}</p>
         </div>
       ))}
     </div>
