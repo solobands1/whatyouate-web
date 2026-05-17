@@ -12,7 +12,7 @@ function DarkToLight() {
     <div
       aria-hidden="true"
       style={{
-        height: 320,
+        height: 100,
         background: "linear-gradient(to bottom, #0c0c0c 0%, #6e7074 45%, #F0F2F5 100%)",
       }}
     />
@@ -23,7 +23,7 @@ function LightToDark() {
     <div
       aria-hidden="true"
       style={{
-        height: 320,
+        height: 100,
         background: "linear-gradient(to bottom, #F0F2F5 0%, #6e7074 55%, #0c0c0c 100%)",
       }}
     />
