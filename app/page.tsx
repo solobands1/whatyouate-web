@@ -274,7 +274,7 @@ export default function Home() {
       </section>
 
       {/* ── PILLARS ──────────────────────────────────────────── */}
-      <section className="px-8 pt-24 pb-20 border-t border-white/[0.06]" style={{ background: "radial-gradient(ellipse 60% 40% at 50% 0%, rgba(111,168,255,0.05) 0%, transparent 70%)" }}>
+      <section className="px-8 border-t border-white/[0.06]" style={{ paddingTop: 40, paddingBottom: 40, background: "radial-gradient(ellipse 60% 40% at 50% 0%, rgba(111,168,255,0.05) 0%, transparent 70%)" }}>
         <div style={{ marginBottom: 60 }}>
           <Reveal className="mx-auto max-w-[560px] text-center">
             <h2 className="text-[30px] sm:text-[38px] font-bold text-white tracking-[-0.02em] leading-tight mb-5">
@@ -290,15 +290,15 @@ export default function Home() {
 
       {/* ── FEATURES ─────────────────────────────────────────── */}
       <section
-        className="px-8 pt-0 pb-16 border-t border-white/[0.06]"
-        style={{ background: "radial-gradient(ellipse 70% 40% at 30% 20%, rgba(111,168,255,0.07) 0%, #0c0c0c 60%)" }}
+        className="px-8 border-t border-white/[0.06]"
+        style={{ paddingTop: 40, paddingBottom: 0, background: "radial-gradient(ellipse 70% 40% at 30% 20%, rgba(111,168,255,0.07) 0%, #0c0c0c 60%)" }}
       >
         {features.map((f, i) => {
           const isEven = i % 2 === 0;
           return (
             <div
               key={f.headline}
-              className={`mx-auto max-w-5xl flex flex-col md:flex-row items-center gap-12 md:gap-24 ${i === 0 ? "pt-16 pb-10" : "pt-24 pb-10"} md:pt-40 md:pb-24 ${i > 0 ? "border-t border-white/[0.06]" : ""} ${isEven ? "" : "md:flex-row-reverse"}`}
+              className={`mx-auto max-w-5xl flex flex-col md:flex-row items-center gap-12 md:gap-24 ${i === 0 ? "pb-10" : "pt-24 pb-10"} md:pt-40 md:pb-24 ${i > 0 ? "border-t border-white/[0.06]" : ""} ${isEven ? "" : "md:flex-row-reverse"}`}
             >
               <Reveal className="w-full max-w-[300px] mx-auto md:mx-0 order-first md:order-none flex-shrink-0">
                 {f.illustration}
@@ -313,7 +313,7 @@ export default function Home() {
       </section>
 
       {/* ── APPLE HEALTH ─────────────────────────────────────── */}
-      <section className="px-8 border-t border-white/[0.06]" style={{ paddingTop: 80, paddingBottom: 80 }}>
+      <section className="px-8 border-t border-white/[0.06]" style={{ paddingTop: 40, paddingBottom: 40 }}>
         <Reveal className="mx-auto max-w-[480px] flex flex-col items-center text-center">
           <div className="w-16 h-16 rounded-2xl flex items-center justify-center mb-8" style={{ background: "rgba(255,59,92,0.12)", border: "1px solid rgba(255,59,92,0.25)" }}>
             <svg width="28" height="28" viewBox="0 0 24 24" fill="#FF3B5C">
@@ -332,7 +332,7 @@ export default function Home() {
       {/* ── CTA ──────────────────────────────────────────────── */}
       <section
         className="px-8 text-center border-t border-white/[0.06]"
-        style={{ paddingTop: 112, paddingBottom: 200, background: "radial-gradient(ellipse 60% 50% at 50% 50%, rgba(111,168,255,0.09) 0%, #0c0c0c 65%)" }}
+        style={{ paddingTop: 40, paddingBottom: 40, background: "radial-gradient(ellipse 60% 50% at 50% 50%, rgba(111,168,255,0.09) 0%, #0c0c0c 65%)" }}
       >
         <Reveal className="mx-auto max-w-[440px]">
           <h2 className="text-[36px] sm:text-[46px] font-bold tracking-[-0.03em] leading-[1.1] mb-5">
@@ -346,7 +346,7 @@ export default function Home() {
       </section>
 
       {/* ── FOOTER ───────────────────────────────────────────── */}
-      <footer className="bg-[#0c0c0c] border-t border-white/[0.07] px-8" style={{ paddingTop: 60, paddingBottom: 60 }}>
+      <footer className="bg-[#0c0c0c] border-t border-white/[0.07] px-8" style={{ paddingTop: 40, paddingBottom: 40 }}>
         <div className="mx-auto max-w-4xl flex flex-col items-center gap-6 text-center">
           <div className="flex items-center gap-2">
             <Image src="/icon.png" alt="WhatYouAte" width={20} height={20} className="rounded-[5px] opacity-70" />
