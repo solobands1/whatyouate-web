@@ -211,7 +211,7 @@ const features = [
   {
     illustration: <IllustrationLog />,
     headline: "Just say what you ate",
-    body: "Type it, snap a photo, or describe it however feels natural. WhatYouAte handles the rest. No barcode scanner, no measuring cups, no database to dig through.",
+    body: "Type it, snap a photo, scan a barcode, or just describe it however feels natural. WhatYouAte handles the rest — no measuring cups, no guesswork.",
   },
   {
     illustration: <IllustrationSummary />,
@@ -235,7 +235,7 @@ export default function Home() {
     <div className="min-h-screen bg-[#0c0c0c] text-white overflow-x-hidden" style={{ fontFamily: "var(--font-geist-sans), system-ui, sans-serif" }}>
 
       {/* ── NAV ──────────────────────────────────────────────── */}
-      <header className="flex items-center px-8 py-6">
+      <header className="flex items-center px-8 py-6" style={{ background: "radial-gradient(ellipse 80% 60% at 65% 40%, rgba(111,168,255,0.13) 0%, #0c0c0c 65%)" }}>
         <div className="flex items-center gap-2.5">
           <Image src="/icon.png" alt="WhatYouAte" width={26} height={26} className="rounded-[7px]" priority />
           <span className="text-[15px] font-semibold tracking-[-0.01em]">WhatYouAt<span className="relative inline-block">e<span className="absolute -top-1 right-0 translate-x-[10px] text-[9px] font-semibold text-white/50" style={{ top: 0 }}>AI</span></span></span>
@@ -281,7 +281,7 @@ export default function Home() {
               Most nutrition apps feel like homework
             </h2>
             <p className="text-[17px] text-white/45 leading-[1.7]">
-              Barcode scanning, meal databases, daily logs, weekly reports. It is overwhelming. WhatYouAte is built for people who just want to eat a little better and actually feel it.
+              Endless food databases, manual logging, weekly reports. It is a lot. WhatYouAte is built for people who just want to eat a little better and actually feel it.
             </p>
           </Reveal>
         </div>
@@ -314,7 +314,7 @@ export default function Home() {
       </section>
 
       {/* ── APPLE HEALTH ─────────────────────────────────────── */}
-      <section className="px-8 border-t border-white/[0.06]" style={{ paddingTop: 40, paddingBottom: 40 }}>
+      <section className="px-8 border-t border-white/[0.06]" style={{ paddingTop: 40, paddingBottom: 40, background: "radial-gradient(ellipse 60% 50% at 50% 50%, rgba(111,168,255,0.07) 0%, #0c0c0c 65%)" }}>
         <Reveal className="mx-auto max-w-[480px] flex flex-col items-center text-center">
           <div className="w-16 h-16 rounded-2xl flex items-center justify-center mb-8" style={{ background: "rgba(255,59,92,0.12)", border: "1px solid rgba(255,59,92,0.25)" }}>
             <svg width="28" height="28" viewBox="0 0 24 24" fill="#FF3B5C">
@@ -347,7 +347,7 @@ export default function Home() {
       </section>
 
       {/* ── FOOTER ───────────────────────────────────────────── */}
-      <footer className="bg-[#0c0c0c] border-t border-white/[0.07] px-8" style={{ paddingTop: 40, paddingBottom: 40 }}>
+      <footer className="border-t border-white/[0.07] px-8" style={{ paddingTop: 40, paddingBottom: 40, background: "radial-gradient(ellipse 60% 80% at 50% 100%, rgba(111,168,255,0.05) 0%, #0c0c0c 60%)" }}>
         <div className="mx-auto max-w-4xl flex flex-col items-center gap-6 text-center">
           <div className="flex items-center gap-2">
             <Image src="/icon.png" alt="WhatYouAte" width={20} height={20} className="rounded-[5px]" />
