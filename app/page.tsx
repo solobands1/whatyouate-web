@@ -5,28 +5,26 @@ import PillarGrid from "../components/PillarGrid";
 
 const APP_STORE_URL = "#";
 
-// Gradient overlays — absolute, inside each section.
-// Height must be LESS than (section height − content height) so content sits above the gradient.
-function FadeToLight({ height = 480 }: { height?: number }) {
+// Stand-alone transition divs between sections.
+// No more absolute overlays that can bury content — gradient height is explicit and independent.
+function DarkToLight() {
   return (
     <div
       aria-hidden="true"
-      className="pointer-events-none absolute bottom-0 inset-x-0"
       style={{
-        height,
-        background: "linear-gradient(to bottom, rgba(240,242,245,0) 0%, rgba(240,242,245,0.35) 35%, rgba(240,242,245,0.75) 65%, #F0F2F5 100%)",
+        height: 320,
+        background: "linear-gradient(to bottom, #0c0c0c 0%, #6e7074 45%, #F0F2F5 100%)",
       }}
     />
   );
 }
-function FadeToDark({ height = 480 }: { height?: number }) {
+function LightToDark() {
   return (
     <div
       aria-hidden="true"
-      className="pointer-events-none absolute bottom-0 inset-x-0"
       style={{
-        height,
-        background: "linear-gradient(to bottom, rgba(12,12,12,0) 0%, rgba(12,12,12,0.35) 35%, rgba(12,12,12,0.75) 65%, #0c0c0c 100%)",
+        height: 320,
+        background: "linear-gradient(to bottom, #F0F2F5 0%, #6e7074 55%, #0c0c0c 100%)",
       }}
     />
   );
@@ -48,14 +46,14 @@ function DownloadButton({ size = "lg" }: { size?: "lg" | "sm" }) {
   );
 }
 
-// iPhone 16 Pro-style frame: thin titanium bezel, proportional side buttons
+// iPhone 16 Pro proportions: thin titanium bezel, side buttons
 function PhoneFrame({ src, alt, tilt }: { src: string; alt: string; tilt: string }) {
-  const btnLeft: React.CSSProperties = {
+  const btnL: React.CSSProperties = {
     position: "absolute", left: -3.5, width: 3,
     background: "linear-gradient(to right, #0e0e10, #2a2a2c)",
     borderRadius: "2px 0 0 2px",
   };
-  const btnRight: React.CSSProperties = {
+  const btnR: React.CSSProperties = {
     position: "absolute", right: -3.5, width: 3,
     background: "linear-gradient(to left, #0e0e10, #2a2a2c)",
     borderRadius: "0 2px 2px 0",
@@ -64,16 +62,11 @@ function PhoneFrame({ src, alt, tilt }: { src: string; alt: string; tilt: string
   return (
     <div style={{ perspective: "1200px" }}>
       <div style={{ transform: tilt, position: "relative" }}>
-        {/* Mute */}
-        <div style={{ ...btnLeft, top: "11%", height: 16 }} />
-        {/* Volume up */}
-        <div style={{ ...btnLeft, top: "18%", height: 26 }} />
-        {/* Volume down */}
-        <div style={{ ...btnLeft, top: "26%", height: 26 }} />
-        {/* Power */}
-        <div style={{ ...btnRight, top: "20%", height: 48 }} />
+        <div style={{ ...btnL, top: "11%", height: 16 }} />
+        <div style={{ ...btnL, top: "18%", height: 26 }} />
+        <div style={{ ...btnL, top: "26%", height: 26 }} />
+        <div style={{ ...btnR, top: "20%", height: 48 }} />
 
-        {/* Outer shell — thin titanium bezel */}
         <div
           style={{
             borderRadius: 46,
@@ -87,7 +80,6 @@ function PhoneFrame({ src, alt, tilt }: { src: string; alt: string; tilt: string
             ].join(", "),
           }}
         >
-          {/* Screen */}
           <div style={{ borderRadius: 39, overflow: "hidden", background: "#000" }}>
             <Image src={src} alt={alt} width={640} height={1390} className="w-full block" />
           </div>
@@ -128,7 +120,7 @@ export default function Home() {
   return (
     <div className="min-h-screen bg-[#0c0c0c] text-white overflow-x-hidden" style={{ fontFamily: "var(--font-geist-sans), system-ui, sans-serif" }}>
 
-      {/* Nav — scrolls away with the page */}
+      {/* ── NAV ──────────────────────────────────────────────── */}
       <header className="flex items-center px-8 py-6">
         <div className="flex items-center gap-2.5">
           <Image src="/icon.png" alt="WhatYouAte" width={26} height={26} className="rounded-[7px]" priority />
@@ -136,13 +128,12 @@ export default function Home() {
         </div>
       </header>
 
-      {/* ── HERO ─────────────────────────────────────────────────────── */}
-      {/* pb-[560px] pushes gradient zone below the hero phone on mobile */}
+      {/* ── HERO ─────────────────────────────────────────────── */}
       <section
-        className="relative flex flex-col md:flex-row items-center justify-center gap-20 px-8 pt-20 pb-[560px] md:min-h-[90vh] md:pb-72"
+        className="flex flex-col md:flex-row items-center justify-center gap-16 px-8 pt-16 pb-24 md:min-h-[82vh]"
         style={{ background: "radial-gradient(ellipse 80% 60% at 65% 40%, rgba(111,168,255,0.13) 0%, #0c0c0c 65%)" }}
       >
-        <div className="relative z-10 flex flex-col items-center md:items-start text-center md:text-left max-w-[440px]">
+        <div className="flex flex-col items-center md:items-start text-center md:text-left max-w-[440px]">
           <div className="hero-1 mb-6 inline-flex items-center gap-1.5 rounded-full border border-white/10 bg-white/5 px-3.5 py-1.5 text-[11px] font-medium text-white/50">
             <span className="h-1.5 w-1.5 rounded-full bg-[#6FA8FF]" />
             Free on the App Store
@@ -163,16 +154,16 @@ export default function Home() {
           </div>
         </div>
 
-        <div className="hero-phone relative z-10 w-full max-w-[210px] md:max-w-[230px] flex-shrink-0">
+        <div className="hero-phone w-full max-w-[210px] md:max-w-[230px] flex-shrink-0">
           <PhoneFrame src="/screenshots/home.webp" alt="WhatYouAte home screen" tilt="rotateY(18deg) rotateX(5deg)" />
         </div>
-
-        <FadeToLight height={480} />
       </section>
 
-      {/* ── PILLARS ──────────────────────────────────────────────────── */}
-      {/* pt-24 + pb-[620px] ensures the content is entirely above the FadeToDark gradient */}
-      <section className="relative bg-[#F0F2F5] px-8 pt-24 pb-[620px]">
+      {/* Transition: dark → light */}
+      <DarkToLight />
+
+      {/* ── PILLARS ──────────────────────────────────────────── */}
+      <section className="bg-[#F0F2F5] px-8 pt-20 pb-24">
         <Reveal className="mx-auto max-w-[560px] text-center mb-20">
           <h2 className="text-[30px] sm:text-[38px] font-bold text-[#0c0c0c] tracking-[-0.02em] leading-tight mb-5">
             Most nutrition apps feel like homework.
@@ -182,12 +173,14 @@ export default function Home() {
           </p>
         </Reveal>
         <PillarGrid />
-        <FadeToDark height={480} />
       </section>
 
-      {/* ── FEATURES ─────────────────────────────────────────────────── */}
+      {/* Transition: light → dark */}
+      <LightToDark />
+
+      {/* ── FEATURES ─────────────────────────────────────────── */}
       <section
-        className="relative bg-[#0c0c0c] px-8 pt-20 pb-[560px]"
+        className="px-8 pt-8 pb-20"
         style={{ background: "radial-gradient(ellipse 70% 40% at 30% 20%, rgba(111,168,255,0.07) 0%, #0c0c0c 60%)" }}
       >
         {features.map((f, i) => {
@@ -195,7 +188,7 @@ export default function Home() {
           return (
             <div
               key={f.headline}
-              className={`relative z-10 mx-auto max-w-5xl flex flex-col md:flex-row items-center gap-16 md:gap-28 py-24 md:py-32 ${i > 0 ? "border-t border-white/[0.06]" : ""} ${isEven ? "" : "md:flex-row-reverse"}`}
+              className={`mx-auto max-w-5xl flex flex-col md:flex-row items-center gap-16 md:gap-28 py-24 md:py-32 ${i > 0 ? "border-t border-white/[0.06]" : ""} ${isEven ? "" : "md:flex-row-reverse"}`}
             >
               <Reveal className="flex-shrink-0 w-full max-w-[180px] md:max-w-[200px] mx-auto md:mx-0 order-first md:order-none">
                 <PhoneFrame src={f.screenshot} alt={f.headline} tilt={f.tilt} />
@@ -207,14 +200,15 @@ export default function Home() {
             </div>
           );
         })}
-        <FadeToLight height={480} />
       </section>
 
-      {/* ── APPLE HEALTH ─────────────────────────────────────────────── */}
-      {/* pt-40 puts content well above the FadeToDark gradient zone */}
-      <section className="relative bg-[#F0F2F5] px-8 pt-40 pb-[540px]">
+      {/* Transition: dark → light */}
+      <DarkToLight />
+
+      {/* ── APPLE HEALTH ─────────────────────────────────────── */}
+      <section className="bg-[#F0F2F5] px-8 py-28">
         <Reveal className="mx-auto max-w-[480px] flex flex-col items-center text-center">
-          <div className="w-16 h-16 rounded-2xl bg-[#FF3B5C]/10 border border-[#FF3B5C]/20 flex items-center justify-center mb-7">
+          <div className="w-16 h-16 rounded-2xl bg-[#FF3B5C]/10 border border-[#FF3B5C]/20 flex items-center justify-center mb-8">
             <svg width="28" height="28" viewBox="0 0 24 24" fill="#FF3B5C">
               <path d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z" />
             </svg>
@@ -226,10 +220,12 @@ export default function Home() {
             Your nutrition data lives right alongside your steps and sleep, exactly where it belongs.
           </p>
         </Reveal>
-        <FadeToDark height={480} />
       </section>
 
-      {/* ── CTA ──────────────────────────────────────────────────────── */}
+      {/* Transition: light → dark */}
+      <LightToDark />
+
+      {/* ── CTA ──────────────────────────────────────────────── */}
       <section
         className="py-48 px-8 text-center"
         style={{ background: "radial-gradient(ellipse 60% 50% at 50% 50%, rgba(111,168,255,0.09) 0%, #0c0c0c 65%)" }}
@@ -245,7 +241,7 @@ export default function Home() {
         </Reveal>
       </section>
 
-      {/* ── FOOTER ───────────────────────────────────────────────────── */}
+      {/* ── FOOTER ───────────────────────────────────────────── */}
       <footer className="bg-[#0c0c0c] border-t border-white/[0.07] py-20 px-8">
         <div className="mx-auto max-w-4xl flex flex-col items-center gap-6 text-center">
           <div className="flex items-center gap-2">
