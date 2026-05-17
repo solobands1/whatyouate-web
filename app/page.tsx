@@ -130,7 +130,7 @@ export default function Home() {
 
       {/* ── HERO ─────────────────────────────────────────────── */}
       <section
-        className="flex flex-col md:flex-row items-center justify-center gap-16 px-8 pt-16 pb-24 md:min-h-[82vh]"
+        className="flex flex-col md:flex-row items-center justify-center gap-16 px-8 pt-16 pb-10 md:min-h-[82vh]"
         style={{ background: "radial-gradient(ellipse 80% 60% at 65% 40%, rgba(111,168,255,0.13) 0%, #0c0c0c 65%)" }}
       >
         <div className="flex flex-col items-center md:items-start text-center md:text-left max-w-[440px]">
@@ -163,7 +163,7 @@ export default function Home() {
       <DarkToLight />
 
       {/* ── PILLARS ──────────────────────────────────────────── */}
-      <section className="bg-[#F0F2F5] px-8 pt-10 pb-24">
+      <section className="bg-[#F0F2F5] px-8 pt-10 pb-10">
         <Reveal className="mx-auto max-w-[560px] text-center mb-20">
           <h2 className="text-[30px] sm:text-[38px] font-bold text-[#0c0c0c] tracking-[-0.02em] leading-tight mb-5">
             Most nutrition apps feel like homework.
@@ -180,7 +180,7 @@ export default function Home() {
 
       {/* ── FEATURES ─────────────────────────────────────────── */}
       <section
-        className="px-8 pt-8 pb-20"
+        className="px-8 pt-0 pb-16"
         style={{ background: "radial-gradient(ellipse 70% 40% at 30% 20%, rgba(111,168,255,0.07) 0%, #0c0c0c 60%)" }}
       >
         {features.map((f, i) => {
@@ -188,7 +188,7 @@ export default function Home() {
           return (
             <div
               key={f.headline}
-              className={`mx-auto max-w-5xl flex flex-col md:flex-row items-center gap-5 md:gap-24 pt-44 pb-16 md:pt-40 md:pb-24 ${i > 0 ? "border-t border-white/[0.06]" : ""} ${isEven ? "" : "md:flex-row-reverse"}`}
+              className={`mx-auto max-w-5xl flex flex-col md:flex-row items-center gap-4 md:gap-24 ${i === 0 ? "pt-16 pb-10" : "pt-52 pb-10"} md:pt-40 md:pb-24 ${i > 0 ? "border-t border-white/[0.06]" : ""} ${isEven ? "" : "md:flex-row-reverse"}`}
             >
               <Reveal className="flex-shrink-0 w-full max-w-[180px] md:max-w-[200px] mx-auto md:mx-0 order-first md:order-none">
                 <PhoneFrame src={f.screenshot} alt={f.headline} tilt={f.tilt} />
