@@ -299,7 +299,7 @@ export default function Home() {
             <div
               key={f.headline}
               className={`mx-auto max-w-5xl flex flex-col md:flex-row items-center ${i > 0 ? "border-t border-white/[0.06]" : ""} ${isEven ? "" : "md:flex-row-reverse"}`}
-              style={{ gap: 80, paddingTop: i === 0 ? 0 : 40, paddingBottom: 80 }}
+              style={{ gap: 40, paddingTop: i === 0 ? 0 : 40, paddingBottom: 80 }}
             >
               <Reveal className="w-full max-w-[300px] mx-auto md:mx-0 order-last md:order-none flex-shrink-0">
                 {f.illustration}
