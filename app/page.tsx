@@ -130,11 +130,11 @@ export default function Home() {
 
       {/* ── HERO ─────────────────────────────────────────────── */}
       <section
-        className="flex flex-col md:flex-row items-center justify-center gap-16 px-8 pt-16 pb-10 md:min-h-[82vh]"
+        className="flex flex-col md:flex-row items-center justify-center gap-6 md:gap-16 px-8 pt-16 pb-10 md:min-h-[82vh]"
         style={{ background: "radial-gradient(ellipse 80% 60% at 65% 40%, rgba(111,168,255,0.13) 0%, #0c0c0c 65%)" }}
       >
         <div className="flex flex-col items-center md:items-start text-center md:text-left max-w-[440px]">
-          <div className="hero-1 mb-16 inline-flex items-center gap-1.5 rounded-full border border-white/10 bg-white/5 px-3.5 py-2.5 text-[11px] font-medium text-white/50">
+          <div className="hero-1 mb-24 inline-flex items-center gap-1.5 rounded-full border border-white/10 bg-white/5 px-3.5 py-2.5 text-[11px] font-medium text-white/50">
             <span className="h-1.5 w-1.5 rounded-full bg-[#6FA8FF]" />
             Free on the App Store
           </div>
@@ -144,7 +144,7 @@ export default function Home() {
             <span className="text-[#6FA8FF]">Feel the difference</span>
           </h1>
 
-          <p className="hero-3 text-[18px] leading-[1.7] text-white/45 mb-20 max-w-[360px]">
+          <p className="hero-3 text-[18px] leading-[1.7] text-white/45 mb-28 max-w-[360px]">
             Food affects how you feel every day. WhatYouAte helps you understand it without the obsessing.
           </p>
 
