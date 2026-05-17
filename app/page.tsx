@@ -238,7 +238,7 @@ export default function Home() {
       <header className="flex items-center px-8 py-6">
         <div className="flex items-center gap-2.5">
           <Image src="/icon.png" alt="WhatYouAte" width={26} height={26} className="rounded-[7px]" priority />
-          <span className="text-[15px] font-semibold tracking-[-0.01em]">WhatYouAte</span>
+          <span className="text-[15px] font-semibold tracking-[-0.01em]">WhatYouAte<span className="text-[#6FA8FF]">AI</span></span>
         </div>
       </header>
 
@@ -350,8 +350,8 @@ export default function Home() {
       <footer className="bg-[#0c0c0c] border-t border-white/[0.07] px-8" style={{ paddingTop: 40, paddingBottom: 40 }}>
         <div className="mx-auto max-w-4xl flex flex-col items-center gap-6 text-center">
           <div className="flex items-center gap-2">
-            <Image src="/icon.png" alt="WhatYouAte" width={20} height={20} className="rounded-[5px] opacity-70" />
-            <span className="text-[13px] font-semibold text-white/60">WhatYouAte</span>
+            <Image src="/icon.png" alt="WhatYouAte" width={20} height={20} className="rounded-[5px]" />
+            <span className="text-[13px] font-semibold tracking-[-0.01em]">WhatYouAte<span className="text-[#6FA8FF]">AI</span></span>
           </div>
           <div className="flex gap-8 text-[13px] text-white/50">
             <Link href="/privacy" className="hover:text-white/80 transition-colors">Privacy Policy</Link>
