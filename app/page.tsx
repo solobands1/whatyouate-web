@@ -210,22 +210,22 @@ function IllustrationNutrients() {
 const features = [
   {
     illustration: <IllustrationLog />,
-    headline: "Just say what you ate.",
+    headline: "Just say what you ate",
     body: "Type it, snap a photo, or describe it however feels natural. WhatYouAte handles the rest. No barcode scanner, no measuring cups, no database to dig through.",
   },
   {
     illustration: <IllustrationSummary />,
-    headline: "See how your day actually looks.",
+    headline: "See how your day actually looks",
     body: "A clean breakdown of what you ate, updated every time you log. No complicated charts. Just an honest picture of your day.",
   },
   {
     illustration: <IllustrationPatterns />,
-    headline: "Start noticing what works for you.",
+    headline: "Start noticing what works for you",
     body: "Over time, WhatYouAte surfaces the patterns you never thought to look for. The meals that leave you feeling great and the habits quietly shaping how you feel.",
   },
   {
     illustration: <IllustrationNutrients />,
-    headline: "More than just what you eat.",
+    headline: "More than just what you eat",
     body: "See the vitamins and nutrients behind your meals, explained in plain language. Small signals that help you make slightly better choices every day.",
   },
 ];
@@ -278,7 +278,7 @@ export default function Home() {
         <div style={{ marginBottom: 60 }}>
           <Reveal className="mx-auto max-w-[560px] text-center">
             <h2 className="text-[30px] sm:text-[38px] font-bold text-white tracking-[-0.02em] leading-tight" style={{ marginBottom: 20 }}>
-              Most nutrition apps feel like homework.
+              Most nutrition apps feel like homework
             </h2>
             <p className="text-[17px] text-white/45 leading-[1.7]">
               Barcode scanning, meal databases, daily logs, weekly reports. It is overwhelming. WhatYouAte is built for people who just want to eat a little better and actually feel it.
@@ -337,7 +337,7 @@ export default function Home() {
       >
         <Reveal className="mx-auto max-w-[440px]">
           <h2 className="text-[36px] sm:text-[46px] font-bold tracking-[-0.03em] leading-[1.1] mb-5">
-            Give it a week.<br />See how you feel.
+            Give it a week<br />See how you feel
           </h2>
           <p className="text-[16px] text-white/40 leading-relaxed" style={{ marginBottom: 48 }}>
             Download free. 7-day Pro trial. No commitment.
