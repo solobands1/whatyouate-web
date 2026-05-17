@@ -227,14 +227,14 @@ export default function Home() {
 
       {/* ── CTA ──────────────────────────────────────────────── */}
       <section
-        className="pt-28 pb-72 px-8 text-center"
-        style={{ background: "radial-gradient(ellipse 60% 50% at 50% 50%, rgba(111,168,255,0.09) 0%, #0c0c0c 65%)" }}
+        className="px-8 text-center"
+        style={{ paddingTop: 112, paddingBottom: 200, background: "radial-gradient(ellipse 60% 50% at 50% 50%, rgba(111,168,255,0.09) 0%, #0c0c0c 65%)" }}
       >
         <Reveal className="mx-auto max-w-[440px]">
           <h2 className="text-[36px] sm:text-[46px] font-bold tracking-[-0.03em] leading-[1.1] mb-5">
             Give it a week.<br />See how you feel.
           </h2>
-          <p className="text-[16px] text-white/40 leading-relaxed mb-20">
+          <p className="text-[16px] text-white/40 leading-relaxed" style={{ marginBottom: 48 }}>
             Download free. 7-day Pro trial. No commitment.
           </p>
           <DownloadButton size="lg" />
@@ -242,7 +242,7 @@ export default function Home() {
       </section>
 
       {/* ── FOOTER ───────────────────────────────────────────── */}
-      <footer className="bg-[#0c0c0c] border-t border-white/[0.07] py-20 px-8">
+      <footer className="bg-[#0c0c0c] border-t border-white/[0.07] px-8" style={{ paddingTop: 60, paddingBottom: 60 }}>
         <div className="mx-auto max-w-4xl flex flex-col items-center gap-6 text-center">
           <div className="flex items-center gap-2">
             <Image src="/icon.png" alt="WhatYouAte" width={20} height={20} className="rounded-[5px] opacity-50" />
