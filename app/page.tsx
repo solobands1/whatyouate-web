@@ -259,7 +259,7 @@ export default function Home() {
           </h1>
 
           <p className="hero-3 text-[18px] leading-[1.7] text-white/45 max-w-[360px]" style={{ marginBottom: 24 }}>
-            Food affects how you feel every day. WhatYouAt<span className="relative inline-block">e<span className="absolute right-0 translate-x-[10px] text-[9px] font-semibold text-white/50" style={{ top: 0 }}>AI</span></span> helps you understand it without the obsessing.
+            Food affects how you feel every day. WhatYouAt<span className="relative inline-block" style={{ marginRight: 16 }}>e<span className="absolute right-0 translate-x-[10px] text-[9px] font-semibold text-white/50" style={{ top: 0 }}>AI</span></span> helps you understand it without the obsessing.
           </p>
 
           <div className="hero-4 flex flex-col items-center md:items-start" style={{ gap: 14 }}>
