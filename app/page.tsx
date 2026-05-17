@@ -298,7 +298,7 @@ export default function Home() {
           return (
             <div
               key={f.headline}
-              className={`mx-auto max-w-5xl flex flex-col md:flex-row items-center ${i === 0 ? "pb-10" : "pt-24 pb-10"} md:pt-40 md:pb-24 ${i > 0 ? "border-t border-white/[0.06]" : ""} ${isEven ? "" : "md:flex-row-reverse"}`}
+              className={`mx-auto max-w-5xl flex flex-col md:flex-row items-center ${i === 0 ? "pb-10" : "pt-10 pb-10"} md:pt-40 md:pb-24 ${i > 0 ? "border-t border-white/[0.06]" : ""} ${isEven ? "" : "md:flex-row-reverse"}`}
               style={{ gap: 80 }}
             >
               <Reveal className="w-full max-w-[300px] mx-auto md:mx-0 order-first md:order-none flex-shrink-0">
