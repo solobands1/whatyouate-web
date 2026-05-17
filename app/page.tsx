@@ -277,7 +277,7 @@ export default function Home() {
       <section className="px-8 border-t border-white/[0.06]" style={{ paddingTop: 40, paddingBottom: 40, background: "radial-gradient(ellipse 60% 40% at 50% 0%, rgba(111,168,255,0.05) 0%, transparent 70%)" }}>
         <div style={{ marginBottom: 60 }}>
           <Reveal className="mx-auto max-w-[560px] text-center">
-            <h2 className="text-[30px] sm:text-[38px] font-bold text-white tracking-[-0.02em] leading-tight mb-5">
+            <h2 className="text-[30px] sm:text-[38px] font-bold text-white tracking-[-0.02em] leading-tight" style={{ marginBottom: 20 }}>
               Most nutrition apps feel like homework.
             </h2>
             <p className="text-[17px] text-white/45 leading-[1.7]">
