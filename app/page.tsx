@@ -39,25 +39,10 @@ function DownloadButton({ size = "lg" }: { size?: "lg" | "sm" }) {
 
 function AnimatedBlobs() {
   return (
-    <div className="pointer-events-none absolute inset-0 overflow-hidden">
-      <motion.div
-        className="absolute rounded-full blur-[120px]"
-        style={{ width: 500, height: 500, background: "rgba(111,168,255,0.18)", top: "5%", left: "15%" }}
-        animate={{ x: [0, 50, -20, 0], y: [0, -40, 25, 0], scale: [1, 1.12, 0.94, 1] }}
-        transition={{ duration: 22, repeat: Infinity, ease: "easeInOut" }}
-      />
-      <motion.div
-        className="absolute rounded-full blur-[100px]"
-        style={{ width: 350, height: 350, background: "rgba(140,100,255,0.12)", top: "40%", right: "8%" }}
-        animate={{ x: [0, -45, 25, 0], y: [0, 35, -20, 0], scale: [1, 0.9, 1.1, 1] }}
-        transition={{ duration: 28, repeat: Infinity, ease: "easeInOut", delay: 6 }}
-      />
-      <motion.div
-        className="absolute rounded-full blur-[140px]"
-        style={{ width: 400, height: 300, background: "rgba(111,168,255,0.1)", bottom: "10%", left: "40%" }}
-        animate={{ x: [0, 30, -30, 0], y: [0, 20, -25, 0], scale: [1, 1.08, 0.96, 1] }}
-        transition={{ duration: 18, repeat: Infinity, ease: "easeInOut", delay: 3 }}
-      />
+    <div className="pointer-events-none absolute inset-0 overflow-hidden" aria-hidden="true">
+      <div className="blob1 absolute rounded-full blur-[120px]" style={{ width: 500, height: 500, background: "rgba(111,168,255,0.16)", top: "5%", left: "15%" }} />
+      <div className="blob2 absolute rounded-full blur-[100px]" style={{ width: 350, height: 350, background: "rgba(140,100,255,0.1)", top: "40%", right: "8%" }} />
+      <div className="blob3 absolute rounded-full blur-[140px]" style={{ width: 400, height: 300, background: "rgba(111,168,255,0.09)", bottom: "10%", left: "40%" }} />
     </div>
   );
 }
