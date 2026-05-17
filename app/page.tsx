@@ -301,7 +301,7 @@ export default function Home() {
               className={`mx-auto max-w-5xl flex flex-col md:flex-row items-center ${i === 0 ? "pb-10" : "pt-10 pb-10"} md:pt-40 md:pb-24 ${i > 0 ? "border-t border-white/[0.06]" : ""} ${isEven ? "" : "md:flex-row-reverse"}`}
               style={{ gap: 80 }}
             >
-              <Reveal className="w-full max-w-[300px] mx-auto md:mx-0 order-first md:order-none flex-shrink-0">
+              <Reveal className="w-full max-w-[300px] mx-auto md:mx-0 order-last md:order-none flex-shrink-0">
                 {f.illustration}
               </Reveal>
               <Reveal delay={0.12} className="flex flex-col gap-5 text-center md:text-left max-w-[360px] mx-auto md:mx-0">
