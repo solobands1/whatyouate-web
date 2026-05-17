@@ -148,7 +148,7 @@ export default function Home() {
             Food affects how you feel every day. WhatYouAte helps you understand it without the obsessing.
           </p>
 
-          <div className="hero-4 flex flex-col items-center md:items-start" style={{ gap: 24 }}>
+          <div className="hero-4 flex flex-col items-center md:items-start" style={{ gap: 14 }}>
             <DownloadButton size="lg" />
             <p className="text-[12px] text-white/40">7-day Pro trial included · iPhone only</p>
           </div>
