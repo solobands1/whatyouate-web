@@ -245,14 +245,14 @@ export default function Home() {
       <footer className="bg-[#0c0c0c] border-t border-white/[0.07] px-8" style={{ paddingTop: 60, paddingBottom: 60 }}>
         <div className="mx-auto max-w-4xl flex flex-col items-center gap-6 text-center">
           <div className="flex items-center gap-2">
-            <Image src="/icon.png" alt="WhatYouAte" width={20} height={20} className="rounded-[5px] opacity-50" />
-            <span className="text-[13px] font-semibold text-white/35">WhatYouAte</span>
+            <Image src="/icon.png" alt="WhatYouAte" width={20} height={20} className="rounded-[5px] opacity-70" />
+            <span className="text-[13px] font-semibold text-white/60">WhatYouAte</span>
           </div>
-          <div className="flex gap-8 text-[13px] text-white/30">
-            <Link href="/privacy" className="hover:text-white/60 transition-colors">Privacy Policy</Link>
-            <a href="mailto:support@whatyouate.app" className="hover:text-white/60 transition-colors">Support</a>
+          <div className="flex gap-8 text-[13px] text-white/50">
+            <Link href="/privacy" className="hover:text-white/80 transition-colors">Privacy Policy</Link>
+            <a href="mailto:support@whatyouate.app" className="hover:text-white/80 transition-colors">Support</a>
           </div>
-          <span className="text-[12px] text-white/20">© {new Date().getFullYear()} WhatYouAte. All rights reserved.</span>
+          <span className="text-[12px] text-white/40">© {new Date().getFullYear()} WhatYouAte. All rights reserved.</span>
         </div>
       </footer>
 
