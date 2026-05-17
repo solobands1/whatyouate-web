@@ -275,14 +275,16 @@ export default function Home() {
 
       {/* ── PILLARS ──────────────────────────────────────────── */}
       <section className="px-8 pt-24 pb-20 border-t border-white/[0.06]" style={{ background: "radial-gradient(ellipse 60% 40% at 50% 0%, rgba(111,168,255,0.05) 0%, transparent 70%)" }}>
-        <Reveal className="mx-auto max-w-[560px] text-center" style={{ marginBottom: 60 }}>
-          <h2 className="text-[30px] sm:text-[38px] font-bold text-white tracking-[-0.02em] leading-tight mb-5">
-            Most nutrition apps feel like homework.
-          </h2>
-          <p className="text-[17px] text-white/45 leading-[1.7]">
-            Barcode scanning, meal databases, daily logs, weekly reports. It is overwhelming. WhatYouAte is built for people who just want to eat a little better and actually feel it.
-          </p>
-        </Reveal>
+        <div style={{ marginBottom: 60 }}>
+          <Reveal className="mx-auto max-w-[560px] text-center">
+            <h2 className="text-[30px] sm:text-[38px] font-bold text-white tracking-[-0.02em] leading-tight mb-5">
+              Most nutrition apps feel like homework.
+            </h2>
+            <p className="text-[17px] text-white/45 leading-[1.7]">
+              Barcode scanning, meal databases, daily logs, weekly reports. It is overwhelming. WhatYouAte is built for people who just want to eat a little better and actually feel it.
+            </p>
+          </Reveal>
+        </div>
         <PillarGrid />
       </section>
 
