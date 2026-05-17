@@ -244,8 +244,8 @@ export default function Home() {
 
       {/* ── HERO ─────────────────────────────────────────────── */}
       <section
-        className="flex flex-col md:flex-row items-center justify-center gap-6 md:gap-16 px-8 pt-16 pb-10 md:min-h-[82vh]"
-        style={{ background: "radial-gradient(ellipse 80% 60% at 65% 40%, rgba(111,168,255,0.13) 0%, #0c0c0c 65%)" }}
+        className="flex flex-col md:flex-row items-center justify-center gap-6 md:gap-16 px-8 pt-16 md:min-h-[82vh]"
+        style={{ paddingBottom: 60, background: "radial-gradient(ellipse 80% 60% at 65% 40%, rgba(111,168,255,0.13) 0%, #0c0c0c 65%)" }}
       >
         <div className="flex flex-col items-center md:items-start text-center md:text-left max-w-[440px]">
           <div className="hero-1 inline-flex items-center gap-1.5 rounded-full border border-white/10 bg-white/5 px-3.5 py-2.5 text-[11px] font-medium text-white/50" style={{ marginBottom: 18 }}>
