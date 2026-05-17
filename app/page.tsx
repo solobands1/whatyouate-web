@@ -188,7 +188,7 @@ export default function Home() {
           return (
             <div
               key={f.headline}
-              className={`mx-auto max-w-5xl flex flex-col md:flex-row items-center gap-4 md:gap-24 ${i === 0 ? "pt-16 pb-10" : "pt-52 pb-10"} md:pt-40 md:pb-24 ${i > 0 ? "border-t border-white/[0.06]" : ""} ${isEven ? "" : "md:flex-row-reverse"}`}
+              className={`mx-auto max-w-5xl flex flex-col md:flex-row items-center gap-12 md:gap-24 ${i === 0 ? "pt-16 pb-10" : "pt-24 pb-10"} md:pt-40 md:pb-24 ${i > 0 ? "border-t border-white/[0.06]" : ""} ${isEven ? "" : "md:flex-row-reverse"}`}
             >
               <Reveal className="flex-shrink-0 w-full max-w-[180px] md:max-w-[200px] mx-auto md:mx-0 order-first md:order-none">
                 <PhoneFrame src={f.screenshot} alt={f.headline} tilt={f.tilt} />
