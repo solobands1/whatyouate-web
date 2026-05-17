@@ -139,7 +139,7 @@ export default function Home() {
             Free on the App Store
           </div>
 
-          <h1 className="hero-2 text-[44px] sm:text-[56px] font-bold leading-[1.06] tracking-[-0.03em] mt-1 mb-8">
+          <h1 className="hero-2 text-[44px] sm:text-[56px] font-bold leading-[1.06] tracking-[-0.03em] mt-[10px] mb-8">
             Know what you ate<br />
             <span className="text-[#6FA8FF]">Feel the difference</span>
           </h1>
