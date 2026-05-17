@@ -248,7 +248,7 @@ export default function Home() {
         style={{ paddingBottom: 60, background: "radial-gradient(ellipse 80% 60% at 65% 40%, rgba(111,168,255,0.13) 0%, #0c0c0c 65%)" }}
       >
         <div className="flex flex-col items-center md:items-start text-center md:text-left max-w-[440px]">
-          <div className="hero-1 inline-flex items-center gap-1.5 rounded-full border border-white/10 bg-white/5 px-3.5 py-2.5 text-[11px] font-medium text-white/50" style={{ marginBottom: 18 }}>
+          <div className="hero-1 inline-flex items-center gap-1.5 rounded-full border border-white/10 bg-white/5 text-[11px] font-medium text-white/50" style={{ marginBottom: 18, paddingLeft: 20, paddingRight: 20, paddingTop: 10, paddingBottom: 10 }}>
             <span className="h-1.5 w-1.5 rounded-full bg-[#6FA8FF]" />
             Free on the App Store
           </div>
