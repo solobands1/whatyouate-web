@@ -9,7 +9,7 @@ function DownloadButton({ size = "lg" }: { size?: "lg" | "sm" }) {
   return (
     <a
       href={APP_STORE_URL}
-      className={`inline-flex items-center gap-2.5 rounded-full bg-[#6FA8FF] text-white font-semibold tracking-[-0.01em] transition-all hover:bg-[#88b8ff] active:scale-95 shadow-[0_8px_30px_rgba(111,168,255,0.4)] ${
+      className={`inline-flex items-center gap-2.5 rounded-full bg-[#6FA8FF] text-white font-semibold tracking-[-0.01em] transition-opacity hover:opacity-85 active:opacity-70 shadow-[0_4px_20px_rgba(111,168,255,0.45)] ${
         size === "lg" ? "px-8 py-3.5 text-[15px]" : "px-6 py-3 text-[14px]"
       }`}
     >
@@ -53,23 +53,18 @@ export default function Home() {
     <div className="min-h-screen bg-[#0c0c0c] text-white overflow-x-hidden" style={{ fontFamily: "var(--font-geist-sans), system-ui, sans-serif" }}>
 
       {/* Nav */}
-      <header className="fixed top-0 inset-x-0 z-50 flex items-center justify-between px-6 py-4">
+      <header className="fixed top-0 inset-x-0 z-50 flex items-center px-6 py-4">
         <div className="flex items-center gap-2">
           <Image src="/icon.png" alt="WhatYouAte" width={26} height={26} className="rounded-[7px]" priority />
           <span className="text-[15px] font-semibold tracking-[-0.01em]">WhatYouAte</span>
         </div>
       </header>
 
-      {/* Hero */}
-      <section className="relative min-h-[100svh] flex flex-col md:flex-row items-center justify-center gap-14 px-6 pt-32 pb-20 md:pt-0 md:pb-0 overflow-hidden">
-        {/* CSS blobs */}
-        <div className="pointer-events-none absolute inset-0 overflow-hidden" aria-hidden="true">
-          <div className="blob1 absolute rounded-full blur-[120px]" style={{ width: 500, height: 500, background: "rgba(111,168,255,0.16)", top: "5%", left: "15%" }} />
-          <div className="blob2 absolute rounded-full blur-[100px]" style={{ width: 350, height: 350, background: "rgba(140,100,255,0.1)", top: "40%", right: "8%" }} />
-          <div className="blob3 absolute rounded-full blur-[140px]" style={{ width: 400, height: 300, background: "rgba(111,168,255,0.09)", bottom: "10%", left: "40%" }} />
-        </div>
-
-        {/* Text — CSS entrance animations */}
+      {/* Hero — radial gradient baked into bg, no blur divs */}
+      <section
+        className="relative min-h-[100svh] flex flex-col md:flex-row items-center justify-center gap-14 px-6 pt-32 pb-20 md:pt-0 md:pb-0"
+        style={{ background: "radial-gradient(ellipse 80% 60% at 65% 40%, rgba(111,168,255,0.13) 0%, #0c0c0c 65%)" }}
+      >
         <div className="relative z-10 flex flex-col items-center md:items-start text-center md:text-left max-w-[420px]">
           <div className="hero-1 mb-5 inline-flex items-center gap-1.5 rounded-full border border-white/10 bg-white/5 px-3 py-1 text-[11px] font-medium text-white/50">
             <span className="h-1.5 w-1.5 rounded-full bg-[#6FA8FF]" />
@@ -91,22 +86,20 @@ export default function Home() {
           </div>
         </div>
 
-        {/* Phone */}
         <div className="hero-phone relative z-10 w-full max-w-[210px] md:max-w-[230px] flex-shrink-0">
-          <div className="absolute -inset-8 rounded-full blur-3xl" style={{ background: "rgba(111,168,255,0.18)", transform: "scaleY(0.5) translateY(35%)" }} />
           <Image
             src="/screenshots/home.webp"
             alt="WhatYouAte home screen"
             width={640}
             height={1390}
-            className="relative w-full rounded-[36px] shadow-[0_32px_80px_rgba(0,0,0,0.7)]"
+            className="w-full rounded-[36px] shadow-[0_24px_60px_rgba(0,0,0,0.6),0_0_0_1px_rgba(255,255,255,0.06)]"
             priority
           />
         </div>
       </section>
 
       {/* Dark to light */}
-      <div className="h-24 bg-gradient-to-b from-[#0c0c0c] to-[#F0F2F5]" />
+      <div className="h-20 bg-gradient-to-b from-[#0c0c0c] to-[#F0F2F5]" />
 
       {/* "Not like other apps" + pillars */}
       <section className="bg-[#F0F2F5] px-6 pt-4 pb-20">
@@ -118,36 +111,32 @@ export default function Home() {
             Barcode scanning, meal databases, daily logs, weekly reports. It is overwhelming. WhatYouAte is built for people who just want to eat a little better and actually feel it.
           </p>
         </Reveal>
-
         <PillarGrid />
       </section>
 
       {/* Light to dark */}
-      <div className="h-24 bg-gradient-to-b from-[#F0F2F5] to-[#0c0c0c]" />
+      <div className="h-20 bg-gradient-to-b from-[#F0F2F5] to-[#0c0c0c]" />
 
-      {/* Features */}
-      <section className="relative bg-[#0c0c0c] px-6 py-8">
-        <div className="pointer-events-none absolute inset-0 overflow-hidden" aria-hidden="true">
-          <div className="blob1 absolute rounded-full blur-[120px]" style={{ width: 500, height: 500, background: "rgba(111,168,255,0.12)", top: "5%", left: "10%" }} />
-          <div className="blob3 absolute rounded-full blur-[140px]" style={{ width: 400, height: 300, background: "rgba(111,168,255,0.07)", bottom: "10%", right: "15%" }} />
-        </div>
-
+      {/* Features — single bg gradient, no per-section blur divs */}
+      <section
+        className="bg-[#0c0c0c] px-6 py-8"
+        style={{ background: "radial-gradient(ellipse 70% 40% at 30% 20%, rgba(111,168,255,0.08) 0%, #0c0c0c 60%)" }}
+      >
         {features.map((f, i) => {
           const isEven = i % 2 === 0;
           return (
             <div
               key={f.headline}
-              className={`relative z-10 mx-auto max-w-4xl flex flex-col md:flex-row items-center gap-10 md:gap-16 py-16 md:py-20 ${i > 0 ? "border-t border-white/[0.06]" : ""} ${isEven ? "" : "md:flex-row-reverse"}`}
+              className={`mx-auto max-w-4xl flex flex-col md:flex-row items-center gap-10 md:gap-16 py-16 md:py-20 ${i > 0 ? "border-t border-white/[0.06]" : ""} ${isEven ? "" : "md:flex-row-reverse"}`}
             >
               <Reveal className="flex-shrink-0 w-full max-w-[175px] md:max-w-[195px] mx-auto md:mx-0">
-                <div className="relative" style={{ transform: `rotate(${f.rotate})` }}>
-                  <div className="absolute -inset-4 rounded-full blur-2xl opacity-50" style={{ background: "rgba(111,168,255,0.2)" }} />
+                <div style={{ transform: `rotate(${f.rotate})` }}>
                   <Image
                     src={f.screenshot}
                     alt={f.headline}
                     width={640}
                     height={1390}
-                    className="relative w-full rounded-[28px] shadow-[0_24px_60px_rgba(0,0,0,0.5)]"
+                    className="w-full rounded-[28px] shadow-[0_20px_50px_rgba(0,0,0,0.5),0_0_0_1px_rgba(255,255,255,0.06)]"
                   />
                 </div>
               </Reveal>
@@ -162,7 +151,7 @@ export default function Home() {
       </section>
 
       {/* Dark to light: Apple Health */}
-      <div className="h-24 bg-gradient-to-b from-[#0c0c0c] to-[#F0F2F5]" />
+      <div className="h-20 bg-gradient-to-b from-[#0c0c0c] to-[#F0F2F5]" />
       <section className="bg-[#F0F2F5] py-16 px-6">
         <Reveal className="mx-auto max-w-lg flex flex-col sm:flex-row items-center gap-5 text-center sm:text-left">
           <div className="flex-shrink-0 w-12 h-12 rounded-2xl bg-[#FF3B5C]/10 flex items-center justify-center border border-[#FF3B5C]/15">
@@ -180,13 +169,12 @@ export default function Home() {
       </section>
 
       {/* Light to dark: CTA */}
-      <div className="h-24 bg-gradient-to-b from-[#F0F2F5] to-[#0c0c0c]" />
-      <section className="relative bg-[#0c0c0c] py-28 px-6 text-center overflow-hidden">
-        <div className="pointer-events-none absolute inset-0 overflow-hidden" aria-hidden="true">
-          <div className="blob1 absolute rounded-full blur-[120px]" style={{ width: 400, height: 400, background: "rgba(111,168,255,0.13)", top: "20%", left: "20%" }} />
-          <div className="blob2 absolute rounded-full blur-[100px]" style={{ width: 300, height: 300, background: "rgba(140,100,255,0.08)", bottom: "10%", right: "15%" }} />
-        </div>
-        <Reveal className="relative z-10 mx-auto max-w-[420px]">
+      <div className="h-20 bg-gradient-to-b from-[#F0F2F5] to-[#0c0c0c]" />
+      <section
+        className="py-28 px-6 text-center"
+        style={{ background: "radial-gradient(ellipse 60% 50% at 50% 50%, rgba(111,168,255,0.1) 0%, #0c0c0c 65%)" }}
+      >
+        <Reveal className="mx-auto max-w-[420px]">
           <h2 className="text-[34px] sm:text-[42px] font-bold tracking-[-0.03em] leading-[1.1] mb-4">
             Give it a week.<br />See how you feel.
           </h2>
