@@ -5,16 +5,33 @@ import PillarGrid from "../components/PillarGrid";
 
 const APP_STORE_URL = "#";
 
-// Seamless gradient transitions — tall + multi-stop so the eye never sees a hard edge
-const toLight = { background: "linear-gradient(to bottom, #0c0c0c 0%, #0c0c0c 20%, #c8cdd4 65%, #F0F2F5 100%)", height: 200 } as React.CSSProperties;
-const toDark  = { background: "linear-gradient(to bottom, #F0F2F5 0%, #c8cdd4 35%, #0c0c0c 80%, #0c0c0c 100%)", height: 200 } as React.CSSProperties;
+// Gradient overlays — absolute-positioned inside each section so there's no separate
+// divider div. transparent → color blends perfectly with the section behind it.
+function FadeToLight() {
+  return (
+    <div
+      aria-hidden="true"
+      className="pointer-events-none absolute bottom-0 inset-x-0"
+      style={{ height: 380, background: "linear-gradient(to bottom, rgba(240,242,245,0) 0%, rgba(240,242,245,0.55) 50%, #F0F2F5 100%)" }}
+    />
+  );
+}
+function FadeToDark() {
+  return (
+    <div
+      aria-hidden="true"
+      className="pointer-events-none absolute bottom-0 inset-x-0"
+      style={{ height: 380, background: "linear-gradient(to bottom, rgba(12,12,12,0) 0%, rgba(12,12,12,0.55) 50%, #0c0c0c 100%)" }}
+    />
+  );
+}
 
 function DownloadButton({ size = "lg" }: { size?: "lg" | "sm" }) {
   return (
     <a
       href={APP_STORE_URL}
       className={`inline-flex items-center justify-center gap-2.5 rounded-full bg-white text-[#0c0c0c] font-semibold tracking-[-0.01em] border-2 border-[#6FA8FF] transition-opacity hover:opacity-80 active:opacity-60 ${
-        size === "lg" ? "px-10 py-3.5 text-[15px] min-w-[210px]" : "px-8 py-3 text-[14px] min-w-[190px]"
+        size === "lg" ? "px-10 py-3.5 text-[15px] min-w-[220px]" : "px-8 py-3 text-[14px] min-w-[200px]"
       }`}
     >
       <svg width="16" height="16" viewBox="0 0 24 24" fill="#0c0c0c" className="shrink-0">
@@ -25,23 +42,47 @@ function DownloadButton({ size = "lg" }: { size?: "lg" | "sm" }) {
   );
 }
 
-// iPhone-like frame with 3D perspective tilt
+// Realistic iPhone frame: gradient metal bezel + side buttons + perspective tilt
 function PhoneFrame({ src, alt, tilt }: { src: string; alt: string; tilt: string }) {
+  const btnLeft: React.CSSProperties = {
+    position: "absolute", left: -5, width: 4,
+    background: "linear-gradient(to right, #111113, #2e2e30)",
+    borderRadius: "3px 0 0 3px",
+  };
+  const btnRight: React.CSSProperties = {
+    position: "absolute", right: -5, width: 4,
+    background: "linear-gradient(to left, #111113, #2e2e30)",
+    borderRadius: "0 3px 3px 0",
+  };
+
   return (
     <div style={{ perspective: "1100px" }}>
-      <div style={{ transform: tilt }}>
-        {/* Bezel */}
+      <div style={{ transform: tilt, position: "relative" }}>
+        {/* Mute switch */}
+        <div style={{ ...btnLeft, top: "13%", height: 22 }} />
+        {/* Volume up */}
+        <div style={{ ...btnLeft, top: "21%", height: 34 }} />
+        {/* Volume down */}
+        <div style={{ ...btnLeft, top: "30%", height: 34 }} />
+        {/* Power / side button */}
+        <div style={{ ...btnRight, top: "22%", height: 60 }} />
+
+        {/* Outer shell — titanium-look gradient */}
         <div
           style={{
-            borderRadius: 48,
-            padding: 10,
-            background: "linear-gradient(145deg, #2c2c2e, #1a1a1c)",
-            boxShadow:
-              "inset 0 0 0 1px rgba(255,255,255,0.12), 0 32px 64px rgba(0,0,0,0.65), 4px 4px 0 rgba(0,0,0,0.3)",
+            borderRadius: 52,
+            padding: "12px 11px",
+            background: "linear-gradient(150deg, #404042 0%, #1e1e20 30%, #38383a 55%, #1a1a1c 80%, #2c2c2e 100%)",
+            boxShadow: [
+              "inset 0 0 0 0.75px rgba(255,255,255,0.18)",
+              "inset 0 1px 0 rgba(255,255,255,0.10)",
+              "0 0 0 1px rgba(0,0,0,0.7)",
+              "0 28px 70px rgba(0,0,0,0.65)",
+            ].join(", "),
           }}
         >
-          {/* Screen */}
-          <div style={{ borderRadius: 38, overflow: "hidden", background: "#000" }}>
+          {/* Screen glass */}
+          <div style={{ borderRadius: 40, overflow: "hidden", background: "#000" }}>
             <Image src={src} alt={alt} width={640} height={1390} className="w-full block" />
           </div>
         </div>
@@ -81,17 +122,17 @@ export default function Home() {
   return (
     <div className="min-h-screen bg-[#0c0c0c] text-white overflow-x-hidden" style={{ fontFamily: "var(--font-geist-sans), system-ui, sans-serif" }}>
 
-      {/* Nav */}
-      <header className="fixed top-0 inset-x-0 z-50 flex items-center px-7 py-5">
+      {/* Nav — not fixed, scrolls away with the page */}
+      <header className="flex items-center px-8 py-6">
         <div className="flex items-center gap-2.5">
           <Image src="/icon.png" alt="WhatYouAte" width={26} height={26} className="rounded-[7px]" priority />
           <span className="text-[15px] font-semibold tracking-[-0.01em]">WhatYouAte</span>
         </div>
       </header>
 
-      {/* Hero */}
+      {/* Hero — dark, fades to light at bottom */}
       <section
-        className="relative min-h-[100svh] flex flex-col md:flex-row items-center justify-center gap-16 px-8 pt-40 pb-28 md:pt-0 md:pb-0"
+        className="relative flex flex-col md:flex-row items-center justify-center gap-16 px-8 pt-16 pb-64 md:min-h-[90vh]"
         style={{ background: "radial-gradient(ellipse 80% 60% at 65% 40%, rgba(111,168,255,0.13) 0%, #0c0c0c 65%)" }}
       >
         <div className="relative z-10 flex flex-col items-center md:items-start text-center md:text-left max-w-[440px]">
@@ -115,20 +156,15 @@ export default function Home() {
           </div>
         </div>
 
-        <div className="hero-phone relative z-10 w-full max-w-[220px] md:max-w-[240px] flex-shrink-0">
-          <PhoneFrame
-            src="/screenshots/home.webp"
-            alt="WhatYouAte home screen"
-            tilt="rotateY(14deg) rotateX(3deg)"
-          />
+        <div className="hero-phone relative z-10 w-full max-w-[210px] md:max-w-[230px] flex-shrink-0">
+          <PhoneFrame src="/screenshots/home.webp" alt="WhatYouAte home screen" tilt="rotateY(14deg) rotateX(3deg)" />
         </div>
+
+        <FadeToLight />
       </section>
 
-      {/* Dark → Light */}
-      <div style={toLight} />
-
-      {/* "Not like other apps" + pillars */}
-      <section className="bg-[#F0F2F5] px-8 pt-6 pb-28">
+      {/* Light section — "not like other apps" + pillars, fades to dark at bottom */}
+      <section className="relative bg-[#F0F2F5] px-8 pt-10 pb-64">
         <Reveal className="mx-auto max-w-[560px] text-center mb-20">
           <h2 className="text-[30px] sm:text-[38px] font-bold text-[#0c0c0c] tracking-[-0.02em] leading-tight mb-5">
             Most nutrition apps feel like homework.
@@ -138,14 +174,12 @@ export default function Home() {
           </p>
         </Reveal>
         <PillarGrid />
+        <FadeToDark />
       </section>
 
-      {/* Light → Dark */}
-      <div style={toDark} />
-
-      {/* Features */}
+      {/* Features — dark, fades to light at bottom */}
       <section
-        className="bg-[#0c0c0c] px-8 pt-4 pb-8"
+        className="relative bg-[#0c0c0c] px-8 pt-8 pb-64"
         style={{ background: "radial-gradient(ellipse 70% 40% at 30% 20%, rgba(111,168,255,0.07) 0%, #0c0c0c 60%)" }}
       >
         {features.map((f, i) => {
@@ -153,24 +187,23 @@ export default function Home() {
           return (
             <div
               key={f.headline}
-              className={`mx-auto max-w-5xl flex flex-col md:flex-row items-center gap-12 md:gap-20 py-20 md:py-24 ${i > 0 ? "border-t border-white/[0.06]" : ""} ${isEven ? "" : "md:flex-row-reverse"}`}
+              className={`relative z-10 mx-auto max-w-5xl flex flex-col md:flex-row items-center gap-12 md:gap-24 py-20 md:py-28 ${i > 0 ? "border-t border-white/[0.06]" : ""} ${isEven ? "" : "md:flex-row-reverse"}`}
             >
-              <Reveal className="flex-shrink-0 w-full max-w-[180px] md:max-w-[200px] mx-auto md:mx-0">
+              <Reveal className="flex-shrink-0 w-full max-w-[175px] md:max-w-[195px] mx-auto md:mx-0">
                 <PhoneFrame src={f.screenshot} alt={f.headline} tilt={f.tilt} />
               </Reveal>
-
-              <Reveal delay={0.12} className="flex flex-col gap-4 text-center md:text-left max-w-[320px] mx-auto md:mx-0">
+              <Reveal delay={0.12} className="flex flex-col gap-4 text-center md:text-left max-w-[340px] mx-auto md:mx-0">
                 <h3 className="text-[26px] sm:text-[30px] font-bold tracking-[-0.02em] leading-[1.2]">{f.headline}</h3>
                 <p className="text-[16px] text-white/45 leading-[1.8]">{f.body}</p>
               </Reveal>
             </div>
           );
         })}
+        <FadeToLight />
       </section>
 
-      {/* Dark → Light: Apple Health */}
-      <div style={toLight} />
-      <section className="bg-[#F0F2F5] py-20 px-8">
+      {/* Apple Health — light, fades to dark at bottom */}
+      <section className="relative bg-[#F0F2F5] py-24 px-8 pb-64">
         <Reveal className="mx-auto max-w-lg flex flex-col sm:flex-row items-center gap-6 text-center sm:text-left">
           <div className="flex-shrink-0 w-14 h-14 rounded-2xl bg-[#FF3B5C]/10 flex items-center justify-center border border-[#FF3B5C]/15">
             <svg width="22" height="22" viewBox="0 0 24 24" fill="#FF3B5C">
@@ -184,12 +217,12 @@ export default function Home() {
             </p>
           </div>
         </Reveal>
+        <FadeToDark />
       </section>
 
-      {/* Light → Dark: CTA */}
-      <div style={toDark} />
+      {/* CTA — dark, no bottom fade (footer is also dark) */}
       <section
-        className="py-36 px-8 text-center"
+        className="py-40 px-8 text-center"
         style={{ background: "radial-gradient(ellipse 60% 50% at 50% 50%, rgba(111,168,255,0.09) 0%, #0c0c0c 65%)" }}
       >
         <Reveal className="mx-auto max-w-[440px]">
@@ -204,7 +237,7 @@ export default function Home() {
       </section>
 
       {/* Footer */}
-      <footer className="bg-[#0c0c0c] border-t border-white/[0.07] py-12 px-8">
+      <footer className="bg-[#0c0c0c] border-t border-white/[0.07] py-16 px-8">
         <div className="mx-auto max-w-4xl flex flex-col items-center gap-6 text-center">
           <div className="flex items-center gap-2">
             <Image src="/icon.png" alt="WhatYouAte" width={20} height={20} className="rounded-[5px] opacity-50" />
