@@ -134,17 +134,17 @@ export default function Home() {
         style={{ background: "radial-gradient(ellipse 80% 60% at 65% 40%, rgba(111,168,255,0.13) 0%, #0c0c0c 65%)" }}
       >
         <div className="flex flex-col items-center md:items-start text-center md:text-left max-w-[440px]">
-          <div className="hero-1 mb-10 inline-flex items-center gap-1.5 rounded-full border border-white/10 bg-white/5 px-3.5 py-2.5 text-[11px] font-medium text-white/50">
+          <div className="hero-1 mb-16 inline-flex items-center gap-1.5 rounded-full border border-white/10 bg-white/5 px-3.5 py-2.5 text-[11px] font-medium text-white/50">
             <span className="h-1.5 w-1.5 rounded-full bg-[#6FA8FF]" />
             Free on the App Store
           </div>
 
-          <h1 className="hero-2 text-[44px] sm:text-[56px] font-bold leading-[1.06] tracking-[-0.03em] mb-6">
+          <h1 className="hero-2 text-[44px] sm:text-[56px] font-bold leading-[1.06] tracking-[-0.03em] mb-8">
             Know what you ate<br />
             <span className="text-[#6FA8FF]">Feel the difference</span>
           </h1>
 
-          <p className="hero-3 text-[18px] leading-[1.7] text-white/45 mb-14 max-w-[360px]">
+          <p className="hero-3 text-[18px] leading-[1.7] text-white/45 mb-20 max-w-[360px]">
             Food affects how you feel every day. WhatYouAte helps you understand it without the obsessing.
           </p>
 
@@ -188,7 +188,7 @@ export default function Home() {
           return (
             <div
               key={f.headline}
-              className={`mx-auto max-w-5xl flex flex-col md:flex-row items-center gap-8 md:gap-24 py-32 md:py-40 ${i > 0 ? "border-t border-white/[0.06]" : ""} ${isEven ? "" : "md:flex-row-reverse"}`}
+              className={`mx-auto max-w-5xl flex flex-col md:flex-row items-center gap-5 md:gap-24 pt-44 pb-16 md:pt-40 md:pb-24 ${i > 0 ? "border-t border-white/[0.06]" : ""} ${isEven ? "" : "md:flex-row-reverse"}`}
             >
               <Reveal className="flex-shrink-0 w-full max-w-[180px] md:max-w-[200px] mx-auto md:mx-0 order-first md:order-none">
                 <PhoneFrame src={f.screenshot} alt={f.headline} tilt={f.tilt} />
@@ -206,7 +206,7 @@ export default function Home() {
       <DarkToLight />
 
       {/* ── APPLE HEALTH ─────────────────────────────────────── */}
-      <section className="bg-[#F0F2F5] px-8 pt-14 pb-16">
+      <section className="bg-[#F0F2F5] px-8 pt-10 pb-12">
         <Reveal className="mx-auto max-w-[480px] flex flex-col items-center text-center">
           <div className="w-16 h-16 rounded-2xl bg-[#FF3B5C]/10 border border-[#FF3B5C]/20 flex items-center justify-center mb-8">
             <svg width="28" height="28" viewBox="0 0 24 24" fill="#FF3B5C">
@@ -227,14 +227,14 @@ export default function Home() {
 
       {/* ── CTA ──────────────────────────────────────────────── */}
       <section
-        className="pt-36 pb-64 px-8 text-center"
+        className="pt-28 pb-72 px-8 text-center"
         style={{ background: "radial-gradient(ellipse 60% 50% at 50% 50%, rgba(111,168,255,0.09) 0%, #0c0c0c 65%)" }}
       >
         <Reveal className="mx-auto max-w-[440px]">
           <h2 className="text-[36px] sm:text-[46px] font-bold tracking-[-0.03em] leading-[1.1] mb-5">
             Give it a week.<br />See how you feel.
           </h2>
-          <p className="text-[16px] text-white/40 leading-relaxed mb-16">
+          <p className="text-[16px] text-white/40 leading-relaxed mb-20">
             Download free. 7-day Pro trial. No commitment.
           </p>
           <DownloadButton size="lg" />
