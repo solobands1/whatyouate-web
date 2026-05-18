@@ -164,20 +164,20 @@ export default function Home() {
             {features.map((f) => {
               const isHealth = f.startsWith("Syncs with Apple Health");
               return (
-                <div key={f} className={`flex ${isHealth ? "items-center" : "items-start"}`} style={{ gap: 16 }}>
+                <div key={f} className="flex items-start" style={{ gap: 16 }}>
                   {isHealth ? (
                     <span
                       className="flex-shrink-0 flex items-center justify-center"
                       style={{
-                        width: 24, height: 24,
+                        marginTop: 3,
+                        width: 20, height: 20,
                         background: "#fff",
                         border: "1px solid rgba(255,59,92,0.18)",
-                        borderRadius: 7,
+                        borderRadius: 6,
                         boxShadow: "0 1px 4px rgba(255,59,92,0.15)",
-                        flexShrink: 0,
                       }}
                     >
-                      <svg viewBox="0 0 24 24" width="15" height="15">
+                      <svg viewBox="0 0 24 24" width="12" height="12">
                         <path d="M12 20.5l-1.3-1.18C5.36 14.9 2 12.08 2 8.5 2 5.68 4.18 3.5 7 3.5c1.54 0 3.01.72 4 1.86C11.99 4.22 13.46 3.5 15 3.5c2.82 0 5 2.18 5 5 0 3.58-3.36 6.4-8.7 10.82L12 20.5z" fill="#FF3B5C" />
                       </svg>
                     </span>
