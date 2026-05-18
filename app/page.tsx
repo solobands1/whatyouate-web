@@ -13,12 +13,12 @@ function DownloadButton({ size = "lg" }: { size?: "lg" | "sm" }) {
         background: "#FFFFFF",
         color: "#0c0c0c",
         borderColor: "#6FA8FF",
-        fontSize: size === "lg" ? 15 : 14,
-        paddingLeft: size === "lg" ? 40 : 32,
-        paddingRight: size === "lg" ? 40 : 32,
-        paddingTop: size === "lg" ? 14 : 12,
-        paddingBottom: size === "lg" ? 14 : 12,
-        minWidth: size === "lg" ? 220 : 200,
+        fontSize: size === "lg" ? 11 : 11,
+        paddingLeft: size === "lg" ? 30 : 24,
+        paddingRight: size === "lg" ? 30 : 24,
+        paddingTop: size === "lg" ? 10 : 9,
+        paddingBottom: size === "lg" ? 10 : 9,
+        minWidth: size === "lg" ? 165 : 150,
       }}
     >
       <svg width="16" height="16" viewBox="0 0 24 24" fill="#0c0c0c" className="shrink-0">
@@ -86,15 +86,13 @@ export default function Home() {
     >
 
       {/* ── NAV ──────────────────────────────────────────────── */}
-      <header className="flex items-center" style={{ paddingLeft: 40, paddingRight: 40, paddingTop: 28, paddingBottom: 28 }}>
-        <div className="flex items-center gap-2.5">
-          <Image src="/icon.png" alt="WhatYouAte" width={26} height={26} className="rounded-[7px]" priority />
-          <span className="text-[15px] font-semibold tracking-[-0.01em]" style={{ color: "#1F2937" }}>
-            WhatYouAt<span className="relative inline-block">e
-              <span className="absolute right-0 translate-x-[10px] text-[9px] font-semibold" style={{ top: 0, color: "#6B7280" }}>AI</span>
-            </span>
+      <header className="flex flex-col items-center" style={{ paddingLeft: 40, paddingRight: 40, paddingTop: 36, paddingBottom: 28 }}>
+        <Image src="/icon.png" alt="WhatYouAte" width={60} height={60} className="rounded-[16px]" priority style={{ marginBottom: 10 }} />
+        <span className="font-semibold tracking-[-0.01em]" style={{ fontSize: 19, color: "#1F2937" }}>
+          WhatYouAt<span className="relative inline-block">e
+            <span className="absolute right-0 translate-x-[10px] font-semibold" style={{ top: -1, fontSize: 10, color: "#9CA3AF" }}>AI</span>
           </span>
-        </div>
+        </span>
       </header>
 
       {/* ── HERO ─────────────────────────────────────────────── */}
@@ -110,7 +108,7 @@ export default function Home() {
               className="font-bold leading-[1.06] tracking-[-0.03em]"
               style={{ fontSize: "clamp(40px, 6vw, 56px)", marginBottom: 20 }}
             >
-              <span style={{ color: "#1F2937" }}>Eat </span><span style={{ color: "#6FA8FF" }}>Confidently</span><br />
+              <span style={{ color: "#1F2937" }}>Eat Confidently</span><br />
               <span style={{ color: "#1F2937" }}>Feel </span><span style={{ color: "#6FA8FF" }}>Better</span>
             </h1>
           </Reveal>
