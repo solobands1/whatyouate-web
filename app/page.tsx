@@ -221,7 +221,7 @@ export default function Home() {
       <footer
         style={{ paddingLeft: 40, paddingRight: 40, paddingTop: 40, paddingBottom: 40, borderTop: "1px solid rgba(31,41,55,0.08)" }}
       >
-        <div className="mx-auto max-w-4xl flex flex-col items-center gap-6 text-center">
+        <div className="mx-auto max-w-4xl flex flex-col items-center text-center" style={{ gap: 10 }}>
           <div className="flex items-center gap-2">
             <Image src="/icon.png" alt="WhatYouAte" width={20} height={20} className="rounded-[5px]" style={{ opacity: 0.5 }} />
             <span className="text-[13px] font-semibold tracking-[-0.01em]" style={{ color: "#6B7280" }}>
