@@ -98,7 +98,7 @@ export default function Home() {
       {/* ── HERO ─────────────────────────────────────────────── */}
       <section
         className="flex flex-col md:flex-row items-center justify-center gap-12 md:gap-16 md:min-h-[82vh]"
-        style={{ paddingLeft: 40, paddingRight: 40, paddingTop: 24, paddingBottom: 72 }}
+        style={{ paddingLeft: 40, paddingRight: 40, paddingTop: 8, paddingBottom: 72 }}
       >
         <div className="flex flex-col items-center md:items-start text-center md:text-left max-w-[440px]">
 
