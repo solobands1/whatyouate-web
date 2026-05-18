@@ -142,20 +142,6 @@ export default function Home() {
         </Reveal>
       </section>
 
-      {/* ── NO FLUFF ─────────────────────────────────────────── */}
-      <section
-        style={{ paddingLeft: 40, paddingRight: 40, paddingTop: 64, paddingBottom: 64, borderTop: "1px solid rgba(31,41,55,0.08)" }}
-      >
-        <Reveal>
-          <p
-            className="mx-auto text-center text-[18px] leading-[1.85]"
-            style={{ maxWidth: 580, color: "#374151" }}
-          >
-            Understanding your food and feeling better shouldn't be complicated. So we uncomplicated both the app, and this page. No endless features, no unnecessary noise. Just easy improvement.
-          </p>
-        </Reveal>
-      </section>
-
       {/* ── FEATURES ─────────────────────────────────────────── */}
       <section
         style={{ paddingLeft: 40, paddingRight: 40, paddingTop: 64, paddingBottom: 64, borderTop: "1px solid rgba(31,41,55,0.08)" }}
@@ -193,6 +179,20 @@ export default function Home() {
               </div>
             ))}
           </div>
+        </Reveal>
+      </section>
+
+      {/* ── NO FLUFF ─────────────────────────────────────────── */}
+      <section
+        style={{ paddingLeft: 40, paddingRight: 40, paddingTop: 64, paddingBottom: 64, borderTop: "1px solid rgba(31,41,55,0.08)" }}
+      >
+        <Reveal>
+          <p
+            className="mx-auto text-center text-[18px] leading-[1.85]"
+            style={{ maxWidth: 580, color: "#374151" }}
+          >
+            Understanding your food and feeling better shouldn't be complicated. So we uncomplicated both the app, and this page. No endless features, no unnecessary noise. Just easy improvement.
+          </p>
         </Reveal>
       </section>
 
