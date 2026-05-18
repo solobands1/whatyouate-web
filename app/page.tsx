@@ -86,7 +86,7 @@ export default function Home() {
     >
 
       {/* ── NAV ──────────────────────────────────────────────── */}
-      <header className="flex flex-col items-center" style={{ paddingLeft: 40, paddingRight: 40, paddingTop: 36, paddingBottom: 28 }}>
+      <header className="flex flex-col items-center" style={{ paddingLeft: 40, paddingRight: 40, paddingTop: 36, paddingBottom: 12 }}>
         <Image src="/icon.png" alt="WhatYouAte" width={60} height={60} className="rounded-[16px]" priority style={{ marginBottom: 10 }} />
         <span className="font-semibold tracking-[-0.01em]" style={{ fontSize: 19, color: "#1F2937" }}>
           WhatYouAt<span className="relative inline-block">e
@@ -98,7 +98,7 @@ export default function Home() {
       {/* ── HERO ─────────────────────────────────────────────── */}
       <section
         className="flex flex-col md:flex-row items-center justify-center gap-12 md:gap-16 md:min-h-[82vh]"
-        style={{ paddingLeft: 40, paddingRight: 40, paddingTop: 8, paddingBottom: 72 }}
+        style={{ paddingLeft: 40, paddingRight: 40, paddingTop: 0, paddingBottom: 72 }}
       >
         <div className="flex flex-col items-center md:items-start text-center md:text-left max-w-[440px]">
 
