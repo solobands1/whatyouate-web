@@ -16,13 +16,14 @@
 
 body {
   font-family: var(--font-geist-sans), system-ui, sans-serif;
-  background: #0f0f0f;
-  color: #f5f5f5;
+  background: #F8FAFC;
+  color: #1F2937;
   -webkit-font-smoothing: antialiased;
 }
 
 html {
   scroll-behavior: smooth;
+  background: #F8FAFC;
 }
 
 /* Scroll reveals */
