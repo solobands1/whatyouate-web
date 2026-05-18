@@ -179,7 +179,6 @@ export default function Home() {
                     >
                       <svg viewBox="0 0 24 24" width="15" height="15">
                         <path d="M12 20.5l-1.3-1.18C5.36 14.9 2 12.08 2 8.5 2 5.68 4.18 3.5 7 3.5c1.54 0 3.01.72 4 1.86C11.99 4.22 13.46 3.5 15 3.5c2.82 0 5 2.18 5 5 0 3.58-3.36 6.4-8.7 10.82L12 20.5z" fill="#FF3B5C" />
-                        <polyline points="5.5,12 7.5,12 9,9 11,15 13,10.5 14.5,12 18.5,12" fill="none" stroke="white" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round" />
                       </svg>
                     </span>
                   ) : (
