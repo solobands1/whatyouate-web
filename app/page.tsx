@@ -224,7 +224,7 @@ export default function Home() {
       >
         <div className="mx-auto max-w-4xl flex flex-col items-center text-center" style={{ gap: 10 }}>
           <div className="flex items-center gap-2">
-            <Image src="/icon.png" alt="WhatYouAte" width={20} height={20} className="rounded-[5px]" style={{ opacity: 0.5 }} />
+            <Image src="/icon.png" alt="WhatYouAte" width={20} height={20} className="rounded-[5px]" />
             <span className="text-[13px] font-semibold tracking-[-0.01em]" style={{ color: "#374151" }}>
               WhatYouAt<span className="relative inline-block">e
                 <span className="absolute right-0 translate-x-[10px] text-[9px] font-semibold" style={{ top: 0, color: "#374151" }}>AI</span>
