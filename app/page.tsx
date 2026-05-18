@@ -117,7 +117,7 @@ export default function Home() {
           <Reveal delay={0.08}>
             <p
               className="text-[18px] leading-[1.7]"
-              style={{ marginBottom: 36, color: "#374151", maxWidth: 360 }}
+              style={{ marginBottom: 24, color: "#374151", maxWidth: 360 }}
             >
               The AI food coach that tracks what you eat, connects it to how you feel, and helps you improve without the complexity.
             </p>
@@ -152,8 +152,9 @@ export default function Home() {
             style={{
               maxWidth: 560,
               background: "#FFFFFF",
-              border: "1px solid rgba(31,41,55,0.08)",
+              border: "1px solid rgba(111,168,255,0.25)",
               borderRadius: 20,
+              boxShadow: "0 0 32px rgba(111,168,255,0.12)",
               padding: "24px 28px",
               display: "flex",
               flexDirection: "column",
@@ -188,7 +189,7 @@ export default function Home() {
       >
         <Reveal>
           <p
-            className="mx-auto text-center text-[18px] leading-[1.85]"
+            className="mx-auto text-center text-[18px] leading-[1.85] font-semibold"
             style={{ maxWidth: 580, color: "#374151" }}
           >
             Understanding your food and feeling better shouldn't be complicated. So we uncomplicated both the app, and this page. No endless features, no unnecessary noise. Just easy improvement.
@@ -224,17 +225,17 @@ export default function Home() {
         <div className="mx-auto max-w-4xl flex flex-col items-center text-center" style={{ gap: 10 }}>
           <div className="flex items-center gap-2">
             <Image src="/icon.png" alt="WhatYouAte" width={20} height={20} className="rounded-[5px]" style={{ opacity: 0.5 }} />
-            <span className="text-[13px] font-semibold tracking-[-0.01em]" style={{ color: "#6B7280" }}>
+            <span className="text-[13px] font-semibold tracking-[-0.01em]" style={{ color: "#374151" }}>
               WhatYouAt<span className="relative inline-block">e
-                <span className="absolute right-0 translate-x-[10px] text-[9px] font-semibold" style={{ top: 0, color: "#6B7280" }}>AI</span>
+                <span className="absolute right-0 translate-x-[10px] text-[9px] font-semibold" style={{ top: 0, color: "#374151" }}>AI</span>
               </span>
             </span>
           </div>
-          <div className="flex gap-8 text-[13px]" style={{ color: "#6B7280" }}>
-            <Link href="/privacy" className="hover:text-[#374151] transition-colors">Privacy Policy</Link>
-            <a href="mailto:support@whatyouate.app" className="hover:text-[#374151] transition-colors">Support</a>
+          <div className="flex gap-8 text-[13px]" style={{ color: "#374151" }}>
+            <Link href="/privacy" className="hover:text-[#1F2937] transition-colors">Privacy Policy</Link>
+            <a href="mailto:support@whatyouate.app" className="hover:text-[#1F2937] transition-colors">Support</a>
           </div>
-          <span className="text-[12px]" style={{ color: "#6B7280" }}>© {new Date().getFullYear()} WhatYouAte. All rights reserved.</span>
+          <span className="text-[12px]" style={{ color: "#374151" }}>© {new Date().getFullYear()} WhatYouAte. All rights reserved.</span>
         </div>
       </footer>
 
