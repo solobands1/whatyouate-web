@@ -98,7 +98,7 @@ export default function Home() {
       {/* ── HERO ─────────────────────────────────────────────── */}
       <section
         className="flex flex-col md:flex-row items-center justify-center gap-12 md:gap-16 md:min-h-[82vh]"
-        style={{ paddingLeft: 40, paddingRight: 40, paddingTop: 0, paddingBottom: 72 }}
+        style={{ paddingLeft: 40, paddingRight: 40, paddingTop: 0, paddingBottom: 40 }}
       >
         <div className="flex flex-col items-center md:items-start text-center md:text-left max-w-[440px]">
 
@@ -144,7 +144,7 @@ export default function Home() {
 
       {/* ── FEATURES ─────────────────────────────────────────── */}
       <section
-        style={{ paddingLeft: 40, paddingRight: 40, paddingTop: 64, paddingBottom: 64, borderTop: "1px solid rgba(31,41,55,0.08)" }}
+        style={{ paddingLeft: 40, paddingRight: 40, paddingTop: 40, paddingBottom: 40, borderTop: "1px solid rgba(31,41,55,0.08)" }}
       >
         <Reveal>
           <div
@@ -184,7 +184,7 @@ export default function Home() {
 
       {/* ── NO FLUFF ─────────────────────────────────────────── */}
       <section
-        style={{ paddingLeft: 40, paddingRight: 40, paddingTop: 64, paddingBottom: 64, borderTop: "1px solid rgba(31,41,55,0.08)" }}
+        style={{ paddingLeft: 40, paddingRight: 40, paddingTop: 40, paddingBottom: 40, borderTop: "1px solid rgba(31,41,55,0.08)" }}
       >
         <Reveal>
           <p
@@ -199,7 +199,7 @@ export default function Home() {
       {/* ── CTA ──────────────────────────────────────────────── */}
       <section
         className="text-center"
-        style={{ paddingLeft: 40, paddingRight: 40, paddingTop: 64, paddingBottom: 64, borderTop: "1px solid rgba(31,41,55,0.08)" }}
+        style={{ paddingLeft: 40, paddingRight: 40, paddingTop: 40, paddingBottom: 40, borderTop: "1px solid rgba(31,41,55,0.08)" }}
       >
         <Reveal>
           <div className="mx-auto flex flex-col items-center" style={{ maxWidth: 440, gap: 16 }}>
@@ -219,7 +219,7 @@ export default function Home() {
 
       {/* ── FOOTER ───────────────────────────────────────────── */}
       <footer
-        style={{ paddingLeft: 40, paddingRight: 40, paddingTop: 40, paddingBottom: 40, borderTop: "1px solid rgba(31,41,55,0.08)" }}
+        style={{ paddingLeft: 40, paddingRight: 40, paddingTop: 24, paddingBottom: 24, borderTop: "1px solid rgba(31,41,55,0.08)" }}
       >
         <div className="mx-auto max-w-4xl flex flex-col items-center text-center" style={{ gap: 10 }}>
           <div className="flex items-center gap-2">
