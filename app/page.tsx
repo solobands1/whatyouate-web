@@ -86,8 +86,8 @@ export default function Home() {
     >
 
       {/* ── NAV ──────────────────────────────────────────────── */}
-      <header className="flex flex-col items-center" style={{ paddingLeft: 40, paddingRight: 40, paddingTop: 36, paddingBottom: 12 }}>
-        <Image src="/icon.png" alt="WhatYouAte" width={60} height={60} className="rounded-[16px]" priority style={{ marginBottom: 10 }} />
+      <header className="flex flex-col items-center" style={{ paddingLeft: 40, paddingRight: 40, paddingTop: 20, paddingBottom: 12 }}>
+        <Image src="/icon-512.png" alt="WhatYouAte" width={60} height={60} className="rounded-[16px]" priority style={{ marginBottom: 10 }} />
         <span className="font-semibold tracking-[-0.01em]" style={{ fontSize: 19, color: "#1F2937" }}>
           WhatYouAt<span className="relative inline-block">e
             <span className="absolute right-0 translate-x-[10px] font-semibold" style={{ top: 3, fontSize: 10, color: "#9CA3AF" }}>AI</span>
@@ -164,21 +164,22 @@ export default function Home() {
             {features.map((f) => {
               const isHealth = f.startsWith("Syncs with Apple Health");
               return (
-                <div key={f} className="flex items-start" style={{ gap: 16 }}>
+                <div key={f} className={`flex ${isHealth ? "items-center" : "items-start"}`} style={{ gap: 16 }}>
                   {isHealth ? (
                     <span
                       className="flex-shrink-0 flex items-center justify-center"
                       style={{
-                        marginTop: 3,
-                        width: 20, height: 20,
+                        width: 24, height: 24,
                         background: "#fff",
-                        border: "1px solid rgba(255,59,92,0.2)",
-                        borderRadius: 6,
-                        boxShadow: "0 1px 3px rgba(255,59,92,0.12)",
+                        border: "1px solid rgba(255,59,92,0.18)",
+                        borderRadius: 7,
+                        boxShadow: "0 1px 4px rgba(255,59,92,0.15)",
+                        flexShrink: 0,
                       }}
                     >
-                      <svg viewBox="0 0 24 24" width="12" height="12" fill="#FF3B5C">
-                        <path d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z" />
+                      <svg viewBox="0 0 24 24" width="15" height="15">
+                        <path d="M12 20.5l-1.3-1.18C5.36 14.9 2 12.08 2 8.5 2 5.68 4.18 3.5 7 3.5c1.54 0 3.01.72 4 1.86C11.99 4.22 13.46 3.5 15 3.5c2.82 0 5 2.18 5 5 0 3.58-3.36 6.4-8.7 10.82L12 20.5z" fill="#FF3B5C" />
+                        <polyline points="5.5,12 7.5,12 9,9 11,15 13,10.5 14.5,12 18.5,12" fill="none" stroke="white" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round" />
                       </svg>
                     </span>
                   ) : (
