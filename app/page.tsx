@@ -90,7 +90,7 @@ export default function Home() {
         <Image src="/icon.png" alt="WhatYouAte" width={60} height={60} className="rounded-[16px]" priority style={{ marginBottom: 10 }} />
         <span className="font-semibold tracking-[-0.01em]" style={{ fontSize: 19, color: "#1F2937" }}>
           WhatYouAt<span className="relative inline-block">e
-            <span className="absolute right-0 translate-x-[10px] font-semibold" style={{ top: -1, fontSize: 10, color: "#9CA3AF" }}>AI</span>
+            <span className="absolute right-0 translate-x-[10px] font-semibold" style={{ top: 3, fontSize: 10, color: "#9CA3AF" }}>AI</span>
           </span>
         </span>
       </header>
