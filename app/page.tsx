@@ -229,7 +229,7 @@ export default function Home() {
               className="font-bold tracking-[-0.03em] leading-[1.1]"
               style={{ fontSize: "clamp(32px, 5vw, 46px)", color: "#1F2937" }}
             >
-              Give it a week,<br />See how you feel!
+              Give it a week,<br />see how you feel!
             </h2>
             <p className="text-[16px]" style={{ color: "#374151", marginBottom: 8 }}>
               Download free. 7-day Pro trial. No commitment.
