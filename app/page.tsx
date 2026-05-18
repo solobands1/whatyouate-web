@@ -75,7 +75,7 @@ const features = [
   "Go beyond calories. See the vitamins and nutrients behind your meals.",
   "Log how you feel. Your AI coach connects it back to what you ate.",
   "Daily nudges from your AI Coach that learns your habits over time.",
-  "Syncs with Apple Health automatically.",
+  "Syncs with Apple Health.",
 ];
 
 export default function Home() {
@@ -161,24 +161,45 @@ export default function Home() {
               gap: 20,
             }}
           >
-            {features.map((f) => (
-              <div key={f} className="flex items-start" style={{ gap: 16 }}>
-                <span
-                  className="flex-shrink-0 flex items-center justify-center rounded-full"
-                  style={{
-                    marginTop: 3,
-                    width: 20, height: 20,
-                    background: "rgba(111,168,255,0.12)",
-                    border: "1px solid rgba(111,168,255,0.3)",
-                  }}
-                >
-                  <svg viewBox="0 0 12 12" width="10" height="10" fill="none" stroke="#6FA8FF" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                    <path d="M2 6l3 3 5-5" />
-                  </svg>
-                </span>
-                <p className="text-[15px] leading-[1.6]" style={{ color: "#1F2937" }}>{f}</p>
-              </div>
-            ))}
+            {features.map((f) => {
+              const isHealth = f.startsWith("Syncs with Apple Health");
+              return (
+                <div key={f} className="flex items-start" style={{ gap: 16 }}>
+                  {isHealth ? (
+                    <span
+                      className="flex-shrink-0 flex items-center justify-center"
+                      style={{
+                        marginTop: 3,
+                        width: 20, height: 20,
+                        background: "#fff",
+                        border: "1px solid rgba(255,59,92,0.2)",
+                        borderRadius: 6,
+                        boxShadow: "0 1px 3px rgba(255,59,92,0.12)",
+                      }}
+                    >
+                      <svg viewBox="0 0 24 24" width="12" height="12" fill="#FF3B5C">
+                        <path d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z" />
+                      </svg>
+                    </span>
+                  ) : (
+                    <span
+                      className="flex-shrink-0 flex items-center justify-center rounded-full"
+                      style={{
+                        marginTop: 3,
+                        width: 20, height: 20,
+                        background: "rgba(111,168,255,0.12)",
+                        border: "1px solid rgba(111,168,255,0.3)",
+                      }}
+                    >
+                      <svg viewBox="0 0 12 12" width="10" height="10" fill="none" stroke="#6FA8FF" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                        <path d="M2 6l3 3 5-5" />
+                      </svg>
+                    </span>
+                  )}
+                  <p className="text-[15px] leading-[1.6]" style={{ color: "#1F2937" }}>{f}</p>
+                </div>
+              );
+            })}
           </div>
         </Reveal>
       </section>
