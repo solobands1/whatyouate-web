@@ -144,6 +144,7 @@ export default function Home() {
 
       {/* ── FEATURES ─────────────────────────────────────────── */}
       <section
+        className="flex flex-col items-center"
         style={{ paddingLeft: 40, paddingRight: 40, paddingTop: 40, paddingBottom: 40, borderTop: "1px solid rgba(31,41,55,0.08)" }}
       >
         <Reveal>
@@ -206,6 +207,7 @@ export default function Home() {
 
       {/* ── NO FLUFF ─────────────────────────────────────────── */}
       <section
+        className="flex flex-col items-center"
         style={{ paddingLeft: 40, paddingRight: 40, paddingTop: 40, paddingBottom: 40, borderTop: "1px solid rgba(31,41,55,0.08)" }}
       >
         <Reveal>
@@ -220,7 +222,7 @@ export default function Home() {
 
       {/* ── CTA ──────────────────────────────────────────────── */}
       <section
-        className="text-center"
+        className="text-center flex flex-col items-center"
         style={{ paddingLeft: 40, paddingRight: 40, paddingTop: 40, paddingBottom: 40, borderTop: "1px solid rgba(31,41,55,0.08)" }}
       >
         <Reveal>
@@ -241,6 +243,7 @@ export default function Home() {
 
       {/* ── FOOTER ───────────────────────────────────────────── */}
       <footer
+        className="flex flex-col items-center"
         style={{ paddingLeft: 40, paddingRight: 40, paddingTop: 24, paddingBottom: 24, borderTop: "1px solid rgba(31,41,55,0.08)" }}
       >
         <div className="mx-auto max-w-4xl flex flex-col items-center text-center" style={{ gap: 10 }}>
