@@ -61,7 +61,7 @@ export default function PrivacyPage() {
           </Section>
 
           <Section title="3. Assumption of Risk">
-            <p>You acknowledge and accept that: (a) AI-generated nutrition data is an estimate and may be materially incorrect; (b) the App does not verify that any food is free from allergens, intolerances, or contraindications — dietary restrictions you enter are used for general context only and do not constitute an allergen safety guarantee; (c) the App does not account for your medications, medical conditions, or clinical history; and (d) any decisions you make regarding your diet, exercise, or health based on App outputs are made at your sole risk and discretion.</p>
+            <p>You acknowledge and accept that: (a) AI-generated nutrition data is an estimate and may be materially incorrect; (b) the App does not verify that any food is free from allergens, intolerances, or contraindications; dietary restrictions you enter are used for general context only and do not constitute an allergen safety guarantee; (c) the App does not account for your medications, medical conditions, or clinical history; and (d) any decisions you make regarding your diet, exercise, or health based on App outputs are made at your sole risk and discretion.</p>
             <p>By using the App you voluntarily assume all risks associated with reliance on the App and its outputs.</p>
           </Section>
 
@@ -190,8 +190,8 @@ export default function PrivacyPage() {
           <Section title="26. Contact">
             <p>
               For privacy inquiries, data requests, or any questions about these terms, contact us at:{" "}
-              <a href="mailto:hello@whatyouate.app" style={{ color: "#6FA8FF", textDecoration: "none" }}>
-                hello@whatyouate.app
+              <a href="mailto:hello@minimul.app" style={{ color: "#6FA8FF", textDecoration: "none" }}>
+                hello@minimul.app
               </a>
             </p>
           </Section>
