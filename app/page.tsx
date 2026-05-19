@@ -257,7 +257,7 @@ export default function Home() {
           </div>
           <div className="flex gap-8 text-[13px]" style={{ color: "#374151" }}>
             <Link href="/privacy" className="hover:text-[#1F2937] transition-colors">Privacy Policy</Link>
-            <a href="mailto:support@whatyouate.app" className="hover:text-[#1F2937] transition-colors">Support</a>
+            <a href="mailto:hello@minimul.app" className="hover:text-[#1F2937] transition-colors">Support</a>
           </div>
           <span className="text-[12px]" style={{ color: "#374151" }}>© {new Date().getFullYear()} WhatYouAte. All rights reserved.</span>
         </div>
