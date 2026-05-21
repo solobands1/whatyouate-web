@@ -3,7 +3,7 @@ import Link from "next/link";
 function Section({ title, children }: { title: string; children: React.ReactNode }) {
   return (
     <section>
-      <h2 style={{ fontSize: 14, fontWeight: 600, color: "#1F2937", marginBottom: 8 }}>{title}</h2>
+      <h2 style={{ fontSize: 14, fontWeight: 600, color: "#0F172A", marginBottom: 8 }}>{title}</h2>
       <div style={{ fontSize: 14, color: "#4B5563", lineHeight: 1.75, display: "flex", flexDirection: "column", gap: 8 }}>{children}</div>
     </section>
   );
@@ -24,7 +24,7 @@ export default function TermsPage() {
           Back
         </Link>
 
-        <h1 style={{ fontSize: 28, fontWeight: 700, color: "#1F2937", letterSpacing: "-0.02em", marginBottom: 8 }}>
+        <h1 style={{ fontSize: 28, fontWeight: 700, color: "#0F172A", letterSpacing: "-0.02em", marginBottom: 8 }}>
           Terms of Use
         </h1>
         <p style={{ fontSize: 12, color: "#9CA3AF", marginBottom: 12 }}>
