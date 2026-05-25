@@ -2,7 +2,7 @@ import Image from "next/image";
 import Link from "next/link";
 import Reveal from "../components/Reveal";
 
-const APP_STORE_URL = "#";
+const APP_STORE_URL = "https://apps.apple.com/app/id6762287393";
 
 function DownloadButton({ size = "lg" }: { size?: "lg" | "sm" }) {
   return (
