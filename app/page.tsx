@@ -61,7 +61,7 @@ export default function Home() {
                 src="/device/iphone-patterns.png"
                 alt="The Patterns screen in WhatYouAte"
                 width={1500}
-                height={3154}
+                height={3175}
                 priority
                 className="mx-auto block w-[78%] max-w-[360px] sm:w-[46%] sm:max-w-[430px]"
               />
