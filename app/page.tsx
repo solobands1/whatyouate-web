@@ -1,9 +1,10 @@
 import Image from "next/image";
 import Link from "next/link";
 import Reveal from "../components/Reveal";
+import Parallax from "../components/Parallax";
 import {
-  APP_STORE_URL, SKY, TINT, DEEP, INK, BODY,
-  DownloadButton, UiCard, Eyebrow, SectionHeading,
+  APP_STORE_URL, INK, BODY, FAINT,
+  DownloadButton, UiCard, SectionHeading, AppleHealthMark,
 } from "../components/site";
 
 const STEPS = [
@@ -14,13 +15,13 @@ const STEPS = [
 
 export default function Home() {
   return (
-    <div className="min-h-screen overflow-x-clip" style={{ background: "#F7FAFD", color: INK }}>
+    <div className="min-h-screen overflow-x-clip">
 
       {/* ── NAV ─────────────────────────────────────────────── */}
       <header className="absolute inset-x-0 top-0 z-30">
         <div className="mx-auto flex max-w-[68rem] items-center justify-between px-6 py-6">
           <div className="flex items-center gap-2.5">
-            <Image src="/icon-512.png" alt="" width={32} height={32} className="rounded-[9px] shadow-sm" priority />
+            <Image src="/icon-512.png" alt="" width={30} height={30} className="rounded-[8px] ring-1 ring-black/5" priority />
             <span className="text-[16px] font-semibold tracking-[-0.015em]">WhatYouAte</span>
           </div>
           <a
@@ -34,7 +35,7 @@ export default function Home() {
       </header>
 
       {/* ── HERO ────────────────────────────────────────────── */}
-      <section className="relative px-6 pb-8 pt-32 sm:pt-36" style={{ background: SKY }}>
+      <section className="relative px-6 pt-32 sm:pt-36">
         <div className="mx-auto max-w-[52rem] text-center">
           <h1 className="text-balance text-[clamp(40px,6.6vw,74px)] font-bold leading-[1.03] tracking-[-0.04em]">
             Know why you feel the way you do
@@ -45,39 +46,35 @@ export default function Home() {
           </p>
           <div className="mt-9 flex flex-col items-center gap-4">
             <DownloadButton />
-            <p className="text-[13.5px] font-medium" style={{ color: "#8FA3C0" }}>
+            <p className="text-[13.5px] font-medium" style={{ color: FAINT }}>
               Free on iPhone · 7 day Pro trial · No commitment
             </p>
           </div>
         </div>
 
-        {/* Lifted app UI instead of a phone mockup. The two cards are offset on
-            opposite edges so they read as a deliberate composition rather than
-            one card accidentally sitting on top of another. */}
-        <div className="relative mx-auto mt-14 w-full max-w-[54rem] pb-14 sm:mt-16 sm:pb-[17%]">
-          <Reveal>
-            <UiCard
-              src="/ui/food-feeling.png"
-              alt="Your lower-energy days have more often followed fried or greasy food the night before"
-              width={1104}
-              height={261}
-              tilt={-2}
-              lift="lg"
-              priority
-              className="z-20 w-full sm:w-[60%]"
-            />
-          </Reveal>
-          <Reveal delay={0.12}>
-            <UiCard
-              src="/ui/streak-week.png"
-              alt="This week, a fourteen night reflection streak"
-              width={1208}
-              height={493}
-              tilt={2}
-              lift="md"
-              className="z-10 mt-7 w-full sm:absolute sm:right-0 sm:bottom-0 sm:mt-0 sm:w-[52%]"
-            />
-          </Reveal>
+        {/* The two cards that carry the headline's promise: the link it finds,
+            and the one minute a night that feeds it. */}
+        <div className="relative mx-auto mt-16 w-full max-w-[54rem] pb-16 sm:mt-20 sm:pb-[16%]">
+          <Parallax speed={-26}>
+            <Reveal>
+              <UiCard
+                src="/ui/food-feeling.png"
+                alt="Your lower-energy days have more often followed fried or greasy food the night before"
+                width={1104} height={261} tilt={-2} lift="lg" priority
+                className="z-20 w-full sm:w-[60%]"
+              />
+            </Reveal>
+          </Parallax>
+          <Parallax speed={34} className="sm:absolute sm:right-0 sm:bottom-0 sm:w-[52%]">
+            <Reveal delay={0.12}>
+              <UiCard
+                src="/ui/streak-week.png"
+                alt="This week, a fourteen night reflection streak"
+                width={1208} height={493} tilt={2} lift="md"
+                className="z-10 mt-7 w-full sm:mt-0"
+              />
+            </Reveal>
+          </Parallax>
         </div>
       </section>
 
@@ -93,10 +90,15 @@ export default function Home() {
           </Reveal>
           <div className="mt-14 grid gap-10 sm:mt-16 sm:grid-cols-3 sm:gap-12">
             {STEPS.map((s, i) => (
-              <Reveal key={s.t} delay={0.07 * i}>
+              <Reveal key={s.t} delay={0.08 * i}>
                 <div className="text-center sm:text-left">
-                  <span className="text-[12px] font-semibold tracking-[0.16em]" style={{ color: "#9CC0F0" }}>{s.n}</span>
-                  <h3 className="mt-3 text-[21px] font-semibold tracking-[-0.02em]">{s.t}</h3>
+                  <span
+                    className="inline-flex h-9 w-9 items-center justify-center rounded-full text-[13px] font-semibold"
+                    style={{ background: "rgba(111,168,255,0.14)", color: "#3C7AD4" }}
+                  >
+                    {s.n}
+                  </span>
+                  <h3 className="mt-5 text-[21px] font-semibold tracking-[-0.02em]">{s.t}</h3>
                   <p className="mx-auto mt-3 max-w-[34ch] text-[15.5px] leading-[1.68] sm:mx-0" style={{ color: BODY }}>
                     {s.d}
                   </p>
@@ -108,7 +110,7 @@ export default function Home() {
       </section>
 
       {/* ── COACH ───────────────────────────────────────────── */}
-      <section className="px-6 py-20 sm:py-28" style={{ background: TINT }}>
+      <section className="px-6 py-20 sm:py-28">
         <div className="mx-auto grid max-w-[64rem] items-center gap-14 lg:grid-cols-2 lg:gap-20">
           <Reveal>
             <SectionHeading
@@ -118,35 +120,92 @@ export default function Home() {
               body="No generic tips. It spots a pattern in your own days, suggests one small change, and tells you plainly when it does not have enough to go on yet."
             />
           </Reveal>
-          <Reveal delay={0.08}>
-            <UiCard src="/ui/coach-nudge.png" alt="A coach nudge in WhatYouAte" width={1104} height={390} tilt={1.2} lift="lg" />
-          </Reveal>
+          <Parallax speed={22}>
+            <Reveal delay={0.08}>
+              <UiCard src="/ui/coach-nudge.png" alt="A coach nudge in WhatYouAte" width={1104} height={390} tilt={1.2} lift="lg" />
+            </Reveal>
+          </Parallax>
         </div>
       </section>
 
       {/* ── PATTERNS ────────────────────────────────────────── */}
       <section className="px-6 py-20 sm:py-28">
-        <div className="mx-auto max-w-[64rem]">
-          <Reveal>
+        <div className="mx-auto grid max-w-[64rem] items-center gap-14 lg:grid-cols-2 lg:gap-20">
+          <Parallax speed={-20} className="lg:order-2">
+            <Reveal>
+              <UiCard src="/ui/energy-dips.png" alt="When your energy dips, across your last nine nights" width={1208} height={488} tilt={-1.4} lift="lg" />
+            </Reveal>
+          </Parallax>
+          <Reveal delay={0.08} className="lg:order-1">
             <SectionHeading
+              center={false}
               eyebrow="What you start to see"
               title="Real counts from your own nights"
               body="Not vague encouragement. Actual numbers, drawn from what you logged, and labelled as associations rather than causes."
             />
           </Reveal>
-          <div className="mt-14 grid items-start gap-8 sm:mt-16 sm:grid-cols-2 sm:gap-10">
-            <Reveal>
-              <UiCard src="/ui/energy-dips.png" alt="When your energy dips, across your last nine nights" width={1208} height={488} tilt={-1} />
-            </Reveal>
+        </div>
+      </section>
+
+      {/* ── HABITS ──────────────────────────────────────────── */}
+      <section className="px-6 py-20 sm:py-28">
+        <div className="mx-auto grid max-w-[64rem] items-center gap-14 lg:grid-cols-2 lg:gap-20">
+          <Reveal>
+            <SectionHeading
+              center={false}
+              eyebrow="Habits"
+              title="Small enough to actually finish"
+              body="Three days at a time, built around what you said you want to feel better about. A glass of water in the afternoon. A walk after lunch."
+            />
+          </Reveal>
+          <Parallax speed={24}>
             <Reveal delay={0.08}>
-              <UiCard src="/ui/habit-builder.png" alt="The Habit Builder card in WhatYouAte" width={1200} height={702} tilt={1} className="sm:mt-10" />
+              <UiCard src="/ui/habit-builder.png" alt="The Habit Builder card in WhatYouAte" width={1200} height={702} tilt={1.4} lift="lg" />
             </Reveal>
+          </Parallax>
+        </div>
+      </section>
+
+      {/* ── THE REST OF THE DAY ─────────────────────────────── */}
+      <section className="px-6 py-20 sm:py-28">
+        <div className="mx-auto max-w-[64rem]">
+          <Reveal>
+            <SectionHeading
+              eyebrow="The rest of the day"
+              title="Water, movement and sleep, in the same place"
+              body="Energy is never only about food. Log water and activity in a tap, note how you slept in your nightly check-in, and let it all sit alongside your meals."
+            />
+          </Reveal>
+
+          <div className="mt-14 grid gap-8 sm:mt-16 lg:grid-cols-[0.95fr_1.05fr] lg:gap-10">
+            <Parallax speed={-16} className="flex flex-col gap-8">
+              <Reveal>
+                <UiCard src="/ui/water.png" alt="Water intake for the day" width={1152} height={230} lift="md" />
+              </Reveal>
+              <Reveal delay={0.06}>
+                <UiCard src="/ui/micronutrients.png" alt="Micronutrients grouped by what they do for you" width={1208} height={630} lift="md" />
+              </Reveal>
+            </Parallax>
+            <Parallax speed={18}>
+              <Reveal delay={0.12}>
+                <UiCard src="/ui/recent-activity.png" alt="Recent food and activity for the day" width={1208} height={595} lift="md" />
+              </Reveal>
+            </Parallax>
           </div>
+
+          <Reveal delay={0.1}>
+            <div className="mx-auto mt-14 flex max-w-[34rem] items-center justify-center gap-3.5 rounded-2xl bg-white/70 px-6 py-5 ring-1 ring-[#16233B]/[0.06] backdrop-blur-sm">
+              <AppleHealthMark />
+              <p className="text-[15px] font-medium" style={{ color: INK }}>
+                Works with Apple Health
+              </p>
+            </div>
+          </Reveal>
         </div>
       </section>
 
       {/* ── PROMISE ─────────────────────────────────────────── */}
-      <section className="px-6 py-20 sm:py-28" style={{ background: TINT }}>
+      <section className="px-6 py-20 sm:py-28">
         <Reveal>
           <div className="mx-auto max-w-[40rem] text-center">
             <h2 className="text-balance text-[clamp(26px,3.8vw,40px)] font-bold leading-[1.2] tracking-[-0.03em]">
@@ -161,7 +220,7 @@ export default function Home() {
       </section>
 
       {/* ── CTA ─────────────────────────────────────────────── */}
-      <section className="px-6 py-24 sm:py-32" style={{ background: DEEP }}>
+      <section className="px-6 pb-24 pt-16 sm:pb-32 sm:pt-24">
         <Reveal>
           <div className="mx-auto flex max-w-[36rem] flex-col items-center gap-6 text-center">
             <h2 className="text-balance text-[clamp(30px,4.6vw,50px)] font-bold leading-[1.08] tracking-[-0.035em] text-white">
@@ -177,18 +236,18 @@ export default function Home() {
       </section>
 
       {/* ── FOOTER ──────────────────────────────────────────── */}
-      <footer className="px-6 py-14">
+      <footer className="px-6 pb-14">
         <div className="mx-auto flex max-w-[64rem] flex-col items-center gap-5 text-center">
           <div className="flex items-center gap-2">
             <Image src="/icon.png" alt="" width={22} height={22} className="rounded-[6px]" />
-            <span className="text-[14px] font-semibold tracking-[-0.015em]">WhatYouAte</span>
+            <span className="text-[14px] font-semibold tracking-[-0.015em] text-white">WhatYouAte</span>
           </div>
-          <nav className="flex flex-wrap justify-center gap-x-8 gap-y-2 text-[14px]" style={{ color: BODY }}>
-            <Link href="/privacy" className="transition hover:opacity-70">Privacy Policy</Link>
-            <Link href="/terms" className="transition hover:opacity-70">Terms of Use</Link>
-            <a href="mailto:hello@minimul.app" className="transition hover:opacity-70">Support</a>
+          <nav className="flex flex-wrap justify-center gap-x-8 gap-y-2 text-[14px] text-white/80">
+            <Link href="/privacy" className="transition hover:text-white">Privacy Policy</Link>
+            <Link href="/terms" className="transition hover:text-white">Terms of Use</Link>
+            <a href="mailto:hello@minimul.app" className="transition hover:text-white">Support</a>
           </nav>
-          <span className="text-[13px]" style={{ color: "#9CADC6" }}>
+          <span className="text-[13px] text-white/60">
             © {new Date().getFullYear()} WhatYouAte. All rights reserved.
           </span>
         </div>

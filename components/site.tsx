@@ -3,9 +3,8 @@ import Image from "next/image";
 export const APP_STORE_URL = "https://apps.apple.com/app/id6762287393";
 
 /* Light and airy by default. Colour is an accent, not a slab. */
-export const SKY = "linear-gradient(180deg, #E4F0FE 0%, #EFF6FD 42%, #F7FAFD 100%)";
-export const TINT = "linear-gradient(180deg, #F7FAFD 0%, #EAF3FD 50%, #F7FAFD 100%)";
-export const DEEP = "linear-gradient(165deg, #74ACFF 0%, #3A72C4 52%, #24509A 100%)";
+/* Section colour now comes from one continuous wash on <body>, so nothing
+   here paints its own background and no two sections meet at a hard edge. */
 
 export const INK = "#101B2E";
 export const BODY = "#5A6B85";
@@ -119,5 +118,23 @@ export function SectionHeading({
         </p>
       )}
     </div>
+  );
+}
+
+/* Apple Health mark, used only to signal the integration. */
+export function AppleHealthMark({ size = 34 }: { size?: number }) {
+  return (
+    <span
+      className="flex shrink-0 items-center justify-center rounded-[9px] bg-white"
+      style={{ width: size, height: size, boxShadow: "0 2px 8px rgba(255,59,92,0.22)", border: "1px solid rgba(255,59,92,0.16)" }}
+      aria-hidden
+    >
+      <svg viewBox="0 0 24 24" width={size * 0.55} height={size * 0.55}>
+        <path
+          d="M12 20.5l-1.3-1.18C5.36 14.9 2 12.08 2 8.5 2 5.68 4.18 3.5 7 3.5c1.54 0 3.01.72 4 1.86C11.99 4.22 13.46 3.5 15 3.5c2.82 0 5 2.18 5 5 0 3.58-3.36 6.4-8.7 10.82L12 20.5z"
+          fill="#FF3B5C"
+        />
+      </svg>
+    </span>
   );
 }
