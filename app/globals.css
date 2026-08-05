@@ -30,16 +30,17 @@ body {
     linear-gradient(
       180deg,
       #E3EFFE 0%,
-      #EFF6FE 9%,
-      #FBFDFF 22%,
-      #FFFFFF 34%,
-      #F7FBFF 46%,
-      #EFF6FD 58%,
-      #E4EFFB 70%,
-      #CFE3F8 80%,
-      #8FBAEF 89%,
-      #3E74C0 96%,
-      #24509A 100%
+      #EFF6FE 8%,
+      #FBFDFF 20%,
+      #FFFFFF 31%,
+      #F7FBFF 43%,
+      #EFF6FD 55%,
+      #E4EFFB 65%,
+      #CFE3F8 73%,
+      #9AC2F1 80%,
+      #5A8FD4 86%,
+      #2F63B6 92%,
+      #23508F 100%
     )
     no-repeat;
   background-attachment: fixed;

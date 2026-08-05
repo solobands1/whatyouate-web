@@ -177,24 +177,35 @@ export default function Home() {
             />
           </Reveal>
 
-          <div className="mt-14 grid gap-8 sm:mt-16 lg:grid-cols-[0.95fr_1.05fr] lg:gap-10">
-            <Parallax speed={-16} className="flex flex-col gap-8">
+          {/* The wide, short water bar spans the top; the two taller cards sit
+              beneath it, so nothing is forced into a column it does not fit. */}
+          <div className="mt-14 sm:mt-16">
+            <Parallax speed={-14}>
               <Reveal>
-                <UiCard src="/ui/water.png" alt="Water intake for the day" width={1152} height={230} lift="md" />
-              </Reveal>
-              <Reveal delay={0.06}>
-                <UiCard src="/ui/micronutrients.png" alt="Micronutrients grouped by what they do for you" width={1208} height={630} lift="md" />
-              </Reveal>
-            </Parallax>
-            <Parallax speed={18}>
-              <Reveal delay={0.12}>
-                <UiCard src="/ui/recent-activity.png" alt="Recent food and activity for the day" width={1208} height={595} lift="md" />
+                <UiCard
+                  src="/ui/water.png"
+                  alt="Water intake for the day"
+                  width={1152} height={230} lift="md"
+                  className="mx-auto w-full max-w-[38rem]"
+                />
               </Reveal>
             </Parallax>
+            <div className="mt-8 grid gap-8 sm:mt-10 sm:grid-cols-2 sm:gap-10">
+              <Parallax speed={14}>
+                <Reveal delay={0.06}>
+                  <UiCard src="/ui/recent-activity.png" alt="Recent food and activity for the day" width={1208} height={595} tilt={-1} lift="md" />
+                </Reveal>
+              </Parallax>
+              <Parallax speed={20}>
+                <Reveal delay={0.12}>
+                  <UiCard src="/ui/micronutrients.png" alt="Micronutrients grouped by what they do for you" width={1208} height={630} tilt={1} lift="md" />
+                </Reveal>
+              </Parallax>
+            </div>
           </div>
 
           <Reveal delay={0.1}>
-            <div className="mx-auto mt-14 flex max-w-[34rem] items-center justify-center gap-3.5 rounded-2xl bg-white/70 px-6 py-5 ring-1 ring-[#16233B]/[0.06] backdrop-blur-sm">
+            <div className="mx-auto mt-14 flex max-w-[30rem] items-center justify-center gap-3.5 rounded-2xl bg-white/80 px-6 py-5 shadow-[0_18px_40px_-22px_rgba(16,42,86,0.45)] ring-1 ring-[#16233B]/[0.06] backdrop-blur-sm">
               <AppleHealthMark />
               <p className="text-[15px] font-medium" style={{ color: INK }}>
                 Works with Apple Health
@@ -205,7 +216,7 @@ export default function Home() {
       </section>
 
       {/* ── PROMISE ─────────────────────────────────────────── */}
-      <section className="px-6 py-20 sm:py-28">
+      <section className="px-6 py-16 sm:py-24">
         <Reveal>
           <div className="mx-auto max-w-[40rem] text-center">
             <h2 className="text-balance text-[clamp(26px,3.8vw,40px)] font-bold leading-[1.2] tracking-[-0.03em]">
