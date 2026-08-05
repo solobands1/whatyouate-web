@@ -2,6 +2,7 @@ import Image from "next/image";
 import Link from "next/link";
 import Reveal from "../components/Reveal";
 import Parallax from "../components/Parallax";
+import PhoneMock from "../components/PhoneMock";
 import {
   APP_STORE_URL, INK, BODY, FAINT,
   DownloadButton, UiCard, SectionHeading, AppleHealthMark,
@@ -52,26 +53,42 @@ export default function Home() {
           </div>
         </div>
 
-        {/* The two cards that carry the headline's promise: the link it finds,
-            and the one minute a night that feeds it. */}
-        <div className="relative mx-auto mt-16 w-full max-w-[54rem] pb-16 sm:mt-20 sm:pb-[16%]">
-          <Parallax speed={-26}>
+        {/* The device carries "this is an app"; the lifted card carries the
+            headline's promise. One in front of the other, as a composition. */}
+        <div className="relative mx-auto mt-16 w-full max-w-[58rem] pb-20 sm:mt-20 sm:pb-28">
+          <Parallax speed={-20}>
             <Reveal>
-              <UiCard
-                src="/ui/food-feeling.png"
-                alt="Your lower-energy days have more often followed fried or greasy food the night before"
-                width={1104} height={261} tilt={-2} lift="lg" priority
-                className="z-20 w-full sm:w-[60%]"
+              <PhoneMock
+                src="/screenshots/patterns-2026.png"
+                alt="The Patterns screen in WhatYouAte"
+                priority
+                className="mx-auto w-[64%] max-w-[300px] sm:w-[42%] sm:max-w-[330px]"
               />
             </Reveal>
           </Parallax>
-          <Parallax speed={34} className="sm:absolute sm:right-0 sm:bottom-0 sm:w-[52%]">
-            <Reveal delay={0.12}>
+
+          <Parallax
+            speed={30}
+            className="mt-8 sm:absolute sm:bottom-[6%] sm:left-0 sm:mt-0 sm:w-[46%] lg:w-[42%]"
+          >
+            <Reveal delay={0.14}>
+              <UiCard
+                src="/ui/food-feeling.png"
+                alt="Your lower-energy days have more often followed fried or greasy food the night before"
+                width={1104} height={261} tilt={-2.5} lift="lg"
+              />
+            </Reveal>
+          </Parallax>
+
+          <Parallax
+            speed={18}
+            className="mt-6 sm:absolute sm:right-0 sm:top-[16%] sm:mt-0 sm:w-[40%] lg:w-[36%]"
+          >
+            <Reveal delay={0.2}>
               <UiCard
                 src="/ui/streak-week.png"
                 alt="This week, a fourteen night reflection streak"
-                width={1208} height={493} tilt={2} lift="md"
-                className="z-10 mt-7 w-full sm:mt-0"
+                width={1208} height={493} tilt={2.5} lift="md"
               />
             </Reveal>
           </Parallax>
@@ -206,7 +223,7 @@ export default function Home() {
 
           <Reveal delay={0.1}>
             <div className="mx-auto mt-14 flex max-w-[30rem] items-center justify-center gap-3.5 rounded-2xl bg-white/80 px-6 py-5 shadow-[0_18px_40px_-22px_rgba(16,42,86,0.45)] ring-1 ring-[#16233B]/[0.06] backdrop-blur-sm">
-              <AppleHealthMark />
+              <AppleHealthMark size={44} />
               <p className="text-[15px] font-medium" style={{ color: INK }}>
                 Works with Apple Health
               </p>
@@ -222,7 +239,7 @@ export default function Home() {
             <h2 className="text-balance text-[clamp(26px,3.8vw,40px)] font-bold leading-[1.2] tracking-[-0.03em]">
               No red warnings. No guilt trips. No lecture about a cheeseburger.
             </h2>
-            <p className="mx-auto mt-6 max-w-[44ch] text-[17px] leading-[1.72]" style={{ color: BODY }}>
+            <p className="mx-auto mt-6 max-w-[44ch] text-[17px] leading-[1.72]" style={{ color: "#334A6B" }}>
               Built for ordinary days, not for chasing numbers. Log it, see what it does
               to your week, and get on with your day.
             </p>

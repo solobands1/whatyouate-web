@@ -121,20 +121,23 @@ export function SectionHeading({
   );
 }
 
-/* Apple Health mark, used only to signal the integration. */
-export function AppleHealthMark({ size = 34 }: { size?: number }) {
+/* Apple Health mark, lifted verbatim from the app's onboarding so the heart's
+   scale and offset on the tile match what is already shipped. */
+export function AppleHealthMark({ size = 44 }: { size?: number }) {
   return (
-    <span
-      className="flex shrink-0 items-center justify-center rounded-[9px] bg-white"
-      style={{ width: size, height: size, boxShadow: "0 2px 8px rgba(255,59,92,0.22)", border: "1px solid rgba(255,59,92,0.16)" }}
-      aria-hidden
-    >
-      <svg viewBox="0 0 24 24" width={size * 0.55} height={size * 0.55}>
-        <path
-          d="M12 20.5l-1.3-1.18C5.36 14.9 2 12.08 2 8.5 2 5.68 4.18 3.5 7 3.5c1.54 0 3.01.72 4 1.86C11.99 4.22 13.46 3.5 15 3.5c2.82 0 5 2.18 5 5 0 3.58-3.36 6.4-8.7 10.82L12 20.5z"
-          fill="#FF3B5C"
-        />
-      </svg>
-    </span>
+    <svg viewBox="0 0 48 48" width={size} height={size} role="img" aria-label="Apple Health" className="shrink-0">
+      <defs>
+        <linearGradient id="wya-ah-heart" x1="0" y1="1" x2="0" y2="0">
+          <stop offset="0" stopColor="#F41F3F" />
+          <stop offset="1" stopColor="#FF5488" />
+        </linearGradient>
+      </defs>
+      <rect x="0.75" y="0.75" width="46.5" height="46.5" rx="11" fill="#fff" stroke="rgba(0,0,0,0.1)" strokeWidth="1.2" />
+      <path
+        fill="url(#wya-ah-heart)"
+        transform="translate(16.7 5.65) scale(0.95)"
+        d="M11.645 20.91l-.007-.003-.022-.012a15.247 15.247 0 01-.383-.218 25.18 25.18 0 01-4.244-3.17C4.688 15.36 2.25 12.174 2.25 8.25 2.25 5.322 4.714 3 7.688 3A5.5 5.5 0 0112 5.052 5.5 5.5 0 0116.313 3c2.973 0 5.437 2.322 5.437 5.25 0 3.925-2.438 7.111-4.739 9.256a25.175 25.175 0 01-4.244 3.17 15.247 15.247 0 01-.383.219l-.022.012-.007.004-.003.001a.752.752 0 01-.704 0l-.003-.001z"
+      />
+    </svg>
   );
 }
