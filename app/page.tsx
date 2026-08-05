@@ -36,8 +36,8 @@ export default function Home() {
             Know why you feel the way you do
           </h1>
           <p className="mx-auto mt-7 max-w-[44ch] text-[clamp(17px,2vw,20px)] leading-[1.62]" style={{ color: BODY }}>
-            Your food, your energy, and the link between them. One minute a night is
-            all it takes.
+            Log a meal in seconds. Take a minute at night. Your coach finds what
+            lines up between what you eat and how you feel.
           </p>
           <div className="mt-9 flex flex-col items-center gap-4">
             <DownloadButton />
@@ -78,7 +78,7 @@ export default function Home() {
 
           <Parallax
             speed={16}
-            className="mt-6 sm:absolute sm:right-[1%] sm:top-[18%] sm:mt-0 sm:w-[36%] lg:w-[33%]"
+            className="mt-6 sm:absolute sm:right-[2%] sm:top-[16%] sm:mt-0 sm:w-[30%] lg:w-[27%]"
           >
             <Reveal delay={0.24}>
               <UiCard
@@ -98,7 +98,7 @@ export default function Home() {
             <SectionHeading
               eyebrow="How it works"
               title="Three small things, every day"
-              body="Nothing to weigh, nothing to plan. The whole loop takes about a minute."
+              body="Nothing to weigh, nothing to plan. Logging takes seconds and the nightly check-in takes a minute."
             />
           </Reveal>
           <div className="mt-12 grid gap-10 sm:mt-14 sm:grid-cols-3 sm:gap-12">
@@ -144,7 +144,7 @@ export default function Home() {
       {/* ── PATTERNS ────────────────────────────────────────── */}
       <section className="px-6 py-14 sm:py-20">
         <div className="mx-auto grid max-w-[64rem] items-center gap-10 lg:grid-cols-2 lg:gap-16">
-          <Parallax speed={-20} className="lg:order-2">
+          <Parallax speed={-20} className="lg:order-2 lg:-mt-16">
             <Reveal>
               <UiCard src="/ui/energy-dips.png" alt="When your energy dips, across your last nine nights" width={1208} height={488} tilt={-1.4} lift="lg" />
             </Reveal>
@@ -154,7 +154,7 @@ export default function Home() {
               center={false}
               eyebrow="What you start to see"
               title="Real counts from your own nights"
-              body="Not vague encouragement. Actual numbers, drawn from what you logged, and labelled as associations rather than causes."
+              body="Not vague encouragement. Real counts from your own week, like which time of day your energy dips most, always labelled as associations rather than causes."
             />
           </Reveal>
         </div>
@@ -168,7 +168,7 @@ export default function Home() {
               center={false}
               eyebrow="Habits"
               title="Small enough to actually finish"
-              body="Three days at a time, built around what you said you want to feel better about. A glass of water in the afternoon. A walk after lunch."
+              body="Each habit runs three days and is built around what you said you want to feel better about. A glass of water in the afternoon. A walk after lunch."
             />
           </Reveal>
           <Parallax speed={24}>
@@ -218,11 +218,17 @@ export default function Home() {
           </div>
 
           <Reveal delay={0.1}>
-            <div className="mx-auto mt-14 flex max-w-[30rem] items-center justify-center gap-3.5 rounded-2xl bg-white/80 px-6 py-5 shadow-[0_18px_40px_-22px_rgba(16,42,86,0.45)] ring-1 ring-[#16233B]/[0.06] backdrop-blur-sm">
-              <AppleHealthMark size={44} />
-              <p className="text-[15px] font-medium" style={{ color: INK }}>
-                Works with Apple Health
-              </p>
+            <div className="mx-auto mt-14 flex max-w-[34rem] flex-col items-center gap-4 rounded-3xl bg-white/85 px-8 py-9 text-center shadow-[0_28px_60px_-28px_rgba(16,42,86,0.5)] ring-1 ring-[#16233B]/[0.06] backdrop-blur-sm sm:flex-row sm:gap-6 sm:text-left">
+              <AppleHealthMark size={54} />
+              <div>
+                <p className="text-[17px] font-semibold tracking-[-0.015em]" style={{ color: INK }}>
+                  Works with Apple Health
+                </p>
+                <p className="mt-1.5 text-[15px] leading-[1.6]" style={{ color: BODY }}>
+                  Steps, workouts and sleep come across on their own, so your coach sees
+                  the whole picture without you typing any of it in.
+                </p>
+              </div>
             </div>
           </Reveal>
         </div>
