@@ -2,28 +2,33 @@ import Image from "next/image";
 
 export const APP_STORE_URL = "https://apps.apple.com/app/id6762287393";
 
-/* The same blue the app and the App Store panels use, as a gradient pair. */
-export const DEEP = "linear-gradient(160deg, #6FA8FF 0%, #2E62B4 55%, #234E96 100%)";
-export const LIGHT = "linear-gradient(170deg, #EEF6FE 0%, #D5E8FA 100%)";
+/* Light and airy by default. Colour is an accent, not a slab. */
+export const SKY = "linear-gradient(180deg, #E4F0FE 0%, #EFF6FD 42%, #F7FAFD 100%)";
+export const TINT = "linear-gradient(180deg, #F7FAFD 0%, #EAF3FD 50%, #F7FAFD 100%)";
+export const DEEP = "linear-gradient(165deg, #74ACFF 0%, #3A72C4 52%, #24509A 100%)";
+
+export const INK = "#101B2E";
+export const BODY = "#5A6B85";
+export const FAINT = "#8FA3C0";
 
 export function DownloadButton({
-  tone = "light",
+  tone = "dark",
   className = "",
 }: {
-  tone?: "light" | "dark";
+  tone?: "dark" | "light";
   className?: string;
 }) {
-  const onDark = tone === "light";
+  const dark = tone === "dark";
   return (
     <a
       href={APP_STORE_URL}
-      className={`inline-flex items-center justify-center gap-2.5 rounded-full px-7 py-3.5 text-[15px] font-semibold tracking-[-0.01em] transition hover:-translate-y-px hover:shadow-lg active:translate-y-0 ${className}`}
+      className={`inline-flex items-center justify-center gap-2.5 rounded-full px-7 py-[15px] text-[15px] font-semibold tracking-[-0.01em] transition duration-200 hover:-translate-y-0.5 hover:shadow-xl active:translate-y-0 ${className}`}
       style={{
-        background: onDark ? "#FFFFFF" : "#1B3E77",
-        color: onDark ? "#173B72" : "#FFFFFF",
-        boxShadow: onDark
-          ? "0 10px 30px rgba(12,36,80,0.22)"
-          : "0 10px 30px rgba(27,62,119,0.25)",
+        background: dark ? INK : "#FFFFFF",
+        color: dark ? "#FFFFFF" : INK,
+        boxShadow: dark
+          ? "0 14px 32px -12px rgba(16,27,46,0.55)"
+          : "0 14px 32px -12px rgba(10,32,74,0.45)",
       }}
     >
       <svg width="17" height="17" viewBox="0 0 24 24" fill="currentColor" className="shrink-0">
@@ -34,63 +39,40 @@ export function DownloadButton({
   );
 }
 
-/* A real screenshot inside a titanium iPhone shell, matching the App Store art. */
-export function Phone({
-  src,
-  alt,
-  className = "",
-  priority = false,
-}: {
-  src: string;
-  alt: string;
-  className?: string;
-  priority?: boolean;
-}) {
-  return (
-    <div className={`relative ${className}`}>
-      <div
-        className="rounded-[13%] p-[1.6%]"
-        style={{
-          background: "linear-gradient(150deg,#4a4d52 0%,#1c1c1e 32%,#3a3d42 60%,#1c1c1e 84%,#2c2c2e 100%)",
-          boxShadow:
-            "inset 0 0 0 0.5px rgba(255,255,255,0.16), 0 0 0 0.75px rgba(0,0,0,0.85), 0 40px 80px -20px rgba(9,26,56,0.45)",
-        }}
-      >
-        <div className="overflow-hidden rounded-[11.5%] bg-black">
-          <Image src={src} alt={alt} width={760} height={1651} priority={priority} className="block w-full" />
-        </div>
-      </div>
-    </div>
-  );
-}
-
-/* A single piece of app UI lifted out of a screenshot and floated on the page. */
+/**
+ * Real app UI lifted out of a screenshot and floated on the page. A slight tilt
+ * plus a soft, wide shadow reads as depth without resorting to a phone mockup.
+ */
 export function UiCard({
   src,
   alt,
   width,
   height,
   className = "",
+  tilt = 0,
   lift = "md",
+  priority = false,
 }: {
   src: string;
   alt: string;
   width: number;
   height: number;
   className?: string;
+  tilt?: number;
   lift?: "sm" | "md" | "lg";
+  priority?: boolean;
 }) {
   const shadow = {
-    sm: "0 10px 26px -8px rgba(12,36,80,0.22)",
-    md: "0 22px 50px -14px rgba(12,36,80,0.30)",
-    lg: "0 34px 70px -18px rgba(12,36,80,0.38)",
+    sm: "0 18px 40px -18px rgba(16,42,86,0.28)",
+    md: "0 34px 70px -26px rgba(16,42,86,0.42)",
+    lg: "0 54px 100px -34px rgba(16,42,86,0.55)",
   }[lift];
   return (
     <div
-      className={`overflow-hidden rounded-[18px] bg-white ring-1 ring-black/[0.04] ${className}`}
-      style={{ boxShadow: shadow }}
+      className={`overflow-hidden rounded-[22px] bg-white ring-1 ring-[#16233B]/[0.06] ${className}`}
+      style={{ boxShadow: shadow, transform: tilt ? `rotate(${tilt}deg)` : undefined }}
     >
-      <Image src={src} alt={alt} width={width} height={height} className="block w-full" />
+      <Image src={src} alt={alt} width={width} height={height} priority={priority} className="block w-full" />
     </div>
   );
 }
@@ -98,10 +80,44 @@ export function UiCard({
 export function Eyebrow({ children, onDark = false }: { children: React.ReactNode; onDark?: boolean }) {
   return (
     <p
-      className="text-[12px] font-semibold uppercase tracking-[0.14em]"
-      style={{ color: onDark ? "rgba(255,255,255,0.72)" : "#7C93B4" }}
+      className="text-[12px] font-semibold uppercase tracking-[0.18em]"
+      style={{ color: onDark ? "rgba(255,255,255,0.72)" : FAINT }}
     >
       {children}
     </p>
+  );
+}
+
+export function SectionHeading({
+  eyebrow,
+  title,
+  body,
+  onDark = false,
+  center = true,
+}: {
+  eyebrow: string;
+  title: string;
+  body?: string;
+  onDark?: boolean;
+  center?: boolean;
+}) {
+  return (
+    <div className={center ? "mx-auto max-w-[42rem] text-center" : "max-w-[36rem]"}>
+      <Eyebrow onDark={onDark}>{eyebrow}</Eyebrow>
+      <h2
+        className="mt-5 text-[clamp(30px,4.2vw,46px)] font-bold leading-[1.1] tracking-[-0.035em] text-balance"
+        style={{ color: onDark ? "#FFFFFF" : INK }}
+      >
+        {title}
+      </h2>
+      {body && (
+        <p
+          className={`mt-5 text-[17px] leading-[1.72] ${center ? "mx-auto" : ""} max-w-[48ch]`}
+          style={{ color: onDark ? "rgba(255,255,255,0.84)" : BODY }}
+        >
+          {body}
+        </p>
+      )}
+    </div>
   );
 }
