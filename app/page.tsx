@@ -2,6 +2,7 @@ import Image from "next/image";
 import Link from "next/link";
 import Reveal from "../components/Reveal";
 import Parallax from "../components/Parallax";
+import Menu from "../components/Menu";
 import {
   APP_STORE_URL, INK, BODY, FAINT,
   DownloadButton, UiCard, SectionHeading, AppleHealthMark,
@@ -24,13 +25,7 @@ export default function Home() {
             <Image src="/icon-512.png" alt="" width={30} height={30} className="rounded-[8px] ring-1 ring-black/5" priority />
             <span className="text-[16px] font-semibold tracking-[-0.015em]">WhatYouAte</span>
           </div>
-          <a
-            href={APP_STORE_URL}
-            className="rounded-full px-5 py-2.5 text-[14px] font-semibold text-white transition hover:opacity-90"
-            style={{ background: INK }}
-          >
-            Download
-          </a>
+          <Menu />
         </div>
       </header>
 
@@ -58,8 +53,8 @@ export default function Home() {
           <Parallax speed={-18}>
             <Reveal>
               <Image
-                src="/device/iphone-patterns.png"
-                alt="The Patterns screen in WhatYouAte"
+                src="/device/iphone-home.png"
+                alt="The WhatYouAte home screen"
                 width={1500}
                 height={3175}
                 priority
