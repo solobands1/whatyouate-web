@@ -1,269 +1,207 @@
 import Image from "next/image";
 import Link from "next/link";
 import Reveal from "../components/Reveal";
-
-const APP_STORE_URL = "https://apps.apple.com/app/id6762287393";
-
-function DownloadButton({ size = "lg" }: { size?: "lg" | "sm" }) {
-  return (
-    <a
-      href={APP_STORE_URL}
-      className={`inline-flex items-center justify-center gap-2.5 rounded-full font-semibold tracking-[-0.01em] transition-opacity hover:opacity-80 active:opacity-60 border-2`}
-      style={{
-        background: "#FFFFFF",
-        color: "#0c0c0c",
-        borderColor: "#6FA8FF",
-        fontSize: size === "lg" ? 11 : 11,
-        paddingLeft: size === "lg" ? 30 : 24,
-        paddingRight: size === "lg" ? 30 : 24,
-        paddingTop: size === "lg" ? 10 : 9,
-        paddingBottom: size === "lg" ? 10 : 9,
-        minWidth: size === "lg" ? 165 : 150,
-      }}
-    >
-      <svg width="16" height="16" viewBox="0 0 24 24" fill="#0c0c0c" className="shrink-0">
-        <path d="M18.71 19.5c-.83 1.24-1.71 2.45-3.05 2.47-1.34.03-1.77-.79-3.29-.79-1.53 0-2 .77-3.27.82-1.31.05-2.3-1.32-3.14-2.53C4.25 17 2.94 12.45 4.7 9.39c.87-1.52 2.43-2.48 4.12-2.51 1.28-.02 2.5.87 3.29.87.78 0 2.26-1.07 3.8-.91.65.03 2.47.26 3.64 1.98-.09.06-2.17 1.28-2.15 3.81.03 3.02 2.65 4.03 2.68 4.04-.03.07-.42 1.44-1.38 2.83M13 3.5c.73-.83 1.94-1.46 2.94-1.5.13 1.17-.34 2.35-1.04 3.19-.69.85-1.83 1.51-2.95 1.42-.15-1.15.41-2.35 1.05-3.11z" />
-      </svg>
-      Download Free
-    </a>
-  );
-}
-
-function PhoneFrame({ src, alt, tilt }: { src: string; alt: string; tilt: string }) {
-  const btnL: React.CSSProperties = {
-    position: "absolute", left: -3.5, width: 3,
-    background: "linear-gradient(to right, #0e0e10, #2a2a2c)",
-    borderRadius: "2px 0 0 2px",
-  };
-  const btnR: React.CSSProperties = {
-    position: "absolute", right: -3.5, width: 3,
-    background: "linear-gradient(to left, #0e0e10, #2a2a2c)",
-    borderRadius: "0 2px 2px 0",
-  };
-  return (
-    <div style={{ perspective: "1200px" }}>
-      <div style={{ transform: tilt, position: "relative" }}>
-        <div style={{ ...btnL, top: "11%", height: 16 }} />
-        <div style={{ ...btnL, top: "18%", height: 26 }} />
-        <div style={{ ...btnL, top: "26%", height: 26 }} />
-        <div style={{ ...btnR, top: "20%", height: 48 }} />
-        <div
-          style={{
-            borderRadius: 46,
-            padding: "7px 6px",
-            background: "linear-gradient(150deg, #3d3d3f 0%, #1c1c1e 30%, #38383a 58%, #1c1c1e 82%, #2c2c2e 100%)",
-            boxShadow: [
-              "inset 0 0 0 0.5px rgba(255,255,255,0.14)",
-              "inset 0 0.5px 0 rgba(255,255,255,0.07)",
-              "0 0 0 0.75px rgba(0,0,0,0.9)",
-              "0 24px 60px rgba(0,0,0,0.18)",
-            ].join(", "),
-          }}
-        >
-          <div style={{ borderRadius: 39, overflow: "hidden", background: "#000" }}>
-            <Image src={src} alt={alt} width={640} height={1390} className="w-full block" />
-          </div>
-        </div>
-      </div>
-    </div>
-  );
-}
-
-const features = [
-  "Log a photo, scan a barcode, or just type it. AI figures out the rest in seconds.",
-  "See exactly what you ate today, in plain language.",
-  "Go beyond calories. See the vitamins and nutrients behind your meals.",
-  "Log how you feel. Your AI coach connects it back to what you ate.",
-  "Daily nudges from your AI Coach that learns your habits over time.",
-  "Syncs with Apple Health.",
-];
+import { APP_STORE_URL, DEEP, LIGHT, DownloadButton, Phone, UiCard, Eyebrow } from "../components/site";
 
 export default function Home() {
   return (
-    <div
-      className="min-h-screen overflow-x-hidden"
-      style={{ background: "#F8FAFC", color: "#1F2937", fontFamily: "var(--font-geist-sans), system-ui, sans-serif" }}
-    >
+    <div className="min-h-screen overflow-x-hidden bg-[#F8FAFC] text-[#16233B]">
 
-      {/* ── NAV ──────────────────────────────────────────────── */}
-      <header className="flex flex-col items-center" style={{ paddingLeft: 40, paddingRight: 40, paddingTop: 20, paddingBottom: 12 }}>
-        <Image src="/icon-512.png" alt="WhatYouAte" width={60} height={60} className="rounded-[16px]" priority style={{ marginBottom: 10 }} />
-        <span className="font-semibold tracking-[-0.01em]" style={{ fontSize: 19, color: "#1F2937" }}>
-          WhatYouAt<span className="relative inline-block">e
-            <span className="absolute right-0 translate-x-[10px] font-semibold" style={{ top: 3, fontSize: 10, color: "#9CA3AF" }}>AI</span>
-          </span>
-        </span>
+      {/* ── NAV ───────────────────────────────────────────────── */}
+      <header className="absolute inset-x-0 top-0 z-20">
+        <div className="mx-auto flex max-w-6xl items-center justify-between px-5 py-5 sm:px-8">
+          <div className="flex items-center gap-2.5">
+            <Image src="/icon-512.png" alt="" width={34} height={34} className="rounded-[9px]" priority />
+            <span className="text-[16px] font-semibold tracking-[-0.01em] text-white">WhatYouAte</span>
+          </div>
+          <a
+            href={APP_STORE_URL}
+            className="rounded-full border border-white/35 px-4 py-2 text-[13px] font-semibold text-white transition hover:bg-white/10"
+          >
+            Download
+          </a>
+        </div>
       </header>
 
-      {/* ── HERO ─────────────────────────────────────────────── */}
-      <section
-        className="flex flex-col md:flex-row items-center justify-center gap-12 md:gap-16 md:min-h-[82vh]"
-        style={{ paddingLeft: 40, paddingRight: 40, paddingTop: 0, paddingBottom: 40 }}
-      >
-        <div className="flex flex-col items-center md:items-start text-center md:text-left max-w-[440px]">
+      {/* ── HERO ──────────────────────────────────────────────── */}
+      <section className="relative overflow-hidden px-5 pb-24 pt-28 sm:px-8 sm:pb-32 sm:pt-32" style={{ background: DEEP }}>
+        <div className="mx-auto grid max-w-6xl items-center gap-14 lg:grid-cols-[1.05fr_0.95fr] lg:gap-10">
 
-          {/* Headline */}
-          <Reveal>
-            <h1
-              className="font-bold leading-[1.06] tracking-[-0.03em]"
-              style={{ fontSize: "clamp(40px, 6vw, 56px)", marginBottom: 20 }}
-            >
-              <span style={{ color: "#1F2937" }}>Eat Confidently</span><br />
-              <span style={{ color: "#1F2937" }}>Feel </span><span style={{ color: "#6FA8FF" }}>Better</span>
-            </h1>
-          </Reveal>
-
-          {/* Subline */}
-          <Reveal delay={0.08}>
-            <p
-              className="text-[18px] leading-[1.7]"
-              style={{ marginBottom: 24, color: "#374151", maxWidth: 360 }}
-            >
-              The AI food coach that tracks what you eat, connects it to how you feel, and helps you improve without the complexity.
-            </p>
-          </Reveal>
-
-          {/* CTA */}
-          <Reveal delay={0.14}>
-            <div className="flex flex-col items-center md:items-start" style={{ gap: 12 }}>
-              <DownloadButton size="lg" />
-              <p className="text-[12px] font-medium" style={{ color: "#6B7280" }}>
-                7-day Pro trial included · iOS only
+          <div className="text-center lg:text-left">
+            <Reveal>
+              <h1 className="mx-auto max-w-[19ch] text-[clamp(38px,7vw,64px)] font-bold leading-[1.04] tracking-[-0.035em] text-white lg:mx-0">
+                Know why you feel the way you do
+              </h1>
+            </Reveal>
+            <Reveal delay={0.08}>
+              <p className="mx-auto mt-6 max-w-[46ch] text-[clamp(16px,2.2vw,19px)] leading-[1.65] text-white/85 lg:mx-0">
+                Your food, your energy, and the link between them. Log a meal in seconds,
+                check in for a minute at night, and your coach shows you what lines up.
               </p>
+            </Reveal>
+            <Reveal delay={0.14}>
+              <div className="mt-9 flex flex-col items-center gap-3 lg:items-start">
+                <DownloadButton tone="light" />
+                <p className="text-[13px] font-medium text-white/70">
+                  Free to download · 7 day Pro trial · iPhone
+                </p>
+              </div>
+            </Reveal>
+          </div>
+
+          {/* Phone with one real insight lifted out of it */}
+          <Reveal delay={0.12}>
+            <div className="relative mx-auto w-full max-w-[290px] sm:max-w-[330px] lg:max-w-none lg:pl-10">
+              <Phone src="/screenshots/patterns-2026.png" alt="The Patterns screen in WhatYouAte" priority />
+              <UiCard
+                src="/ui/food-feeling.png"
+                alt="Your lower-energy days have more often followed fried or greasy food the night before"
+                width={1104}
+                height={261}
+                lift="lg"
+                className="absolute -bottom-10 -left-4 w-[108%] max-w-none sm:-left-8 lg:-left-16"
+              />
             </div>
           </Reveal>
         </div>
-
-        {/* Phone */}
-        <Reveal delay={0.1}>
-          <div className="w-full max-w-[210px] md:max-w-[230px] flex-shrink-0">
-            <PhoneFrame src="/screenshots/home.webp" alt="WhatYouAte home screen" tilt="rotateY(18deg) rotateX(5deg)" />
-          </div>
-        </Reveal>
       </section>
 
-      {/* ── FEATURES ─────────────────────────────────────────── */}
-      <section
-        className="flex flex-col items-center"
-        style={{ paddingLeft: 40, paddingRight: 40, paddingTop: 40, paddingBottom: 40, borderTop: "1px solid rgba(31,41,55,0.08)" }}
-      >
-        <Reveal>
-          <div
-            className="mx-auto"
-            style={{
-              maxWidth: 560,
-              background: "#FFFFFF",
-              border: "1px solid rgba(111,168,255,0.25)",
-              borderRadius: 20,
-              boxShadow: "0 0 32px rgba(111,168,255,0.12)",
-              padding: "24px 28px",
-              display: "flex",
-              flexDirection: "column",
-              gap: 20,
-            }}
-          >
-            {features.map((f) => {
-              const isHealth = f.startsWith("Syncs with Apple Health");
-              return (
-                <div key={f} className="flex items-start" style={{ gap: 16 }}>
-                  {isHealth ? (
-                    <span
-                      className="flex-shrink-0 flex items-center justify-center"
-                      style={{
-                        marginTop: 3,
-                        width: 20, height: 20,
-                        background: "#fff",
-                        border: "1px solid rgba(255,59,92,0.18)",
-                        borderRadius: 6,
-                        boxShadow: "0 1px 4px rgba(255,59,92,0.15)",
-                      }}
-                    >
-                      <svg viewBox="0 0 24 24" width="12" height="12">
-                        <path d="M12 20.5l-1.3-1.18C5.36 14.9 2 12.08 2 8.5 2 5.68 4.18 3.5 7 3.5c1.54 0 3.01.72 4 1.86C11.99 4.22 13.46 3.5 15 3.5c2.82 0 5 2.18 5 5 0 3.58-3.36 6.4-8.7 10.82L12 20.5z" fill="#FF3B5C" />
-                      </svg>
-                    </span>
-                  ) : (
-                    <span
-                      className="flex-shrink-0 flex items-center justify-center rounded-full"
-                      style={{
-                        marginTop: 3,
-                        width: 20, height: 20,
-                        background: "rgba(111,168,255,0.12)",
-                        border: "1px solid rgba(111,168,255,0.3)",
-                      }}
-                    >
-                      <svg viewBox="0 0 12 12" width="10" height="10" fill="none" stroke="#6FA8FF" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                        <path d="M2 6l3 3 5-5" />
-                      </svg>
-                    </span>
-                  )}
-                  <p className="text-[15px] leading-[1.6]" style={{ color: "#1F2937" }}>{f}</p>
+      {/* ── HOW IT WORKS ──────────────────────────────────────── */}
+      <section className="px-5 py-20 sm:px-8 sm:py-28">
+        <div className="mx-auto max-w-5xl">
+          <Reveal>
+            <Eyebrow>How it works</Eyebrow>
+            <h2 className="mt-3 max-w-[16ch] text-[clamp(28px,4.5vw,44px)] font-bold leading-[1.1] tracking-[-0.03em]">
+              Three small things, every day
+            </h2>
+          </Reveal>
+
+          <div className="mt-12 grid gap-8 sm:mt-16 sm:grid-cols-3 sm:gap-10">
+            {[
+              { n: "Eat", d: "Snap a photo, scan a barcode, say it out loud, or just type it. No weighing, no measuring." },
+              { n: "Reflect", d: "One minute before bed on your energy, sleep, mood, stress and digestion." },
+              { n: "Feel better", d: "Your coach reads both and tells you what it notices, one small change at a time." },
+            ].map((s, i) => (
+              <Reveal key={s.n} delay={0.06 * i}>
+                <div className="flex flex-col gap-3">
+                  <span className="text-[13px] font-semibold text-[#6FA8FF]">{String(i + 1).padStart(2, "0")}</span>
+                  <h3 className="text-[22px] font-semibold tracking-[-0.02em]">{s.n}</h3>
+                  <p className="text-[15px] leading-[1.65] text-[#54637C]">{s.d}</p>
                 </div>
-              );
-            })}
+              </Reveal>
+            ))}
           </div>
-        </Reveal>
+        </div>
       </section>
 
-      {/* ── NO FLUFF ─────────────────────────────────────────── */}
-      <section
-        className="flex flex-col items-center"
-        style={{ paddingLeft: 40, paddingRight: 40, paddingTop: 40, paddingBottom: 40, borderTop: "1px solid rgba(31,41,55,0.08)" }}
-      >
+      {/* ── THE COACH ─────────────────────────────────────────── */}
+      <section className="px-5 py-20 sm:px-8 sm:py-28" style={{ background: DEEP }}>
+        <div className="mx-auto grid max-w-5xl items-center gap-12 lg:grid-cols-2 lg:gap-16">
+          <Reveal>
+            <Eyebrow onDark>Your coach</Eyebrow>
+            <h2 className="mt-3 max-w-[15ch] text-[clamp(28px,4.5vw,44px)] font-bold leading-[1.1] tracking-[-0.03em] text-white">
+              It reads your week, not a template
+            </h2>
+            <p className="mt-5 max-w-[44ch] text-[16px] leading-[1.7] text-white/80">
+              No generic tips. It spots a pattern in your own days, suggests one small
+              change, and tells you plainly when it does not have enough to go on yet.
+            </p>
+          </Reveal>
+          <Reveal delay={0.08}>
+            <UiCard src="/ui/coach-nudge.png" alt="A coach nudge in WhatYouAte" width={1104} height={390} lift="lg" />
+          </Reveal>
+        </div>
+      </section>
+
+      {/* ── WHAT YOU SEE ──────────────────────────────────────── */}
+      <section className="px-5 py-20 sm:px-8 sm:py-28" style={{ background: LIGHT }}>
+        <div className="mx-auto max-w-5xl">
+          <Reveal>
+            <Eyebrow>What you start to see</Eyebrow>
+            <h2 className="mt-3 max-w-[18ch] text-[clamp(28px,4.5vw,44px)] font-bold leading-[1.1] tracking-[-0.03em]">
+              Real counts from your own nights
+            </h2>
+            <p className="mt-5 max-w-[52ch] text-[16px] leading-[1.7] text-[#54637C]">
+              Not vague encouragement. Actual numbers, drawn from what you logged, and
+              labelled as associations rather than causes.
+            </p>
+          </Reveal>
+          <div className="mt-12 grid gap-6 sm:mt-14 sm:grid-cols-2 sm:gap-8">
+            <Reveal>
+              <UiCard src="/ui/energy-dips.png" alt="When your energy dips, across your last nine nights" width={1208} height={488} />
+            </Reveal>
+            <Reveal delay={0.08}>
+              <UiCard src="/ui/streak-week.png" alt="This week, a fourteen night reflection streak" width={1208} height={493} />
+            </Reveal>
+          </div>
+        </div>
+      </section>
+
+      {/* ── HABITS ────────────────────────────────────────────── */}
+      <section className="px-5 py-20 sm:px-8 sm:py-28">
+        <div className="mx-auto grid max-w-5xl items-center gap-12 lg:grid-cols-[0.95fr_1.05fr] lg:gap-16">
+          <Reveal className="lg:order-2">
+            <Eyebrow>Habits</Eyebrow>
+            <h2 className="mt-3 max-w-[15ch] text-[clamp(28px,4.5vw,44px)] font-bold leading-[1.1] tracking-[-0.03em]">
+              Small enough to actually finish
+            </h2>
+            <p className="mt-5 max-w-[44ch] text-[16px] leading-[1.7] text-[#54637C]">
+              Three days at a time, built around what you said you want to feel better
+              about. A glass of water in the afternoon. A walk after lunch.
+            </p>
+          </Reveal>
+          <Reveal delay={0.08} className="lg:order-1">
+            <UiCard src="/ui/habit-builder.png" alt="The Habit Builder card in WhatYouAte" width={1200} height={702} lift="lg" />
+          </Reveal>
+        </div>
+      </section>
+
+      {/* ── THE PROMISE ───────────────────────────────────────── */}
+      <section className="px-5 py-20 sm:px-8 sm:py-24" style={{ background: LIGHT }}>
         <Reveal>
-          <p
-            className="mx-auto text-center text-[18px] leading-[1.85] font-semibold"
-            style={{ maxWidth: 580, color: "#374151" }}
-          >
-            Understanding your food and feeling better shouldn't be complicated. So we uncomplicated both the app, and this page. No endless features, no unnecessary noise. Just easy improvement.
+          <p className="mx-auto max-w-[26ch] text-center text-[clamp(24px,4vw,38px)] font-semibold leading-[1.25] tracking-[-0.025em]">
+            No red warnings. No guilt trips. No lecture about a cheeseburger.
+          </p>
+          <p className="mx-auto mt-6 max-w-[46ch] text-center text-[16px] leading-[1.7] text-[#54637C]">
+            Built for ordinary days, not for chasing numbers. Log it, see what it does to
+            your week, and get on with your day.
           </p>
         </Reveal>
       </section>
 
-      {/* ── CTA ──────────────────────────────────────────────── */}
-      <section
-        className="text-center flex flex-col items-center"
-        style={{ paddingLeft: 40, paddingRight: 40, paddingTop: 40, paddingBottom: 40, borderTop: "1px solid rgba(31,41,55,0.08)" }}
-      >
+      {/* ── CTA ───────────────────────────────────────────────── */}
+      <section className="px-5 py-24 sm:px-8 sm:py-32" style={{ background: DEEP }}>
         <Reveal>
-          <div className="mx-auto flex flex-col items-center" style={{ maxWidth: 440, gap: 16 }}>
-            <h2
-              className="font-bold tracking-[-0.03em] leading-[1.1]"
-              style={{ fontSize: "clamp(32px, 5vw, 46px)", color: "#1F2937" }}
-            >
-              Give it a week,<br />see how you feel!
+          <div className="mx-auto flex max-w-2xl flex-col items-center gap-6 text-center">
+            <h2 className="max-w-[16ch] text-[clamp(30px,5vw,50px)] font-bold leading-[1.08] tracking-[-0.03em] text-white">
+              Give it a week. See how you feel.
             </h2>
-            <p className="text-[16px]" style={{ color: "#374151", marginBottom: 8 }}>
-              Download free. 7-day Pro trial. No commitment.
+            <p className="max-w-[40ch] text-[16px] leading-[1.7] text-white/80">
+              Download free and start with your next meal.
             </p>
-            <DownloadButton size="lg" />
+            <DownloadButton tone="light" className="mt-2" />
+            <p className="text-[13px] font-medium text-white/70">7 day Pro trial · No commitment</p>
           </div>
         </Reveal>
       </section>
 
-      {/* ── FOOTER ───────────────────────────────────────────── */}
-      <footer
-        className="flex flex-col items-center"
-        style={{ paddingLeft: 40, paddingRight: 40, paddingTop: 24, paddingBottom: 24, borderTop: "1px solid rgba(31,41,55,0.08)" }}
-      >
-        <div className="mx-auto max-w-4xl flex flex-col items-center text-center" style={{ gap: 10 }}>
+      {/* ── FOOTER ────────────────────────────────────────────── */}
+      <footer className="px-5 py-12 sm:px-8">
+        <div className="mx-auto flex max-w-5xl flex-col items-center gap-4 text-center">
           <div className="flex items-center gap-2">
-            <Image src="/icon.png" alt="WhatYouAte" width={20} height={20} className="rounded-[5px]" />
-            <span className="text-[13px] font-semibold tracking-[-0.01em]" style={{ color: "#374151" }}>
-              WhatYouAt<span className="relative inline-block">e
-                <span className="absolute right-0 translate-x-[10px] text-[9px] font-semibold" style={{ top: 0, color: "#374151" }}>AI</span>
-              </span>
-            </span>
+            <Image src="/icon.png" alt="" width={22} height={22} className="rounded-[6px]" />
+            <span className="text-[14px] font-semibold tracking-[-0.01em]">WhatYouAte</span>
           </div>
-          <div className="flex gap-8 text-[13px]" style={{ color: "#374151" }}>
-            <Link href="/privacy" className="hover:text-[#1F2937] transition-colors">Privacy Policy</Link>
-            <Link href="/terms" className="hover:text-[#1F2937] transition-colors">Terms of Use</Link>
-            <a href="mailto:hello@minimul.app" className="hover:text-[#1F2937] transition-colors">Support</a>
-          </div>
-          <span className="text-[12px]" style={{ color: "#374151" }}>© {new Date().getFullYear()} WhatYouAte. All rights reserved.</span>
+          <nav className="flex flex-wrap justify-center gap-x-7 gap-y-2 text-[14px] text-[#54637C]">
+            <Link href="/privacy" className="transition hover:text-[#16233B]">Privacy Policy</Link>
+            <Link href="/terms" className="transition hover:text-[#16233B]">Terms of Use</Link>
+            <a href="mailto:hello@minimul.app" className="transition hover:text-[#16233B]">Support</a>
+          </nav>
+          <span className="text-[13px] text-[#8296B0]">
+            © {new Date().getFullYear()} WhatYouAte. All rights reserved.
+          </span>
         </div>
       </footer>
-
     </div>
   );
 }
