@@ -2,7 +2,6 @@ import Image from "next/image";
 import Link from "next/link";
 import Reveal from "../components/Reveal";
 import Parallax from "../components/Parallax";
-import PhoneMock from "../components/PhoneMock";
 import {
   APP_STORE_URL, INK, BODY, FAINT,
   DownloadButton, UiCard, SectionHeading, AppleHealthMark,
@@ -53,25 +52,27 @@ export default function Home() {
           </div>
         </div>
 
-        {/* The device carries "this is an app"; the lifted card carries the
-            headline's promise. One in front of the other, as a composition. */}
-        <div className="relative mx-auto mt-16 w-full max-w-[58rem] pb-20 sm:mt-20 sm:pb-28">
-          <Parallax speed={-20}>
+        {/* Device fades into the wash at its base, with one lifted card
+            crossing it the way Bevel lets the watch break the phone. */}
+        <div className="relative mx-auto mt-12 w-full max-w-[60rem] sm:mt-14">
+          <Parallax speed={-18}>
             <Reveal>
-              <PhoneMock
-                src="/screenshots/patterns-2026.png"
+              <Image
+                src="/device/iphone-patterns.png"
                 alt="The Patterns screen in WhatYouAte"
+                width={1500}
+                height={3154}
                 priority
-                className="mx-auto w-[64%] max-w-[300px] sm:w-[42%] sm:max-w-[330px]"
+                className="mx-auto block w-[78%] max-w-[360px] sm:w-[46%] sm:max-w-[430px]"
               />
             </Reveal>
           </Parallax>
 
           <Parallax
-            speed={30}
-            className="mt-8 sm:absolute sm:bottom-[6%] sm:left-0 sm:mt-0 sm:w-[46%] lg:w-[42%]"
+            speed={34}
+            className="-mt-10 sm:absolute sm:bottom-[26%] sm:left-[2%] sm:mt-0 sm:w-[42%] lg:w-[38%]"
           >
-            <Reveal delay={0.14}>
+            <Reveal delay={0.16}>
               <UiCard
                 src="/ui/food-feeling.png"
                 alt="Your lower-energy days have more often followed fried or greasy food the night before"
@@ -81,10 +82,10 @@ export default function Home() {
           </Parallax>
 
           <Parallax
-            speed={18}
-            className="mt-6 sm:absolute sm:right-0 sm:top-[16%] sm:mt-0 sm:w-[40%] lg:w-[36%]"
+            speed={16}
+            className="mt-6 sm:absolute sm:right-[1%] sm:top-[18%] sm:mt-0 sm:w-[36%] lg:w-[33%]"
           >
-            <Reveal delay={0.2}>
+            <Reveal delay={0.24}>
               <UiCard
                 src="/ui/streak-week.png"
                 alt="This week, a fourteen night reflection streak"
