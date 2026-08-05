@@ -30,7 +30,7 @@ export default function Home() {
       </header>
 
       {/* ── HERO ────────────────────────────────────────────── */}
-      <section className="relative px-6 pt-32 sm:pt-36">
+      <section className="relative px-6 pb-4 pt-28 sm:pb-6 sm:pt-32">
         <div className="mx-auto max-w-[52rem] text-center">
           <h1 className="text-balance text-[clamp(40px,6.6vw,74px)] font-bold leading-[1.03] tracking-[-0.04em]">
             Know why you feel the way you do
@@ -49,14 +49,14 @@ export default function Home() {
 
         {/* Device fades into the wash at its base, with one lifted card
             crossing it the way Bevel lets the watch break the phone. */}
-        <div className="relative mx-auto mt-12 w-full max-w-[60rem] sm:mt-14">
+        <div className="relative mx-auto mt-10 w-full max-w-[60rem] sm:mt-12">
           <Parallax speed={-18}>
             <Reveal>
               <Image
                 src="/device/iphone-home.png"
                 alt="The WhatYouAte home screen"
                 width={1500}
-                height={3175}
+                height={2614}
                 priority
                 className="mx-auto block w-[78%] max-w-[360px] sm:w-[46%] sm:max-w-[430px]"
               />
@@ -92,7 +92,7 @@ export default function Home() {
       </section>
 
       {/* ── HOW IT WORKS ────────────────────────────────────── */}
-      <section className="px-6 py-20 sm:py-28">
+      <section className="px-6 py-14 sm:py-20">
         <div className="mx-auto max-w-[68rem]">
           <Reveal>
             <SectionHeading
@@ -101,7 +101,7 @@ export default function Home() {
               body="Nothing to weigh, nothing to plan. The whole loop takes about a minute."
             />
           </Reveal>
-          <div className="mt-14 grid gap-10 sm:mt-16 sm:grid-cols-3 sm:gap-12">
+          <div className="mt-12 grid gap-10 sm:mt-14 sm:grid-cols-3 sm:gap-12">
             {STEPS.map((s, i) => (
               <Reveal key={s.t} delay={0.08 * i}>
                 <div className="text-center sm:text-left">
@@ -123,8 +123,8 @@ export default function Home() {
       </section>
 
       {/* ── COACH ───────────────────────────────────────────── */}
-      <section className="px-6 py-20 sm:py-28">
-        <div className="mx-auto grid max-w-[64rem] items-center gap-14 lg:grid-cols-2 lg:gap-20">
+      <section className="px-6 py-14 sm:py-20">
+        <div className="mx-auto grid max-w-[64rem] items-center gap-10 lg:grid-cols-2 lg:gap-16">
           <Reveal>
             <SectionHeading
               center={false}
@@ -142,8 +142,8 @@ export default function Home() {
       </section>
 
       {/* ── PATTERNS ────────────────────────────────────────── */}
-      <section className="px-6 py-20 sm:py-28">
-        <div className="mx-auto grid max-w-[64rem] items-center gap-14 lg:grid-cols-2 lg:gap-20">
+      <section className="px-6 py-14 sm:py-20">
+        <div className="mx-auto grid max-w-[64rem] items-center gap-10 lg:grid-cols-2 lg:gap-16">
           <Parallax speed={-20} className="lg:order-2">
             <Reveal>
               <UiCard src="/ui/energy-dips.png" alt="When your energy dips, across your last nine nights" width={1208} height={488} tilt={-1.4} lift="lg" />
@@ -161,8 +161,8 @@ export default function Home() {
       </section>
 
       {/* ── HABITS ──────────────────────────────────────────── */}
-      <section className="px-6 py-20 sm:py-28">
-        <div className="mx-auto grid max-w-[64rem] items-center gap-14 lg:grid-cols-2 lg:gap-20">
+      <section className="px-6 py-14 sm:py-20">
+        <div className="mx-auto grid max-w-[64rem] items-center gap-10 lg:grid-cols-2 lg:gap-16">
           <Reveal>
             <SectionHeading
               center={false}
@@ -180,7 +180,7 @@ export default function Home() {
       </section>
 
       {/* ── THE REST OF THE DAY ─────────────────────────────── */}
-      <section className="px-6 py-20 sm:py-28">
+      <section className="px-6 py-14 sm:py-20">
         <div className="mx-auto max-w-[64rem]">
           <Reveal>
             <SectionHeading
@@ -192,7 +192,7 @@ export default function Home() {
 
           {/* The wide, short water bar spans the top; the two taller cards sit
               beneath it, so nothing is forced into a column it does not fit. */}
-          <div className="mt-14 sm:mt-16">
+          <div className="mt-12 sm:mt-14">
             <Parallax speed={-14}>
               <Reveal>
                 <UiCard
@@ -229,7 +229,7 @@ export default function Home() {
       </section>
 
       {/* ── PROMISE ─────────────────────────────────────────── */}
-      <section className="px-6 py-16 sm:py-24">
+      <section className="px-6 py-14 sm:py-20">
         <Reveal>
           <div className="mx-auto max-w-[40rem] text-center">
             <h2 className="text-balance text-[clamp(26px,3.8vw,40px)] font-bold leading-[1.2] tracking-[-0.03em]">
@@ -244,7 +244,7 @@ export default function Home() {
       </section>
 
       {/* ── CTA ─────────────────────────────────────────────── */}
-      <section className="px-6 pb-24 pt-16 sm:pb-32 sm:pt-24">
+      <section className="px-6 pb-24 pt-14 sm:pb-28 sm:pt-20">
         <Reveal>
           <div className="mx-auto flex max-w-[36rem] flex-col items-center gap-6 text-center">
             <h2 className="text-balance text-[clamp(30px,4.6vw,50px)] font-bold leading-[1.08] tracking-[-0.035em] text-white">
