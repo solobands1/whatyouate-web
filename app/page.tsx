@@ -36,7 +36,7 @@ export default function Home() {
       {/* ── HERO ────────────────────────────────────────────── */}
       <section className="relative px-6 pb-8 pt-32 sm:pt-36" style={{ background: SKY }}>
         <div className="mx-auto max-w-[52rem] text-center">
-          <h1 className="text-balance text-[clamp(38px,6.4vw,68px)] font-bold leading-[1.03] tracking-[-0.04em]">
+          <h1 className="text-balance text-[clamp(40px,6.6vw,74px)] font-bold leading-[1.03] tracking-[-0.04em]">
             Know why you feel the way you do
           </h1>
           <p className="mx-auto mt-7 max-w-[44ch] text-[clamp(17px,2vw,20px)] leading-[1.62]" style={{ color: BODY }}>
@@ -51,36 +51,38 @@ export default function Home() {
           </div>
         </div>
 
-        {/* Lifted app UI instead of a phone mockup */}
-        <div className="relative mx-auto mt-16 max-w-[46rem] pb-24 sm:mt-20 sm:pb-32">
+        {/* Lifted app UI instead of a phone mockup. The two cards are offset on
+            opposite edges so they read as a deliberate composition rather than
+            one card accidentally sitting on top of another. */}
+        <div className="relative mx-auto mt-14 w-full max-w-[54rem] pb-14 sm:mt-16 sm:pb-[17%]">
           <Reveal>
             <UiCard
               src="/ui/food-feeling.png"
               alt="Your lower-energy days have more often followed fried or greasy food the night before"
               width={1104}
               height={261}
-              tilt={-1.6}
+              tilt={-2}
               lift="lg"
               priority
-              className="relative z-10 mx-auto w-[92%] sm:w-[86%]"
+              className="z-20 w-full sm:w-[60%]"
             />
           </Reveal>
-          <Reveal delay={0.1}>
+          <Reveal delay={0.12}>
             <UiCard
               src="/ui/streak-week.png"
               alt="This week, a fourteen night reflection streak"
               width={1208}
               height={493}
-              tilt={1.4}
+              tilt={2}
               lift="md"
-              className="relative z-0 mx-auto -mt-6 w-[80%] sm:-mt-8 sm:w-[72%]"
+              className="z-10 mt-7 w-full sm:absolute sm:right-0 sm:bottom-0 sm:mt-0 sm:w-[52%]"
             />
           </Reveal>
         </div>
       </section>
 
       {/* ── HOW IT WORKS ────────────────────────────────────── */}
-      <section className="px-6 py-24 sm:py-32">
+      <section className="px-6 py-20 sm:py-28">
         <div className="mx-auto max-w-[68rem]">
           <Reveal>
             <SectionHeading
@@ -89,7 +91,7 @@ export default function Home() {
               body="Nothing to weigh, nothing to plan. The whole loop takes about a minute."
             />
           </Reveal>
-          <div className="mt-16 grid gap-12 sm:mt-20 sm:grid-cols-3 sm:gap-10">
+          <div className="mt-14 grid gap-10 sm:mt-16 sm:grid-cols-3 sm:gap-12">
             {STEPS.map((s, i) => (
               <Reveal key={s.t} delay={0.07 * i}>
                 <div className="text-center sm:text-left">
@@ -106,7 +108,7 @@ export default function Home() {
       </section>
 
       {/* ── COACH ───────────────────────────────────────────── */}
-      <section className="px-6 py-24 sm:py-32" style={{ background: TINT }}>
+      <section className="px-6 py-20 sm:py-28" style={{ background: TINT }}>
         <div className="mx-auto grid max-w-[64rem] items-center gap-14 lg:grid-cols-2 lg:gap-20">
           <Reveal>
             <SectionHeading
@@ -123,7 +125,7 @@ export default function Home() {
       </section>
 
       {/* ── PATTERNS ────────────────────────────────────────── */}
-      <section className="px-6 py-24 sm:py-32">
+      <section className="px-6 py-20 sm:py-28">
         <div className="mx-auto max-w-[64rem]">
           <Reveal>
             <SectionHeading
@@ -132,19 +134,19 @@ export default function Home() {
               body="Not vague encouragement. Actual numbers, drawn from what you logged, and labelled as associations rather than causes."
             />
           </Reveal>
-          <div className="mt-16 grid gap-8 sm:mt-20 sm:grid-cols-2 sm:gap-10">
+          <div className="mt-14 grid items-start gap-8 sm:mt-16 sm:grid-cols-2 sm:gap-10">
             <Reveal>
               <UiCard src="/ui/energy-dips.png" alt="When your energy dips, across your last nine nights" width={1208} height={488} tilt={-1} />
             </Reveal>
             <Reveal delay={0.08}>
-              <UiCard src="/ui/habit-builder.png" alt="The Habit Builder card in WhatYouAte" width={1200} height={702} tilt={1} />
+              <UiCard src="/ui/habit-builder.png" alt="The Habit Builder card in WhatYouAte" width={1200} height={702} tilt={1} className="sm:mt-10" />
             </Reveal>
           </div>
         </div>
       </section>
 
       {/* ── PROMISE ─────────────────────────────────────────── */}
-      <section className="px-6 py-24 sm:py-32" style={{ background: TINT }}>
+      <section className="px-6 py-20 sm:py-28" style={{ background: TINT }}>
         <Reveal>
           <div className="mx-auto max-w-[40rem] text-center">
             <h2 className="text-balance text-[clamp(26px,3.8vw,40px)] font-bold leading-[1.2] tracking-[-0.03em]">
@@ -159,7 +161,7 @@ export default function Home() {
       </section>
 
       {/* ── CTA ─────────────────────────────────────────────── */}
-      <section className="px-6 py-28 sm:py-36" style={{ background: DEEP }}>
+      <section className="px-6 py-24 sm:py-32" style={{ background: DEEP }}>
         <Reveal>
           <div className="mx-auto flex max-w-[36rem] flex-col items-center gap-6 text-center">
             <h2 className="text-balance text-[clamp(30px,4.6vw,50px)] font-bold leading-[1.08] tracking-[-0.035em] text-white">
