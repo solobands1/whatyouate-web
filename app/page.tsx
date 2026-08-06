@@ -12,7 +12,7 @@ import {
 const STEPS = [
   { n: "01", t: "Log", d: "Snap a photo of your meal, scan a barcode, say what you ate, or just type it. Water and activity take a couple of taps." },
   { n: "02", t: "Reflect", d: "One minute before bed on your energy, sleep, mood, stress and digestion." },
-  { n: "03", t: "Feel better", d: "Your coach finds what keeps turning up before your best days and your worst, then suggests what to try next." },
+  { n: "03", t: "Feel better", d: "Your AI coach finds what keeps turning up before your best days and your worst, then suggests what to try next." },
 ];
 
 export default function Home() {
@@ -40,7 +40,7 @@ export default function Home() {
           </Enter>
           <Enter delay={0.16} duration={1.05}>
             <p className="mx-auto mt-6 max-w-[46ch] text-balance text-[clamp(16px,2vw,20px)] leading-[1.58] sm:max-w-[46rem]" style={{ color: BODY }}>
-              Log food, water, sleep and movement in seconds. Your coach reads them
+              Log food, water, sleep and movement in seconds. Your AI coach reads them
               against how you felt, shows you the patterns, and suggests one small change.
             </p>
           </Enter>
@@ -165,7 +165,7 @@ export default function Home() {
           <Reveal>
             <SectionHeading
               center={false}
-              eyebrow="Your coach"
+              eyebrow="Your AI coach"
               title="Advice built from your week, not everyone else's"
               body="Your AI coach is built into the app, and it only ever works from your own logs. It points out what keeps lining up and tells you when there is not enough there yet to make a suggestion. You always know where you stand."
             />
@@ -223,7 +223,7 @@ export default function Home() {
             <SectionHeading
               eyebrow="Is it working"
               title="You find out whether it actually helped"
-              body="Weeks get compared to the ones before them, and every habit you keep is checked against how you felt. When a change is helping, your coach says so. When it is too early to tell, it says so just as plainly."
+              body="Weeks get compared to the ones before them, and every habit you keep is checked against how you felt. When a change is helping, your AI coach says so. When it is too early to tell, it says so just as plainly."
             />
           </Reveal>
           <div className="mt-12 grid items-center gap-8 sm:mt-14 lg:grid-cols-2 lg:gap-14">
@@ -287,7 +287,7 @@ export default function Home() {
                   Works with Apple Health
                 </p>
                 <p className="mt-1.5 text-[15px] leading-[1.6]" style={{ color: BODY }}>
-                  Steps, workouts and sleep come across on their own, so your coach sees
+                  Steps, workouts and sleep come across on their own, so your AI coach sees
                   the whole picture without you typing any of it in.
                 </p>
               </div>

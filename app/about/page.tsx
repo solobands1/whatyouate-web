@@ -98,7 +98,7 @@ export default function About() {
             <P>
               Logging a meal takes seconds, and water and activity take a couple of taps. The nightly
               check-in takes a minute and covers energy, sleep, mood, stress and
-              digestion. From there your coach looks for
+              digestion. From there your AI coach looks for
               what lines up, like the foods that tend to turn up before your low energy
               days, or the time of day your energy dips most often.
             </P>
@@ -120,7 +120,7 @@ export default function About() {
           <Reveal>
             <H>It will tell you when it is not sure</H>
             <P>
-              This is the part most apps skip. Your coach works from real counts out of
+              This is the part most apps skip. Your AI coach works from real counts out of
               your own logs, and calls what it finds an association rather than a cause,
               because that is what it is. When there is not enough to go on yet, it tells
               you, instead of spinning a story out of very little.
