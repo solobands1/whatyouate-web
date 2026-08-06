@@ -128,7 +128,7 @@ export default function Home() {
           <Reveal>
             <SectionHeading
               eyebrow="Logging"
-              title="Four ways in, all of them quick"
+              title="Fast enough that you actually keep it up"
               body="Snap a photo, scan a barcode, say it out loud, or type it in plain words. Water, activity, how you feel and the nightly check-in are one tap from the same place."
             />
           </Reveal>
