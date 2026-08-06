@@ -78,7 +78,7 @@ export default function Home() {
 
           <Parallax
             speed={16}
-            className="mt-6 sm:absolute sm:right-[2%] sm:top-[16%] sm:mt-0 sm:w-[30%] lg:w-[27%]"
+            className="mt-6 sm:absolute sm:right-[2%] sm:top-[16%] sm:mt-0 sm:w-[26%] lg:w-[23%]"
           >
             <Reveal delay={0.24}>
               <UiCard
@@ -133,7 +133,7 @@ export default function Home() {
               body="No generic tips. It spots a pattern in your own days, suggests one small change, and tells you plainly when it does not have enough to go on yet."
             />
           </Reveal>
-          <Parallax speed={22}>
+          <Parallax speed={12}>
             <Reveal delay={0.08}>
               <UiCard src="/ui/coach-nudge.png" alt="A coach nudge in WhatYouAte" width={1104} height={390} tilt={1.2} lift="lg" />
             </Reveal>
@@ -144,7 +144,7 @@ export default function Home() {
       {/* ── PATTERNS ────────────────────────────────────────── */}
       <section className="px-6 py-14 sm:py-20">
         <div className="mx-auto grid max-w-[64rem] items-center gap-10 lg:grid-cols-2 lg:gap-16">
-          <Parallax speed={-20} className="lg:order-2 lg:-mt-28">
+          <Parallax speed={-12} className="lg:order-2 lg:-mt-36">
             <Reveal>
               <UiCard src="/ui/energy-dips.png" alt="When your energy dips, across your last nine nights" width={1208} height={488} tilt={-1.4} lift="lg" />
             </Reveal>
@@ -218,8 +218,8 @@ export default function Home() {
           </div>
 
           <Reveal delay={0.1}>
-            <div className="mx-auto mt-14 flex max-w-[34rem] flex-col items-center gap-4 rounded-3xl bg-white/85 px-8 py-9 text-center shadow-[0_28px_60px_-28px_rgba(16,42,86,0.5)] ring-1 ring-[#16233B]/[0.06] backdrop-blur-sm sm:flex-row sm:gap-6 sm:text-left">
-              <AppleHealthMark size={54} />
+            <div className="mx-auto mt-14 flex max-w-[34rem] flex-col items-center gap-4 rounded-3xl bg-white/45 px-8 py-9 text-center shadow-[0_28px_60px_-28px_rgba(16,42,86,0.5)] ring-1 ring-[#16233B]/[0.06] backdrop-blur-sm sm:flex-row sm:gap-6 sm:text-left">
+              <AppleHealthMark size={68} />
               <div>
                 <p className="text-[17px] font-semibold tracking-[-0.015em]" style={{ color: INK }}>
                   Works with Apple Health

@@ -6,9 +6,9 @@ import Menu from "../../components/Menu";
 import { INK, BODY, DownloadButton } from "../../components/site";
 
 export const metadata: Metadata = {
-  title: "Why I built WhatYouAte",
+  title: "Our mission | WhatYouAte",
   description:
-    "Every nutrition app I tried counted calories. None of them helped me work out why I felt the way I did.",
+    "Helping people understand how food actually makes them feel, and making that easy enough to keep up.",
 };
 
 function P({ children }: { children: React.ReactNode }) {
@@ -50,26 +50,28 @@ export default function About() {
       <main className="px-6 pt-32 sm:pt-36">
         <div className="mx-auto max-w-[42rem]">
           <Reveal>
-            <h1 className="text-balance text-[clamp(34px,5.4vw,56px)] font-bold leading-[1.06] tracking-[-0.04em]">
-              Why I built this
+            <p className="text-[12px] font-semibold uppercase tracking-[0.18em]" style={{ color: "#8FA3C0" }}>
+              Our mission
+            </p>
+            <h1 className="mt-5 text-balance text-[clamp(32px,5vw,52px)] font-bold leading-[1.08] tracking-[-0.04em]">
+              Help people understand how food makes them feel
             </h1>
 
             <P>
-              Every nutrition app I tried counted calories. None of them helped with the
-              thing I actually wanted to know, which was why I felt the way I did.
+              Not how many calories it contained. How it made them feel. Nutrition apps
+              have spent a decade getting very good at counting, and almost no time on the
+              question people actually ask, which is why some days go well and others do
+              not.
             </P>
 
             <P>
-              For years I dealt with fatigue, brain fog, digestive trouble and energy that
-              swung around for no reason I could name. I worked through the usual list.
-              Different diets. Supplements. More than one tracking app. Every one of them
-              wanted me to log another gram of something, and not one of them could join
-              the two halves together.
+              WhatYouAte exists to close that gap, and to make closing it light enough that
+              an ordinary, busy person can keep it up.
             </P>
           </Reveal>
 
           <Reveal>
-            <H>The questions nothing could answer</H>
+            <H>The questions worth answering</H>
             <ul className="mt-6 flex flex-col gap-3">
               {QUESTIONS.map((q) => (
                 <li key={q} className="flex gap-3.5 text-[17px] leading-[1.6]" style={{ color: INK }}>
@@ -79,9 +81,14 @@ export default function About() {
               ))}
             </ul>
             <P>
-              They are simple questions. Answering them needs two things written down
-              together: what you ate, and how the day actually went. Almost nothing asks
-              for the second half.
+              They sound simple. Answering them needs two things written down together:
+              what you ate, and how the day actually went. Almost nothing asks for the
+              second half, which is why these questions usually go unanswered.
+            </P>
+            <P>
+              That gap is not academic. Fatigue, brain fog, restless sleep and digestion
+              that comes and goes are ordinary complaints, and the honest answer for most
+              people is that nobody has ever shown them their own pattern.
             </P>
           </Reveal>
 
@@ -94,22 +101,22 @@ export default function About() {
               days, or the time of day your energy dips most often.
             </P>
             <P>
-              The aim was never perfect records. It was awareness, built from your own
-              days rather than from generic advice about what people in general should eat.
+              The aim was never perfect records. It is awareness, built from your own days
+              rather than from generic advice about what people in general should eat.
             </P>
           </Reveal>
 
           <Reveal>
-            <H>What it will not do</H>
+            <H>What we will not do</H>
             <P>
-              It will not colour your day red for eating a cheeseburger. No guilt trips, no
+              We will not colour your day red for eating a cheeseburger. No guilt trips, no
               lectures, no calorie count dressed up as a moral verdict. You log what you
               ate, you see what it seems to do to your week, and you get on with your day.
             </P>
           </Reveal>
 
           <Reveal>
-            <H>It says when it does not know</H>
+            <H>We say when we do not know</H>
             <P>
               This is the part most apps skip. Your coach works from real counts out of
               your own logs, and it calls what it finds an association rather than a cause,
@@ -138,7 +145,7 @@ export default function About() {
               </h2>
               <P>
                 WhatYouAte is developed independently and changes often. If something is
-                wrong, confusing or missing, telling me genuinely does change what gets
+                wrong, confusing or missing, telling us genuinely does change what gets
                 built next.
               </P>
               <a
