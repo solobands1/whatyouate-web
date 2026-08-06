@@ -8,7 +8,7 @@ import { INK, BODY, DownloadButton } from "../../components/site";
 export const metadata: Metadata = {
   title: "Our mission | WhatYouAte",
   description:
-    "Helping people understand how food actually makes them feel, and making that easy enough to keep up.",
+    "Helping people understand how food and daily habits actually make them feel, and making that easy enough to keep up.",
 };
 
 function P({ children }: { children: React.ReactNode }) {
@@ -54,7 +54,7 @@ export default function About() {
               Our mission
             </p>
             <h1 className="mt-5 text-balance text-[clamp(32px,5vw,52px)] font-bold leading-[1.08] tracking-[-0.04em]">
-              Help people understand how food makes them feel
+              Help people understand how food and habits make them feel
             </h1>
 
             <P>
@@ -81,9 +81,10 @@ export default function About() {
               ))}
             </ul>
             <P>
-              They sound simple. Answering them needs two things written down together:
-              what you ate, and how the day actually went. Almost nothing asks for the
-              second half, which is why these questions usually go unanswered.
+              They sound simple. Answering them needs a few things written down together:
+              what you ate, how much water you drank, whether you slept well or moved
+              much, and how the day actually went. Almost nothing asks for that last
+              part, which is why these questions usually go unanswered.
             </P>
             <P>
               That gap is not academic. Fatigue, brain fog, restless sleep and digestion
@@ -93,10 +94,11 @@ export default function About() {
           </Reveal>
 
           <Reveal>
-            <H>So the app asks for both</H>
+            <H>So the app asks for all of it</H>
             <P>
-              Logging a meal takes seconds. The nightly check-in takes a minute and covers
-              energy, sleep, mood, stress and digestion. From there your coach looks for
+              Logging a meal takes seconds, and water and activity take a tap. The nightly
+              check-in takes a minute and covers energy, sleep, mood, stress and
+              digestion. From there your coach looks for
               what lines up, like the foods that tend to turn up before your low energy
               days, or the time of day your energy dips most often.
             </P>
@@ -109,7 +111,7 @@ export default function About() {
           <Reveal>
             <H>What we will not do</H>
             <P>
-              We will not colour your day red for eating a cheeseburger. No guilt trips, no
+              We will not colour your day red for eating a bag of chips. No guilt trips, no
               lectures, no calorie count dressed up as a moral verdict. You log what you
               ate, you see what it seems to do to your week, and you get on with your day.
             </P>
@@ -121,7 +123,7 @@ export default function About() {
               This is the part most apps skip. Your coach works from real counts out of
               your own logs, and calls what it finds an association rather than a cause,
               because that is what it is. When there is not enough to go on yet, it tells
-              you, instead of spinning a story out of three data points.
+              you, instead of spinning a story out of very little.
             </P>
             <P>
               None of it is medical advice, and it is not trying to be. It is a record of
@@ -132,7 +134,7 @@ export default function About() {
           <Reveal>
             <H>Small on purpose</H>
             <P>
-              Habits run three or five days rather than a month, because something you can
+              Habits run three or five days, because something you can
               finish beats something you abandon in week two. Everything here is sized to survive
               a normal, busy week. That part is deliberate.
             </P>
@@ -144,10 +146,10 @@ export default function About() {
                 Independent, and updated often
               </h2>
               <P>
-                No diet company behind it and nothing to sell you beyond the app itself,
-                which is part of why it can afford to tell you the truth. It is updated
-                often, and if something is wrong, confusing or missing, saying so genuinely
-                does change what gets built next.
+                There is no diet company behind this and nothing to sell you beyond the
+                app itself, so there is no reason to tell you anything but the truth.
+                Updates go out often, and when someone says a thing is wrong, confusing
+                or missing, that is usually what gets built next.
               </P>
               <a
                 href="mailto:hello@minimul.app"

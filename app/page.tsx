@@ -11,7 +11,7 @@ import {
 const STEPS = [
   { n: "01", t: "Log", d: "Snap a photo, scan a barcode, say it out loud, or just type it. Water and activity take a tap." },
   { n: "02", t: "Reflect", d: "One minute before bed on your energy, sleep, mood, stress and digestion." },
-  { n: "03", t: "Feel better", d: "Your coach finds what keeps turning up before your best days and your worst, then what to try next." },
+  { n: "03", t: "Feel better", d: "Your coach finds what keeps turning up before your best days and your worst, then suggests what to try next." },
 ];
 
 export default function Home() {
@@ -129,7 +129,7 @@ export default function Home() {
             <SectionHeading
               eyebrow="Logging"
               title="Fast enough that you actually keep it up"
-              body="Snap a photo, scan a barcode, say it out loud, or type it in plain words. Water, activity, how you feel and the nightly check-in are one tap from the same place."
+              body="Snap a photo, scan a barcode, say it out loud, or type it in plain words. Water, activity, how you feel and the nightly check-in are just as easy to log."
             />
           </Reveal>
           <div className="mt-12 grid items-center gap-8 sm:mt-14 lg:grid-cols-2 lg:gap-14">
@@ -161,7 +161,7 @@ export default function Home() {
               center={false}
               eyebrow="Your coach"
               title="Advice built from your week, not everyone else's"
-              body="Your coach works from what is actually in your logs, points out what keeps lining up, and tells you plainly when there is not enough there yet to call it."
+              body="Your coach works from what is actually in your logs, points out what keeps lining up, and tells you when there is not enough there yet to make a suggestion. You always know where you stand."
             />
           </Reveal>
           <Parallax speed={12}>
@@ -185,7 +185,7 @@ export default function Home() {
               center={false}
               eyebrow="What you start to see"
               title="Real counts from your own nights"
-              body="Not vague encouragement. Your coach works from real counts out of your own week, like which time of day your energy dips most, and calls them associations rather than causes."
+              body="Your patterns come from what you actually logged, like the time of day your energy dips most often, or the food that keeps turning up before a rough night. Counted, not guessed."
             />
           </Reveal>
         </div>
@@ -199,7 +199,7 @@ export default function Home() {
               center={false}
               eyebrow="Habits"
               title="Small enough to actually finish"
-              body="Each habit runs three or five days and is built around what you said you want to feel better about. A glass of water in the afternoon. A walk after lunch."
+              body="Each habit runs three or five days and is built around what you said you want to feel better about. Small changes like a glass of water in the afternoon or a walk after lunch can make a real difference."
             />
           </Reveal>
           <Parallax speed={24}>
@@ -217,7 +217,7 @@ export default function Home() {
             <SectionHeading
               eyebrow="Is it working"
               title="You find out whether it actually helped"
-              body="Weeks get compared to the ones before them, and every habit you keep is checked against how you felt. When a change is helping, your coach says so. When it is too early to tell, it says that instead."
+              body="Weeks get compared to the ones before them, and every habit you keep is checked against how you felt. When a change is helping, your coach says so. When it is too early to tell, it says so just as plainly."
             />
           </Reveal>
           <div className="mt-12 grid items-center gap-8 sm:mt-14 lg:grid-cols-2 lg:gap-14">
@@ -242,7 +242,7 @@ export default function Home() {
             <SectionHeading
               eyebrow="The rest of the day"
               title="Water, movement and sleep, in the same place"
-              body="Energy is never only about food. Log water and activity in a tap and note how you slept in your nightly check-in, so your coach reads the whole week rather than guessing from half of it."
+              body="Energy is never only about food. Log water and activity in a tap and note how you slept in your nightly check-in. WhatYouAte lays it all out in one place and makes its suggestions from your own patterns."
             />
           </Reveal>
 
