@@ -36,9 +36,9 @@ export default function Home() {
             Know why you feel the way you do
           </h1>
           <p className="mx-auto mt-7 max-w-[44ch] text-[clamp(17px,2vw,20px)] leading-[1.62]" style={{ color: BODY }}>
-            Log your food, water, sleep and movement in seconds. Your coach reads
-            them against how you actually felt, then turns that into one small habit
-            at a time.
+            Log food, water, sleep and movement in seconds. Your coach reads them
+            against how you actually felt, shows you the patterns, and suggests one
+            small change at a time.
           </p>
           <div className="mt-9 flex flex-col items-center gap-4">
             <DownloadButton />
