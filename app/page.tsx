@@ -9,7 +9,7 @@ import {
 } from "../components/site";
 
 const STEPS = [
-  { n: "01", t: "Log", d: "Snap a photo of your meal, scan a barcode, say what you ate, or just type it. Water and activity go in with one tap." },
+  { n: "01", t: "Log", d: "Snap a photo of your meal, scan a barcode, say what you ate, or just type it. Water and activity take a couple of taps." },
   { n: "02", t: "Reflect", d: "One minute before bed on your energy, sleep, mood, stress and digestion." },
   { n: "03", t: "Feel better", d: "Your coach finds what keeps turning up before your best days and your worst, then suggests what to try next." },
 ];
@@ -242,7 +242,7 @@ export default function Home() {
             <SectionHeading
               eyebrow="The rest of the day"
               title="Water, movement and sleep, in the same place"
-              body="Energy is never only about food. Log water and activity in a tap and note how you slept in your nightly check-in. WhatYouAte lays it all out in one place and makes its suggestions from your own patterns."
+              body="Energy is never only about food. Water and activity take a couple of taps, and how you slept goes in with your nightly check-in. WhatYouAte lays it all out in one place and makes its suggestions from your own patterns."
             />
           </Reveal>
 
