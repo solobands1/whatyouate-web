@@ -139,7 +139,7 @@ export default function About() {
           </Reveal>
 
           <Reveal>
-            <div className="mt-20 rounded-3xl bg-white/70 px-8 py-10 ring-1 ring-[#16233B]/[0.06] backdrop-blur-sm">
+            <div className="mt-20 rounded-3xl bg-white/45 px-8 py-10 shadow-[0_28px_60px_-28px_rgba(16,42,86,0.5)] ring-1 ring-[#16233B]/[0.06] backdrop-blur-sm">
               <h2 className="text-[20px] font-semibold tracking-[-0.02em]" style={{ color: INK }}>
                 Independent, and updated often
               </h2>
