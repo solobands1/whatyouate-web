@@ -9,7 +9,7 @@ import {
 } from "../components/site";
 
 const STEPS = [
-  { n: "01", t: "Log", d: "Snap a photo of your meal, scan a barcode, say what you ate, or just type it. Water and activity take a tap." },
+  { n: "01", t: "Log", d: "Snap a photo of your meal, scan a barcode, say what you ate, or just type it. Water and activity go in with one tap." },
   { n: "02", t: "Reflect", d: "One minute before bed on your energy, sleep, mood, stress and digestion." },
   { n: "03", t: "Feel better", d: "Your coach finds what keeps turning up before your best days and your worst, then suggests what to try next." },
 ];

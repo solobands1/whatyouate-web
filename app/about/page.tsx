@@ -96,7 +96,7 @@ export default function About() {
           <Reveal>
             <H>So the app asks for all of it</H>
             <P>
-              Logging a meal takes seconds, and water and activity take a tap. The nightly
+              Logging a meal takes seconds, and water and activity go in with one tap. The nightly
               check-in takes a minute and covers energy, sleep, mood, stress and
               digestion. From there your coach looks for
               what lines up, like the foods that tend to turn up before your low energy
