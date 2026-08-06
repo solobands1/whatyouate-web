@@ -23,11 +23,21 @@ export const metadata: Metadata = {
     url: "https://whatyouate.app",
     siteName: "WhatYouAte",
     type: "website",
+    locale: "en_CA",
+    images: [
+      {
+        url: "/og.png",
+        width: 1200,
+        height: 630,
+        alt: "WhatYouAte. Know why you feel the way you do.",
+      },
+    ],
   },
   twitter: {
     card: "summary_large_image",
     title: TITLE,
     description: DESCRIPTION,
+    images: ["/og.png"],
   },
 };
 
