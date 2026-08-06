@@ -242,7 +242,7 @@ export default function Home() {
             <SectionHeading
               eyebrow="The rest of the day"
               title="Water, movement and sleep, in the same place"
-              body="Energy is never only about food. Log water and activity in a tap, note how you slept in your nightly check-in, and let it all sit alongside your meals."
+              body="Energy is never only about food. Log water and activity in a tap and note how you slept in your nightly check-in, so your coach reads the whole week rather than guessing from half of it."
             />
           </Reveal>
 
