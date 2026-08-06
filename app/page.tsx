@@ -58,23 +58,21 @@ export default function Home() {
             crossing it the way Bevel lets the watch break the phone. */}
         <div className="relative mx-auto mt-10 w-full max-w-[60rem] sm:mt-12">
           <Parallax speed={-18}>
-            <Enter delay={0.72} duration={1.45} from="rise" ease="settle">
-              <Image
-                src="/device/iphone-home.png"
-                alt="The WhatYouAte home screen"
-                width={1500}
-                height={2614}
-                priority
-                className="mx-auto block w-[78%] max-w-[360px] sm:w-[46%] sm:max-w-[430px]"
-              />
-            </Enter>
+            <Image
+              src="/device/iphone-home.png"
+              alt="The WhatYouAte home screen"
+              width={1500}
+              height={2614}
+              priority
+              className="mx-auto block w-[78%] max-w-[360px] sm:w-[46%] sm:max-w-[430px]"
+            />
           </Parallax>
 
           <Parallax
             speed={34}
             className="-mt-10 sm:absolute sm:bottom-[26%] sm:left-[2%] sm:mt-0 sm:w-[42%] lg:w-[38%]"
           >
-            <Enter delay={1.08} duration={1.45} from="left" ease="settle">
+            <Enter delay={0.45} duration={1.1} from="left">
               <UiCard
                 src="/ui/food-feeling.png"
                 alt="Your lower-energy days have more often followed fried or greasy food the night before"
@@ -87,7 +85,7 @@ export default function Home() {
             speed={16}
             className="mt-6 sm:absolute sm:right-[1%] sm:top-[24%] sm:mt-0 sm:w-[30%] lg:w-[27%]"
           >
-            <Enter delay={1.26} duration={1.45} from="right" ease="settle">
+            <Enter delay={0.6} duration={1.1} from="right">
               <UiCard
                 src="/ui/streak-week.png"
                 alt="This week, a fourteen night reflection streak"
