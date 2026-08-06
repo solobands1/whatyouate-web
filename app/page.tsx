@@ -162,7 +162,7 @@ export default function Home() {
               center={false}
               eyebrow="Your coach"
               title="Advice built from your week, not everyone else's"
-              body="Your coach is the AI built into the app, and it only ever works from your own logs. It points out what keeps lining up and tells you when there is not enough there yet to make a suggestion. You always know where you stand."
+              body="Your AI coach is built into the app, and it only ever works from your own logs. It points out what keeps lining up and tells you when there is not enough there yet to make a suggestion. You always know where you stand."
             />
           </Reveal>
           <Parallax speed={12}>
