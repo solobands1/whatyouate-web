@@ -147,7 +147,8 @@ export default function Home() {
           <Reveal delay={0.12}>
             <p className="mx-auto mt-10 max-w-[46ch] text-center text-[16px] leading-[1.7]" style={{ color: BODY }}>
               Log a cheeseburger and you get the numbers, a portion you can adjust, and
-              nothing else. No warning colour, no comment.
+              nothing else. Nothing turns red, and nothing tells you what you should
+              have eaten instead.
             </p>
           </Reveal>
         </div>
@@ -161,7 +162,7 @@ export default function Home() {
               center={false}
               eyebrow="Your coach"
               title="Advice built from your week, not everyone else's"
-              body="Your coach works from what is actually in your logs, points out what keeps lining up, and tells you when there is not enough there yet to make a suggestion. You always know where you stand."
+              body="Your coach is the AI built into the app, and it only ever works from your own logs. It points out what keeps lining up and tells you when there is not enough there yet to make a suggestion. You always know where you stand."
             />
           </Reveal>
           <Parallax speed={12}>
