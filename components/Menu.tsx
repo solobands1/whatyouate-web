@@ -63,17 +63,10 @@ export default function Menu() {
               key={l.label}
               href={l.href}
               role="menuitem"
-              aria-disabled={l.soon || undefined}
-              onClick={(e) => {
-                if (l.soon) e.preventDefault();
-                else setOpen(false);
-              }}
-              className={`flex items-center justify-between rounded-xl px-3.5 py-2.5 text-[15px] font-medium transition ${
-                l.soon ? "cursor-default text-[#9AAAC2]" : "text-[#16233B] hover:bg-[#F0F6FD]"
-              }`}
+              onClick={() => setOpen(false)}
+              className="flex items-center rounded-xl px-3.5 py-2.5 text-[15px] font-medium text-[#16233B] transition hover:bg-[#F0F6FD]"
             >
               {l.label}
-              {l.soon && <span className="text-[11px] font-semibold uppercase tracking-wider">Soon</span>}
             </a>
           ))}
 
