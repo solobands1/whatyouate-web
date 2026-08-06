@@ -78,7 +78,7 @@ export default function Home() {
 
           <Parallax
             speed={16}
-            className="mt-6 sm:absolute sm:right-[1%] sm:top-[16%] sm:mt-0 sm:w-[30%] lg:w-[27%]"
+            className="mt-6 sm:absolute sm:right-[1%] sm:top-[24%] sm:mt-0 sm:w-[30%] lg:w-[27%]"
           >
             <Reveal delay={0.24}>
               <UiCard
