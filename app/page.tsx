@@ -144,7 +144,7 @@ export default function Home() {
       {/* ── PATTERNS ────────────────────────────────────────── */}
       <section className="px-6 py-14 sm:py-20">
         <div className="mx-auto grid max-w-[64rem] items-center gap-10 lg:grid-cols-2 lg:gap-16">
-          <Parallax speed={-12} className="-mt-8 sm:-mt-10 lg:order-2 lg:-mt-36">
+          <Parallax speed={-12} className="-mt-16 sm:-mt-20 lg:order-2 lg:-mt-36">
             <Reveal>
               <UiCard src="/ui/energy-dips.png" alt="When your energy dips, across your last nine nights" width={1208} height={488} tilt={-1.4} lift="lg" />
             </Reveal>
