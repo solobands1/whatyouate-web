@@ -116,12 +116,12 @@ export default function About() {
           </Reveal>
 
           <Reveal>
-            <H>We say when we do not know</H>
+            <H>It will tell you when it is not sure</H>
             <P>
               This is the part most apps skip. Your coach works from real counts out of
-              your own logs, and it calls what it finds an association rather than a cause,
-              because that is what it is. When there is not enough to go on yet, it says so
-              instead of spinning a story out of three data points.
+              your own logs, and calls what it finds an association rather than a cause,
+              because that is what it is. When there is not enough to go on yet, it tells
+              you, instead of spinning a story out of three data points.
             </P>
             <P>
               None of it is medical advice, and it is not trying to be. It is a record of

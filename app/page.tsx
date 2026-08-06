@@ -160,8 +160,8 @@ export default function Home() {
             <SectionHeading
               center={false}
               eyebrow="Your coach"
-              title="It reads your week, not a template"
-              body="No generic tips. It spots a pattern in your own days, suggests one small change, and tells you plainly when it does not have enough to go on yet."
+              title="Advice from your own week, not a template"
+              body="No generic tips. Your coach spots a pattern in your own days, suggests one small change, and tells you plainly when there is not enough to go on yet."
             />
           </Reveal>
           <Parallax speed={12}>
@@ -185,7 +185,7 @@ export default function Home() {
               center={false}
               eyebrow="What you start to see"
               title="Real counts from your own nights"
-              body="Not vague encouragement. Real counts from your own week, like which time of day your energy dips most, always labelled as associations rather than causes."
+              body="Not vague encouragement. Your coach works from real counts out of your own week, like which time of day your energy dips most, and calls them associations rather than causes."
             />
           </Reveal>
         </div>
