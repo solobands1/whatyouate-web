@@ -65,10 +65,35 @@ body {
   }
 }
 
+/* Hero entrance. Reveal skips anything above the fold, so this covers the one
+   part of the page that is already on screen when it loads. */
+@layer components {
+  .enter {
+    opacity: 0;
+    transition:
+      opacity var(--enter-dur, 0.9s) cubic-bezier(0.16, 1, 0.3, 1) var(--enter-delay, 0s),
+      transform var(--enter-dur, 0.9s) cubic-bezier(0.16, 1, 0.3, 1) var(--enter-delay, 0s);
+    will-change: opacity, transform;
+  }
+  .enter-up { transform: translate3d(0, 26px, 0) scale(0.985); }
+  .enter-left { transform: translate3d(-26px, 20px, 0) scale(0.965); }
+  .enter-right { transform: translate3d(26px, 20px, 0) scale(0.965); }
+  .enter-in {
+    opacity: 1;
+    transform: none;
+    will-change: auto;
+  }
+}
+
 @media (prefers-reduced-motion: reduce) {
   html { scroll-behavior: auto; }
   .reveal,
-  .reveal-visible {
+  .reveal-visible,
+  .enter,
+  .enter-up,
+  .enter-left,
+  .enter-right,
+  .enter-in {
     transition: none;
     transform: none;
     opacity: 1;
