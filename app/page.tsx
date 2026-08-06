@@ -35,7 +35,7 @@ export default function Home() {
           <h1 className="text-balance text-[clamp(40px,6.6vw,74px)] font-bold leading-[1.03] tracking-[-0.04em]">
             Know why you feel the way you do
           </h1>
-          <p className="mx-auto mt-6 max-w-[46ch] text-[clamp(16px,2vw,20px)] leading-[1.58]" style={{ color: BODY }}>
+          <p className="mx-auto mt-6 max-w-[46ch] text-balance text-[clamp(16px,2vw,20px)] leading-[1.58] sm:max-w-[46rem]" style={{ color: BODY }}>
             Log food, water, sleep and movement in seconds. Your coach reads them
             against how you felt, shows you the patterns, and suggests one small change.
           </p>
