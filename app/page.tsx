@@ -122,6 +122,37 @@ export default function Home() {
         </div>
       </section>
 
+      {/* ── LOGGING ─────────────────────────────────────────── */}
+      <section className="px-6 py-14 sm:py-20">
+        <div className="mx-auto max-w-[64rem]">
+          <Reveal>
+            <SectionHeading
+              eyebrow="Logging"
+              title="Four ways in, all of them quick"
+              body="Snap a photo, scan a barcode, say it out loud, or type it in plain words. Water, activity, how you feel and the nightly check-in are one tap from the same place."
+            />
+          </Reveal>
+          <div className="mt-12 grid items-center gap-8 sm:mt-14 lg:grid-cols-2 lg:gap-14">
+            <Parallax speed={-14}>
+              <Reveal>
+                <UiCard src="/ui/log-ways.png" alt="Log food by photo, manual add, barcode or quick add" width={1272} height={750} tilt={-1.2} lift="lg" />
+              </Reveal>
+            </Parallax>
+            <Parallax speed={16}>
+              <Reveal delay={0.08}>
+                <UiCard src="/ui/log-result.png" alt="A logged cheeseburger and fries, with portion size" width={1143} height={917} tilt={1.2} lift="lg" className="mx-auto w-[80%] lg:w-[86%]" />
+              </Reveal>
+            </Parallax>
+          </div>
+          <Reveal delay={0.12}>
+            <p className="mx-auto mt-10 max-w-[46ch] text-center text-[16px] leading-[1.7]" style={{ color: BODY }}>
+              Log a cheeseburger and you get the numbers, a portion you can adjust, and
+              nothing else. No warning colour, no comment.
+            </p>
+          </Reveal>
+        </div>
+      </section>
+
       {/* ── COACH ───────────────────────────────────────────── */}
       <section className="px-6 py-14 sm:py-20">
         <div className="mx-auto grid max-w-[64rem] items-center gap-10 lg:grid-cols-2 lg:gap-16">
@@ -260,7 +291,14 @@ export default function Home() {
               Download free and start with your next meal.
             </p>
             <DownloadButton tone="light" className="mt-2" />
-            <p className="text-[13.5px] font-medium text-white/70">7 day Pro trial · Cancel anytime</p>
+            <p className="text-[13.5px] font-medium text-white/75">
+              Free to download. Pro is $17.99 a month or $149.99 a year, after a 7 day
+              free trial. Cancel anytime.
+            </p>
+            <p className="mt-3 max-w-[42ch] text-[13.5px] leading-[1.6] text-white/60">
+              Your logs are yours. We do not sell your data, we do not advertise against
+              it, and you can delete your account and everything in it whenever you like.
+            </p>
           </div>
         </Reveal>
       </section>
