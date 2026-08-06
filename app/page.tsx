@@ -129,7 +129,7 @@ export default function Home() {
             <SectionHeading
               eyebrow="Logging"
               title="Fast enough that you actually keep it up"
-              body="Snap a photo, scan a barcode, say it out loud, or type it in plain words. Water, activity, how you feel and the nightly check-in are just as easy to log."
+              body="A meal can go in as a photo, a barcode, a few spoken words, or plain text. Water, activity, how you feel and the nightly check-in are just as easy to log."
             />
           </Reveal>
           <div className="mt-12 grid items-center gap-8 sm:mt-14 lg:grid-cols-2 lg:gap-14">
