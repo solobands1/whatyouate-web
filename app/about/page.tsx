@@ -141,12 +141,13 @@ export default function About() {
           <Reveal>
             <div className="mt-20 rounded-3xl bg-white/70 px-8 py-10 ring-1 ring-[#16233B]/[0.06] backdrop-blur-sm">
               <h2 className="text-[20px] font-semibold tracking-[-0.02em]" style={{ color: INK }}>
-                Still being built
+                Independent, and updated often
               </h2>
               <P>
-                WhatYouAte is developed independently and changes often. If something is
-                wrong, confusing or missing, telling us genuinely does change what gets
-                built next.
+                No diet company behind it and nothing to sell you beyond the app itself,
+                which is part of why it can afford to tell you the truth. It is updated
+                often, and if something is wrong, confusing or missing, saying so genuinely
+                does change what gets built next.
               </P>
               <a
                 href="mailto:hello@minimul.app"
