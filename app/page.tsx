@@ -275,7 +275,7 @@ export default function Home() {
               </Parallax>
               <Parallax speed={20}>
                 <Reveal delay={0.12}>
-                  <UiCard src="/ui/micronutrients.png" alt="Micronutrients grouped by what they do for you" width={1208} height={630} tilt={1} lift="md" />
+                  <UiCard src="/ui/micronutrients.png" alt="Micronutrients grouped by what they do for you" width={1208} height={656} tilt={1} lift="md" />
                 </Reveal>
               </Parallax>
             </div>
