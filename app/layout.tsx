@@ -10,6 +10,10 @@ export const viewport: Viewport = {
 };
 
 const TITLE = "WhatYouAte — Eat. Reflect. Feel better.";
+/** Shown above the domain in link previews. The card already carries the
+ *  wordmark and the domain sits right underneath, so the brand is not
+ *  repeated a third time here. */
+const SHARE_TITLE = "Eat | Reflect | Feel Better";
 const DESCRIPTION =
   "Find the link between what you eat and how you feel. Log a meal in seconds, check in for a minute at night, and your coach shows you what lines up.";
 
@@ -18,7 +22,7 @@ export const metadata: Metadata = {
   title: TITLE,
   description: DESCRIPTION,
   openGraph: {
-    title: TITLE,
+    title: SHARE_TITLE,
     description: DESCRIPTION,
     url: "https://whatyouate.app",
     siteName: "WhatYouAte",
@@ -35,7 +39,7 @@ export const metadata: Metadata = {
   },
   twitter: {
     card: "summary_large_image",
-    title: TITLE,
+    title: SHARE_TITLE,
     description: DESCRIPTION,
     images: ["/og-v2.png"],
   },
