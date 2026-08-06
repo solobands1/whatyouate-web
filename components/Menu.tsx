@@ -55,7 +55,7 @@ export default function Menu() {
       {open && (
         <div
           role="menu"
-          className="absolute right-0 top-12 w-56 overflow-hidden rounded-2xl bg-white/95 p-2 ring-1 ring-[#16233B]/[0.08] backdrop-blur"
+          className="absolute right-0 top-12 w-56 overflow-hidden rounded-2xl bg-white/45 p-2 ring-1 ring-[#16233B]/[0.08] backdrop-blur-md"
           style={{ boxShadow: "0 24px 50px -18px rgba(16,42,86,0.35)" }}
         >
           {LINKS.map((l) => (
@@ -64,7 +64,7 @@ export default function Menu() {
               href={l.href}
               role="menuitem"
               onClick={() => setOpen(false)}
-              className="flex items-center rounded-xl px-3.5 py-2.5 text-[15px] font-medium text-[#16233B] transition hover:bg-[#F0F6FD]"
+              className="flex items-center rounded-xl px-3.5 py-2.5 text-[15px] font-medium text-[#16233B] transition hover:bg-white/60"
             >
               {l.label}
             </a>
