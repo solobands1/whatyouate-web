@@ -205,7 +205,7 @@ export default function Home() {
           </Reveal>
           <Parallax speed={24}>
             <Reveal delay={0.08}>
-              <UiCard src="/ui/habit-builder.png" alt="The Habit Builder card in WhatYouAte" width={1200} height={702} tilt={1.4} lift="lg" />
+              <UiCard src="/ui/habit-builder.png" alt="The Habit Builder card in WhatYouAte" width={1200} height={702} tilt={1.4} lift="lg" bare />
             </Reveal>
           </Parallax>
         </div>

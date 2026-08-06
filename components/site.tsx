@@ -51,6 +51,7 @@ export function UiCard({
   tilt = 0,
   lift = "md",
   priority = false,
+  bare = false,
 }: {
   src: string;
   alt: string;
@@ -60,16 +61,36 @@ export function UiCard({
   tilt?: number;
   lift?: "sm" | "md" | "lg";
   priority?: boolean;
+  /**
+   * For PNGs that already carry their own rounded silhouette. The default
+   * wrapper is a white rounded-[22px] box, and a card whose real corner is
+   * nearer 70px pokes its wrapper out past its own border at every corner.
+   * Bare drops the box and casts the shadow off the alpha instead.
+   */
+  bare?: boolean;
 }) {
   const shadow = {
     sm: "0 18px 40px -18px rgba(16,42,86,0.28)",
     md: "0 34px 70px -26px rgba(16,42,86,0.42)",
     lg: "0 54px 100px -34px rgba(16,42,86,0.55)",
   }[lift];
+  const drop = {
+    sm: "drop-shadow(0 10px 18px rgba(16,42,86,0.16))",
+    md: "drop-shadow(0 18px 30px rgba(16,42,86,0.20))",
+    lg: "drop-shadow(0 26px 44px rgba(16,42,86,0.24))",
+  }[lift];
   return (
     <div
-      className={`overflow-hidden rounded-[22px] bg-white ring-1 ring-[#16233B]/[0.06] ${className}`}
-      style={{ boxShadow: shadow, transform: tilt ? `rotate(${tilt}deg)` : undefined }}
+      className={
+        bare
+          ? className
+          : `overflow-hidden rounded-[22px] bg-white ring-1 ring-[#16233B]/[0.06] ${className}`
+      }
+      style={{
+        boxShadow: bare ? undefined : shadow,
+        filter: bare ? drop : undefined,
+        transform: tilt ? `rotate(${tilt}deg)` : undefined,
+      }}
     >
       <Image src={src} alt={alt} width={width} height={height} priority={priority} className="block w-full" />
     </div>
