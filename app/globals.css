@@ -71,13 +71,16 @@ body {
   .enter {
     opacity: 0;
     transition:
-      opacity var(--enter-dur, 0.9s) cubic-bezier(0.16, 1, 0.3, 1) var(--enter-delay, 0s),
-      transform var(--enter-dur, 0.9s) cubic-bezier(0.16, 1, 0.3, 1) var(--enter-delay, 0s);
+      opacity var(--enter-dur, 0.9s) var(--enter-ease, cubic-bezier(0.16, 1, 0.3, 1))
+        var(--enter-delay, 0s),
+      transform var(--enter-dur, 0.9s) var(--enter-ease, cubic-bezier(0.16, 1, 0.3, 1))
+        var(--enter-delay, 0s);
     will-change: opacity, transform;
   }
-  .enter-up { transform: translate3d(0, 26px, 0) scale(0.985); }
-  .enter-left { transform: translate3d(-26px, 20px, 0) scale(0.965); }
-  .enter-right { transform: translate3d(26px, 20px, 0) scale(0.965); }
+  .enter-up { transform: translate3d(0, 22px, 0) scale(0.992); }
+  .enter-rise { transform: translate3d(0, 52px, 0) scale(0.972); }
+  .enter-left { transform: translate3d(-34px, 30px, 0) scale(0.955); }
+  .enter-right { transform: translate3d(34px, 30px, 0) scale(0.955); }
   .enter-in {
     opacity: 1;
     transform: none;
@@ -91,6 +94,7 @@ body {
   .reveal-visible,
   .enter,
   .enter-up,
+  .enter-rise,
   .enter-left,
   .enter-right,
   .enter-in {

@@ -33,18 +33,18 @@ export default function Home() {
       {/* ── HERO ────────────────────────────────────────────── */}
       <section className="relative px-6 pb-4 pt-28 sm:pb-6 sm:pt-32">
         <div className="mx-auto max-w-[52rem] text-center">
-          <Enter duration={0.55}>
+          <Enter duration={1.05}>
             <h1 className="text-balance text-[clamp(40px,6.6vw,74px)] font-bold leading-[1.03] tracking-[-0.04em]">
               Know why you feel the way you do
             </h1>
           </Enter>
-          <Enter delay={0.07} duration={0.55}>
+          <Enter delay={0.16} duration={1.05}>
             <p className="mx-auto mt-6 max-w-[46ch] text-balance text-[clamp(16px,2vw,20px)] leading-[1.58] sm:max-w-[46rem]" style={{ color: BODY }}>
               Log food, water, sleep and movement in seconds. Your coach reads them
               against how you felt, shows you the patterns, and suggests one small change.
             </p>
           </Enter>
-          <Enter delay={0.14} duration={0.55}>
+          <Enter delay={0.3} duration={1.05}>
             <div className="mt-9 flex flex-col items-center gap-4">
               <DownloadButton />
               <p className="text-[13.5px] font-medium" style={{ color: FAINT }}>
@@ -58,7 +58,7 @@ export default function Home() {
             crossing it the way Bevel lets the watch break the phone. */}
         <div className="relative mx-auto mt-10 w-full max-w-[60rem] sm:mt-12">
           <Parallax speed={-18}>
-            <Enter delay={0.2}>
+            <Enter delay={0.72} duration={1.45} from="rise" ease="settle">
               <Image
                 src="/device/iphone-home.png"
                 alt="The WhatYouAte home screen"
@@ -74,7 +74,7 @@ export default function Home() {
             speed={34}
             className="-mt-10 sm:absolute sm:bottom-[26%] sm:left-[2%] sm:mt-0 sm:w-[42%] lg:w-[38%]"
           >
-            <Enter delay={0.52} from="left">
+            <Enter delay={1.08} duration={1.45} from="left" ease="settle">
               <UiCard
                 src="/ui/food-feeling.png"
                 alt="Your lower-energy days have more often followed fried or greasy food the night before"
@@ -87,7 +87,7 @@ export default function Home() {
             speed={16}
             className="mt-6 sm:absolute sm:right-[1%] sm:top-[24%] sm:mt-0 sm:w-[30%] lg:w-[27%]"
           >
-            <Enter delay={0.66} from="right">
+            <Enter delay={1.26} duration={1.45} from="right" ease="settle">
               <UiCard
                 src="/ui/streak-week.png"
                 alt="This week, a fourteen night reflection streak"

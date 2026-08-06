@@ -19,12 +19,15 @@ export default function Enter({
   delay = 0,
   from = "up",
   duration = 0.9,
+  ease = "out",
 }: {
   children: React.ReactNode;
   className?: string;
   delay?: number;
-  from?: "up" | "left" | "right";
+  from?: "up" | "rise" | "left" | "right";
   duration?: number;
+  /** "settle" overshoots a touch and eases back, so it finds its place. */
+  ease?: "out" | "settle";
 }) {
   const ref = useRef<HTMLDivElement>(null);
 
@@ -35,6 +38,12 @@ export default function Enter({
 
     el.style.setProperty("--enter-delay", `${delay}s`);
     el.style.setProperty("--enter-dur", `${duration}s`);
+    el.style.setProperty(
+      "--enter-ease",
+      ease === "settle"
+        ? "cubic-bezier(0.18, 1.12, 0.32, 1)"
+        : "cubic-bezier(0.16, 1, 0.3, 1)"
+    );
     el.classList.add("enter", `enter-${from}`);
 
     // Two frames: one for the browser to accept the hidden state, one to
@@ -43,7 +52,7 @@ export default function Enter({
     requestAnimationFrame(() =>
       requestAnimationFrame(() => el.classList.add("enter-in"))
     );
-  }, [delay, from, duration]);
+  }, [delay, from, duration, ease]);
 
   return (
     <div ref={ref} className={className}>
