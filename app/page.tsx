@@ -9,7 +9,7 @@ import {
 } from "../components/site";
 
 const STEPS = [
-  { n: "01", t: "Eat", d: "Snap a photo, scan a barcode, say it out loud, or just type it. No weighing, no measuring." },
+  { n: "01", t: "Log", d: "Snap a photo, scan a barcode, say it out loud, or just type it. No weighing, no measuring." },
   { n: "02", t: "Reflect", d: "One minute before bed on your energy, sleep, mood, stress and digestion." },
   { n: "03", t: "Feel better", d: "Your coach reads both and tells you what it notices, one small change at a time." },
 ];
@@ -207,6 +207,31 @@ export default function Home() {
               <UiCard src="/ui/habit-builder.png" alt="The Habit Builder card in WhatYouAte" width={1200} height={702} tilt={1.4} lift="lg" />
             </Reveal>
           </Parallax>
+        </div>
+      </section>
+
+      {/* ── IS IT WORKING ───────────────────────────────────── */}
+      <section className="px-6 py-14 sm:py-20">
+        <div className="mx-auto max-w-[64rem]">
+          <Reveal>
+            <SectionHeading
+              eyebrow="Is it working"
+              title="You find out whether it actually helped"
+              body="Weeks get compared to the ones before them, and every habit you keep is checked against how you felt. When a change is helping, your coach says so. When it is too early to tell, it says that instead."
+            />
+          </Reveal>
+          <div className="mt-12 grid items-center gap-8 sm:mt-14 lg:grid-cols-2 lg:gap-14">
+            <Parallax speed={-14}>
+              <Reveal>
+                <UiCard src="/ui/compared-week.png" alt="Sleep improved, energy improved, stress held steady" width={1192} height={453} tilt={-1.2} lift="lg" />
+              </Reveal>
+            </Parallax>
+            <Parallax speed={16}>
+              <Reveal delay={0.08}>
+                <UiCard src="/ui/changes-helping.png" alt="Habits you kept, and whether they seem to be helping" width={1204} height={642} tilt={1.2} lift="lg" />
+              </Reveal>
+            </Parallax>
+          </div>
         </div>
       </section>
 
