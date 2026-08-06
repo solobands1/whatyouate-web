@@ -9,9 +9,9 @@ import {
 } from "../components/site";
 
 const STEPS = [
-  { n: "01", t: "Log", d: "Snap a photo, scan a barcode, say it out loud, or just type it. No weighing, no measuring." },
+  { n: "01", t: "Log", d: "Snap a photo, scan a barcode, say it out loud, or just type it. Water and activity take a tap." },
   { n: "02", t: "Reflect", d: "One minute before bed on your energy, sleep, mood, stress and digestion." },
-  { n: "03", t: "Feel better", d: "Your coach reads both and tells you what it notices, one small change at a time." },
+  { n: "03", t: "Feel better", d: "Your coach finds what keeps turning up before your best days and your worst, then what to try next." },
 ];
 
 export default function Home() {
@@ -98,7 +98,7 @@ export default function Home() {
             <SectionHeading
               eyebrow="How it works"
               title="Three small things, every day"
-              body="Nothing to weigh, nothing to plan. Logging takes seconds and the nightly check-in takes a minute."
+              body="Nothing to weigh, nothing to plan, and nothing you have to give up."
             />
           </Reveal>
           <div className="mt-12 grid gap-10 sm:mt-14 sm:grid-cols-3 sm:gap-12">
