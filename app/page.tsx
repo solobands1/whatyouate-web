@@ -223,7 +223,7 @@ export default function Home() {
           <div className="mt-12 grid items-center gap-8 sm:mt-14 lg:grid-cols-2 lg:gap-14">
             <Parallax speed={-14}>
               <Reveal>
-                <UiCard src="/ui/compared-week.png" alt="Sleep improved, energy improved, stress held steady" width={1192} height={453} tilt={-1.2} lift="lg" />
+                <UiCard src="/ui/compared-week.png" alt="Sleep improved, energy improved, stress held steady" width={1196} height={478} tilt={-1.2} lift="lg" />
               </Reveal>
             </Parallax>
             <Parallax speed={16}>
