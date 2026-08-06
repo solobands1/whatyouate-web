@@ -132,8 +132,8 @@ export default function About() {
           <Reveal>
             <H>Small on purpose</H>
             <P>
-              Habits run three days rather than thirty, because something you can finish
-              beats something you abandon on day four. Everything here is sized to survive
+              Habits run three or five days rather than a month, because something you can
+              finish beats something you abandon in week two. Everything here is sized to survive
               a normal, busy week. That part is deliberate.
             </P>
           </Reveal>
