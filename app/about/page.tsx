@@ -6,9 +6,9 @@ import Menu from "../../components/Menu";
 import { INK, BODY, DownloadButton } from "../../components/site";
 
 export const metadata: Metadata = {
-  title: "About WhatYouAte",
+  title: "Why I built WhatYouAte",
   description:
-    "Why WhatYouAte exists: a food and feeling journal built for ordinary days, not for chasing numbers.",
+    "Every nutrition app I tried counted calories. None of them helped me work out why I felt the way I did.",
 };
 
 function P({ children }: { children: React.ReactNode }) {
@@ -21,11 +21,18 @@ function P({ children }: { children: React.ReactNode }) {
 
 function H({ children }: { children: React.ReactNode }) {
   return (
-    <h2 className="mt-16 text-[clamp(24px,3.2vw,32px)] font-bold leading-[1.2] tracking-[-0.03em]">
+    <h2 className="mt-16 text-[clamp(23px,3.1vw,31px)] font-bold leading-[1.2] tracking-[-0.03em]">
       {children}
     </h2>
   );
 }
+
+const QUESTIONS = [
+  "Why am I exhausted after this meal?",
+  "Which foods give me steady energy?",
+  "What sets off the brain fog and the bloating?",
+  "Am I actually getting better over time?",
+];
 
 export default function About() {
   return (
@@ -44,64 +51,83 @@ export default function About() {
         <div className="mx-auto max-w-[42rem]">
           <Reveal>
             <h1 className="text-balance text-[clamp(34px,5.4vw,56px)] font-bold leading-[1.06] tracking-[-0.04em]">
-              Why this app exists
+              Why I built this
             </h1>
 
             <P>
-              Most food apps are built for people who already enjoy tracking. They assume
-              you want to weigh things, hit targets, and treat eating as a scoreboard.
-              That genuinely works for some people. For most of us it lasts about a week,
-              and then the guilt starts doing the talking.
+              Every nutrition app I tried counted calories. None of them helped with the
+              thing I actually wanted to know, which was why I felt the way I did.
             </P>
 
             <P>
-              This one starts somewhere else. It starts with the fact that some days you
-              feel great, other days you are flat by two in the afternoon, and it is
-              surprisingly hard to say why.
+              For years I dealt with fatigue, brain fog, digestive trouble and energy that
+              swung around for no reason I could name. I worked through the usual list.
+              Different diets. Supplements. More than one tracking app. Every one of them
+              wanted me to log another gram of something, and not one of them could join
+              the two halves together.
             </P>
           </Reveal>
 
           <Reveal>
-            <H>Who it is for</H>
+            <H>The questions nothing could answer</H>
+            <ul className="mt-6 flex flex-col gap-3">
+              {QUESTIONS.map((q) => (
+                <li key={q} className="flex gap-3.5 text-[17px] leading-[1.6]" style={{ color: INK }}>
+                  <span className="mt-[9px] h-[7px] w-[7px] shrink-0 rounded-full" style={{ background: "#6FA8FF" }} />
+                  {q}
+                </li>
+              ))}
+            </ul>
             <P>
-              Ordinary days. Not athletes chasing macros, not anyone optimising a
-              physique. If you have ever wondered why your energy fell off a cliff after
-              lunch, or why some weeks feel steadier than others, that is the person this
-              was built for.
+              They are simple questions. Answering them needs two things written down
+              together: what you ate, and how the day actually went. Almost nothing asks
+              for the second half.
+            </P>
+          </Reveal>
+
+          <Reveal>
+            <H>So the app asks for both</H>
+            <P>
+              Logging a meal takes seconds. The nightly check-in takes a minute and covers
+              energy, sleep, mood, stress and digestion. From there your coach looks for
+              what lines up, like the foods that tend to turn up before your low energy
+              days, or the time of day your energy dips most often.
+            </P>
+            <P>
+              The aim was never perfect records. It was awareness, built from your own
+              days rather than from generic advice about what people in general should eat.
             </P>
           </Reveal>
 
           <Reveal>
             <H>What it will not do</H>
             <P>
-              It will not colour your day red for eating a cheeseburger. It will not
-              lecture you, guilt you, or dress a calorie count up as a moral verdict. You
-              log what you ate, you see what it seems to do to your week, and you get on
-              with your day.
+              It will not colour your day red for eating a cheeseburger. No guilt trips, no
+              lectures, no calorie count dressed up as a moral verdict. You log what you
+              ate, you see what it seems to do to your week, and you get on with your day.
             </P>
           </Reveal>
 
           <Reveal>
             <H>It says when it does not know</H>
             <P>
-              This is the part most apps skip. Your coach works from real counts drawn
-              from your own logs, and it labels what it finds as associations rather than
-              causes, because that is what they are. When there is not enough to go on
-              yet, it says so plainly instead of inventing a story from three data points.
+              This is the part most apps skip. Your coach works from real counts out of
+              your own logs, and it calls what it finds an association rather than a cause,
+              because that is what it is. When there is not enough to go on yet, it says so
+              instead of spinning a story out of three data points.
             </P>
             <P>
-              An app that admits uncertainty is easier to trust when it does have
-              something useful to tell you.
+              None of it is medical advice, and it is not trying to be. It is a record of
+              your own days, read back to you honestly.
             </P>
           </Reveal>
 
           <Reveal>
             <H>Small on purpose</H>
             <P>
-              A meal takes seconds to log. The nightly check-in takes a minute. Habits run
-              three days, not thirty, because something you can actually finish beats
-              something you abandon on day four. None of that is an accident. Every part
-              of it is sized to survive a normal, busy week.
+              Habits run three days rather than thirty, because something you can finish
+              beats something you abandon on day four. Everything here is sized to survive
+              a normal, busy week. That part is deliberate.
             </P>
           </Reveal>
 
@@ -112,7 +138,7 @@ export default function About() {
               </h2>
               <P>
                 WhatYouAte is developed independently and changes often. If something is
-                wrong, confusing, or missing, saying so genuinely does change what gets
+                wrong, confusing or missing, telling me genuinely does change what gets
                 built next.
               </P>
               <a
