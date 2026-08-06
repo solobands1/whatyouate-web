@@ -59,7 +59,7 @@ export default function Home() {
         <div className="relative mx-auto mt-10 w-full max-w-[60rem] sm:mt-12">
           <Parallax speed={-18}>
             <Image
-              src="/device/iphone-home.png"
+              src="/device/iphone-home.webp"
               alt="The WhatYouAte home screen"
               width={1500}
               height={2614}
@@ -74,7 +74,7 @@ export default function Home() {
           >
             <Enter delay={0.45} duration={1.1} from="left">
               <UiCard
-                src="/ui/food-feeling.png"
+                src="/ui/food-feeling.webp"
                 alt="Your lower-energy days have more often followed fried or greasy food the night before"
                 width={1104} height={261} tilt={-2.5} lift="lg"
               />
@@ -87,7 +87,7 @@ export default function Home() {
           >
             <Enter delay={0.6} duration={1.1} from="right">
               <UiCard
-                src="/ui/streak-week.png"
+                src="/ui/streak-week.webp"
                 alt="This week, a fourteen night reflection streak"
                 width={1208} height={493} tilt={2.5} lift="md"
               />
@@ -140,12 +140,12 @@ export default function Home() {
           <div className="mt-12 grid items-center gap-8 sm:mt-14 lg:grid-cols-2 lg:gap-14">
             <Parallax speed={-14}>
               <Reveal>
-                <UiCard src="/ui/log-ways.png" alt="Log food by photo, manual add, barcode or quick add" width={1272} height={750} tilt={-1.2} lift="lg" />
+                <UiCard src="/ui/log-ways.webp" alt="Log food by photo, manual add, barcode or quick add" width={1272} height={750} tilt={-1.2} lift="lg" />
               </Reveal>
             </Parallax>
             <Parallax speed={16}>
               <Reveal delay={0.08}>
-                <UiCard src="/ui/log-result.png" alt="A logged cheeseburger and fries, with portion size" width={1143} height={917} tilt={1.2} lift="lg" className="mx-auto w-[80%] lg:w-[86%]" />
+                <UiCard src="/ui/log-result.webp" alt="A logged cheeseburger and fries, with portion size" width={1143} height={917} tilt={1.2} lift="lg" className="mx-auto w-[80%] lg:w-[86%]" />
               </Reveal>
             </Parallax>
           </div>
@@ -172,7 +172,7 @@ export default function Home() {
           </Reveal>
           <Parallax speed={12}>
             <Reveal delay={0.08}>
-              <UiCard src="/ui/coach-nudge.png" alt="A coach nudge in WhatYouAte" width={1104} height={390} tilt={1.2} lift="lg" />
+              <UiCard src="/ui/coach-nudge.webp" alt="A coach nudge in WhatYouAte" width={1104} height={390} tilt={1.2} lift="lg" />
             </Reveal>
           </Parallax>
         </div>
@@ -183,7 +183,7 @@ export default function Home() {
         <div className="mx-auto grid max-w-[64rem] items-center gap-10 lg:grid-cols-2 lg:gap-16">
           <Parallax speed={-12} className="-mt-16 sm:-mt-20 lg:order-2 lg:-mt-36">
             <Reveal>
-              <UiCard src="/ui/energy-dips.png" alt="When your energy dips, across your last nine nights" width={1208} height={488} tilt={-1.4} lift="lg" />
+              <UiCard src="/ui/energy-dips.webp" alt="When your energy dips, across your last nine nights" width={1208} height={488} tilt={-1.4} lift="lg" />
             </Reveal>
           </Parallax>
           <Reveal delay={0.08} className="mt-8 lg:order-1 lg:mt-0">
@@ -210,7 +210,7 @@ export default function Home() {
           </Reveal>
           <Parallax speed={24}>
             <Reveal delay={0.08}>
-              <UiCard src="/ui/habit-builder.png" alt="The Habit Builder card in WhatYouAte" width={1200} height={702} tilt={1.4} lift="lg" bare />
+              <UiCard src="/ui/habit-builder.webp" alt="The Habit Builder card in WhatYouAte" width={1200} height={702} tilt={1.4} lift="lg" bare />
             </Reveal>
           </Parallax>
         </div>
@@ -229,12 +229,12 @@ export default function Home() {
           <div className="mt-12 grid items-center gap-8 sm:mt-14 lg:grid-cols-2 lg:gap-14">
             <Parallax speed={-14}>
               <Reveal>
-                <UiCard src="/ui/compared-week.png" alt="Sleep improved, energy improved, stress held steady" width={1196} height={478} tilt={-1.2} lift="lg" />
+                <UiCard src="/ui/compared-week.webp" alt="Sleep improved, energy improved, stress held steady" width={1196} height={478} tilt={-1.2} lift="lg" />
               </Reveal>
             </Parallax>
             <Parallax speed={16}>
               <Reveal delay={0.08}>
-                <UiCard src="/ui/changes-helping.png" alt="Habits you kept, and whether they seem to be helping" width={1204} height={642} tilt={1.2} lift="lg" />
+                <UiCard src="/ui/changes-helping.webp" alt="Habits you kept, and whether they seem to be helping" width={1204} height={642} tilt={1.2} lift="lg" />
               </Reveal>
             </Parallax>
           </div>
@@ -258,7 +258,7 @@ export default function Home() {
             <Parallax speed={-14}>
               <Reveal>
                 <UiCard
-                  src="/ui/water.png"
+                  src="/ui/water.webp"
                   alt="Water intake for the day"
                   width={1152} height={230} lift="md"
                   className="mx-auto w-full max-w-[38rem]"
@@ -268,12 +268,12 @@ export default function Home() {
             <div className="mt-8 grid gap-8 sm:mt-10 sm:grid-cols-2 sm:gap-10">
               <Parallax speed={14}>
                 <Reveal delay={0.06}>
-                  <UiCard src="/ui/recent-activity.png" alt="Recent food and activity for the day" width={1208} height={595} tilt={-1} lift="md" />
+                  <UiCard src="/ui/recent-activity.webp" alt="Recent food and activity for the day" width={1208} height={595} tilt={-1} lift="md" />
                 </Reveal>
               </Parallax>
               <Parallax speed={20}>
                 <Reveal delay={0.12}>
-                  <UiCard src="/ui/micronutrients.png" alt="Micronutrients grouped by what they do for you" width={1208} height={656} tilt={1} lift="md" />
+                  <UiCard src="/ui/micronutrients.webp" alt="Micronutrients grouped by what they do for you" width={1208} height={656} tilt={1} lift="md" />
                 </Reveal>
               </Parallax>
             </div>
