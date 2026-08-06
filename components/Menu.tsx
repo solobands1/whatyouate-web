@@ -4,7 +4,7 @@ import { useEffect, useRef, useState } from "react";
 import { APP_STORE_URL, INK } from "./site";
 
 const LINKS = [
-  { label: "About us", href: "#", soon: true },
+  { label: "About", href: "/about" },
   { label: "Support", href: "mailto:hello@minimul.app" },
 ];
 
