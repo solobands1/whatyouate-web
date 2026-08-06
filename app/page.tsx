@@ -311,6 +311,7 @@ export default function Home() {
             <span className="text-[14px] font-semibold tracking-[-0.015em] text-white">WhatYouAte</span>
           </div>
           <nav className="flex flex-wrap justify-center gap-x-8 gap-y-2 text-[14px] text-white/80">
+            <Link href="/about" className="transition hover:text-white">About</Link>
             <Link href="/privacy" className="transition hover:text-white">Privacy Policy</Link>
             <Link href="/terms" className="transition hover:text-white">Terms of Use</Link>
             <a href="mailto:hello@minimul.app" className="transition hover:text-white">Support</a>
