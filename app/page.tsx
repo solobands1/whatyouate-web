@@ -294,10 +294,7 @@ export default function Home() {
       <section className="px-6 py-14 sm:py-20">
         <Reveal>
           <div className="mx-auto max-w-[40rem] text-center">
-            <h2 className="text-balance text-[clamp(26px,3.8vw,40px)] font-bold leading-[1.2] tracking-[-0.03em]">
-              No red warnings. No guilt trips. No lecture about a cheeseburger.
-            </h2>
-            <p className="mx-auto mt-6 max-w-[44ch] text-[17px] leading-[1.72]" style={{ color: "#334A6B" }}>
+            <p className="mx-auto max-w-[46ch] text-[clamp(19px,2.4vw,23px)] leading-[1.6]" style={{ color: "#22385C" }}>
               Built for ordinary days, not for chasing numbers. Log it, see what it does
               to your week, and get on with your day.
             </p>
