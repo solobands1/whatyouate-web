@@ -160,8 +160,8 @@ export default function Home() {
             <SectionHeading
               center={false}
               eyebrow="Your coach"
-              title="Advice from your own week, not a template"
-              body="No generic tips. Your coach spots a pattern in your own days, suggests one small change, and tells you plainly when there is not enough to go on yet."
+              title="Advice built from your week, not everyone else's"
+              body="Your coach works from what is actually in your logs, points out what keeps lining up, and tells you plainly when there is not enough there yet to call it."
             />
           </Reveal>
           <Parallax speed={12}>
