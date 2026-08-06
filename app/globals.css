@@ -43,7 +43,11 @@ body {
       #4C82C7 100%
     )
     no-repeat;
-  background-attachment: fixed;
+  /* Deliberately NOT background-attachment: fixed. Fixed sizes the gradient to
+     the viewport, so the white band at 31% stays pinned on screen and content
+     scrolls through it. The wash has to map to the document instead. */
+  background-attachment: scroll;
+  min-height: 100%;
 }
 
 /* Scroll reveal. Applied by JS only, so content is never stranded invisible. */
