@@ -149,7 +149,7 @@ export default function Home() {
               <UiCard src="/ui/energy-dips.png" alt="When your energy dips, across your last nine nights" width={1208} height={488} tilt={-1.4} lift="lg" />
             </Reveal>
           </Parallax>
-          <Reveal delay={0.08} className="lg:order-1">
+          <Reveal delay={0.08} className="mt-8 lg:order-1 lg:mt-0">
             <SectionHeading
               center={false}
               eyebrow="What you start to see"
