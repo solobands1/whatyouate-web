@@ -96,7 +96,7 @@ export default function About() {
               energy days, or the time of day your energy dips most often.
             </P>
             <P>
-              The aim is awareness built from your own days rather than from generic advice.
+              The aim is awareness built from your own days, rather than from generic advice.
             </P>
           </Reveal>
 
