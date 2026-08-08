@@ -205,7 +205,7 @@ export default function Home() {
               center={false}
               eyebrow="Habits"
               title="Small enough to actually finish"
-              body="Each habit runs for three or five days and is built around what you want to feel better about. Small changes like a glass of water in the afternoon or a walk after lunch can make a real difference."
+              body="Each habit runs for three or five days and is built around what you want to feel better about. Small changes like a glass of water in the afternoon, or a walk after lunch can make a real difference."
             />
           </Reveal>
           <Parallax speed={24}>
