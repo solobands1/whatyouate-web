@@ -287,8 +287,9 @@ export default function Home() {
                   Works with Apple Health
                 </p>
                 <p className="mt-1.5 text-[15px] leading-[1.6]" style={{ color: BODY }}>
-                  Steps, workouts and sleep come across on their own, so your AI coach sees
-                  the whole picture without you typing any of it in, if enabled.
+                  Steps, workouts and sleep come across on their own once connected to
+                  Apple Health, giving your AI coach the whole picture without you typing
+                  any of it in.
                 </p>
               </div>
             </div>
