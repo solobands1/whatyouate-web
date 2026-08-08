@@ -54,20 +54,16 @@ export default function About() {
               Our mission
             </p>
             <h1 className="mt-5 text-balance text-[clamp(32px,5vw,52px)] font-bold leading-[1.08] tracking-[-0.04em]">
-              Help people understand how food and habits make them feel
+              Help people understand how food and habits affect how they feel
             </h1>
 
             <P>
-              Not how many calories it contained. How it made them feel. Nutrition apps
-              have spent a decade getting very good at counting, and almost no time on the
-              question people actually ask, which is why some days go well and others do
-              not.
+              Nutrition apps have spent decades getting very good at counting calories and
+              macros, and almost no time on the question people actually want the answer
+              to: why they feel the way they do.
             </P>
 
-            <P>
-              WhatYouAte exists to close that gap, and to make closing it light enough that
-              an ordinary, busy person can keep it up.
-            </P>
+            <P>WhatYouAte exists to close that gap.</P>
           </Reveal>
 
           <Reveal>
@@ -81,39 +77,35 @@ export default function About() {
               ))}
             </ul>
             <P>
-              They sound simple. Answering them needs a few things written down together:
-              what you ate, how much water you drank, whether you slept well or moved
-              much, and how the day actually went. Almost nothing asks for that last
-              part, which is why these questions usually go unanswered.
+              They sound simple, but answering them requires a few pieces of information.
+              What you ate, water intake, sleep and movement habits, and a reflection on
+              your day. This information together can begin to answer these questions.
             </P>
             <P>
-              That gap is not academic. Fatigue, brain fog, restless sleep and digestion
-              that comes and goes are ordinary complaints, and the honest answer for most
-              people is that nobody has ever shown them their own pattern.
+              Fatigue, brain fog, restless sleep and digestion issues that come and go are
+              common complaints, and for most people, no one has ever shown them their own
+              patterns.
             </P>
           </Reveal>
 
           <Reveal>
             <H>So the app asks for all of it</H>
             <P>
-              Logging a meal takes seconds, and water and activity take a couple of taps. The nightly
-              check-in takes a minute and covers energy, sleep, mood, stress and
-              digestion. From there your AI coach looks for
-              what lines up, like the foods that tend to turn up before your low energy
-              days, or the time of day your energy dips most often.
+              Logging your information takes a few minutes a day. From there, your AI coach
+              looks for what lines up, like the foods that tend to turn up before your low
+              energy days, or the time of day your energy dips most often.
             </P>
             <P>
-              The aim was never perfect records. It is awareness, built from your own days
-              rather than from generic advice about what people in general should eat.
+              The aim is awareness built from your own days rather than from generic advice.
             </P>
           </Reveal>
 
           <Reveal>
             <H>What we will not do</H>
             <P>
-              We will not colour your day red for eating a bag of chips. No guilt trips, no
-              lectures, no calorie count dressed up as a moral verdict. You log what you
-              ate, you see what it seems to do to your week, and you get on with your day.
+              No guilt trips, no lectures, no calorie count dressed up as a moral verdict.
+              You log what you ate, you see how that impacts how you feel throughout the
+              week.
             </P>
           </Reveal>
 
@@ -121,9 +113,9 @@ export default function About() {
             <H>It will tell you when it is not sure</H>
             <P>
               This is the part most apps skip. Your AI coach works from real counts out of
-              your own logs, and calls what it finds an association rather than a cause,
-              because that is what it is. When there is not enough to go on yet, it tells
-              you, instead of spinning a story out of very little.
+              your own logs, and shares patterns and associations rather than a cause. When
+              there is not enough to go on yet, it will let you know instead of spinning a
+              story out of very little.
             </P>
             <P>
               None of it is medical advice, and it is not trying to be. It is a record of
@@ -143,13 +135,13 @@ export default function About() {
           <Reveal>
             <div className="mt-20 rounded-3xl bg-white/70 px-8 py-10 ring-1 ring-[#16233B]/[0.06] backdrop-blur-sm">
               <h2 className="text-[20px] font-semibold tracking-[-0.02em]" style={{ color: INK }}>
-                Independent, and updated often
+                WhatYouAte is independently owned
               </h2>
               <P>
-                There is no diet company behind this and nothing to sell you beyond the
-                app itself, so there is no reason to tell you anything but the truth.
-                Updates go out often, and when someone says a thing is wrong, confusing
-                or missing, that is usually what gets built next.
+                There is no diet company behind this, just someone who wanted to
+                understand why they feel the way they do and which small changes can have
+                a positive impact. The app is updated frequently and we are always open to
+                suggestions on how we can improve, or which features you would like to see.
               </P>
               <a
                 href="mailto:hello@minimul.app"
