@@ -60,7 +60,7 @@ export default function About() {
             <P>
               Nutrition apps have spent decades getting very good at counting calories and
               macros, and almost no time on the question people actually want the answer
-              to: why they feel the way they do.
+              to; Why do they feel the way they do?
             </P>
 
             <P>WhatYouAte exists to close that gap.</P>
