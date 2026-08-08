@@ -167,7 +167,7 @@ export default function Home() {
               center={false}
               eyebrow="Your AI coach"
               title="Advice built from your week, no one else's"
-              body="Your AI coach is built into the app, and it only ever works from your own logs, pointing out the patterns from your days."
+              body="Your AI coach is built into the app, and it only ever works from your own logs, pointing out the patterns in your days."
             />
           </Reveal>
           <Parallax speed={12}>
@@ -205,7 +205,7 @@ export default function Home() {
               center={false}
               eyebrow="Habits"
               title="Small enough to actually finish"
-              body="Each habit runs three or five days and is built around what you want to feel better about. Small changes like a glass of water in the afternoon or a walk after lunch can make a real difference."
+              body="Each habit runs for three or five days and is built around what you want to feel better about. Small changes like a glass of water in the afternoon or a walk after lunch can make a real difference."
             />
           </Reveal>
           <Parallax speed={24}>
