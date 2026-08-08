@@ -41,7 +41,8 @@ export default function Home() {
           <Enter delay={0.16} duration={1.05}>
             <p className="mx-auto mt-6 max-w-[46ch] text-balance text-[clamp(16px,2vw,20px)] leading-[1.58] sm:max-w-[46rem]" style={{ color: BODY }}>
               Log food, water, sleep and movement in seconds. Your AI coach reads them
-              against how you felt, shows you the patterns, and suggests one small change.
+              against how you feel, shows you the patterns, and suggests small changes you
+              can build off of.
             </p>
           </Enter>
           <Enter delay={0.3} duration={1.05}>
@@ -102,7 +103,7 @@ export default function Home() {
           <Reveal>
             <SectionHeading
               eyebrow="How it works"
-              title="Three small things, every day"
+              title="Three small steps a day"
               body="Nothing to weigh, nothing to plan, and nothing you have to give up."
             />
           </Reveal>
@@ -152,8 +153,7 @@ export default function Home() {
           <Reveal delay={0.12}>
             <p className="mx-auto mt-10 max-w-[46ch] text-center text-[16px] leading-[1.7]" style={{ color: BODY }}>
               Log a cheeseburger and you get the numbers, a portion you can adjust, and
-              nothing else. Nothing turns red, and nothing tells you what you should
-              have eaten instead.
+              nothing else. No judgement, just information.
             </p>
           </Reveal>
         </div>
@@ -166,8 +166,8 @@ export default function Home() {
             <SectionHeading
               center={false}
               eyebrow="Your AI coach"
-              title="Advice built from your week, not everyone else's"
-              body="Your AI coach is built into the app, and it only ever works from your own logs. It points out what keeps lining up and tells you when there is not enough there yet to make a suggestion. You always know where you stand."
+              title="Advice built from your week, no one else's"
+              body="Your AI coach is built into the app, and it only ever works from your own logs, pointing out the patterns from your days."
             />
           </Reveal>
           <Parallax speed={12}>
@@ -190,7 +190,7 @@ export default function Home() {
             <SectionHeading
               center={false}
               eyebrow="What you start to see"
-              title="Real counts from your own nights"
+              title="Real counts from your own days"
               body="Your patterns come from what you actually logged, like the time of day your energy dips most often, or the food that keeps turning up before a rough night. Counted, not guessed."
             />
           </Reveal>
@@ -205,7 +205,7 @@ export default function Home() {
               center={false}
               eyebrow="Habits"
               title="Small enough to actually finish"
-              body="Each habit runs three or five days and is built around what you said you want to feel better about. Small changes like a glass of water in the afternoon or a walk after lunch can make a real difference."
+              body="Each habit runs three or five days and is built around what you want to feel better about. Small changes like a glass of water in the afternoon or a walk after lunch can make a real difference."
             />
           </Reveal>
           <Parallax speed={24}>
@@ -222,8 +222,8 @@ export default function Home() {
           <Reveal>
             <SectionHeading
               eyebrow="Is it working"
-              title="You find out whether it actually helped"
-              body="Weeks get compared to the ones before them, and every habit you keep is checked against how you felt. When a change is helping, your AI coach says so. When it is too early to tell, it says so just as plainly."
+              title="Keep track of what is helping"
+              body="Weeks get compared to the ones before them, and every habit you keep is checked against how you've been feeling. When a change is helping, your AI coach will let you know."
             />
           </Reveal>
           <div className="mt-12 grid items-center gap-8 sm:mt-14 lg:grid-cols-2 lg:gap-14">
@@ -248,7 +248,7 @@ export default function Home() {
             <SectionHeading
               eyebrow="The rest of the day"
               title="Water, movement and sleep, in the same place"
-              body="Energy is never only about food. Water and activity take a couple of taps, and how you slept goes in with your nightly check-in. WhatYouAte lays it all out in one place and makes its suggestions from your own patterns."
+              body="Energy is never only about food. Water and activity take a couple of taps to log. Reflect on your sleep and energy during your nightly check-in. WhatYouAte lays it all out in one place and makes its suggestions from your own patterns."
             />
           </Reveal>
 
@@ -288,24 +288,12 @@ export default function Home() {
                 </p>
                 <p className="mt-1.5 text-[15px] leading-[1.6]" style={{ color: BODY }}>
                   Steps, workouts and sleep come across on their own, so your AI coach sees
-                  the whole picture without you typing any of it in.
+                  the whole picture without you typing any of it in, if enabled.
                 </p>
               </div>
             </div>
           </Reveal>
         </div>
-      </section>
-
-      {/* ── PROMISE ─────────────────────────────────────────── */}
-      <section className="px-6 py-14 sm:py-20">
-        <Reveal>
-          <div className="mx-auto max-w-[40rem] text-center">
-            <p className="mx-auto max-w-[46ch] text-[clamp(19px,2.4vw,23px)] leading-[1.6]" style={{ color: "#22385C" }}>
-              Built for ordinary days, not for chasing numbers. Log it, see what it does
-              to your week, and get on with your day.
-            </p>
-          </div>
-        </Reveal>
       </section>
 
       {/* ── CTA ─────────────────────────────────────────────── */}
