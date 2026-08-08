@@ -153,7 +153,7 @@ export default function Home() {
           <Reveal delay={0.12}>
             <p className="mx-auto mt-10 max-w-[46ch] text-center text-[16px] leading-[1.7]" style={{ color: BODY }}>
               Log a cheeseburger and you get the numbers, a portion you can adjust, and
-              nothing else. No judgement, just information.
+              nothing else. No judgement or guilt, just information.
             </p>
           </Reveal>
         </div>
