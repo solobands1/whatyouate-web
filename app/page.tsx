@@ -248,7 +248,7 @@ export default function Home() {
             <SectionHeading
               eyebrow="The rest of the day"
               title="Water, movement and sleep, in the same place"
-              body="Energy is never only about food. Water and activity take a couple of taps to log. Reflect on your sleep and energy during your nightly check-in. WhatYouAte lays it all out in one place and makes its suggestions from your own patterns."
+              body="Energy is never only about food. WhatYouAte lays it all out in one place, and makes its suggestions from your own patterns."
             />
           </Reveal>
 
