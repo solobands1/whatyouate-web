@@ -4,6 +4,7 @@ import Reveal from "../components/Reveal";
 import Enter from "../components/Enter";
 import Parallax from "../components/Parallax";
 import Menu from "../components/Menu";
+import Social from "../components/Social";
 import {
   APP_STORE_URL, INK, BODY, FAINT,
   DownloadButton, UiCard, SectionHeading, AppleHealthMark,
@@ -333,6 +334,7 @@ export default function Home() {
             <Link href="/terms" className="transition hover:text-white">Terms of Use</Link>
             <a href="mailto:hello@minimul.app" className="transition hover:text-white">Support</a>
           </nav>
+          <Social className="text-white/80" />
           <span className="text-[13px] text-white/60">
             © {new Date().getFullYear()} WhatYouAte. All rights reserved.
           </span>

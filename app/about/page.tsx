@@ -3,6 +3,7 @@ import Image from "next/image";
 import Link from "next/link";
 import Reveal from "../../components/Reveal";
 import Menu from "../../components/Menu";
+import Social from "../../components/Social";
 import { INK, BODY, DownloadButton } from "../../components/site";
 
 export const metadata: Metadata = {
@@ -172,6 +173,9 @@ export default function About() {
             <Link href="/terms" className="transition hover:opacity-70">Terms of Use</Link>
             <a href="mailto:hello@minimul.app" className="transition hover:opacity-70">Support</a>
           </nav>
+          <div style={{ color: BODY }}>
+            <Social />
+          </div>
           <span className="text-[13px]" style={{ color: "#9CADC6" }}>
             © {new Date().getFullYear()} WhatYouAte. All rights reserved.
           </span>
