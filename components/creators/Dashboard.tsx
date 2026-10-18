@@ -70,6 +70,7 @@ function WeeklyChart() {
 
 export default function Dashboard() {
   const C = useCreator();
+  const bonusActive = new Date(C.bonusEnds + "T23:59:59") >= new Date();
   const cur = currencyFor(C.country);
   const link = `whatyouate.app/c/${C.code}`;
   const first = C.name.split(" ")[0];
@@ -109,9 +110,45 @@ export default function Dashboard() {
         </svg>
       </Link>
 
-      <div className="mt-4 rounded-2xl px-5 py-3.5 text-[14px] leading-[1.55]" style={{ background: "#E6F0FE", color: "#1E4E8C" }}>
-        <strong>First-month bonus:</strong> you also earn $1 for every signup that counts, until {longDate(C.bonusEnds)}.
-      </div>
+      {/* How you earn */}
+      <SectionTitle>How You Earn</SectionTitle>
+      <Card className="divide-y divide-[#16233B]/[0.06]">
+        {[
+          {
+            big: "30%",
+            title: "Of Every Subscription",
+            body: "For each subscriber's first 12 months, from what we receive after Apple's fee. Monthly subscribers earn you a share every month they stay.",
+          },
+          {
+            big: "$1",
+            title: "Per Signup, First Month",
+            body: bonusActive
+              ? `Until ${longDate(C.bonusEnds)}. A signup counts once the new user has logged meals on 3 days in their first week.`
+              : `Your first-month bonus ended ${longDate(C.bonusEnds)}. Subscriptions keep earning as usual.`,
+          },
+          {
+            big: "1st",
+            title: "Paid Monthly",
+            body: `Each month's earnings are paid on the 1st of the month after next, once refunds clear, by ${PAYOUT_LABEL[C.payoutMethod]} in ${cur}. Balances under $10 roll over.`,
+          },
+        ].map((r) => (
+          <div key={r.title} className="flex gap-4 px-5 py-4">
+            <span
+              className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl text-[16px] font-bold tracking-[-0.02em] text-white"
+              style={{ background: "linear-gradient(135deg, #6FA8FF 0%, #3F7FD6 100%)" }}
+            >
+              {r.big}
+            </span>
+            <div>
+              <p className="text-[15.5px] font-semibold" style={{ color: INK }}>{r.title}</p>
+              <p className="mt-0.5 text-[14px] leading-[1.55]" style={{ color: BODY }}>{r.body}</p>
+            </div>
+          </div>
+        ))}
+        <div className="px-5 py-3.5">
+          <Link href="/creators/terms" className="text-[14px] font-semibold" style={{ color: "#2F6FC4" }}>Full program terms</Link>
+        </div>
+      </Card>
 
       {/* This month */}
       <SectionTitle right={<span className="text-[13px]" style={{ color: "#8FA3C0" }}>{S.month.label}</span>}>This Month</SectionTitle>
