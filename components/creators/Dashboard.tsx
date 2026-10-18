@@ -8,6 +8,18 @@ import { SAMPLE_STATS as S, PAYOUT_LABEL, currencyFor, money } from "./sample";
 import { useCreator, longDate } from "./store";
 import { BODY, INK } from "../site";
 
+// Month-by-month earnings and payouts, for the creator's own records and taxes.
+function downloadStatement(cur: string) {
+  const head = ["Month", "Code uses", "Signups that count", "New paid subscribers", `Signup bonus (${cur})`, `Subscription earnings (${cur})`, `Total earned (${cur})`, `Paid (${cur})`, "Paid on"];
+  const rows = S.statement.map((r) => [r.month, r.codeUses, r.signups, r.newPaid, r.bonus.toFixed(2), r.commission.toFixed(2), (r.bonus + r.commission).toFixed(2), r.paid.toFixed(2), r.paidOn]);
+  const csv = [head, ...rows].map((r) => r.map((v) => `"${String(v).replace(/"/g, '""')}"`).join(",")).join("\n");
+  const a = document.createElement("a");
+  a.href = URL.createObjectURL(new Blob([csv], { type: "text/csv" }));
+  a.download = "whatyouate-creator-statement.csv";
+  a.click();
+  URL.revokeObjectURL(a.href);
+}
+
 function CopyButton({ text, label }: { text: string; label: string }) {
   const [copied, setCopied] = useState(false);
   return (
@@ -174,6 +186,21 @@ export default function Dashboard() {
         {money(S.month.bonus, cur)} from signups, {money(S.month.commission, cur)} from subscriptions.
       </p>
 
+      {/* Recurring */}
+      <div
+        className="mt-5 rounded-3xl px-6 py-5 text-white"
+        style={{ background: "linear-gradient(135deg, #6FA8FF 0%, #3F7FD6 100%)", boxShadow: "0 18px 40px -22px rgba(47,111,196,0.7)" }}
+      >
+        <p className="text-[13px] font-semibold uppercase tracking-[0.12em] text-white/80">Recurring Each Month</p>
+        <p className="mt-1 text-[30px] font-bold tracking-[-0.03em]">
+          about {money(S.recurring.monthly, cur).replace(` ${cur}`, "")}{" "}
+          <span className="text-[15px] font-semibold text-white/85">{cur} a month</span>
+        </p>
+        <p className="mt-1 text-[14px] leading-[1.55] text-white/85">
+          From your {S.recurring.active} active subscribers, without posting again. Each one keeps earning you for their first 12 months.
+        </p>
+      </div>
+
       {/* Weekly */}
       <SectionTitle>Code Uses by Week</SectionTitle>
       <Card className="px-5 pb-4 pt-5">
@@ -208,6 +235,14 @@ export default function Dashboard() {
         <p className="text-[14.5px] leading-[1.55]" style={{ color: BODY }}>
           Your first payout will show here after December 1.
         </p>
+        <button
+          type="button"
+          onClick={() => downloadStatement(cur)}
+          className="mt-4 text-[14px] font-semibold"
+          style={{ color: "#2F6FC4" }}
+        >
+          Download statement (CSV)
+        </button>
       </Card>
 
       <p className="mt-6 text-[13.5px] leading-[1.6]" style={{ color: BODY }}>

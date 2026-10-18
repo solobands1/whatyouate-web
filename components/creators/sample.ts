@@ -17,6 +17,12 @@ export const SAMPLE_STATS = {
   month: { label: "October", codeUses: 41, qualified: 23, newPaid: 6, bonus: 23, commission: 31.4 },
   allTime: { paidSubs: 6, earned: 54.4, paidOut: 0 },
   nextPayout: { date: "December 1", estimate: 54.4 },
+  // What current subscribers are on track to earn each month (yearly plans spread over 12 months).
+  recurring: { monthly: 22.4, active: 6 },
+  // Month-by-month statement rows for the CSV download.
+  statement: [
+    { month: "2026-10", codeUses: 41, signups: 23, newPaid: 6, bonus: 23, commission: 31.4, paid: 0, paidOn: "" },
+  ],
   // Code uses per week, oldest first.
   weekly: [
     { week: "Sep 21", uses: 0 },
