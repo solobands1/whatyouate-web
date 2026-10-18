@@ -14,11 +14,9 @@ const VIDEOS = [
   { slug: "nightly-check-in", title: "One Minute a Night", note: "15 seconds" },
 ];
 const BRAND = [
-  { file: "whatyouate-logo-dark.png", label: "Logo", note: "Icon and name, dark", dark: false },
-  { file: "whatyouate-logo-white.png", label: "Logo, White", note: "Icon and name, for dark backgrounds", dark: true },
-  { file: "whatyouate-wordmark-dark.png", label: "Wordmark", note: "WhatYouAte AI, dark", dark: false },
-  { file: "whatyouate-wordmark-white.png", label: "Wordmark, White", note: "WhatYouAte AI, for dark backgrounds", dark: true },
-  { file: "whatyouate-icon.png", label: "App Icon", note: "1024 x 1024", dark: false },
+  { file: "whatyouate-logo.png", label: "Logo", note: "Icon and name" },
+  { file: "whatyouate-wordmark.png", label: "Wordmark", note: "Name only" },
+  { file: "whatyouate-icon.png", label: "App Icon", note: "1024 x 1024" },
 ];
 const SHOTS = Array.from({ length: 10 }, (_, i) => `whatyouate-${String(i + 1).padStart(2, "0")}`);
 
@@ -211,12 +209,12 @@ export default function Kit() {
       </p>
 
       {/* Logo */}
-      <H2 sub="Transparent PNGs. Use the dark version on light backgrounds and the white version on dark or busy ones.">Logo</H2>
+      <H2 sub="Transparent PNGs. Works best on light backgrounds.">Logo</H2>
       <Card className="divide-y divide-[#16233B]/[0.06]">
         {BRAND.map((b) => (
           <div key={b.file} className="flex items-center justify-between gap-4 px-5 py-4">
             <div className="flex min-w-0 items-center gap-4">
-              <div className="flex h-14 w-28 shrink-0 items-center justify-center rounded-xl px-2" style={{ background: b.dark ? "#2F6FC4" : "#F2F6FC" }}>
+              <div className="flex h-14 w-28 shrink-0 items-center justify-center rounded-xl bg-white px-2 ring-1 ring-[#16233B]/[0.06]">
                 <Image src={`${KIT}/brand/${b.file}`} alt="" width={96} height={40} className="max-h-10 w-auto object-contain" />
               </div>
               <div className="min-w-0">
