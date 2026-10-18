@@ -143,7 +143,7 @@ export default function Creators() {
           </div>
         </Card>
         <p className="mt-3 text-[13px] leading-[1.6]" style={{ color: "#8FA3C0" }}>
-          Estimates in USD, based on current prices and after Apple&apos;s fee. You earn 30% of what we receive from each subscriber for their first 12 months.
+          Estimates in USD, based on current prices. You earn 30% of each subscription for its first 12 months, after Apple&apos;s fee.
         </p>
       </Section>
 

@@ -122,7 +122,7 @@ export default function Dashboard() {
           {
             big: "30%",
             title: "30% of Every Subscription",
-            body: "When someone subscribes with your code, you get 30% of what we make from them for their first year. That's about $25 USD for a yearly subscriber, or about $3 USD every month a monthly subscriber stays, for up to 12 months.",
+            body: "When someone subscribes with your code, you earn 30% of their subscription for a full year, after Apple's fee. That's about $25 USD for a yearly subscriber, or about $3 USD each month a monthly subscriber stays, for up to 12 months.",
           },
           {
             big: "$1",
