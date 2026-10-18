@@ -14,11 +14,11 @@ export default function Shell({ children, narrow = false }: { children: React.Re
         <div className="mx-auto flex max-w-[68rem] items-center justify-between px-6 py-6">
           <Link href="/" className="flex items-center gap-2.5">
             <Image src="/icon-512.png" alt="" width={30} height={30} className="rounded-[8px] ring-1 ring-black/5" priority />
-            <span className="text-[16px] font-semibold tracking-[-0.015em]">
+            <span className="text-[16px] font-semibold leading-[21.333px] tracking-[-0.015em]">
               WhatYouAt
               <span className="relative inline-block">
                 e
-                <span className="absolute -top-[2px] left-full ml-[1px] text-[6.5px] font-semibold text-[#101B2E]/60">AI</span>
+                <span className="absolute -top-[2.667px] right-0 translate-x-[6.667px] text-[6px] font-semibold leading-[21.333px] text-[#101B2E]/60">AI</span>
               </span>
             </span>
           </Link>
