@@ -3,20 +3,9 @@
 import Link from "next/link";
 import { useState } from "react";
 import { Card, CREATOR_EMAIL } from "./Shell";
+import CreatorNav from "./CreatorNav";
 import { SAMPLE_CREATOR as C, SAMPLE_STATS as S, PAYOUT_LABEL, currencyFor, money } from "./sample";
 import { BODY, INK } from "../site";
-
-const HOOKS = [
-  "I tracked what I ate and how I felt for two weeks. Here's what lined up.",
-  "Why I stopped guessing my trigger foods.",
-  "The lunch that was wrecking my afternoons.",
-  "What I eat in a day, and how I actually felt after.",
-];
-
-const KIT = [
-  { label: "App screenshots", note: "Home, patterns and insights", files: ["/screenshots/home-2026.png", "/screenshots/patterns-2026.png", "/screenshots/insights.png"] },
-  { label: "App icon", note: "PNG, 512 x 512", files: ["/icon-512.png"] },
-];
 
 function CopyButton({ text, label }: { text: string; label: string }) {
   const [copied, setCopied] = useState(false);
@@ -85,16 +74,8 @@ export default function Dashboard() {
 
   return (
     <div>
-      <div className="flex items-start justify-between gap-4">
-        <div>
-          <p className="text-[12px] font-semibold uppercase tracking-[0.18em]" style={{ color: "#8FA3C0" }}>Creator dashboard</p>
-          <h1 className="mt-3 text-[clamp(28px,4.4vw,40px)] font-bold leading-[1.1] tracking-[-0.04em]">Hi {first}</h1>
-        </div>
-        <div className="flex shrink-0 gap-4 pt-1 text-[14px] font-semibold">
-          <Link href="/creators/profile" style={{ color: "#2F6FC4" }}>Profile</Link>
-          <Link href="/creators" style={{ color: BODY }}>Log out</Link>
-        </div>
-      </div>
+      <CreatorNav />
+      <h1 className="mt-8 text-[clamp(28px,4.4vw,40px)] font-bold leading-[1.1] tracking-[-0.04em]">Hi {first}</h1>
 
       {/* Code and share link */}
       <Card className="mt-7 px-6 py-6">
@@ -112,15 +93,29 @@ export default function Dashboard() {
         </p>
       </Card>
 
+      <Link
+        href="/creators/kit"
+        className="mt-4 flex items-center justify-between gap-4 rounded-3xl px-6 py-5 text-white transition hover:-translate-y-0.5"
+        style={{ background: "linear-gradient(135deg, #6FA8FF 0%, #3F7FD6 100%)", boxShadow: "0 18px 40px -22px rgba(47,111,196,0.7)" }}
+      >
+        <div>
+          <p className="text-[17px] font-bold tracking-[-0.02em]">Creator kit</p>
+          <p className="mt-1 text-[14px] leading-[1.5] text-white/85">Captions with your code, post ideas, screenshots and a demo video.</p>
+        </div>
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round" className="shrink-0">
+          <path d="M9 6l6 6-6 6" />
+        </svg>
+      </Link>
+
       <div className="mt-4 rounded-2xl px-5 py-3.5 text-[14px] leading-[1.55]" style={{ background: "#E6F0FE", color: "#1E4E8C" }}>
-        <strong>First-month bonus:</strong> you also earn $1 for every signup until November 2.
+        <strong>First-month bonus:</strong> you also earn $1 for every signup that counts, until November 2.
       </div>
 
       {/* This month */}
       <SectionTitle right={<span className="text-[13px]" style={{ color: "#8FA3C0" }}>{S.month.label}</span>}>This month</SectionTitle>
       <div className="grid grid-cols-2 gap-3">
         <Stat label="Code uses" value={String(S.month.codeUses)} />
-        <Stat label="Signups that count" value={String(S.month.qualified)} hint="Active 3 days or more" />
+        <Stat label="Signups that count" value={String(S.month.qualified)} hint="Active on 3 days in their first week" />
         <Stat label="New paid subscribers" value={String(S.month.newPaid)} />
         <Stat label="Earned so far" value={money(S.month.bonus + S.month.commission, cur).replace(` ${cur}`, "")} hint={cur} />
       </div>
@@ -157,46 +152,18 @@ export default function Dashboard() {
         <Stat small label="Paid out" value={money(S.allTime.paidOut, cur).replace(` ${cur}`, "")} />
       </div>
 
-      {/* Creator kit */}
-      <SectionTitle>Creator kit</SectionTitle>
-      <Card className="divide-y divide-[#16233B]/[0.06]">
-        {KIT.map((k) => (
-          <div key={k.label} className="flex items-center justify-between gap-4 px-6 py-4">
-            <div>
-              <p className="text-[15.5px] font-semibold" style={{ color: INK }}>{k.label}</p>
-              <p className="text-[13px]" style={{ color: BODY }}>{k.note}</p>
-            </div>
-            <div className="flex shrink-0 gap-3 text-[14px] font-semibold">
-              {k.files.map((f, i) => (
-                <a key={f} href={f} download style={{ color: "#2F6FC4" }}>
-                  {k.files.length > 1 ? `${i + 1}` : "Download"}
-                </a>
-              ))}
-            </div>
-          </div>
-        ))}
-        <details className="group px-6 py-4">
-          <summary className="flex cursor-pointer list-none items-center justify-between text-[15.5px] font-semibold" style={{ color: INK }}>
-            Ideas for your posts
-            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke={BODY} strokeWidth="2.2" strokeLinecap="round" className="transition group-open:rotate-45">
-              <path d="M12 5v14M5 12h14" />
-            </svg>
-          </summary>
-          <ul className="mt-3 flex flex-col gap-2.5">
-            {HOOKS.map((h) => (
-              <li key={h} className="text-[14.5px] leading-[1.55]" style={{ color: BODY }}>&ldquo;{h}&rdquo;</li>
-            ))}
-          </ul>
-          <p className="mt-3 text-[13.5px] leading-[1.55]" style={{ color: BODY }}>
-            Use the app for a week or two first, so you have real patterns to show. Keep it in your own words.
-          </p>
-        </details>
-        <div className="px-6 py-4 text-[14px] leading-[1.6]" style={{ color: BODY }}>
-          <strong style={{ color: INK }}>The two rules:</strong> label posts as sponsored (#ad or paid partnership), and
-          never say the app treats or cures anything.{" "}
-          <Link href="/creators/terms" className="font-semibold" style={{ color: "#2F6FC4" }}>Program terms</Link>
-        </div>
+      {/* Payout history */}
+      <SectionTitle>Payout history</SectionTitle>
+      <Card className="px-6 py-5">
+        <p className="text-[14.5px] leading-[1.55]" style={{ color: BODY }}>
+          Your first payout will show here after December 1.
+        </p>
       </Card>
+
+      <p className="mt-6 text-[13.5px] leading-[1.6]" style={{ color: BODY }}>
+        Label every post as sponsored, and never say the app treats or cures anything.{" "}
+        <Link href="/creators/terms" className="font-semibold" style={{ color: "#2F6FC4" }}>Program terms</Link>
+      </p>
 
       <p className="mt-10 text-center text-[14px]" style={{ color: INK }}>
         Questions? <a href={`mailto:${CREATOR_EMAIL}`} className="font-semibold underline underline-offset-2" style={{ color: INK }}>{CREATOR_EMAIL}</a>

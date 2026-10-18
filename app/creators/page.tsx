@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import Image from "next/image";
 import Link from "next/link";
 import Reveal from "../../components/Reveal";
 import Shell, { Card, Eyebrow, PrimaryButton, SecondaryButton, CREATOR_EMAIL } from "../../components/creators/Shell";
@@ -17,11 +18,11 @@ const STEPS = [
   },
   {
     title: "Share it your way",
-    body: "Post about the app and put your link in your bio. Anyone who uses your code gets their first month free.",
+    body: "Post about the app and put your link in your bio. Anyone who uses your code gets their first month free. Your creator kit has captions, post ideas and app images ready to go.",
   },
   {
     title: "Get paid every month",
-    body: "Follow your signups and earnings in your dashboard. Payouts go out monthly by e-Transfer in Canada, or PayPal or Wise everywhere else.",
+    body: "Track your signups and earnings in your dashboard. Payouts go out monthly by Interac e-Transfer in Canada, or by PayPal or Wise everywhere else.",
   },
 ];
 
@@ -41,6 +42,14 @@ const FAQ = [
   {
     q: "How do I get paid?",
     a: "Creators in Canada are paid in CAD by Interac e-Transfer. Everyone else is paid in USD by PayPal or Wise, whichever you prefer.",
+  },
+  {
+    q: "Can I see who used my code?",
+    a: "No. To protect your followers' privacy, your dashboard shows totals only: code uses, signups, paid subscribers and earnings.",
+  },
+  {
+    q: "Do I have to live in Canada or the US?",
+    a: "No. Creators anywhere can join. Outside Canada, you're paid in USD by PayPal or Wise.",
   },
   {
     q: "Can I change my code later?",
@@ -71,6 +80,7 @@ export default function Creators() {
         </h1>
         <p className="mt-6 text-[18px] leading-[1.7]" style={{ color: BODY }}>
           Earn 30% of every subscription you bring in for 12 months, plus $1 for every signup in your first month.
+          Your followers get their first month free.
         </p>
         <p className="mt-3 text-[13px]" style={{ color: "#8FA3C0" }}>
           Signups count once the new user is active for 3 days. See{" "}
@@ -79,6 +89,19 @@ export default function Creators() {
         <div className="mt-9 flex flex-col gap-3 sm:flex-row">
           <PrimaryButton href="/creators/join">Join the program</PrimaryButton>
           <SecondaryButton href="/creators/login">Log in</SecondaryButton>
+        </div>
+      </Reveal>
+
+      <Reveal>
+        <div className="mt-16 flex justify-center">
+          <Image
+            src="/device/iphone-patterns.webp"
+            alt="The WhatYouAte Patterns screen"
+            width={1500}
+            height={2614}
+            className="h-auto w-[230px] sm:w-[260px]"
+            style={{ filter: "drop-shadow(0 30px 50px rgba(16,42,86,0.25))" }}
+          />
         </div>
       </Reveal>
 
@@ -120,7 +143,7 @@ export default function Creators() {
           </div>
         </Card>
         <p className="mt-3 text-[13px] leading-[1.6]" style={{ color: "#8FA3C0" }}>
-          Estimates in USD based on current prices, after Apple&apos;s fee. You earn 30% of what we receive for each subscriber&apos;s first 12 months.
+          Estimates in USD, based on current prices and after Apple&apos;s fee. You earn 30% of what we receive from each subscriber for their first 12 months.
         </p>
       </Section>
 
