@@ -209,7 +209,7 @@ export default function Kit() {
       </p>
 
       {/* Logo */}
-      <H2 sub="Transparent PNGs. Works best on light backgrounds.">Logo</H2>
+      <H2 sub="Transparent PNGs for light backgrounds. Some photo viewers show transparent areas as black, so the dark text can look hidden there. Once you add it to your post or design, it looks right.">Logo</H2>
       <Card className="divide-y divide-[#16233B]/[0.06]">
         {BRAND.map((b) => (
           <div key={b.file} className="flex items-center justify-between gap-4 px-5 py-4">
