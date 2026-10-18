@@ -71,6 +71,11 @@ function WeeklyChart() {
 export default function Dashboard() {
   const C = useCreator();
   const bonusActive = new Date(C.bonusEnds + "T23:59:59") >= new Date();
+  // A worked example for the payout row: last month's earnings and the month they're paid in.
+  const payNow = (() => {
+    const now = new Date(); const m = (k: number) => new Date(now.getFullYear(), now.getMonth() + k, 1).toLocaleDateString("en-CA", { month: "long" });
+    return { earned: `${m(-1)}'s`, paid: m(1) };
+  })();
   const cur = currencyFor(C.country);
   const link = `whatyouate.app/c/${C.code}`;
   const first = C.name.split(" ")[0];
@@ -116,20 +121,20 @@ export default function Dashboard() {
         {[
           {
             big: "30%",
-            title: "Of Every Subscription",
-            body: "For each subscriber's first 12 months, from what we receive after Apple's fee. Monthly subscribers earn you a share every month they stay.",
+            title: "30% of Every Subscription",
+            body: "When someone subscribes with your code, you get 30% of what we make from them for their first year. That's about $25 USD for a yearly subscriber, or about $3 USD every month a monthly subscriber stays, for up to 12 months.",
           },
           {
             big: "$1",
-            title: "Per Signup, First Month",
+            title: "$1 for Every New User, Your First Month",
             body: bonusActive
-              ? `Until ${longDate(C.bonusEnds)}. A signup counts once the new user has logged meals on 3 days in their first week.`
-              : `Your first-month bonus ended ${longDate(C.bonusEnds)}. Subscriptions keep earning as usual.`,
+              ? `Until ${longDate(C.bonusEnds)}, you also get $1 for every person who uses your code, even if they never subscribe. They just need to use the app on 3 different days in their first week.`
+              : `Your first-month bonus ended on ${longDate(C.bonusEnds)}. You still earn 30% of every subscription.`,
           },
           {
-            big: "1st",
-            title: "Paid Monthly",
-            body: `Each month's earnings are paid on the 1st of the month after next, once refunds clear, by ${PAYOUT_LABEL[C.payoutMethod]} in ${cur}. Balances under $10 roll over.`,
+            big: "cal",
+            title: "Paid Once a Month",
+            body: `We pay you on the 1st of each month by ${PAYOUT_LABEL[C.payoutMethod]}${cur === "CAD" ? ", in Canadian dollars" : ", in US dollars"}. Each payment covers the month before last, so refunds have time to clear. For example, ${payNow.earned} earnings are paid on ${payNow.paid} 1. If you've earned less than $10, it carries over to the next month.`,
           },
         ].map((r) => (
           <div key={r.title} className="flex gap-4 px-5 py-4">
@@ -137,11 +142,18 @@ export default function Dashboard() {
               className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl text-[16px] font-bold tracking-[-0.02em] text-white"
               style={{ background: "linear-gradient(135deg, #6FA8FF 0%, #3F7FD6 100%)" }}
             >
-              {r.big}
+              {r.big === "cal" ? (
+                <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                  <rect x="3.5" y="5" width="17" height="15.5" rx="3" />
+                  <path d="M3.5 10h17M8 3v4M16 3v4" />
+                </svg>
+              ) : (
+                r.big
+              )}
             </span>
             <div>
-              <p className="text-[15.5px] font-semibold" style={{ color: INK }}>{r.title}</p>
-              <p className="mt-0.5 text-[14px] leading-[1.55]" style={{ color: BODY }}>{r.body}</p>
+              <p className="text-[15.5px] font-semibold leading-[1.35]" style={{ color: INK }}>{r.title}</p>
+              <p className="mt-1 text-[14px] leading-[1.6]" style={{ color: BODY }}>{r.body}</p>
             </div>
           </div>
         ))}
