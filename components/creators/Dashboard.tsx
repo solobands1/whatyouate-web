@@ -198,8 +198,8 @@ export default function Dashboard() {
         </div>
       </Card>
 
-      <p className="mt-10 text-center text-[14px]" style={{ color: BODY }}>
-        Questions? <a href={`mailto:${CREATOR_EMAIL}`} className="font-semibold" style={{ color: "#2F6FC4" }}>{CREATOR_EMAIL}</a>
+      <p className="mt-10 text-center text-[14px]" style={{ color: INK }}>
+        Questions? <a href={`mailto:${CREATOR_EMAIL}`} className="font-semibold underline underline-offset-2" style={{ color: INK }}>{CREATOR_EMAIL}</a>
       </p>
     </div>
   );

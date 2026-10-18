@@ -111,7 +111,7 @@ export default function Creators() {
             <span className="text-[16px]" style={{ color: INK }}>Each monthly subscriber</span>
             <span className="text-right">
               <span className="block text-[20px] font-bold tracking-[-0.02em]" style={{ color: INK }}>about $3</span>
-              <span className="block text-[13px]" style={{ color: BODY }}>a month, up to a year</span>
+              <span className="block whitespace-nowrap text-[13px]" style={{ color: BODY }}>a month, up to a year</span>
             </span>
           </div>
           <div className="flex items-baseline justify-between gap-6 px-6 py-5">
@@ -163,8 +163,8 @@ export default function Creators() {
             Ready to start?
           </h2>
           <PrimaryButton href="/creators/join">Join the program</PrimaryButton>
-          <p className="text-[14px]" style={{ color: BODY }}>
-            Questions? <a href={`mailto:${CREATOR_EMAIL}`} className="font-semibold" style={{ color: "#2F6FC4" }}>{CREATOR_EMAIL}</a>
+          <p className="text-[14px]" style={{ color: INK }}>
+            Questions? <a href={`mailto:${CREATOR_EMAIL}`} className="font-semibold underline underline-offset-2" style={{ color: INK }}>{CREATOR_EMAIL}</a>
           </p>
         </div>
       </Reveal>

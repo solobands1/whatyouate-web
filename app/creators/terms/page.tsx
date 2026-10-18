@@ -73,8 +73,8 @@ export default function CreatorTerms() {
         <p>You take part as an independent creator, not as an employee or agent of Integrity Stack Inc. These terms are governed by the laws of Ontario, Canada.</p>
       </S>
 
-      <p className="mt-12 text-[15px]" style={{ color: BODY }}>
-        Questions? <a href={`mailto:${CREATOR_EMAIL}`} className="font-semibold" style={{ color: "#2F6FC4" }}>{CREATOR_EMAIL}</a>
+      <p className="mt-12 text-[15px]" style={{ color: INK }}>
+        Questions? <a href={`mailto:${CREATOR_EMAIL}`} className="font-semibold underline underline-offset-2" style={{ color: INK }}>{CREATOR_EMAIL}</a>
       </p>
     </Shell>
   );
