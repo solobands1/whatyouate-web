@@ -121,20 +121,20 @@ export default function Dashboard() {
         {[
           {
             big: "30%",
-            title: "30% of Every Subscription",
-            body: "When someone subscribes with your code, you earn 30% of their subscription for a full year, after Apple's fee. That's about $25 USD for a yearly subscriber, or about $3 USD each month a monthly subscriber stays, for up to 12 months.",
+            title: "30% of Every Subscription, for a Full Year",
+            body: "One post can keep paying you. When someone subscribes with your code, you earn 30% of their subscription for their first 12 months, after Apple's fee. That's about $25 USD for each yearly subscriber, or about $3 USD every month a monthly subscriber sticks around.",
           },
           {
             big: "$1",
-            title: "$1 for Every New User, Your First Month",
+            title: "A Head Start: $1 for Every New User",
             body: bonusActive
-              ? `Until ${longDate(C.bonusEnds)}, you also get $1 for every person who uses your code, even if they never subscribe. They just need to use the app on 3 different days in their first week.`
+              ? `For your first month, until ${longDate(C.bonusEnds)}, everyone who tries the app with your code earns you $1, even if they never subscribe. They just need to use it on 3 different days in their first week.`
               : `Your first-month bonus ended on ${longDate(C.bonusEnds)}. You still earn 30% of every subscription.`,
           },
           {
             big: "cal",
-            title: "Paid Once a Month",
-            body: `We pay you on the 1st of each month by ${PAYOUT_LABEL[C.payoutMethod]}${cur === "CAD" ? ", in Canadian dollars" : ", in US dollars"}. Each payment covers the month before last, so refunds have time to clear. For example, ${payNow.earned} earnings are paid on ${payNow.paid} 1. If you've earned less than $10, it carries over to the next month.`,
+            title: "Paid Every Month",
+            body: `Your earnings land on the 1st of each month by ${PAYOUT_LABEL[C.payoutMethod]}${cur === "CAD" ? ", in Canadian dollars" : ", in US dollars"}. Each payment covers the month before last, so refunds have time to clear: ${payNow.earned} earnings arrive ${payNow.paid} 1. Anything under $10 rolls into your next payment.`,
           },
         ].map((r) => (
           <div key={r.title} className="flex gap-4 px-5 py-4">
