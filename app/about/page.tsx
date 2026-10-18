@@ -169,6 +169,7 @@ export default function About() {
         <div className="mx-auto flex max-w-[64rem] flex-col items-center gap-5 text-center">
           <nav className="flex flex-wrap justify-center gap-x-8 gap-y-2 text-[14px]" style={{ color: BODY }}>
             <Link href="/" className="transition hover:opacity-70">Home</Link>
+            <Link href="/creators" className="transition hover:opacity-70">Creators</Link>
             <Link href="/privacy" className="transition hover:opacity-70">Privacy Policy</Link>
             <Link href="/terms" className="transition hover:opacity-70">Terms of Use</Link>
             <a href="mailto:hello@minimul.app" className="transition hover:opacity-70">Support</a>

@@ -5,6 +5,7 @@ import { APP_STORE_URL, INK } from "./site";
 
 const LINKS = [
   { label: "About", href: "/about" },
+  { label: "Creators", href: "/creators" },
   { label: "Support", href: "mailto:hello@minimul.app" },
 ];
 
