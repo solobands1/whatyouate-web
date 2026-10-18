@@ -233,7 +233,7 @@ export default function Kit() {
           className="mt-2 flex w-full items-center justify-center rounded-full px-5 py-3.5 text-[14.5px] font-semibold text-white transition hover:opacity-90"
           style={{ background: INK }}
         >
-          Download Everything (11 MB)
+          Download Everything (14 MB)
         </a>
       </Card>
     </div>
