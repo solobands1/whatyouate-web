@@ -14,11 +14,12 @@ export default function Shell({ children, narrow = false }: { children: React.Re
         <div className="mx-auto flex max-w-[68rem] items-center justify-between px-6 py-6">
           <Link href="/" className="flex items-center gap-2.5">
             <Image src="/icon-512.png" alt="" width={30} height={30} className="rounded-[8px] ring-1 ring-black/5" priority />
-            <span className="text-[16px] font-semibold leading-[21.333px] tracking-[-0.015em]">
+            <span className="text-[16px] font-semibold leading-[21.333px] tracking-[-0.015em] text-[#1F2937]">
               WhatYouAt
               <span className="relative inline-block">
                 e
-                <span className="absolute -top-[2.667px] right-0 translate-x-[6.667px] text-[6px] font-semibold leading-[21.333px] text-[#101B2E]/60">AI</span>
+                {/* Calibrated so size and position match the app header's AI (measured against the live app). */}
+                <span className="absolute left-[calc(100%+0.8px)] top-[5.4px] text-[5.7px] font-semibold leading-none text-[#1F2937]/60">AI</span>
               </span>
             </span>
           </Link>
