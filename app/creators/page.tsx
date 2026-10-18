@@ -18,7 +18,7 @@ const STEPS = [
   },
   {
     title: "Share It Your Way",
-    body: "Post about the app and put your link in your bio. Anyone who uses your code gets their first month free. Your creator kit has captions, post ideas and app images ready to go.",
+    body: "Post about the app and put your link in your bio. Anyone who uses your code gets their first month free. Your Creator Kit has captions, post ideas, videos and images ready to go.",
   },
   {
     title: "Get Paid Every Month",
@@ -33,7 +33,7 @@ const FAQ = [
   },
   {
     q: "What do my followers get?",
-    a: "Their first month free when they enter your code in the app, or open your link.",
+    a: "Their first month free. They enter your code when they sign up in the app, and your link shows them the code and takes them to the App Store.",
   },
   {
     q: "When do I get paid?",
@@ -83,7 +83,7 @@ export default function Creators() {
           Your followers get their first month free.
         </p>
         <p className="mt-3 text-[13px]" style={{ color: "#8FA3C0" }}>
-          Signups count once the new user is active for 3 days. See{" "}
+          Signups count once the new user has used the app on 3 days in their first week. See{" "}
           <Link href="/creators/terms" className="underline underline-offset-2">program terms</Link>.
         </p>
         <div className="mt-9 flex flex-col gap-3 sm:flex-row">

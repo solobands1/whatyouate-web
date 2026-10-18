@@ -108,7 +108,7 @@ export default function Dashboard() {
       >
         <div>
           <p className="text-[17px] font-bold tracking-[-0.02em]">Creator Kit</p>
-          <p className="mt-1 text-[14px] leading-[1.5] text-white/85">Captions with your code, post ideas, what to say and app screenshots.</p>
+          <p className="mt-1 text-[14px] leading-[1.5] text-white/85">Captions with your code, post ideas, videos, logos and screenshots.</p>
         </div>
         <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round" className="shrink-0">
           <path d="M9 6l6 6-6 6" />
@@ -186,7 +186,7 @@ export default function Dashboard() {
       <Card className="px-6 py-5">
         <p className="text-[14px] font-medium" style={{ color: BODY }}>{S.nextPayout.date}</p>
         <p className="mt-1 text-[28px] font-bold tracking-[-0.03em]" style={{ color: INK }}>
-          about {money(S.nextPayout.estimate, cur).replace(` ${cur}`, "")}
+          about {money(S.nextPayout.estimate, cur).replace(` ${cur}`, "")}{" "}
           <span className="ml-1.5 text-[14px] font-medium" style={{ color: BODY }}>{cur}</span>
         </p>
         <p className="mt-2 text-[14px] leading-[1.55]" style={{ color: BODY }}>
@@ -197,7 +197,7 @@ export default function Dashboard() {
       {/* All time */}
       <SectionTitle>All Time</SectionTitle>
       <div className="grid grid-cols-3 gap-3">
-        <Stat small label="Paid Subs" value={String(S.allTime.paidSubs)} />
+        <Stat small label="Subscribers" value={String(S.allTime.paidSubs)} />
         <Stat small label="Earned" value={money(S.allTime.earned, cur).replace(` ${cur}`, "")} />
         <Stat small label="Paid Out" value={money(S.allTime.paidOut, cur).replace(` ${cur}`, "")} />
       </div>

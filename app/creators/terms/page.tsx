@@ -37,7 +37,7 @@ export default function CreatorTerms() {
 
       <S n={2} title="Your Code and Link">
         <p>You choose a code of 3 to 15 letters or numbers. Codes are first come, first served, and we may refuse codes that are reserved, misleading or offensive. You can change your code at any time. Your previous codes keep working and stay linked to you.</p>
-        <p>Your followers get their first month of WhatYouAte free when they enter your code in the app or open your link before signing up.</p>
+        <p>Your followers get their first month of WhatYouAte free when they enter your code in the app as they sign up. Your link shows them your code and takes them to the App Store.</p>
       </S>
 
       <S n={3} title="What You Earn">
@@ -58,16 +58,16 @@ export default function CreatorTerms() {
       </S>
 
       <S n={6} title="What Isn't Allowed">
-        <p>Using your own code, creating accounts, paying for signups, misleading people to get signups, spam, or running ads that bid on the WhatYouAte name. Signups we find to be fake or self-made aren&apos;t paid, and we may withhold earnings or end your participation.</p>
+        <p>Using your own code, creating fake accounts, paying for signups, misleading people to get signups, spam, or running ads that bid on the WhatYouAte name. Signups we find to be fake or self-made aren&apos;t paid, and we may withhold earnings or end your participation.</p>
       </S>
 
       <S n={7} title="Your Content">
         <p>You keep ownership of what you create. You allow us to share and reuse your posts about WhatYouAte, with credit to you, on our own accounts, website and in ads, for as long as the program runs and 12 months after.</p>
-        <p>We may also ask to run your post as an ad from your account, using Instagram partnership ads or TikTok Spark Ads. That only happens if you approve it in the app.</p>
+        <p>We may also ask to run your post as an ad from your account, using Instagram partnership ads or TikTok Spark Ads. That only happens if you approve it in Instagram or TikTok.</p>
       </S>
 
       <S n={8} title="Privacy">
-        <p>Your dashboard shows totals only. We never share the identity of anyone who used your code. We use your details to run the program and pay you, as described in our privacy policy.</p>
+        <p>Your dashboard shows totals only. We never share the identity of anyone who used your code. We use your details to run the program and pay you, as described in our <a href="/privacy" className="font-semibold underline underline-offset-2" style={{ color: INK }}>privacy policy</a>.</p>
       </S>
 
       <S n={9} title="Changes and Leaving">

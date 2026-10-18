@@ -39,7 +39,7 @@ const captions = (code: string) => [
   },
   {
     label: "Story",
-    text: `Been using WhatYouAte to figure out what actually gives me energy. Code ${code} for a free month 👇 #ad`,
+    text: `Been using WhatYouAte to figure out what actually gives me energy. Code ${code} for a free month 👇 @whatyouate.app #ad`,
   },
 ];
 
@@ -87,7 +87,7 @@ export default function Kit() {
       <CreatorNav />
       <h1 className="mt-8 text-[clamp(28px,4.4vw,40px)] font-bold leading-[1.1] tracking-[-0.04em]">Creator Kit</h1>
       <p className="mt-3 text-[16px] leading-[1.65]" style={{ color: BODY }}>
-        Everything you need to post: your links, captions, ideas, and app images and video.
+        Everything you need to post: your links, captions, post ideas, videos, logos and screenshots.
       </p>
 
       {/* Links */}
@@ -244,7 +244,7 @@ export default function Kit() {
           className="mt-5 flex w-full items-center justify-center rounded-full px-5 py-3.5 text-[14.5px] font-semibold text-white transition hover:opacity-90"
           style={{ background: INK }}
         >
-          Download Everything (15 MB)
+          Download everything (15 MB)
         </a>
       </Card>
     </div>
