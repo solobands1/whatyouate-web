@@ -109,8 +109,9 @@ export default function Creators() {
           </div>
           <div className="flex items-baseline justify-between gap-6 px-6 py-5">
             <span className="text-[16px]" style={{ color: INK }}>Each monthly subscriber</span>
-            <span className="text-right text-[20px] font-bold tracking-[-0.02em]" style={{ color: INK }}>
-              about $3<span className="text-[14px] font-medium" style={{ color: BODY }}> a month, up to a year</span>
+            <span className="text-right">
+              <span className="block text-[20px] font-bold tracking-[-0.02em]" style={{ color: INK }}>about $3</span>
+              <span className="block text-[13px]" style={{ color: BODY }}>a month, up to a year</span>
             </span>
           </div>
           <div className="flex items-baseline justify-between gap-6 px-6 py-5">

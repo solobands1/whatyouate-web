@@ -26,17 +26,15 @@ export default function Shell({ children, narrow = false }: { children: React.Re
 
       <footer className="px-6 pb-14 pt-24">
         <div className="mx-auto flex max-w-[64rem] flex-col items-center gap-5 text-center">
-          <nav className="flex flex-wrap justify-center gap-x-8 gap-y-2 text-[14px]" style={{ color: BODY }}>
+          <nav className="flex flex-wrap justify-center gap-x-8 gap-y-2 text-[14px] text-white/85">
             <Link href="/" className="transition hover:opacity-70">Home</Link>
             <Link href="/creators" className="transition hover:opacity-70">Creators</Link>
             <Link href="/privacy" className="transition hover:opacity-70">Privacy Policy</Link>
             <Link href="/terms" className="transition hover:opacity-70">Terms of Use</Link>
             <a href={`mailto:${CREATOR_EMAIL}`} className="transition hover:opacity-70">Contact</a>
           </nav>
-          <div style={{ color: BODY }}>
-            <Social />
-          </div>
-          <span className="text-[13px]" style={{ color: "#9CADC6" }}>
+          <Social className="text-white/85" />
+          <span className="text-[13px] text-white/65">
             © {new Date().getFullYear()} WhatYouAte. All rights reserved.
           </span>
         </div>

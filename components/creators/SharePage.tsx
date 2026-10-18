@@ -68,7 +68,7 @@ export default function SharePage() {
       </div>
 
       <DownloadButton className="mt-8" />
-      <p className="mt-4 text-[13px]" style={{ color: "#8FA3C0" }}>Free on iPhone. Code applies to new accounts.</p>
+      <p className="mt-4 text-[13px] text-white/85">Free on iPhone. Code applies to new accounts.</p>
     </div>
   );
 }

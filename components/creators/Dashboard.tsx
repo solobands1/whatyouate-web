@@ -38,11 +38,11 @@ function CopyButton({ text, label }: { text: string; label: string }) {
   );
 }
 
-function Stat({ label, value, hint }: { label: string; value: string; hint?: string }) {
+function Stat({ label, value, hint, small = false }: { label: string; value: string; hint?: string; small?: boolean }) {
   return (
-    <div className="rounded-2xl bg-white px-5 py-4 ring-1 ring-[#16233B]/[0.06]">
+    <div className={`rounded-2xl bg-white ring-1 ring-[#16233B]/[0.06] ${small ? "px-4 py-3.5" : "px-5 py-4"}`}>
       <p className="text-[13px] font-medium" style={{ color: BODY }}>{label}</p>
-      <p className="mt-1 text-[26px] font-bold tracking-[-0.03em]" style={{ color: INK }}>{value}</p>
+      <p className={`mt-1 font-bold tracking-[-0.03em] ${small ? "text-[20px]" : "text-[26px]"}`} style={{ color: INK }}>{value}</p>
       {hint && <p className="mt-0.5 text-[12px]" style={{ color: "#8FA3C0" }}>{hint}</p>}
     </div>
   );
@@ -60,14 +60,16 @@ function SectionTitle({ children, right }: { children: React.ReactNode; right?: 
 function WeeklyChart() {
   const max = Math.max(1, ...S.weekly.map((w) => w.uses));
   return (
-    <div className="flex h-36 items-end gap-3 px-1">
+    <div className="flex items-end gap-3 px-1">
       {S.weekly.map((w, i) => {
         const h = Math.max(4, Math.round((w.uses / max) * 100));
         const last = i === S.weekly.length - 1;
         return (
           <div key={w.week} className="flex flex-1 flex-col items-center gap-2">
             <span className="text-[12px] font-semibold" style={{ color: w.uses ? INK : "#B4C3D8" }}>{w.uses}</span>
-            <div className="w-full rounded-lg" style={{ height: `${h}%`, background: last ? "#B9D4FA" : "#6FA8FF" }} />
+            <div className="flex h-28 w-full items-end">
+              <div className="w-full rounded-lg" style={{ height: `${h}%`, background: last ? "#B9D4FA" : "#6FA8FF" }} />
+            </div>
             <span className="whitespace-nowrap text-[11px]" style={{ color: "#8FA3C0" }}>{w.week}</span>
           </div>
         );
@@ -136,10 +138,11 @@ export default function Dashboard() {
       {/* Payout */}
       <SectionTitle>Next payout</SectionTitle>
       <Card className="px-6 py-5">
-        <div className="flex items-baseline justify-between gap-4">
-          <span className="text-[16px] font-semibold" style={{ color: INK }}>{S.nextPayout.date}</span>
-          <span className="text-[22px] font-bold tracking-[-0.02em]" style={{ color: INK }}>about {money(S.nextPayout.estimate, cur)}</span>
-        </div>
+        <p className="text-[14px] font-medium" style={{ color: BODY }}>{S.nextPayout.date}</p>
+        <p className="mt-1 text-[28px] font-bold tracking-[-0.03em]" style={{ color: INK }}>
+          about {money(S.nextPayout.estimate, cur).replace(` ${cur}`, "")}
+          <span className="ml-1.5 text-[14px] font-medium" style={{ color: BODY }}>{cur}</span>
+        </p>
         <p className="mt-2 text-[14px] leading-[1.55]" style={{ color: BODY }}>
           By {PAYOUT_LABEL[C.payoutMethod]} to {C.payoutEmail}. Covers October, once refunds have cleared.
           {cur === "CAD" ? " Converted from USD on the day it's paid." : ""}
@@ -149,9 +152,9 @@ export default function Dashboard() {
       {/* All time */}
       <SectionTitle>All time</SectionTitle>
       <div className="grid grid-cols-3 gap-3">
-        <Stat label="Paid subscribers" value={String(S.allTime.paidSubs)} />
-        <Stat label="Earned" value={money(S.allTime.earned, cur).replace(` ${cur}`, "")} />
-        <Stat label="Paid out" value={money(S.allTime.paidOut, cur).replace(` ${cur}`, "")} />
+        <Stat small label="Paid subs" value={String(S.allTime.paidSubs)} />
+        <Stat small label="Earned" value={money(S.allTime.earned, cur).replace(` ${cur}`, "")} />
+        <Stat small label="Paid out" value={money(S.allTime.paidOut, cur).replace(` ${cur}`, "")} />
       </div>
 
       {/* Creator kit */}
