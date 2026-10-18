@@ -13,6 +13,13 @@ const VIDEOS = [
   { slug: "patterns", title: "What's Behind Your Low-Energy Days?", note: "15 seconds" },
   { slug: "nightly-check-in", title: "One Minute a Night", note: "15 seconds" },
 ];
+const BRAND = [
+  { file: "whatyouate-logo-dark.png", label: "Logo", note: "Icon and name, dark", dark: false },
+  { file: "whatyouate-logo-white.png", label: "Logo, White", note: "Icon and name, for dark backgrounds", dark: true },
+  { file: "whatyouate-wordmark-dark.png", label: "Wordmark", note: "WhatYouAte AI, dark", dark: false },
+  { file: "whatyouate-wordmark-white.png", label: "Wordmark, White", note: "WhatYouAte AI, for dark backgrounds", dark: true },
+  { file: "whatyouate-icon.png", label: "App Icon", note: "1024 x 1024", dark: false },
+];
 const SHOTS = Array.from({ length: 10 }, (_, i) => `whatyouate-${String(i + 1).padStart(2, "0")}`);
 
 const IDEAS = [
@@ -183,7 +190,7 @@ export default function Kit() {
       </Card>
 
       {/* Videos */}
-      <H2 sub="Real recordings of the app. Silent, so you can add your own sound or voiceover.">Videos</H2>
+      <H2 sub="Real recordings of the app, sized 1080 x 1920 for TikTok, Instagram Reels and Stories. Post them as they are, no cropping needed. They're silent, so you can add your own sound or voiceover.">Videos</H2>
       <Card className="divide-y divide-[#16233B]/[0.06]">
         {VIDEOS.map((v) => (
           <div key={v.slug} className="flex items-center gap-4 px-5 py-4">
@@ -203,6 +210,25 @@ export default function Kit() {
         Ready to Post has a headline and our logo at the end. Screen Only is just the app, to use in your own video.
       </p>
 
+      {/* Logo */}
+      <H2 sub="Transparent PNGs. Use the dark version on light backgrounds and the white version on dark or busy ones.">Logo</H2>
+      <Card className="divide-y divide-[#16233B]/[0.06]">
+        {BRAND.map((b) => (
+          <div key={b.file} className="flex items-center justify-between gap-4 px-5 py-4">
+            <div className="flex min-w-0 items-center gap-4">
+              <div className="flex h-14 w-28 shrink-0 items-center justify-center rounded-xl px-2" style={{ background: b.dark ? "#2F6FC4" : "#F2F6FC" }}>
+                <Image src={`${KIT}/brand/${b.file}`} alt="" width={96} height={40} className="max-h-10 w-auto object-contain" />
+              </div>
+              <div className="min-w-0">
+                <p className="text-[15px] font-semibold" style={{ color: INK }}>{b.label}</p>
+                <p className="text-[13px]" style={{ color: BODY }}>{b.note}</p>
+              </div>
+            </div>
+            <a href={`${KIT}/brand/${b.file}`} download className="shrink-0 text-[14px] font-semibold" style={{ color: "#2F6FC4" }}>Download</a>
+          </div>
+        ))}
+      </Card>
+
       {/* Assets */}
       <H2 sub="Free to use in your posts.">Screenshots</H2>
       <Card className="px-5 py-5">
@@ -216,7 +242,6 @@ export default function Kit() {
         <p className="mt-2 text-[13px]" style={{ color: BODY }}>App Store screenshots. Tap one to download it.</p>
         <div className="mt-4 flex flex-col divide-y divide-[#16233B]/[0.06] border-t border-[#16233B]/[0.06]">
           {[
-            { label: "App icon", note: "PNG, 512 x 512", href: `${KIT}/whatyouate-icon.png` },
           ].map((a) => (
             <div key={a.label} className="flex items-center justify-between gap-4 py-3.5">
               <div>
@@ -233,7 +258,7 @@ export default function Kit() {
           className="mt-2 flex w-full items-center justify-center rounded-full px-5 py-3.5 text-[14.5px] font-semibold text-white transition hover:opacity-90"
           style={{ background: INK }}
         >
-          Download Everything (14 MB)
+          Download Everything (15 MB)
         </a>
       </Card>
     </div>
