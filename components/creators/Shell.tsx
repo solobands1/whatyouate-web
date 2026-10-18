@@ -24,7 +24,12 @@ export default function Shell({ children, narrow = false }: { children: React.Re
         <div className={`mx-auto ${narrow ? "max-w-[30rem]" : "max-w-[44rem]"}`}>{children}</div>
       </main>
 
-      <footer className="px-6 pb-14 pt-24">
+      {/* The footer carries its own fade into the deep blue, so the white text stays readable even on
+          short pages where the body wash hasn't darkened yet. */}
+      <footer
+        className="mt-10 px-6 pb-14 pt-32"
+        style={{ background: "linear-gradient(180deg, rgba(91,143,210,0) 0%, rgba(91,143,210,0.9) 38%, #4C82C7 100%)" }}
+      >
         <div className="mx-auto flex max-w-[64rem] flex-col items-center gap-5 text-center">
           <nav className="flex flex-wrap justify-center gap-x-8 gap-y-2 text-[14px] text-white/85">
             <Link href="/" className="transition hover:opacity-70">Home</Link>

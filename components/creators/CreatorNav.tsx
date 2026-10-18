@@ -6,7 +6,7 @@ import { INK, BODY } from "../site";
 
 const TABS = [
   { href: "/creators/dashboard", label: "Dashboard" },
-  { href: "/creators/kit", label: "Creator kit" },
+  { href: "/creators/kit", label: "Creator Kit" },
   { href: "/creators/profile", label: "Profile" },
 ];
 
@@ -31,7 +31,7 @@ export default function CreatorNav() {
         })}
       </nav>
       <Link href="/creators" className="shrink-0 text-[13.5px] font-semibold" style={{ color: BODY }}>
-        Log out
+        Log Out
       </Link>
     </div>
   );

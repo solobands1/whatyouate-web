@@ -3,7 +3,7 @@ import Shell, { Eyebrow } from "../../../components/creators/Shell";
 import LoginForm from "../../../components/creators/LoginForm";
 
 export const metadata: Metadata = {
-  title: "Log in | WhatYouAte Creators",
+  title: "Log In | WhatYouAte Creators",
   description: "Log in to your WhatYouAte creator dashboard.",
 };
 
@@ -11,7 +11,7 @@ export default function Login() {
   return (
     <Shell narrow>
       <Eyebrow>Creators</Eyebrow>
-      <h1 className="mt-5 text-[clamp(30px,4.6vw,44px)] font-bold leading-[1.08] tracking-[-0.04em]">Log in</h1>
+      <h1 className="mt-5 text-[clamp(30px,4.6vw,44px)] font-bold leading-[1.08] tracking-[-0.04em]">Log In</h1>
       <div className="mt-9">
         <LoginForm />
       </div>

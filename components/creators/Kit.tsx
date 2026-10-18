@@ -4,7 +4,7 @@ import Image from "next/image";
 import { useState } from "react";
 import { Card } from "./Shell";
 import CreatorNav from "./CreatorNav";
-import { SAMPLE_CREATOR as C } from "./sample";
+import { useCreator } from "./store";
 import { APP_STORE_URL, BODY, INK } from "../site";
 
 const KIT = "/creators/kit";
@@ -68,23 +68,24 @@ function SmallCopy({ on, onClick, label = "Copy" }: { on: boolean; onClick: () =
 }
 
 export default function Kit() {
+  const C = useCreator();
   const { copied, copy } = useCopy();
   const link = `https://whatyouate.app/c/${C.code}`;
 
   return (
     <div>
       <CreatorNav />
-      <h1 className="mt-8 text-[clamp(28px,4.4vw,40px)] font-bold leading-[1.1] tracking-[-0.04em]">Creator kit</h1>
+      <h1 className="mt-8 text-[clamp(28px,4.4vw,40px)] font-bold leading-[1.1] tracking-[-0.04em]">Creator Kit</h1>
       <p className="mt-3 text-[16px] leading-[1.65]" style={{ color: BODY }}>
         Everything you need to post: your links, captions, ideas, and app images and video.
       </p>
 
       {/* Links */}
-      <H2>Your links</H2>
+      <H2>Your Links</H2>
       <Card className="divide-y divide-[#16233B]/[0.06]">
         {[
-          { key: "code", label: "Your code", value: C.code },
-          { key: "link", label: "Your link", value: link.replace("https://", "") },
+          { key: "code", label: "Your Code", value: C.code },
+          { key: "link", label: "Your Link", value: link.replace("https://", "") },
           { key: "store", label: "App Store", value: "apps.apple.com/app/whatyouate", copyText: APP_STORE_URL },
         ].map((r) => (
           <div key={r.key} className="flex items-center justify-between gap-4 px-6 py-4">
@@ -115,7 +116,7 @@ export default function Kit() {
       </div>
 
       {/* Ideas */}
-      <H2 sub="Use the app for a week or two first, so you have real patterns to show.">Post ideas</H2>
+      <H2 sub="Use the app for a week or two first, so you have real patterns to show.">Post Ideas</H2>
       <Card className="divide-y divide-[#16233B]/[0.06]">
         {IDEAS.map((i) => (
           <div key={i.hook} className="px-6 py-4">
@@ -126,7 +127,7 @@ export default function Kit() {
       </Card>
 
       {/* Talking points */}
-      <H2>What to say</H2>
+      <H2>What to Say</H2>
       <div className="grid gap-3 sm:grid-cols-2">
         <Card className="px-6 py-5">
           <p className="text-[14px] font-bold" style={{ color: "#15803D" }}>Say</p>
@@ -138,7 +139,7 @@ export default function Kit() {
           </ul>
         </Card>
         <Card className="px-6 py-5">
-          <p className="text-[14px] font-bold" style={{ color: "#C2410C" }}>Don&apos;t say</p>
+          <p className="text-[14px] font-bold" style={{ color: "#C2410C" }}>Don&apos;t Say</p>
           <ul className="mt-2.5 flex flex-col gap-2 text-[14.5px] leading-[1.55]" style={{ color: INK }}>
             <li>That it treats, cures or fixes anything, including IBS.</li>
             <li>That it&apos;s a diet or weight-loss app.</li>
@@ -149,7 +150,7 @@ export default function Kit() {
       </div>
 
       {/* Disclosure */}
-      <H2 sub="Required on every post, video and story that mentions WhatYouAte.">Label it as sponsored</H2>
+      <H2 sub="Required on every post, video and story that mentions WhatYouAte.">Label It as Sponsored</H2>
       <Card className="divide-y divide-[#16233B]/[0.06]">
         <div className="px-6 py-4">
           <p className="text-[15.5px] font-semibold" style={{ color: INK }}>Instagram</p>
@@ -161,8 +162,23 @@ export default function Kit() {
         </div>
       </Card>
 
+      {/* Tagging */}
+      <H2 sub="So we can find your post, share it and thank you.">Tag Us</H2>
+      <Card className="divide-y divide-[#16233B]/[0.06]">
+        <div className="px-6 py-4">
+          <p className="text-[15.5px] font-semibold" style={{ color: INK }}>Instagram</p>
+          <p className="mt-1 text-[14px] leading-[1.55]" style={{ color: BODY }}>
+            Tag @whatyouate.app, and invite @whatyouate.app as a collaborator (Tag people, then Invite collaborator). The post then shows on both accounts.
+          </p>
+        </div>
+        <div className="px-6 py-4">
+          <p className="text-[15.5px] font-semibold" style={{ color: INK }}>TikTok</p>
+          <p className="mt-1 text-[14px] leading-[1.55]" style={{ color: BODY }}>Tag @whatyouate in your caption.</p>
+        </div>
+      </Card>
+
       {/* Assets */}
-      <H2 sub="Free to use in your posts.">Images and video</H2>
+      <H2 sub="Free to use in your posts.">Images</H2>
       <Card className="px-5 py-5">
         <div className="-mx-1 flex snap-x gap-3 overflow-x-auto px-1 pb-2">
           {SHOTS.map((s) => (
@@ -174,7 +190,6 @@ export default function Kit() {
         <p className="mt-2 text-[13px]" style={{ color: BODY }}>App Store screenshots. Tap one to download it.</p>
         <div className="mt-4 flex flex-col divide-y divide-[#16233B]/[0.06] border-t border-[#16233B]/[0.06]">
           {[
-            { label: "Demo video", note: "11 seconds, vertical, no sound", href: `${KIT}/whatyouate-demo.mp4` },
             { label: "App icon", note: "PNG, 512 x 512", href: `${KIT}/whatyouate-icon.png` },
           ].map((a) => (
             <div key={a.label} className="flex items-center justify-between gap-4 py-3.5">
@@ -192,7 +207,7 @@ export default function Kit() {
           className="mt-2 flex w-full items-center justify-center rounded-full px-5 py-3.5 text-[14.5px] font-semibold text-white transition hover:opacity-90"
           style={{ background: INK }}
         >
-          Download everything (7.6 MB)
+          Download Everything (5 MB)
         </a>
       </Card>
     </div>

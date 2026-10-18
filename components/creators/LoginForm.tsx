@@ -12,7 +12,7 @@ export default function LoginForm() {
   if (sent) {
     return (
       <Card className="px-7 py-9 text-center">
-        <h2 className="text-[24px] font-bold tracking-[-0.03em]" style={{ color: INK }}>Check your email</h2>
+        <h2 className="text-[24px] font-bold tracking-[-0.03em]" style={{ color: INK }}>Check Your Email</h2>
         <p className="mt-3 text-[16px] leading-[1.65]" style={{ color: BODY }}>
           We sent a sign-in link to <strong style={{ color: INK }}>{email}</strong>. Tap it on this device to open
           your dashboard. It may take a minute, and it&apos;s worth checking spam.

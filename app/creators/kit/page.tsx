@@ -3,7 +3,7 @@ import Shell from "../../../components/creators/Shell";
 import Kit from "../../../components/creators/Kit";
 
 export const metadata: Metadata = {
-  title: "Creator kit | WhatYouAte Creators",
+  title: "Creator Kit | WhatYouAte Creators",
   robots: { index: false },
 };
 

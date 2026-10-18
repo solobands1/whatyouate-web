@@ -13,15 +13,15 @@ export const metadata: Metadata = {
 
 const STEPS = [
   {
-    title: "Join and pick your code",
+    title: "Join and Pick Your Code",
     body: "Sign up in a minute and choose a code your followers will remember, like SARAH.",
   },
   {
-    title: "Share it your way",
+    title: "Share It Your Way",
     body: "Post about the app and put your link in your bio. Anyone who uses your code gets their first month free. Your creator kit has captions, post ideas and app images ready to go.",
   },
   {
-    title: "Get paid every month",
+    title: "Get Paid Every Month",
     body: "Track your signups and earnings in your dashboard. Payouts go out monthly by Interac e-Transfer in Canada, or by PayPal or Wise everywhere else.",
   },
 ];
@@ -76,7 +76,7 @@ export default function Creators() {
       <Reveal>
         <Eyebrow>Creators</Eyebrow>
         <h1 className="mt-5 text-balance text-[clamp(34px,5.4vw,56px)] font-bold leading-[1.06] tracking-[-0.04em]">
-          Share WhatYouAte. Earn for a full year.
+          Share WhatYouAte. Earn for a Full Year.
         </h1>
         <p className="mt-6 text-[18px] leading-[1.7]" style={{ color: BODY }}>
           Earn 30% of every subscription you bring in for 12 months, plus $1 for every signup in your first month.
@@ -105,7 +105,7 @@ export default function Creators() {
         </div>
       </Reveal>
 
-      <Section title="How it works">
+      <Section title="How It Works">
         <div className="mt-7 flex flex-col gap-4">
           {STEPS.map((s, i) => (
             <Card key={s.title} className="flex gap-5 px-6 py-6">
@@ -124,21 +124,21 @@ export default function Creators() {
         </div>
       </Section>
 
-      <Section title="What you earn">
+      <Section title="What You Earn">
         <Card className="mt-7 divide-y divide-[#16233B]/[0.06]">
           <div className="flex items-baseline justify-between gap-6 px-6 py-5">
-            <span className="text-[16px]" style={{ color: INK }}>Each yearly subscriber</span>
+            <span className="text-[16px]" style={{ color: INK }}>Each Yearly Subscriber</span>
             <span className="text-[20px] font-bold tracking-[-0.02em]" style={{ color: INK }}>about $25</span>
           </div>
           <div className="flex items-baseline justify-between gap-6 px-6 py-5">
-            <span className="text-[16px]" style={{ color: INK }}>Each monthly subscriber</span>
+            <span className="text-[16px]" style={{ color: INK }}>Each Monthly Subscriber</span>
             <span className="text-right">
               <span className="block text-[20px] font-bold tracking-[-0.02em]" style={{ color: INK }}>about $3</span>
               <span className="block whitespace-nowrap text-[13px]" style={{ color: BODY }}>a month, up to a year</span>
             </span>
           </div>
           <div className="flex items-baseline justify-between gap-6 px-6 py-5">
-            <span className="text-[16px]" style={{ color: INK }}>Each signup in your first month</span>
+            <span className="text-[16px]" style={{ color: INK }}>Each Signup in Your First Month</span>
             <span className="text-[20px] font-bold tracking-[-0.02em]" style={{ color: INK }}>$1</span>
           </div>
         </Card>
@@ -147,11 +147,12 @@ export default function Creators() {
         </p>
       </Section>
 
-      <Section title="What we ask">
+      <Section title="What We Ask">
         <ul className="mt-6 flex flex-col gap-3">
           {[
             "Use the app yourself first, so you have something real to share.",
             "Say it's sponsored, with #ad or a paid partnership label.",
+            "Tag @whatyouate.app on Instagram and @whatyouate on TikTok, and invite @whatyouate.app as a collaborator on Instagram.",
             "Talk about your own experience. No claims that the app treats or cures anything.",
           ].map((t) => (
             <li key={t} className="flex gap-3.5 text-[17px] leading-[1.6]" style={{ color: INK }}>
@@ -162,7 +163,7 @@ export default function Creators() {
         </ul>
       </Section>
 
-      <Section title="Questions">
+      <Section title="Common Questions">
         <div className="mt-6 flex flex-col gap-3">
           {FAQ.map((f) => (
             <Card key={f.q} className="px-6 py-1">
@@ -183,7 +184,7 @@ export default function Creators() {
       <Reveal>
         <div className="mt-20 flex flex-col items-center gap-5 text-center">
           <h2 className="text-balance text-[clamp(24px,3.4vw,34px)] font-bold leading-[1.15] tracking-[-0.03em]">
-            Ready to start?
+            Ready to Start?
           </h2>
           <PrimaryButton href="/creators/join">Join the program</PrimaryButton>
           <p className="text-[14px]" style={{ color: INK }}>

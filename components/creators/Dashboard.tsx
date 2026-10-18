@@ -4,7 +4,8 @@ import Link from "next/link";
 import { useState } from "react";
 import { Card, CREATOR_EMAIL } from "./Shell";
 import CreatorNav from "./CreatorNav";
-import { SAMPLE_CREATOR as C, SAMPLE_STATS as S, PAYOUT_LABEL, currencyFor, money } from "./sample";
+import { SAMPLE_STATS as S, PAYOUT_LABEL, currencyFor, money } from "./sample";
+import { useCreator, longDate } from "./store";
 import { BODY, INK } from "../site";
 
 function CopyButton({ text, label }: { text: string; label: string }) {
@@ -68,6 +69,7 @@ function WeeklyChart() {
 }
 
 export default function Dashboard() {
+  const C = useCreator();
   const cur = currencyFor(C.country);
   const link = `whatyouate.app/c/${C.code}`;
   const first = C.name.split(" ")[0];
@@ -79,7 +81,7 @@ export default function Dashboard() {
 
       {/* Code and share link */}
       <Card className="mt-7 px-6 py-6">
-        <p className="text-[13px] font-medium" style={{ color: BODY }}>Your code</p>
+        <p className="text-[13px] font-medium" style={{ color: BODY }}>Your Code</p>
         <p className="mt-1 text-[40px] font-bold tracking-[0.04em]" style={{ color: INK }}>{C.code}</p>
         <p className="mt-1 text-[15px]" style={{ color: BODY }}>
           Your link: <span className="font-semibold" style={{ color: INK }}>{link}</span>
@@ -99,8 +101,8 @@ export default function Dashboard() {
         style={{ background: "linear-gradient(135deg, #6FA8FF 0%, #3F7FD6 100%)", boxShadow: "0 18px 40px -22px rgba(47,111,196,0.7)" }}
       >
         <div>
-          <p className="text-[17px] font-bold tracking-[-0.02em]">Creator kit</p>
-          <p className="mt-1 text-[14px] leading-[1.5] text-white/85">Captions with your code, post ideas, screenshots and a demo video.</p>
+          <p className="text-[17px] font-bold tracking-[-0.02em]">Creator Kit</p>
+          <p className="mt-1 text-[14px] leading-[1.5] text-white/85">Captions with your code, post ideas, what to say and app screenshots.</p>
         </div>
         <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round" className="shrink-0">
           <path d="M9 6l6 6-6 6" />
@@ -108,30 +110,30 @@ export default function Dashboard() {
       </Link>
 
       <div className="mt-4 rounded-2xl px-5 py-3.5 text-[14px] leading-[1.55]" style={{ background: "#E6F0FE", color: "#1E4E8C" }}>
-        <strong>First-month bonus:</strong> you also earn $1 for every signup that counts, until November 2.
+        <strong>First-month bonus:</strong> you also earn $1 for every signup that counts, until {longDate(C.bonusEnds)}.
       </div>
 
       {/* This month */}
-      <SectionTitle right={<span className="text-[13px]" style={{ color: "#8FA3C0" }}>{S.month.label}</span>}>This month</SectionTitle>
+      <SectionTitle right={<span className="text-[13px]" style={{ color: "#8FA3C0" }}>{S.month.label}</span>}>This Month</SectionTitle>
       <div className="grid grid-cols-2 gap-3">
-        <Stat label="Code uses" value={String(S.month.codeUses)} />
-        <Stat label="Signups that count" value={String(S.month.qualified)} hint="Active on 3 days in their first week" />
-        <Stat label="New paid subscribers" value={String(S.month.newPaid)} />
-        <Stat label="Earned so far" value={money(S.month.bonus + S.month.commission, cur).replace(` ${cur}`, "")} hint={cur} />
+        <Stat label="Code Uses" value={String(S.month.codeUses)} />
+        <Stat label="Signups That Count" value={String(S.month.qualified)} hint="Active on 3 days in their first week" />
+        <Stat label="New Paid Subscribers" value={String(S.month.newPaid)} />
+        <Stat label="Earned So Far" value={money(S.month.bonus + S.month.commission, cur).replace(` ${cur}`, "")} hint={cur} />
       </div>
       <p className="mt-3 text-[13px]" style={{ color: BODY }}>
         {money(S.month.bonus, cur)} from signups, {money(S.month.commission, cur)} from subscriptions.
       </p>
 
       {/* Weekly */}
-      <SectionTitle>Code uses by week</SectionTitle>
+      <SectionTitle>Code Uses by Week</SectionTitle>
       <Card className="px-5 pb-4 pt-5">
         <WeeklyChart />
         <p className="mt-3 text-[12px]" style={{ color: "#8FA3C0" }}>This week so far is shown lighter.</p>
       </Card>
 
       {/* Payout */}
-      <SectionTitle>Next payout</SectionTitle>
+      <SectionTitle>Next Payout</SectionTitle>
       <Card className="px-6 py-5">
         <p className="text-[14px] font-medium" style={{ color: BODY }}>{S.nextPayout.date}</p>
         <p className="mt-1 text-[28px] font-bold tracking-[-0.03em]" style={{ color: INK }}>
@@ -145,15 +147,15 @@ export default function Dashboard() {
       </Card>
 
       {/* All time */}
-      <SectionTitle>All time</SectionTitle>
+      <SectionTitle>All Time</SectionTitle>
       <div className="grid grid-cols-3 gap-3">
-        <Stat small label="Paid subs" value={String(S.allTime.paidSubs)} />
+        <Stat small label="Paid Subs" value={String(S.allTime.paidSubs)} />
         <Stat small label="Earned" value={money(S.allTime.earned, cur).replace(` ${cur}`, "")} />
-        <Stat small label="Paid out" value={money(S.allTime.paidOut, cur).replace(` ${cur}`, "")} />
+        <Stat small label="Paid Out" value={money(S.allTime.paidOut, cur).replace(` ${cur}`, "")} />
       </div>
 
       {/* Payout history */}
-      <SectionTitle>Payout history</SectionTitle>
+      <SectionTitle>Payout History</SectionTitle>
       <Card className="px-6 py-5">
         <p className="text-[14.5px] leading-[1.55]" style={{ color: BODY }}>
           Your first payout will show here after December 1.

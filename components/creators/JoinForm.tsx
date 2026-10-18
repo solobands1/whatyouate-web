@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useMemo, useState } from "react";
 import { Card, Field, PrimaryButton, SecondaryButton, inputClass } from "./Shell";
 import { checkCode, normalizeCode, type Country, type PayoutMethod } from "./sample";
+import { saveCreator, isoDay } from "./store";
 import { BODY, INK } from "../site";
 
 export function CodeInput({ value, onChange, current }: { value: string; onChange: (v: string) => void; current?: string }) {
@@ -11,7 +12,7 @@ export function CodeInput({ value, onChange, current }: { value: string; onChang
   const check = useMemo(() => (code ? checkCode(code, current) : null), [code, current]);
   return (
     <Field
-      label="Your code"
+      label="Your Code"
       error={check && !check.ok ? check.reason : null}
       hint={
         check?.ok ? (
@@ -54,7 +55,7 @@ export function PayoutFields({
   const canada = country === "CA";
   return (
     <>
-      <Field label="Where do you live?">
+      <Field label="Where Do You Live?">
         <select
           className={inputClass}
           value={country}
@@ -75,7 +76,7 @@ export function PayoutFields({
           You&apos;ll be paid in CAD by Interac e-Transfer.
         </p>
       ) : (
-        <Field label="How should we pay you?" hint="Paid in USD.">
+        <Field label="How Should We Pay You?" hint="Paid in USD.">
           <div className="grid grid-cols-2 gap-2.5">
             {(["paypal", "wise"] as PayoutMethod[]).map((m) => (
               <button
@@ -97,7 +98,7 @@ export function PayoutFields({
       )}
 
       <Field
-        label={canada ? "e-Transfer email" : method === "paypal" ? "PayPal email" : "Wise email"}
+        label={canada ? "e-Transfer Email" : method === "paypal" ? "PayPal Email" : "Wise Email"}
         hint="Where your payouts are sent."
       >
         <input
@@ -150,8 +151,8 @@ export default function JoinForm() {
   if (done) {
     return (
       <Card className="px-7 py-9 text-center">
-        <p className="text-[15px] font-semibold" style={{ color: "#2F6FC4" }}>You&apos;re in</p>
-        <h2 className="mt-3 text-[28px] font-bold tracking-[-0.03em]" style={{ color: INK }}>Your code is {code}</h2>
+        <p className="text-[15px] font-semibold" style={{ color: "#2F6FC4" }}>You&apos;re In</p>
+        <h2 className="mt-3 text-[28px] font-bold tracking-[-0.03em]" style={{ color: INK }}>Your Code Is {code}</h2>
         <p className="mt-3 text-[16px] leading-[1.65]" style={{ color: BODY }}>
           We sent a sign-in link to <strong style={{ color: INK }}>{email}</strong>. Your dashboard has your share link,
           your numbers, and everything you need to post.
@@ -166,7 +167,14 @@ export default function JoinForm() {
       className="flex flex-col gap-6"
       onSubmit={(e) => {
         e.preventDefault();
-        if (ready) setDone(true);
+        if (!ready) return;
+        const today = new Date();
+        const bonusEnd = new Date(today.getTime() + 30 * 86400000);
+        saveCreator({
+          name: name.trim(), email, instagram, tiktok, code, country, payoutMethod: method,
+          payoutEmail: payoutEmail || email, joined: isoDay(today), bonusEnds: isoDay(bonusEnd),
+        });
+        setDone(true);
       }}
     >
       <Field label="Name">

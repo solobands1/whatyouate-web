@@ -4,6 +4,7 @@ import Image from "next/image";
 import { useEffect, useState } from "react";
 import { DownloadButton, BODY, INK } from "../site";
 import { normalizeCode } from "./sample";
+import { loadCreator } from "./store";
 
 // Preview lookup. The live page asks Supabase for the creator's first name.
 const SAMPLE_NAMES: Record<string, string> = { SARAH: "Sarah" };
@@ -19,16 +20,18 @@ export default function SharePage() {
     setCode(normalizeCode(fromPath || fromQuery));
   }, []);
 
-  const name = SAMPLE_NAMES[code];
+  // Preview: also recognise the code saved on this browser's Join or Profile page.
+  const mine = typeof window !== "undefined" ? loadCreator() : null;
+  const name = SAMPLE_NAMES[code] ?? (mine && mine.code === code ? mine.name.split(" ")[0] : undefined);
 
   return (
     <div className="flex min-h-screen flex-col items-center px-6 pb-16 pt-16 text-center">
       <Image src="/icon-512.png" alt="WhatYouAte" width={76} height={76} className="rounded-[20px] ring-1 ring-black/5" priority />
       <p className="mt-6 text-[15px] font-semibold" style={{ color: "#2F6FC4" }}>
-        {name ? `${name} sent you` : "You've been invited"}
+        {name ? `${name} Sent You` : "You've Been Invited"}
       </p>
       <h1 className="mt-3 max-w-[22rem] text-balance text-[clamp(30px,8vw,42px)] font-bold leading-[1.08] tracking-[-0.04em]" style={{ color: INK }}>
-        Get your first month free
+        Get Your First Month Free
       </h1>
       <p className="mt-4 max-w-[24rem] text-[16.5px] leading-[1.65]" style={{ color: BODY }}>
         Log what you eat and how you feel. WhatYouAte shows you which foods give you energy and which ones drag you down.
