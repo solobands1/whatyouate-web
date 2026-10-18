@@ -8,6 +8,11 @@ import { useCreator } from "./store";
 import { APP_STORE_URL, BODY, INK } from "../site";
 
 const KIT = "/creators/kit";
+const VIDEOS = [
+  { slug: "log-a-meal", title: "Log a Meal in Seconds", note: "14 seconds" },
+  { slug: "patterns", title: "What's Behind Your Low-Energy Days?", note: "15 seconds" },
+  { slug: "nightly-check-in", title: "One Minute a Night", note: "15 seconds" },
+];
 const SHOTS = Array.from({ length: 10 }, (_, i) => `whatyouate-${String(i + 1).padStart(2, "0")}`);
 
 const IDEAS = [
@@ -21,11 +26,11 @@ const IDEAS = [
 const captions = (code: string) => [
   {
     label: "Instagram",
-    text: `I've been logging what I eat and how I feel with WhatYouAte, and it's been eye-opening. It started showing me which foods leave me tired or bloated.\n\nUse code ${code} for your first month free. Link in my bio.\n\n#ad #foodjournal #guthealth`,
+    text: `I've been logging what I eat and how I feel with WhatYouAte, and it's been eye-opening. It started showing me which foods leave me tired or bloated.\n\nUse code ${code} for your first month free. Link in my bio. @whatyouate.app\n\n#ad #foodjournal #guthealth`,
   },
   {
     label: "TikTok",
-    text: `Two weeks of tracking my food and energy. Here's what lined up 👀 Code ${code} gets you a free month of WhatYouAte. #ad #foodjournal #guthealth #whatieatinaday`,
+    text: `Two weeks of tracking my food and energy. Here's what lined up 👀 Code ${code} gets you a free month of @whatyouate. #ad #foodjournal #guthealth #whatieatinaday`,
   },
   {
     label: "Story",
@@ -177,8 +182,29 @@ export default function Kit() {
         </div>
       </Card>
 
+      {/* Videos */}
+      <H2 sub="Real recordings of the app. Silent, so you can add your own sound or voiceover.">Videos</H2>
+      <Card className="divide-y divide-[#16233B]/[0.06]">
+        {VIDEOS.map((v) => (
+          <div key={v.slug} className="flex items-center gap-4 px-5 py-4">
+            <Image src={`${KIT}/thumbs/video-${v.slug}.jpg`} alt="" width={56} height={100} className="h-[100px] w-[56px] shrink-0 rounded-lg object-cover ring-1 ring-[#16233B]/[0.06]" />
+            <div className="min-w-0 flex-1">
+              <p className="text-[15px] font-semibold leading-[1.35]" style={{ color: INK }}>{v.title}</p>
+              <p className="mt-0.5 text-[13px]" style={{ color: BODY }}>{v.note}</p>
+              <div className="mt-2 flex flex-wrap gap-x-4 gap-y-1 text-[13.5px] font-semibold">
+                <a href={`${KIT}/videos/whatyouate-${v.slug}.mp4`} download style={{ color: "#2F6FC4" }}>Ready to Post</a>
+                <a href={`${KIT}/videos/screen-${v.slug}.mp4`} download style={{ color: "#2F6FC4" }}>Screen Only</a>
+              </div>
+            </div>
+          </div>
+        ))}
+      </Card>
+      <p className="mt-2.5 text-[13px] leading-[1.55]" style={{ color: BODY }}>
+        Ready to Post has a headline and our logo at the end. Screen Only is just the app, to use in your own video.
+      </p>
+
       {/* Assets */}
-      <H2 sub="Free to use in your posts.">Images</H2>
+      <H2 sub="Free to use in your posts.">Screenshots</H2>
       <Card className="px-5 py-5">
         <div className="-mx-1 flex snap-x gap-3 overflow-x-auto px-1 pb-2">
           {SHOTS.map((s) => (
@@ -207,7 +233,7 @@ export default function Kit() {
           className="mt-2 flex w-full items-center justify-center rounded-full px-5 py-3.5 text-[14.5px] font-semibold text-white transition hover:opacity-90"
           style={{ background: INK }}
         >
-          Download Everything (5 MB)
+          Download Everything (11 MB)
         </a>
       </Card>
     </div>
