@@ -41,7 +41,7 @@ const FAQ = [
   },
   {
     q: "How do I get paid?",
-    a: "Creators in Canada are paid in CAD by Interac e-Transfer. Everyone else is paid in USD by PayPal or Wise, whichever you prefer.",
+    a: "Creators in Canada earn and are paid in Canadian dollars by Interac e-Transfer. Everyone else earns and is paid in US dollars by PayPal or Wise, whichever you prefer.",
   },
   {
     q: "Can I see who used my code?",
@@ -143,7 +143,7 @@ export default function Creators() {
           </div>
         </Card>
         <p className="mt-3 text-[13px] leading-[1.6]" style={{ color: "#8FA3C0" }}>
-          Estimates in USD, based on current prices. You earn 30% of each subscription for its first 12 months, after Apple&apos;s fee.
+          Estimates in US dollars, based on current prices. You earn 30% of each subscription for its first 12 months, after Apple&apos;s fee. Creators in Canada earn in Canadian dollars: about $35 per yearly subscriber, about $4 a month per monthly subscriber, and $1 per signup.
         </p>
       </Section>
 

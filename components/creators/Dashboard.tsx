@@ -122,13 +122,13 @@ export default function Dashboard() {
           {
             big: "30%",
             title: "30% of Every Subscription, for a Full Year",
-            body: "One post can keep paying you. When someone subscribes with your code, you earn 30% of their subscription for their first 12 months, after Apple's fee. That's about $25 USD for each yearly subscriber, or about $3 USD every month a monthly subscriber sticks around.",
+            body: `One post can keep paying you. When someone subscribes with your code, you earn 30% of their subscription for their first 12 months, after Apple's fee. That's about ${cur === "CAD" ? "$35 CAD" : "$25 USD"} for each yearly subscriber, or about ${cur === "CAD" ? "$4 CAD" : "$3 USD"} every month a monthly subscriber sticks around.`,
           },
           {
             big: "$1",
             title: "A Head Start: $1 for Every New User",
             body: bonusActive
-              ? `For your first month, until ${longDate(C.bonusEnds)}, everyone who tries the app with your code earns you $1, even if they never subscribe. They just need to use it on 3 different days in their first week.`
+              ? `For your first month, until ${longDate(C.bonusEnds)}, everyone who tries the app with your code earns you $1 ${cur}, even if they never subscribe. They just need to use it on 3 different days in their first week.`
               : `Your first-month bonus ended on ${longDate(C.bonusEnds)}. You still earn 30% of every subscription.`,
           },
           {
@@ -191,7 +191,6 @@ export default function Dashboard() {
         </p>
         <p className="mt-2 text-[14px] leading-[1.55]" style={{ color: BODY }}>
           By {PAYOUT_LABEL[C.payoutMethod]} to {C.payoutEmail}. Covers October, once refunds have cleared.
-          {cur === "CAD" ? " Converted from USD on the day it's paid." : ""}
         </p>
       </Card>
 

@@ -48,7 +48,7 @@ export default function CreatorTerms() {
 
       <S n={4} title="Getting Paid">
         <p>Earnings for each month are paid at the start of the month after next, so refunds have time to clear. For example, October&apos;s earnings are paid on December 1. Balances under $10 roll over to the next month.</p>
-        <p>Amounts are tracked in US dollars. Creators in Canada are paid in Canadian dollars by Interac e-Transfer, converted on the day of payment. Everyone else is paid in US dollars by PayPal or Wise. You&apos;re responsible for any taxes on what you earn, and for any fees your payment provider charges you.</p>
+        <p>Creators in Canada earn and are paid in Canadian dollars by Interac e-Transfer. Everyone else earns and is paid in US dollars by PayPal or Wise. All amounts in these terms, including the signup bonus, the bonus cap and the $10 minimum, are in your currency. If a subscriber you refer pays in a different currency, we convert their payment to yours at the exchange rate on the day they paid. You&apos;re responsible for any taxes on what you earn, and for any fees your payment provider charges you.</p>
       </S>
 
       <S n={5} title="How You Post">
