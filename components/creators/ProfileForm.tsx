@@ -45,8 +45,8 @@ export default function ProfileForm() {
       <Card className="px-7 py-9 text-center">
         <h2 className="text-[24px] font-bold tracking-[-0.03em]" style={{ color: INK }}>You&apos;ve Left the Program</h2>
         <p className="mt-3 text-[16px] leading-[1.65]" style={{ color: BODY }}>
-          Your code no longer works for new signups. Everything you earned is paid out on the regular payout dates,
-          once refunds have cleared. We&apos;ll email you when it&apos;s sent. Thanks for sharing WhatYouAte.
+          Your code no longer works for new signups. You&apos;ll keep earning from the subscribers you already brought
+          in until each one&apos;s 12 months are up, paid on the regular dates. Thanks for sharing WhatYouAte.
         </p>
         <PrimaryButton href="/creators" className="mt-7">Back to Creators</PrimaryButton>
       </Card>
@@ -117,8 +117,8 @@ export default function ProfileForm() {
         {!leaving ? (
           <>
             <p className="mt-2 text-[14.5px] leading-[1.6]" style={{ color: BODY }}>
-              Your code stops working for new signups and you stop earning from that day. Everything you&apos;ve earned
-              is still paid out once refunds have cleared, even if it&apos;s under $10.
+              Your code stops working for new signups. You keep earning from the subscribers you&apos;ve already
+              brought in until each one&apos;s 12 months are up, and even small amounts are paid.
             </p>
             <button
               type="button"

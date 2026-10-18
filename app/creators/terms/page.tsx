@@ -71,7 +71,7 @@ export default function CreatorTerms() {
       </S>
 
       <S n={9} title="Changes and Leaving">
-        <p>You can leave the program at any time from your profile. When you leave, your code stops working for new signups and you stop earning from that day. Everything you earned up to then is paid once refunds have cleared, on the regular payout dates, even if the balance is under $10.</p>
+        <p>You can leave the program at any time from your profile. When you leave, your code stops working for new signups, but you keep earning 30% from the subscribers you&apos;ve already referred until each one&apos;s 12 months are up. Payments continue on the regular dates, and the $10 minimum no longer applies, so even small amounts are paid. If you&apos;re removed for breaking these terms, unpaid earnings may be withheld.</p>
         <p>We may change these terms or end the program with 30 days&apos; notice by email. If we end it, the same payout rules apply.</p>
         <p>You take part as an independent creator, not as an employee or agent of Integrity Stack Inc. These terms are governed by the laws of Ontario, Canada.</p>
       </S>
