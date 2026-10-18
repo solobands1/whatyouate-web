@@ -240,22 +240,10 @@ export default function Kit() {
           ))}
         </div>
         <p className="mt-2 text-[13px]" style={{ color: BODY }}>App Store screenshots. Tap one to download it.</p>
-        <div className="mt-4 flex flex-col divide-y divide-[#16233B]/[0.06] border-t border-[#16233B]/[0.06]">
-          {[
-          ].map((a) => (
-            <div key={a.label} className="flex items-center justify-between gap-4 py-3.5">
-              <div>
-                <p className="text-[15.5px] font-semibold" style={{ color: INK }}>{a.label}</p>
-                <p className="text-[13px]" style={{ color: BODY }}>{a.note}</p>
-              </div>
-              <a href={a.href} download className="text-[14px] font-semibold" style={{ color: "#2F6FC4" }}>Download</a>
-            </div>
-          ))}
-        </div>
         <a
           href={`${KIT}/whatyouate-creator-kit.zip`}
           download
-          className="mt-2 flex w-full items-center justify-center rounded-full px-5 py-3.5 text-[14.5px] font-semibold text-white transition hover:opacity-90"
+          className="mt-5 flex w-full items-center justify-center rounded-full px-5 py-3.5 text-[14.5px] font-semibold text-white transition hover:opacity-90"
           style={{ background: INK }}
         >
           Download Everything (15 MB)
