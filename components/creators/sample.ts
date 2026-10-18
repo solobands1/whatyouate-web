@@ -33,7 +33,7 @@ export type PayoutMethod = "etransfer" | "paypal" | "wise";
 export const PAYOUT_LABEL: Record<PayoutMethod, string> = {
   etransfer: "Interac e-Transfer",
   paypal: "PayPal",
-  wise: "Wise",
+  wise: "bank deposit",
 };
 
 export function currencyFor(country: Country) {

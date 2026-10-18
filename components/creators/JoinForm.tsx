@@ -62,7 +62,7 @@ export function PayoutFields({
           onChange={(e) => {
             const c = e.target.value as Country;
             setCountry(c);
-            setMethod(c === "CA" ? "etransfer" : "paypal");
+            setMethod(c === "CA" ? "etransfer" : "wise");
           }}
         >
           <option value="CA">Canada</option>
@@ -78,7 +78,7 @@ export function PayoutFields({
       ) : (
         <Field label="How Should We Pay You?" hint="Paid in USD.">
           <div className="grid grid-cols-2 gap-2.5">
-            {(["paypal", "wise"] as PayoutMethod[]).map((m) => (
+            {(["wise", "paypal"] as PayoutMethod[]).map((m) => (
               <button
                 key={m}
                 type="button"
@@ -90,7 +90,7 @@ export function PayoutFields({
                     : { background: "#fff", color: INK, boxShadow: "inset 0 0 0 1px rgba(22,35,59,0.1)" }
                 }
               >
-                {m === "paypal" ? "PayPal" : "Wise"}
+                {m === "paypal" ? "PayPal" : "Bank Deposit"}
               </button>
             ))}
           </div>
@@ -98,8 +98,14 @@ export function PayoutFields({
       )}
 
       <Field
-        label={canada ? "e-Transfer Email" : method === "paypal" ? "PayPal Email" : "Wise Email"}
-        hint="Where your payouts are sent."
+        label={canada ? "e-Transfer Email" : method === "paypal" ? "PayPal Email" : "Email for Your Bank Deposit"}
+        hint={
+          canada
+            ? "Where your e-Transfers are sent."
+            : method === "paypal"
+              ? "Payments go to the PayPal account with this email."
+              : "Payments are sent through Wise. They email you a secure link to add your bank details, no Wise account needed."
+        }
       >
         <input
           className={inputClass}

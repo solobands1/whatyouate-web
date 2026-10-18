@@ -22,7 +22,7 @@ const STEPS = [
   },
   {
     title: "Get Paid Every Month",
-    body: "Track your signups and earnings in your dashboard. Payouts go out monthly by Interac e-Transfer in Canada, or by PayPal or Wise everywhere else.",
+    body: "Track your signups and earnings in your dashboard. Payouts go out monthly by Interac e-Transfer in Canada, or by bank deposit or PayPal everywhere else.",
   },
 ];
 
@@ -41,7 +41,7 @@ const FAQ = [
   },
   {
     q: "How do I get paid?",
-    a: "Creators in Canada earn and are paid in Canadian dollars by Interac e-Transfer. Everyone else earns and is paid in US dollars by PayPal or Wise, whichever you prefer.",
+    a: "Creators in Canada earn and are paid in Canadian dollars by Interac e-Transfer. Everyone else earns and is paid in US dollars, by bank deposit straight to your account or by PayPal, whichever you prefer.",
   },
   {
     q: "Can I see who used my code?",
@@ -49,7 +49,7 @@ const FAQ = [
   },
   {
     q: "Do I have to live in Canada or the US?",
-    a: "No. Creators anywhere can join. Outside Canada, you're paid in USD by PayPal or Wise.",
+    a: "No. Creators anywhere can join. Outside Canada, you're paid in USD by bank deposit or PayPal.",
   },
   {
     q: "Can I change my code later?",
