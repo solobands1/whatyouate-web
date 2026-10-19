@@ -108,8 +108,8 @@ function FreePro({ pro }: { pro: Dash["pro"] }) {
             Redeem in the App Store
           </a>
           <p className="mt-3 text-[12.5px] leading-[1.55]" style={{ color: "#8FA3C0" }}>
-            Open this on your iPhone. Like any App Store offer, it renews at the regular price when the free time
-            ends unless you cancel in Settings. We&apos;ll remind you before it does.
+            Open this on your iPhone and redeem it within a few weeks. It doesn&apos;t renew, so you won&apos;t be
+            charged anything when it ends.
           </p>
         </>
       ) : (
