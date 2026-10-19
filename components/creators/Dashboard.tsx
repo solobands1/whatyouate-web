@@ -114,7 +114,8 @@ function FreePro({ pro }: { pro: Dash["pro"] }) {
         </>
       ) : (
         <p className="mt-1 text-[14px] leading-[1.6]" style={{ color: BODY }}>
-          Your free Pro code is on its way. It will show up here within a day.
+          You get 3 months of WhatYouAte Pro free, so you can use the app for real before you post about it. Your
+          code is on its way and will show up here within a day.
         </p>
       )}
       {!pro.year && (
