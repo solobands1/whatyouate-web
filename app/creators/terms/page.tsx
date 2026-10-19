@@ -44,7 +44,7 @@ export default function CreatorTerms() {
         <p><strong style={{ color: INK }}>Subscriptions.</strong> You earn 30% of what we receive for each subscriber you refer, for the first 12 months after their first payment. &ldquo;What we receive&rdquo; means the amount Apple pays us after its fee, before tax. If a payment is refunded, the matching earnings are removed.</p>
         <p><strong style={{ color: INK }}>First-month signup bonus.</strong> During the first 30 days after you join, you also earn $1 for each qualifying signup. A signup qualifies when a new account uses your code and logs meals on at least 3 separate days within its first 7 days. The signup bonus is capped at $100 per creator.</p>
         <p>A signup is credited to the first code it uses. People who already had a WhatYouAte account don&apos;t count.</p>
-        <p><strong style={{ color: INK }}>Free Pro for you.</strong> When you join, we give you a code for 3 months of WhatYouAte Pro. Once 3 people you referred have paid for a subscription, not counting refunded payments, we give you a code for a year of Pro. These codes don&apos;t renew, so you&apos;re never charged when they end, and they can&apos;t be exchanged for money.</p>
+        <p><strong style={{ color: INK }}>Free Pro for you.</strong> When you join, we give you a code for 3 months of WhatYouAte Pro. Once 3 people you referred have each paid for at least 2 months of a subscription, or for a yearly plan, not counting refunded payments, we give you a code for a year of Pro. These codes don&apos;t renew, so you&apos;re never charged when they end, and they can&apos;t be exchanged for money.</p>
       </S>
 
       <S n={4} title="Getting Paid">

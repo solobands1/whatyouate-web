@@ -82,7 +82,7 @@ function WeeklyChart({ weekly }: { weekly: Dash["weekly"] }) {
 }
 
 // The creator's own free Pro, through Apple offer codes: 3 months on joining, a year once 3 of
-// their followers have paid.
+// their followers have each paid for 2 months or bought a year.
 function FreePro({ pro }: { pro: Dash["pro"] }) {
   const code = pro.year ?? pro.threeMonths;
   return (
@@ -94,7 +94,7 @@ function FreePro({ pro }: { pro: Dash["pro"] }) {
         <>
           <p className="mt-1 text-[14px] leading-[1.6]" style={{ color: BODY }}>
             {pro.year
-              ? "Three of your followers have subscribed. Here's a year of WhatYouAte Pro, on us."
+              ? "Three of your followers are sticking with it. Here's a year of WhatYouAte Pro, on us."
               : "3 months of WhatYouAte Pro, so you can use the app for real before you post about it."}
           </p>
           <p className="mt-3 font-mono text-[18px] font-semibold tracking-[0.06em]" style={{ color: INK }}>{code}</p>
@@ -120,7 +120,8 @@ function FreePro({ pro }: { pro: Dash["pro"] }) {
       )}
       {!pro.year && (
         <p className="mt-4 border-t border-[#16233B]/[0.06] pt-3 text-[14px] leading-[1.55]" style={{ color: BODY }}>
-          <span className="font-semibold" style={{ color: INK }}>A free year:</span> once 3 of your followers subscribe.{" "}
+          <span className="font-semibold" style={{ color: INK }}>A free year:</span> once 3 of your followers have each paid for 2
+          months, or bought a yearly plan.{" "}
           {Math.min(pro.paying, 3)} of 3 so far.
         </p>
       )}

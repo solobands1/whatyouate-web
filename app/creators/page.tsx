@@ -37,7 +37,7 @@ const FAQ = [
   },
   {
     q: "Do I get the app free?",
-    a: "Yes. You get 3 months of WhatYouAte Pro free when you join, and a free year once 3 of your followers subscribe. Neither one renews, so you're never charged.",
+    a: "Yes. You get 3 months of WhatYouAte Pro free when you join, and a free year once 3 of your followers have each paid for 2 months, or bought a yearly plan. Neither one renews, so you're never charged.",
   },
   {
     q: "When do I get paid?",
