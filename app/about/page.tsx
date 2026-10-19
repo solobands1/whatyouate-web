@@ -145,7 +145,7 @@ export default function About() {
                 suggestions on how we can improve, or which features you would like to see.
               </P>
               <a
-                href="mailto:hello@minimul.app"
+                href="mailto:support@whatyouate.app"
                 className="mt-6 inline-flex text-[16px] font-semibold"
                 style={{ color: "#2F6FC4" }}
               >
@@ -171,7 +171,7 @@ export default function About() {
             <Link href="/" className="transition hover:opacity-70">Home</Link>
             <Link href="/privacy" className="transition hover:opacity-70">Privacy Policy</Link>
             <Link href="/terms" className="transition hover:opacity-70">Terms of Use</Link>
-            <a href="mailto:hello@minimul.app" className="transition hover:opacity-70">Support</a>
+            <a href="mailto:support@whatyouate.app" className="transition hover:opacity-70">Support</a>
           </nav>
           <div style={{ color: BODY }}>
             <Social />
