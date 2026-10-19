@@ -73,7 +73,7 @@ export default function SharePage() {
       <div onClickCapture={copyCode}>
         <DownloadButton className="mt-8" />
       </div>
-      <p className="mt-4 text-[13px] text-white/85">Free on iPhone. Code applies to new accounts.</p>
+      <p className="mt-4 text-[13px] text-white/85">Free for your first month, then the regular monthly price unless you cancel. New accounts only.</p>
     </div>
   );
 }

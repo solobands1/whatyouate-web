@@ -25,7 +25,7 @@ export default function CreatorTerms() {
     <Shell>
       <Eyebrow>Creators</Eyebrow>
       <h1 className="mt-5 text-[clamp(30px,4.6vw,44px)] font-bold leading-[1.08] tracking-[-0.04em]">Program Terms</h1>
-      <p className="mt-4 text-[14px]" style={{ color: "#8FA3C0" }}>Last updated: October 18, 2026</p>
+      <p className="mt-4 text-[14px]" style={{ color: "#8FA3C0" }}>Last updated: October 19, 2026</p>
       <p className="mt-6 text-[16px] leading-[1.7]" style={{ color: BODY }}>
         The WhatYouAte creator program is run by Integrity Stack Inc., the company behind WhatYouAte (&ldquo;we&rdquo;,
         &ldquo;us&rdquo;). By joining, you agree to these terms.
@@ -37,13 +37,14 @@ export default function CreatorTerms() {
 
       <S n={2} title="Your Code and Link">
         <p>You choose a code of 3 to 15 letters or numbers. Codes are first come, first served, and we may refuse codes that are reserved, misleading or offensive. You can change your code at any time. Your previous codes keep working and stay linked to you.</p>
-        <p>Your followers get their first month of WhatYouAte free when they enter your code in the app as they sign up. Your link shows them your code and takes them to the App Store.</p>
+        <p>Your followers get their first month of WhatYouAte Pro free when they enter your code in the app as they sign up and start a monthly subscription. After the free month, the subscription renews at the regular price unless they cancel. The free month is for new accounts, and Apple allows one free trial per person. Your link shows them your code and takes them to the App Store.</p>
       </S>
 
       <S n={3} title="What You Earn">
         <p><strong style={{ color: INK }}>Subscriptions.</strong> You earn 30% of what we receive for each subscriber you refer, for the first 12 months after their first payment. &ldquo;What we receive&rdquo; means the amount Apple pays us after its fee, before tax. If a payment is refunded, the matching earnings are removed.</p>
         <p><strong style={{ color: INK }}>First-month signup bonus.</strong> During the first 30 days after you join, you also earn $1 for each qualifying signup. A signup qualifies when a new account uses your code and logs meals on at least 3 separate days within its first 7 days. The signup bonus is capped at $100 per creator.</p>
         <p>A signup is credited to the first code it uses. People who already had a WhatYouAte account don&apos;t count.</p>
+        <p><strong style={{ color: INK }}>Free Pro for you.</strong> When you join, we give you a code for 3 months of WhatYouAte Pro. Once 3 people you referred have paid for a subscription, not counting refunded payments, we give you a code for a year of Pro. These codes don&apos;t renew, so you&apos;re never charged when they end, and they can&apos;t be exchanged for money.</p>
       </S>
 
       <S n={4} title="Getting Paid">

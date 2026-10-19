@@ -18,7 +18,7 @@ const STEPS = [
   },
   {
     title: "Share It Your Way",
-    body: "Post about the app and put your link in your bio. Anyone who uses your code gets their first month free. Your Creator Kit has captions, post ideas, videos and images ready to go.",
+    body: "Post about the app and put your link in your bio. Followers who enter your code in the app get their first month free. Your Creator Kit has captions, post ideas, videos and images ready to go.",
   },
   {
     title: "Get Paid Every Month",
@@ -33,7 +33,11 @@ const FAQ = [
   },
   {
     q: "What do my followers get?",
-    a: "Their first month free. They enter your code when they sign up in the app, and your link shows them the code and takes them to the App Store.",
+    a: "Their first month of WhatYouAte Pro free. They enter your code when they sign up in the app and can start their free month straight away. After that it's the regular monthly price unless they cancel. Your link shows them the code and takes them to the App Store.",
+  },
+  {
+    q: "Do I get the app free?",
+    a: "Yes. You get 3 months of WhatYouAte Pro free when you join, and a free year once 3 of your followers subscribe. Neither one renews, so you're never charged.",
   },
   {
     q: "When do I get paid?",
@@ -128,12 +132,12 @@ export default function Creators() {
         <Card className="mt-7 divide-y divide-[#16233B]/[0.06]">
           <div className="flex items-baseline justify-between gap-6 px-6 py-5">
             <span className="text-[16px]" style={{ color: INK }}>Each Yearly Subscriber</span>
-            <span className="text-[20px] font-bold tracking-[-0.02em]" style={{ color: INK }}>about $25</span>
+            <span className="text-[20px] font-bold tracking-[-0.02em]" style={{ color: INK }}>about $28</span>
           </div>
           <div className="flex items-baseline justify-between gap-6 px-6 py-5">
             <span className="text-[16px]" style={{ color: INK }}>Each Monthly Subscriber</span>
             <span className="text-right">
-              <span className="block text-[20px] font-bold tracking-[-0.02em]" style={{ color: INK }}>about $3</span>
+              <span className="block text-[20px] font-bold tracking-[-0.02em]" style={{ color: INK }}>about $3.30</span>
               <span className="block whitespace-nowrap text-[13px]" style={{ color: BODY }}>a month, up to a year</span>
             </span>
           </div>
@@ -143,7 +147,7 @@ export default function Creators() {
           </div>
         </Card>
         <p className="mt-3 text-[13px] leading-[1.6]" style={{ color: "#8FA3C0" }}>
-          Estimates in US dollars, based on current prices. You earn 30% of each subscription for its first 12 months, after Apple&apos;s fee. Creators in Canada earn in Canadian dollars: about $35 per yearly subscriber, about $4 a month per monthly subscriber, and $1 per signup.
+          Estimates in US dollars, based on current prices. You earn 30% of each subscription for its first 12 months, after Apple&apos;s fee. Creators in Canada earn in Canadian dollars: about $38 per yearly subscriber, about $4.50 a month per monthly subscriber, and $1 per signup.
         </p>
       </Section>
 

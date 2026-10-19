@@ -162,7 +162,7 @@ function DashboardView({ d }: { d: Dash }) {
           <CopyButton text={C.code} label="Copy code" />
         </div>
         <p className="mt-4 text-[13.5px] leading-[1.55]" style={{ color: BODY }}>
-          Anyone who uses your code or link gets their first month free.
+          Followers who enter your code in the app get their first month free. Your link shows them the code.
         </p>
       </Card>
 
@@ -189,7 +189,7 @@ function DashboardView({ d }: { d: Dash }) {
           {
             big: "30%",
             title: "30% of Every Subscription, for a Full Year",
-            body: `One post can keep paying you. When someone subscribes with your code, you earn 30% of their subscription for their first 12 months, after Apple's fee. That's about ${cur === "CAD" ? "$35 CAD" : "$25 USD"} for each yearly subscriber, or about ${cur === "CAD" ? "$4 CAD" : "$3 USD"} every month a monthly subscriber sticks around.`,
+            body: `One post can keep paying you. When someone subscribes with your code, you earn 30% of their subscription for their first 12 months, after Apple's fee. That's about ${cur === "CAD" ? "$38 CAD" : "$28 USD"} for each yearly subscriber, or about ${cur === "CAD" ? "$4.50 CAD" : "$3.30 USD"} every month a monthly subscriber sticks around.`,
           },
           {
             big: "$1",
