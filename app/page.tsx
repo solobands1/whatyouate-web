@@ -333,7 +333,7 @@ export default function Home() {
             <Link href="/creators" className="transition hover:text-white">Creators</Link>
             <Link href="/privacy" className="transition hover:text-white">Privacy Policy</Link>
             <Link href="/terms" className="transition hover:text-white">Terms of Use</Link>
-            <a href="mailto:hello@minimul.app" className="transition hover:text-white">Support</a>
+            <a href="mailto:support@whatyouate.app" className="transition hover:text-white">Support</a>
           </nav>
           <Social className="text-white/80" />
           <span className="text-[13px] text-white/60">

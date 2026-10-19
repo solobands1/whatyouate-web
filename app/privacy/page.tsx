@@ -106,8 +106,8 @@ export default function PrivacyPage() {
           <Section title="11. Contact">
             <p>
               For privacy inquiries, data requests, or any questions about this policy, contact us at:{" "}
-              <a href="mailto:hello@minimul.app" style={{ color: "#6FA8FF", textDecoration: "none" }}>
-                hello@minimul.app
+              <a href="mailto:support@whatyouate.app" style={{ color: "#6FA8FF", textDecoration: "none" }}>
+                support@whatyouate.app
               </a>
             </p>
           </Section>
