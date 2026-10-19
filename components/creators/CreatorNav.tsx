@@ -1,7 +1,8 @@
 "use client";
 
 import Link from "next/link";
-import { usePathname } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
+import { signOut } from "./api";
 import { INK, BODY } from "../site";
 
 const TABS = [
@@ -13,6 +14,7 @@ const TABS = [
 /** Tabs shared by the signed-in creator pages, with log out on the right. */
 export default function CreatorNav() {
   const path = usePathname()?.replace(/\/$/, "");
+  const router = useRouter();
   return (
     <div className="flex items-center justify-between gap-3">
       <nav className="flex gap-1 rounded-full bg-white/70 p-1 ring-1 ring-[#16233B]/[0.06] backdrop-blur-sm">
@@ -30,9 +32,17 @@ export default function CreatorNav() {
           );
         })}
       </nav>
-      <Link href="/creators" className="shrink-0 text-[13.5px] font-semibold" style={{ color: BODY }}>
+      <button
+        type="button"
+        onClick={async () => {
+          await signOut();
+          router.push("/creators");
+        }}
+        className="shrink-0 text-[13.5px] font-semibold"
+        style={{ color: BODY }}
+      >
         Log Out
-      </Link>
+      </button>
     </div>
   );
 }

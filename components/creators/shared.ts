@@ -1,37 +1,4 @@
-// Preview data for the creator pages. Replaced by real Supabase data once the backend is wired.
-
-export const SAMPLE_CREATOR = {
-  name: "Sarah Chen",
-  email: "sarah@example.com",
-  instagram: "sarahs.gut.kitchen",
-  tiktok: "sarahsgutkitchen",
-  country: "CA" as Country,
-  payoutMethod: "etransfer" as PayoutMethod,
-  payoutEmail: "sarah@example.com",
-  code: "SARAH",
-  joined: "2026-10-02",
-  bonusEnds: "2026-11-02",
-};
-
-export const SAMPLE_STATS = {
-  month: { label: "October", codeUses: 41, qualified: 23, newPaid: 6, bonus: 23, commission: 31.4 },
-  allTime: { paidSubs: 6, earned: 54.4, paidOut: 0 },
-  nextPayout: { date: "December 1", estimate: 54.4 },
-  // What current subscribers are on track to earn each month (yearly plans spread over 12 months).
-  recurring: { monthly: 22.4, active: 6 },
-  // Month-by-month statement rows for the CSV download.
-  statement: [
-    { month: "2026-10", codeUses: 41, signups: 23, newPaid: 6, bonus: 23, commission: 31.4, paid: 0, paidOn: "" },
-  ],
-  // Code uses per week, oldest first.
-  weekly: [
-    { week: "Sep 21", uses: 0 },
-    { week: "Sep 28", uses: 0 },
-    { week: "Oct 5", uses: 9 },
-    { week: "Oct 12", uses: 26 },
-    { week: "Oct 19", uses: 6 },
-  ],
-};
+// Shared creator types, payout labels, money formatting and the quick code check.
 
 export type Country = "CA" | "US" | "OTHER";
 export type PayoutMethod = "etransfer" | "paypal" | "wise";
@@ -57,11 +24,9 @@ const RESERVED = new Set([
   "CODE", "CREATOR", "CREATORS", "OFFICIAL", "STAFF", "TEAM", "INTEGRITYSTACK",
 ]);
 
-// Small starter list. The real check runs server-side against a fuller list.
+// Instant feedback while typing. The database repeats these checks with a fuller list and
+// also knows which codes are taken (creator_code_problem in supabase/creators.sql).
 const BLOCKED_FRAGMENTS = ["FUCK", "SHIT", "BITCH", "CUNT", "DICK", "NAZI", "PORN", "SEX"];
-
-// Every code ever issued stays taken, including codes a creator has since changed away from.
-const SAMPLE_TAKEN = new Set(["SARAH", "JESS", "GUTHEALTH", "LOWFODMAP", "MIKE"]);
 
 export type CodeCheck = { ok: true } | { ok: false; reason: string };
 
@@ -76,6 +41,10 @@ export function checkCode(raw: string, current?: string): CodeCheck {
   if (current && code === current) return { ok: true };
   if (RESERVED.has(code)) return { ok: false, reason: "That code is reserved. Try another." };
   if (BLOCKED_FRAGMENTS.some((f) => code.includes(f))) return { ok: false, reason: "That code isn't allowed. Try another." };
-  if (SAMPLE_TAKEN.has(code)) return { ok: false, reason: "That code is already taken. Try another." };
   return { ok: true };
+}
+
+/** "2026-11-02" as "November 2". */
+export function longDate(iso: string) {
+  return new Date(iso + "T12:00:00").toLocaleDateString("en-CA", { month: "long", day: "numeric" });
 }

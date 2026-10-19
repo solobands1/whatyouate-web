@@ -4,14 +4,15 @@ import Link from "next/link";
 import { useState } from "react";
 import { Card, CREATOR_EMAIL } from "./Shell";
 import CreatorNav from "./CreatorNav";
-import { SAMPLE_STATS as S, PAYOUT_LABEL, currencyFor, money } from "./sample";
-import { useCreator, longDate } from "./store";
+import Gate from "./Gate";
+import { redeemLink, type Dash } from "./api";
+import { PAYOUT_LABEL, longDate, money } from "./shared";
 import { BODY, INK } from "../site";
 
 // Month-by-month earnings and payouts, for the creator's own records and taxes.
-function downloadStatement(cur: string) {
+function downloadStatement(cur: string, statement: Dash["statement"]) {
   const head = ["Month", "Code uses", "Signups that count", "New paid subscribers", `Signup bonus (${cur})`, `Subscription earnings (${cur})`, `Total earned (${cur})`, `Paid (${cur})`, "Paid on"];
-  const rows = S.statement.map((r) => [r.month, r.codeUses, r.signups, r.newPaid, r.bonus.toFixed(2), r.commission.toFixed(2), (r.bonus + r.commission).toFixed(2), r.paid.toFixed(2), r.paidOn]);
+  const rows = statement.map((r) => [r.month, r.codeUses, r.signups, r.newPaid, r.bonus.toFixed(2), r.commission.toFixed(2), (r.bonus + r.commission).toFixed(2), r.paid.toFixed(2), r.paidOn]);
   const csv = [head, ...rows].map((r) => r.map((v) => `"${String(v).replace(/"/g, '""')}"`).join(",")).join("\n");
   const a = document.createElement("a");
   a.href = URL.createObjectURL(new Blob([csv], { type: "text/csv" }));
@@ -59,13 +60,13 @@ function SectionTitle({ children, right }: { children: React.ReactNode; right?: 
   );
 }
 
-function WeeklyChart() {
-  const max = Math.max(1, ...S.weekly.map((w) => w.uses));
+function WeeklyChart({ weekly }: { weekly: Dash["weekly"] }) {
+  const max = Math.max(1, ...weekly.map((w) => w.uses));
   return (
     <div className="flex items-end gap-3 px-1">
-      {S.weekly.map((w, i) => {
+      {weekly.map((w, i) => {
         const h = Math.max(4, Math.round((w.uses / max) * 100));
-        const last = i === S.weekly.length - 1;
+        const last = i === weekly.length - 1;
         return (
           <div key={w.week} className="flex flex-1 flex-col items-center gap-2">
             <span className="text-[12px] font-semibold" style={{ color: w.uses ? INK : "#B4C3D8" }}>{w.uses}</span>
@@ -80,15 +81,66 @@ function WeeklyChart() {
   );
 }
 
+// The creator's own free Pro, through Apple offer codes: 3 months on joining, a year once 3 of
+// their followers have paid.
+function FreePro({ pro }: { pro: Dash["pro"] }) {
+  const code = pro.year ?? pro.threeMonths;
+  return (
+    <Card className="mt-4 px-6 py-5">
+      <p className="text-[17px] font-bold tracking-[-0.02em]" style={{ color: INK }}>
+        {pro.year ? "You Earned a Free Year of Pro" : "Your Free Pro"}
+      </p>
+      {code ? (
+        <>
+          <p className="mt-1 text-[14px] leading-[1.6]" style={{ color: BODY }}>
+            {pro.year
+              ? "Three of your followers have subscribed. Here's a year of WhatYouAte Pro, on us."
+              : "3 months of WhatYouAte Pro, so you can use the app for real before you post about it."}
+          </p>
+          <p className="mt-3 font-mono text-[18px] font-semibold tracking-[0.06em]" style={{ color: INK }}>{code}</p>
+          <a
+            href={redeemLink(code)}
+            target="_blank"
+            rel="noreferrer"
+            className="mt-4 inline-flex rounded-full px-5 py-3 text-[14.5px] font-semibold text-white transition hover:opacity-90"
+            style={{ background: INK }}
+          >
+            Redeem in the App Store
+          </a>
+          <p className="mt-3 text-[12.5px] leading-[1.55]" style={{ color: "#8FA3C0" }}>
+            Open this on your iPhone. Like any App Store offer, it renews at the regular price when the free time
+            ends unless you cancel in Settings. We&apos;ll remind you before it does.
+          </p>
+        </>
+      ) : (
+        <p className="mt-1 text-[14px] leading-[1.6]" style={{ color: BODY }}>
+          Your free Pro code is on its way. It will show up here within a day.
+        </p>
+      )}
+      {!pro.year && (
+        <p className="mt-4 border-t border-[#16233B]/[0.06] pt-3 text-[14px] leading-[1.55]" style={{ color: BODY }}>
+          <span className="font-semibold" style={{ color: INK }}>A free year:</span> once 3 of your followers subscribe.{" "}
+          {Math.min(pro.paying, 3)} of 3 so far.
+        </p>
+      )}
+    </Card>
+  );
+}
+
 export default function Dashboard() {
-  const C = useCreator();
+  return <Gate>{(d) => <DashboardView d={d} />}</Gate>;
+}
+
+function DashboardView({ d }: { d: Dash }) {
+  const C = d.creator;
+  const S = d;
   const bonusActive = new Date(C.bonusEnds + "T23:59:59") >= new Date();
   // A worked example for the payout row: last month's earnings and the month they're paid in.
   const payNow = (() => {
     const now = new Date(); const m = (k: number) => new Date(now.getFullYear(), now.getMonth() + k, 1).toLocaleDateString("en-CA", { month: "long" });
     return { earned: `${m(-1)}'s`, paid: m(1) };
   })();
-  const cur = currencyFor(C.country);
+  const cur = C.currency;
   const link = `whatyouate.app/c/${C.code}`;
   const first = C.name.split(" ")[0];
 
@@ -112,6 +164,8 @@ export default function Dashboard() {
           Anyone who uses your code or link gets their first month free.
         </p>
       </Card>
+
+      <FreePro pro={d.pro} />
 
       <Link
         href="/creators/kit"
@@ -204,7 +258,7 @@ export default function Dashboard() {
       {/* Weekly */}
       <SectionTitle>Code Uses by Week</SectionTitle>
       <Card className="px-5 pb-4 pt-5">
-        <WeeklyChart />
+        <WeeklyChart weekly={S.weekly} />
         <p className="mt-3 text-[12px]" style={{ color: "#8FA3C0" }}>This week so far is shown lighter.</p>
       </Card>
 
@@ -217,7 +271,8 @@ export default function Dashboard() {
           <span className="ml-1.5 text-[14px] font-medium" style={{ color: BODY }}>{cur}</span>
         </p>
         <p className="mt-2 text-[14px] leading-[1.55]" style={{ color: BODY }}>
-          By {PAYOUT_LABEL[C.payoutMethod]} to {C.payoutEmail}. Covers October, once refunds have cleared.
+          By {PAYOUT_LABEL[C.payoutMethod]} to {C.payoutEmail}. Covers earnings through {S.nextPayout.covers}, once
+          refunds have cleared.
         </p>
       </Card>
 
@@ -232,12 +287,23 @@ export default function Dashboard() {
       {/* Payout history */}
       <SectionTitle>Payout History</SectionTitle>
       <Card className="px-6 py-5">
-        <p className="text-[14.5px] leading-[1.55]" style={{ color: BODY }}>
-          Your first payout will show here after December 1.
-        </p>
+        {S.statement.some((r) => r.paid > 0) ? (
+          <div className="divide-y divide-[#16233B]/[0.06]">
+            {S.statement.filter((r) => r.paid > 0).reverse().map((r) => (
+              <div key={r.month} className="flex items-baseline justify-between py-2.5 text-[14.5px]">
+                <span style={{ color: BODY }}>{longDate(r.paidOn)}</span>
+                <span className="font-semibold" style={{ color: INK }}>{money(r.paid, cur)}</span>
+              </div>
+            ))}
+          </div>
+        ) : (
+          <p className="text-[14.5px] leading-[1.55]" style={{ color: BODY }}>
+            Your first payout will show here after {S.nextPayout.date}.
+          </p>
+        )}
         <button
           type="button"
-          onClick={() => downloadStatement(cur)}
+          onClick={() => downloadStatement(cur, S.statement)}
           className="mt-4 text-[14px] font-semibold"
           style={{ color: "#2F6FC4" }}
         >

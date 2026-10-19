@@ -1,44 +1,39 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect, useState } from "react";
-import { Card, Field, PrimaryButton, SecondaryButton, inputClass } from "./Shell";
-import { CodeInput, PayoutFields } from "./JoinForm";
-import { checkCode, type Country, type PayoutMethod } from "./sample";
-import { loadCreator, saveCreator, clearCreator } from "./store";
+import { useState } from "react";
+import { Card, CREATOR_EMAIL, Field, PrimaryButton, SecondaryButton, inputClass } from "./Shell";
+import { CodeInput, PayoutFields, useCodeCheck } from "./JoinForm";
+import Gate from "./Gate";
+import { changeCode, errorText, leaveProgram, updateProfile, type Dash } from "./api";
+import { type Country, type PayoutMethod } from "./shared";
 import { BODY, INK } from "../site";
 
 const handle = (s: string) => s.replace(/^@+/, "").replace(/\s/g, "");
 
 export default function ProfileForm() {
-  const [savedCode, setSavedCode] = useState("");
-  const [name, setName] = useState("");
-  const [email, setEmail] = useState("");
-  const [instagram, setInstagram] = useState("");
-  const [tiktok, setTiktok] = useState("");
-  const [code, setCode] = useState("");
-  const [country, setCountry] = useState<Country>("CA");
-  const [method, setMethod] = useState<PayoutMethod>("etransfer");
-  const [payoutEmail, setPayoutEmail] = useState("");
+  return <Gate>{(d) => <ProfileView C={d.creator} />}</Gate>;
+}
+
+function ProfileView({ C }: { C: Dash["creator"] }) {
+  const [savedCode, setSavedCode] = useState(C.code);
+  const [name, setName] = useState(C.name);
+  const [instagram, setInstagram] = useState(C.instagram);
+  const [tiktok, setTiktok] = useState(C.tiktok);
+  const [code, setCode] = useState(C.code);
+  const [country, setCountry] = useState<Country>(C.country);
+  const [method, setMethod] = useState<PayoutMethod>(C.payoutMethod);
+  const [payoutEmail, setPayoutEmail] = useState(C.payoutEmail);
   const [saved, setSaved] = useState(false);
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState<string | null>(null);
   const [leaving, setLeaving] = useState(false);
   const [left, setLeft] = useState(false);
 
-  useEffect(() => {
-    const c = loadCreator();
-    setSavedCode(c.code);
-    setName(c.name);
-    setEmail(c.email);
-    setInstagram(c.instagram);
-    setTiktok(c.tiktok);
-    setCode(c.code);
-    setCountry(c.country);
-    setMethod(c.payoutMethod);
-    setPayoutEmail(c.payoutEmail);
-  }, []);
-
-  const codeOk = code.length > 0 && checkCode(code, savedCode).ok;
-  const codeChanged = savedCode !== "" && code !== savedCode;
+  const check = useCodeCheck(code, savedCode);
+  const codeOk = check.state === "ok" || check.state === "current";
+  const codeChanged = code !== savedCode;
+  const ready = codeOk && name.trim().length > 1 && (instagram || tiktok) && /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(payoutEmail.trim());
 
   if (left) {
     return (
@@ -58,19 +53,28 @@ export default function ProfileForm() {
       <form
         className="flex flex-col gap-6"
         onChange={() => setSaved(false)}
-        onSubmit={(e) => {
+        onSubmit={async (e) => {
           e.preventDefault();
-          if (!codeOk) return;
-          saveCreator({ name: name.trim(), email, instagram, tiktok, code, country, payoutMethod: method, payoutEmail });
-          setSavedCode(code);
-          setSaved(true);
+          if (!ready || busy) return;
+          setBusy(true);
+          setError(null);
+          try {
+            await updateProfile({ name: name.trim(), instagram, tiktok, country, payoutMethod: method, payoutEmail: payoutEmail.trim() });
+            if (codeChanged) await changeCode(code);
+            setSavedCode(code);
+            setSaved(true);
+          } catch (err) {
+            setError(errorText(err));
+          } finally {
+            setBusy(false);
+          }
         }}
       >
         <Field label="Name">
           <input className={inputClass} value={name} onChange={(e) => setName(e.target.value)} autoComplete="name" />
         </Field>
-        <Field label="Email" hint="Changing this sends a confirmation link to the new address.">
-          <input className={inputClass} type="email" value={email} onChange={(e) => setEmail(e.target.value)} autoComplete="email" />
+        <Field label="Email" hint={<>The email you log in with. To change it, email {CREATOR_EMAIL}.</>}>
+          <input className={inputClass} type="email" value={C.email} readOnly />
         </Field>
         <div className="grid gap-6 sm:grid-cols-2">
           <Field label="Instagram">
@@ -99,8 +103,10 @@ export default function ProfileForm() {
           setPayoutEmail={setPayoutEmail}
         />
 
+        {error && <p className="text-[14.5px] font-medium text-[#C2410C]">{error}</p>}
+
         <div className="flex items-center gap-5 pt-2">
-          <PrimaryButton type="submit" disabled={!codeOk}>Save changes</PrimaryButton>
+          <PrimaryButton type="submit" disabled={!ready || busy}>{busy ? "Saving…" : "Save changes"}</PrimaryButton>
           {saved ? (
             <span className="text-[15px] font-semibold text-[#15803D]">Saved</span>
           ) : (
@@ -137,9 +143,14 @@ export default function ProfileForm() {
             <div className="mt-4 flex flex-col gap-3 sm:flex-row">
               <button
                 type="button"
-                onClick={() => {
-                  clearCreator();
-                  setLeft(true);
+                onClick={async () => {
+                  try {
+                    await leaveProgram();
+                    setLeft(true);
+                  } catch (err) {
+                    setError(errorText(err));
+                    setLeaving(false);
+                  }
                 }}
                 className="rounded-full px-6 py-3.5 text-[15px] font-semibold text-white"
                 style={{ background: "#C2410C" }}

@@ -1,24 +1,55 @@
 "use client";
 
 import Link from "next/link";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
+import { useRouter } from "next/navigation";
 import { Card, Field, PrimaryButton, SecondaryButton, inputClass } from "./Shell";
-import { checkCode, normalizeCode, type Country, type PayoutMethod } from "./sample";
-import { saveCreator, isoDay } from "./store";
+import CodeStep from "./CodeStep";
+import { checkCode, normalizeCode, type Country, type PayoutMethod } from "./shared";
+import { checkCodeRemote, codeProblemText, errorText, joinProgram, sendSignInCode, signedInEmail } from "./api";
 import { BODY, INK } from "../site";
+
+/** Whether a code can be used: instant local rules, then the database after a short pause. */
+export function useCodeCheck(code: string, current?: string) {
+  const local = useMemo(() => (code ? checkCode(code, current) : null), [code, current]);
+  const [remote, setRemote] = useState<{ code: string; problem: string | null } | null>(null);
+  useEffect(() => {
+    if (!local?.ok || code === current) return;
+    let live = true;
+    const t = setTimeout(() => {
+      checkCodeRemote(code)
+        .then((problem) => live && setRemote({ code, problem }))
+        .catch(() => live && setRemote({ code, problem: null }));
+    }, 350);
+    return () => {
+      live = false;
+      clearTimeout(t);
+    };
+  }, [code, current, local?.ok]);
+
+  if (!code || !local) return { state: "empty" as const };
+  if (!local.ok) return { state: "bad" as const, message: local.reason };
+  if (code === current) return { state: "current" as const };
+  if (!remote || remote.code !== code) return { state: "checking" as const };
+  return remote.problem
+    ? { state: "bad" as const, message: codeProblemText(remote.problem) ?? "" }
+    : { state: "ok" as const };
+}
 
 export function CodeInput({ value, onChange, current }: { value: string; onChange: (v: string) => void; current?: string }) {
   const code = normalizeCode(value);
-  const check = useMemo(() => (code ? checkCode(code, current) : null), [code, current]);
+  const check = useCodeCheck(code, current);
   return (
     <Field
       label="Your Code"
-      error={check && !check.ok ? check.reason : null}
+      error={check.state === "bad" ? check.message : null}
       hint={
-        check?.ok ? (
-          <span className="font-medium text-[#15803D]">
-            {code === current ? "This is your current code." : `${code} is available.`}
-          </span>
+        check.state === "ok" ? (
+          <span className="font-medium text-[#15803D]">{code} is available.</span>
+        ) : check.state === "current" ? (
+          <span className="font-medium text-[#15803D]">This is your current code.</span>
+        ) : check.state === "checking" ? (
+          "Checking…"
         ) : (
           "3 to 15 letters or numbers. Your followers type this in the app."
         )
@@ -136,9 +167,13 @@ function Check({ checked, onChange, children }: { checked: boolean; onChange: (v
 
 const handle = (s: string) => s.replace(/^@+/, "").replace(/\s/g, "");
 
+const EMAIL = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+
 export default function JoinForm() {
+  const router = useRouter();
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
+  const [signedIn, setSignedIn] = useState<string | null>(null);
   const [instagram, setInstagram] = useState("");
   const [tiktok, setTiktok] = useState("");
   const [country, setCountry] = useState<Country>("CA");
@@ -147,23 +182,60 @@ export default function JoinForm() {
   const [code, setCode] = useState("");
   const [adult, setAdult] = useState(false);
   const [terms, setTerms] = useState(false);
-  const [done, setDone] = useState(false);
+  const [step, setStep] = useState<"form" | "verify" | "done">("form");
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
-  const emailOk = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
-  const payoutOk = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(payoutEmail || email);
-  const codeOk = code.length > 0 && checkCode(code).ok;
-  const ready = name.trim().length > 1 && emailOk && (instagram || tiktok) && payoutOk && codeOk && adult && terms;
+  // Someone already signed in (say, they logged in before joining) joins with that email.
+  useEffect(() => {
+    signedInEmail().then((e) => {
+      if (e) {
+        setSignedIn(e);
+        setEmail(e);
+      }
+    });
+  }, []);
 
-  if (done) {
+  const check = useCodeCheck(code);
+  const payout = (payoutEmail || email).trim();
+  const ready =
+    name.trim().length > 1 && EMAIL.test(email.trim()) && (instagram || tiktok) && EMAIL.test(payout) &&
+    check.state === "ok" && adult && terms;
+
+  const join = async () => {
+    await joinProgram({ name: name.trim(), instagram, tiktok, code, country, payoutMethod: method, payoutEmail: payout });
+    setStep("done");
+  };
+
+  if (step === "verify") {
+    return (
+      <CodeStep
+        email={email.trim().toLowerCase()}
+        create
+        onVerified={async () => {
+          try {
+            await join();
+          } catch (err) {
+            // Most likely the code was taken while they were checking their email.
+            setSignedIn(email.trim().toLowerCase());
+            setError(errorText(err));
+            setStep("form");
+          }
+        }}
+        onBack={() => setStep("form")}
+      />
+    );
+  }
+
+  if (step === "done") {
     return (
       <Card className="px-7 py-9 text-center">
         <p className="text-[15px] font-semibold" style={{ color: "#2F6FC4" }}>You&apos;re In</p>
         <h2 className="mt-3 text-[28px] font-bold tracking-[-0.03em]" style={{ color: INK }}>Your Code Is {code}</h2>
         <p className="mt-3 text-[16px] leading-[1.65]" style={{ color: BODY }}>
-          We sent a sign-in link to <strong style={{ color: INK }}>{email}</strong>. Your dashboard has your share link,
-          your numbers, and everything you need to post.
+          Your dashboard has your share link, your free Pro code, your numbers, and everything you need to post.
         </p>
-        <PrimaryButton href="/creators/dashboard" className="mt-7">Go to your dashboard</PrimaryButton>
+        <PrimaryButton onClick={() => router.push("/creators/dashboard")} className="mt-7">Go to your dashboard</PrimaryButton>
       </Card>
     );
   }
@@ -171,23 +243,41 @@ export default function JoinForm() {
   return (
     <form
       className="flex flex-col gap-6"
-      onSubmit={(e) => {
+      onSubmit={async (e) => {
         e.preventDefault();
-        if (!ready) return;
-        const today = new Date();
-        const bonusEnd = new Date(today.getTime() + 30 * 86400000);
-        saveCreator({
-          name: name.trim(), email, instagram, tiktok, code, country, payoutMethod: method,
-          payoutEmail: payoutEmail || email, joined: isoDay(today), bonusEnds: isoDay(bonusEnd),
-        });
-        setDone(true);
+        if (!ready || busy) return;
+        setBusy(true);
+        setError(null);
+        try {
+          if (signedIn) {
+            await join();
+          } else {
+            await sendSignInCode(email, true);
+            setStep("verify");
+          }
+        } catch (err) {
+          setError(errorText(err));
+        } finally {
+          setBusy(false);
+        }
       }}
     >
       <Field label="Name">
         <input className={inputClass} value={name} onChange={(e) => setName(e.target.value)} placeholder="Your name" autoComplete="name" />
       </Field>
-      <Field label="Email" hint="Used to sign in. No password needed.">
-        <input className={inputClass} type="email" value={email} onChange={(e) => setEmail(e.target.value)} placeholder="you@example.com" autoComplete="email" />
+      <Field
+        label="Email"
+        hint={signedIn ? "You're signed in with this email." : "Used to sign in. We'll email you a code to confirm it, no password needed."}
+      >
+        <input
+          className={inputClass}
+          type="email"
+          value={email}
+          onChange={(e) => setEmail(e.target.value)}
+          placeholder="you@example.com"
+          autoComplete="email"
+          readOnly={!!signedIn}
+        />
       </Field>
       <div className="grid gap-6 sm:grid-cols-2">
         <Field label="Instagram">
@@ -221,8 +311,10 @@ export default function JoinForm() {
         </Check>
       </div>
 
+      {error && <p className="text-[14.5px] font-medium text-[#C2410C]">{error}</p>}
+
       <div className="flex flex-col gap-3 pt-2 sm:flex-row">
-        <PrimaryButton type="submit" disabled={!ready}>Create my code</PrimaryButton>
+        <PrimaryButton type="submit" disabled={!ready || busy}>{busy ? "Just a moment…" : "Create my code"}</PrimaryButton>
         <SecondaryButton href="/creators/login">I already have an account</SecondaryButton>
       </div>
     </form>

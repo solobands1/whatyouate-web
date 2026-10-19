@@ -3,26 +3,32 @@
 import Image from "next/image";
 import { useEffect, useState } from "react";
 import { DownloadButton, BODY, INK } from "../site";
-import { normalizeCode } from "./sample";
-import { loadCreator } from "./store";
-
-// Preview lookup. The live page asks Supabase for the creator's first name.
-const SAMPLE_NAMES: Record<string, string> = { SARAH: "Sarah" };
+import { normalizeCode } from "./shared";
+import { publicName } from "./api";
 
 export default function SharePage() {
   const [code, setCode] = useState("");
   const [copied, setCopied] = useState(false);
+  const [name, setName] = useState<string | null>(null);
 
   useEffect(() => {
     // /c/SARAH is rewritten to this page, so read the code from the path, or ?code= as a fallback.
     const fromPath = window.location.pathname.split("/").filter(Boolean)[1] ?? "";
     const fromQuery = new URLSearchParams(window.location.search).get("code") ?? "";
-    setCode(normalizeCode(fromPath || fromQuery));
+    const c = normalizeCode(fromPath || fromQuery);
+    setCode(c);
+    if (c) publicName(c).then(setName).catch(() => {});
   }, []);
 
-  // Preview: also recognise the code saved on this browser's Join or Profile page.
-  const mine = typeof window !== "undefined" ? loadCreator() : null;
-  const name = SAMPLE_NAMES[code] ?? (mine && mine.code === code ? mine.name.split(" ")[0] : undefined);
+  // Downloading copies the code, so the Paste button in the app can fill it in.
+  const copyCode = async () => {
+    if (!code) return;
+    try {
+      await navigator.clipboard.writeText(code);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 1600);
+    } catch {}
+  };
 
   return (
     <div className="flex min-h-screen flex-col items-center px-6 pb-16 pt-16 text-center">
@@ -52,13 +58,7 @@ export default function SharePage() {
         {code && (
           <button
             type="button"
-            onClick={async () => {
-              try {
-                await navigator.clipboard.writeText(code);
-                setCopied(true);
-                setTimeout(() => setCopied(false), 1600);
-              } catch {}
-            }}
+            onClick={copyCode}
             className="mt-4 flex w-full items-center justify-between rounded-2xl px-5 py-4 transition"
             style={{ background: "#EEF5FE", boxShadow: "inset 0 0 0 1.5px #B9D4FA" }}
           >
@@ -70,7 +70,9 @@ export default function SharePage() {
         )}
       </div>
 
-      <DownloadButton className="mt-8" />
+      <div onClickCapture={copyCode}>
+        <DownloadButton className="mt-8" />
+      </div>
       <p className="mt-4 text-[13px] text-white/85">Free on iPhone. Code applies to new accounts.</p>
     </div>
   );

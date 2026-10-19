@@ -4,7 +4,8 @@ import Image from "next/image";
 import { useState } from "react";
 import { Card } from "./Shell";
 import CreatorNav from "./CreatorNav";
-import { useCreator } from "./store";
+import Gate from "./Gate";
+import type { Dash } from "./api";
 import { APP_STORE_URL, BODY, INK } from "../site";
 
 const KIT = "/creators/kit";
@@ -78,7 +79,10 @@ function SmallCopy({ on, onClick, label = "Copy" }: { on: boolean; onClick: () =
 }
 
 export default function Kit() {
-  const C = useCreator();
+  return <Gate>{(d) => <KitView C={d.creator} />}</Gate>;
+}
+
+function KitView({ C }: { C: Dash["creator"] }) {
   const { copied, copy } = useCopy();
   const link = `https://whatyouate.app/c/${C.code}`;
 
