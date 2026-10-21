@@ -2,7 +2,6 @@
 
 import Link from "next/link";
 import { useMemo } from "react";
-import { Card, PrimaryButton } from "./Shell";
 import { DashboardView } from "./Dashboard";
 import type { Dash } from "./api";
 import { BODY, INK } from "../site";
@@ -78,17 +77,22 @@ export default function ExampleDashboard() {
         </svg>
         Back to Creators
       </Link>
-      <Card className="mb-10 px-6 py-6">
-        <p className="text-[13px] font-semibold uppercase tracking-[0.12em] text-[#2F6FC4]">Example Dashboard</p>
-        <p className="mt-2 text-[15.5px] leading-[1.65]" style={{ color: INK }}>
-          This is what you&apos;ll see after you join, with made-up numbers from a creator three months in. Yours
-          starts at zero and fills in as people use your code.
-        </p>
-        <p className="mt-2 text-[13px] leading-[1.6]" style={{ color: BODY }}>
-          Example only. What you earn depends on your audience.
-        </p>
-        <PrimaryButton href="/creators/join" className="mt-5">Join the program</PrimaryButton>
-      </Card>
+      <div
+        className="mb-2 flex items-center justify-between gap-3 rounded-2xl bg-white/80 py-2.5 pl-4 pr-2.5 ring-1 ring-[#16233B]/[0.06]"
+        style={{ boxShadow: "0 10px 24px -18px rgba(16,42,86,0.3)" }}
+      >
+        <div className="min-w-0">
+          <p className="text-[13.5px] font-semibold text-[#2F6FC4]">Example dashboard</p>
+          <p className="text-[12.5px] leading-[1.4]" style={{ color: BODY }}>Made-up numbers. Yours depend on your audience.</p>
+        </div>
+        <Link
+          href="/creators/join"
+          className="shrink-0 rounded-full px-4 py-2.5 text-[13.5px] font-semibold text-white transition hover:opacity-90"
+          style={{ background: INK }}
+        >
+          Join
+        </Link>
+      </div>
       <DashboardView d={d} preview />
     </div>
   );
