@@ -36,7 +36,7 @@ export default function PrivacyPage() {
           Privacy Policy
         </h1>
         <p style={{ fontSize: 12, color: "#9CA3AF", marginBottom: 40 }}>
-          Effective date: April 24, 2026. Governing law: Province of Ontario, Canada.
+          Effective date: October 21, 2026. Governing law: Province of Ontario, Canada.
         </p>
 
         <div style={{ display: "flex", flexDirection: "column", gap: 28 }}>
@@ -54,6 +54,8 @@ export default function PrivacyPage() {
             <p>We store a push notification token for your device to deliver your daily AI coach check-in and reminders. You can disable notifications at any time in your device settings.</p>
             <H3>Device and technical data</H3>
             <p>We may collect basic technical information such as device type, operating system version, and crash logs solely for the purpose of maintaining app stability.</p>
+            <H3>Creator codes</H3>
+            <p>If you enter a creator code when you sign up, we record which code you used, so the creator can be credited for subscriptions you buy in your first year. Creators only ever see totals. We never share your name, email or anything else that identifies you with them.</p>
           </Section>
 
           <Section title="2. Meal Photos">
@@ -74,36 +76,45 @@ export default function PrivacyPage() {
               <li><span style={{ fontWeight: 600, color: "#374151" }}>RevenueCat</span>: subscription and in-app purchase management.</li>
               <li><span style={{ fontWeight: 600, color: "#374151" }}>Vercel</span>: application hosting and infrastructure.</li>
               <li><span style={{ fontWeight: 600, color: "#374151" }}>Apple</span>: payment processing for App Store subscriptions.</li>
+              <li><span style={{ fontWeight: 600, color: "#374151" }}>Resend</span>: sends account emails, such as sign-in and password reset codes.</li>
+              <li><span style={{ fontWeight: 600, color: "#374151" }}>Wise</span>: sends payouts to creators outside Canada.</li>
+              <li><span style={{ fontWeight: 600, color: "#374151" }}>Discord</span>: internal notifications to our team about the creator program, such as new creators and monthly payouts.</li>
             </ul>
             <p>Each provider operates under its own privacy policy and data processing agreements. WhatYouAte is not responsible for the data practices of these third parties beyond the contractual safeguards in place.</p>
           </Section>
 
-          <Section title="5. Data Retention and Deletion">
-            <p>We retain your data for as long as your account is active. You may delete your account and all associated data at any time using the "Delete account" option in your Profile. Upon deletion, your personal data is removed from our systems within a reasonable period, except where retention is required by law.</p>
+          <Section title="5. Creator Program">
+            <p>If you join our creator program at whatyouate.app/creators, we collect your name, email address, Instagram and TikTok handles, country, your creator code(s), and the email you want payouts sent to. We record the signups, subscriptions, earnings and payouts linked to your code. We use this to run the program, pay you, and keep the financial records the law requires.</p>
+            <p>The first name you give us appears on your share page (whatyouate.app/c/YOURCODE), for example &ldquo;Sarah Sent You&rdquo;. Payout records are kept for as long as Canadian tax law requires, even if you leave the program.</p>
           </Section>
 
-          <Section title="6. Security">
+          <Section title="6. Data Retention and Deletion">
+            <p>We retain your data for as long as your account is active. You may delete your account and all associated data at any time using the "Delete account" option in your Profile. Upon deletion, your personal data is removed from our systems within a reasonable period, except where retention is required by law.</p>
+            <p>If you joined with a creator code and later delete your account, we keep a record that a signup came from that code, with nothing that identifies you, so the creator&apos;s totals stay accurate.</p>
+          </Section>
+
+          <Section title="7. Security">
             <p>We use industry-standard security measures including encryption in transit (TLS) and encryption at rest to protect your data. No method of transmission over the internet is 100% secure. While we take reasonable steps to protect your information, we cannot guarantee absolute security.</p>
           </Section>
 
-          <Section title="7. Your Rights">
+          <Section title="8. Your Rights">
             <p>Depending on your location, you may have rights including: the right to access your personal data; the right to correct inaccurate data; the right to request deletion; the right to data portability; and the right to withdraw consent.</p>
             <p>Canadian residents have rights under the Personal Information Protection and Electronic Documents Act (PIPEDA). Residents of the European Economic Area have rights under the General Data Protection Regulation (GDPR). Residents of California have rights under the California Consumer Privacy Act (CCPA), including the right to know what personal information is collected, the right to delete personal information, and the right to opt out of the sale of personal information (we do not sell personal information). To exercise any of these rights, contact us using the information below.</p>
           </Section>
 
-          <Section title="8. International Users">
+          <Section title="9. International Users">
             <p>WhatYouAte is operated from Canada. If you access the App from outside Canada, your information may be transferred to and processed in Canada. By using the App, you consent to this transfer. We take steps to ensure that data transferred internationally receives an adequate level of protection.</p>
           </Section>
 
-          <Section title="9. Cookies and Local Storage">
+          <Section title="10. Cookies and Local Storage">
             <p>The App uses browser local storage to save preferences and cached data on your device. This data does not leave your device except as described in this policy. We do not use third-party tracking cookies or advertising trackers.</p>
           </Section>
 
-          <Section title="10. Changes to This Policy">
+          <Section title="11. Changes to This Policy">
             <p>We may update this policy as the App evolves. Material changes will be communicated within the App. The effective date at the top of this page reflects the most recent revision. Continued use of the App after changes are posted constitutes acceptance of the revised policy.</p>
           </Section>
 
-          <Section title="11. Contact">
+          <Section title="12. Contact">
             <p>
               For privacy inquiries, data requests, or any questions about this policy, contact us at:{" "}
               <a href="mailto:support@whatyouate.app" style={{ color: "#6FA8FF", textDecoration: "none" }}>
