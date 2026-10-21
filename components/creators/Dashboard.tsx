@@ -21,7 +21,7 @@ function downloadStatement(cur: string, statement: Dash["statement"]) {
   URL.revokeObjectURL(a.href);
 }
 
-function CopyButton({ text, label }: { text: string; label: string }) {
+function CopyButton({ text, label, small = false }: { text: string; label: string; small?: boolean }) {
   const [copied, setCopied] = useState(false);
   return (
     <button
@@ -33,7 +33,7 @@ function CopyButton({ text, label }: { text: string; label: string }) {
           setTimeout(() => setCopied(false), 1600);
         } catch {}
       }}
-      className="flex-1 rounded-full px-5 py-3 text-[14.5px] font-semibold transition hover:opacity-90"
+      className={`rounded-full font-semibold transition hover:opacity-90 ${small ? "px-4 py-2.5 text-[13.5px]" : "flex-1 px-5 py-3 text-[14.5px]"}`}
       style={{ background: copied ? "#15803D" : INK, color: "#fff" }}
     >
       {copied ? "Copied" : label}
@@ -153,88 +153,45 @@ export function DashboardView({ d, preview = false }: { d: Dash; preview?: boole
   const cur = C.currency;
   const link = `whatyouate.app/c/${C.code}`;
   const first = C.name.split(" ")[0];
+  // New creators start on Code & Perks (their numbers are all zero); once the code has been used,
+  // the dashboard opens on their numbers.
+  const active = S.allTime.earned > 0 || S.statement.some((r) => r.codeUses > 0) || S.weekly.some((w) => w.uses > 0);
+  const [view, setView] = useState<"numbers" | "perks">(preview || active ? "numbers" : "perks");
 
   return (
     <div>
       {!preview && <CreatorNav />}
       <h1 className="mt-8 text-[clamp(28px,4.4vw,40px)] font-bold leading-[1.1] tracking-[-0.04em]">Hi {first}</h1>
 
-      {/* Code and share link */}
-      <Card className="mt-7 px-6 py-6">
-        <p className="text-[13px] font-medium" style={{ color: BODY }}>Your Code</p>
-        <p className="mt-1 text-[30px] font-bold tracking-[0.04em]" style={{ color: INK }}>{C.code}</p>
-        <p className="mt-1 text-[15px]" style={{ color: BODY }}>
-          Your link: <span className="font-semibold" style={{ color: INK }}>{link}</span>
-        </p>
-        <div className="mt-5 flex gap-2.5">
-          <CopyButton text={`https://${link}`} label="Copy link" />
-          <CopyButton text={C.code} label="Copy code" />
-        </div>
-        <p className="mt-4 text-[13.5px] leading-[1.55]" style={{ color: BODY }}>
-          Followers who enter your code in the app get their first month free. Your link shows them the code.
-        </p>
-      </Card>
-
-      <FreePro pro={d.pro} preview={preview} />
-
-      <Link
-        href={preview ? "/creators/join" : "/creators/kit"}
-        className="mt-4 flex items-center justify-between gap-4 rounded-3xl px-6 py-5 text-white transition hover:-translate-y-0.5"
-        style={{ background: "linear-gradient(135deg, #6FA8FF 0%, #3F7FD6 100%)", boxShadow: "0 18px 40px -22px rgba(47,111,196,0.7)" }}
-      >
-        <div>
-          <p className="text-[17px] font-bold tracking-[-0.02em]">Creator Kit</p>
-          <p className="mt-1 text-[14px] leading-[1.5] text-white/85">Captions with your code, post ideas, videos, logos and screenshots.</p>
-        </div>
-        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round" className="shrink-0">
-          <path d="M9 6l6 6-6 6" />
-        </svg>
-      </Link>
-
-      {/* How you earn */}
-      <SectionTitle>How You Earn</SectionTitle>
-      <Card className="divide-y divide-[#16233B]/[0.06]">
-        {[
-          {
-            big: "30%",
-            title: "30% of Every Subscription, for a Full Year",
-            body: `One post can keep paying you. When someone subscribes with your code, you earn 30% of their subscription for their first 12 months, after Apple's fee. That's about ${cur === "CAD" ? "$38 CAD" : "$28 USD"} for each yearly subscriber, or about ${cur === "CAD" ? "$4.50 CAD" : "$3.30 USD"} every month a monthly subscriber sticks around.`,
-          },
-          {
-            big: "$1",
-            title: "A Head Start: $1 for Every New User",
-            body: bonusActive
-              ? `For your first month, until ${longDate(C.bonusEnds)}, everyone who tries the app with your code earns you $1 ${cur}, even if they never subscribe. They just need to use it on 3 different days in their first week.`
-              : `Your first-month bonus ended on ${longDate(C.bonusEnds)}. You still earn 30% of every subscription.`,
-          },
-          {
-            big: "cal",
-            title: "Paid Every Month",
-            body: `Your earnings land on the 1st of each month by ${PAYOUT_LABEL[C.payoutMethod]}${cur === "CAD" ? ", in Canadian dollars" : ", in US dollars"}. Each payment covers the month before last, so refunds have time to clear: ${payNow.earned} earnings arrive ${payNow.paid} 1. Anything under $10 rolls into your next payment.`,
-          },
-        ].map((r) => (
-          <div key={r.title} className="flex gap-4 px-5 py-4">
-            <span
-              className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl text-[16px] font-bold tracking-[-0.02em] text-white"
-              style={{ background: "linear-gradient(135deg, #6FA8FF 0%, #3F7FD6 100%)" }}
-            >
-              {r.big === "cal" ? (
-                <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-                  <rect x="3.5" y="5" width="17" height="15.5" rx="3" />
-                  <path d="M3.5 10h17M8 3v4M16 3v4" />
-                </svg>
-              ) : (
-                r.big
-              )}
-            </span>
-            <div>
-              <p className="text-[15.5px] font-semibold leading-[1.35]" style={{ color: INK }}>{r.title}</p>
-              <p className="mt-1 text-[14px] leading-[1.6]" style={{ color: BODY }}>{r.body}</p>
-            </div>
-          </div>
+      <div className="mt-6 grid grid-cols-2 gap-1 rounded-full bg-white/70 p-1 ring-1 ring-[#16233B]/[0.06]">
+        {(
+          [
+            ["numbers", "Your Numbers"],
+            ["perks", "Code & Perks"],
+          ] as const
+        ).map(([v, label]) => (
+          <button
+            key={v}
+            type="button"
+            onClick={() => setView(v)}
+            className="rounded-full py-2.5 text-[14px] font-semibold tracking-[-0.01em] transition"
+            style={view === v ? { background: INK, color: "#fff" } : { color: BODY }}
+          >
+            {label}
+          </button>
         ))}
-        <div className="px-5 py-3.5">
-          <Link href="/creators/terms" className="text-[14px] font-semibold" style={{ color: "#2F6FC4" }}>Full program terms</Link>
+      </div>
+
+      {view === "numbers" ? (
+        <>
+      {/* Code at a glance, for copying while checking numbers */}
+      <Card className="mt-6 flex items-center justify-between gap-3 px-5 py-4">
+        <div className="min-w-0">
+          <p className="text-[12px] font-medium" style={{ color: BODY }}>Your Code</p>
+          <p className="truncate text-[20px] font-bold tracking-[0.04em]" style={{ color: INK }}>{C.code}</p>
+        </div>
+        <div className="flex shrink-0 gap-2">
+          <CopyButton text={`https://${link}`} label="Copy link" small />
         </div>
       </Card>
 
@@ -320,6 +277,91 @@ export function DashboardView({ d, preview = false }: { d: Dash; preview?: boole
           Download statement (CSV)
         </button>
       </Card>
+
+        </>
+      ) : (
+        <>
+      {/* Code and share link */}
+      <Card className="mt-6 px-6 py-6">
+        <p className="text-[13px] font-medium" style={{ color: BODY }}>Your Code</p>
+        <p className="mt-1 text-[30px] font-bold tracking-[0.04em]" style={{ color: INK }}>{C.code}</p>
+        <p className="mt-1 text-[15px]" style={{ color: BODY }}>
+          Your link: <span className="font-semibold" style={{ color: INK }}>{link}</span>
+        </p>
+        <div className="mt-5 flex gap-2.5">
+          <CopyButton text={`https://${link}`} label="Copy link" />
+          <CopyButton text={C.code} label="Copy code" />
+        </div>
+        <p className="mt-4 text-[13.5px] leading-[1.55]" style={{ color: BODY }}>
+          Followers who enter your code in the app get their first month free. Your link shows them the code.
+        </p>
+      </Card>
+
+      <FreePro pro={d.pro} preview={preview} />
+
+      <Link
+        href={preview ? "/creators/join" : "/creators/kit"}
+        className="mt-4 flex items-center justify-between gap-4 rounded-3xl px-6 py-5 text-white transition hover:-translate-y-0.5"
+        style={{ background: "linear-gradient(135deg, #6FA8FF 0%, #3F7FD6 100%)", boxShadow: "0 18px 40px -22px rgba(47,111,196,0.7)" }}
+      >
+        <div>
+          <p className="text-[17px] font-bold tracking-[-0.02em]">Creator Kit</p>
+          <p className="mt-1 text-[14px] leading-[1.5] text-white/85">Captions with your code, post ideas, videos, logos and screenshots.</p>
+        </div>
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round" className="shrink-0">
+          <path d="M9 6l6 6-6 6" />
+        </svg>
+      </Link>
+
+      {/* How you earn */}
+      <SectionTitle>How You Earn</SectionTitle>
+      <Card className="divide-y divide-[#16233B]/[0.06]">
+        {[
+          {
+            big: "30%",
+            title: "30% of Every Subscription, for a Full Year",
+            body: `One post can keep paying you. When someone subscribes with your code, you earn 30% of their subscription for their first 12 months, after Apple's fee. That's about ${cur === "CAD" ? "$38 CAD" : "$28 USD"} for each yearly subscriber, or about ${cur === "CAD" ? "$4.50 CAD" : "$3.30 USD"} every month a monthly subscriber sticks around.`,
+          },
+          {
+            big: "$1",
+            title: "A Head Start: $1 for Every New User",
+            body: bonusActive
+              ? `For your first month, until ${longDate(C.bonusEnds)}, everyone who tries the app with your code earns you $1 ${cur}, even if they never subscribe. They just need to use it on 3 different days in their first week.`
+              : `Your first-month bonus ended on ${longDate(C.bonusEnds)}. You still earn 30% of every subscription.`,
+          },
+          {
+            big: "cal",
+            title: "Paid Every Month",
+            body: `Your earnings land on the 1st of each month by ${PAYOUT_LABEL[C.payoutMethod]}${cur === "CAD" ? ", in Canadian dollars" : ", in US dollars"}. Each payment covers the month before last, so refunds have time to clear: ${payNow.earned} earnings arrive ${payNow.paid} 1. Anything under $10 rolls into your next payment.`,
+          },
+        ].map((r) => (
+          <div key={r.title} className="flex gap-4 px-5 py-4">
+            <span
+              className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl text-[16px] font-bold tracking-[-0.02em] text-white"
+              style={{ background: "linear-gradient(135deg, #6FA8FF 0%, #3F7FD6 100%)" }}
+            >
+              {r.big === "cal" ? (
+                <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                  <rect x="3.5" y="5" width="17" height="15.5" rx="3" />
+                  <path d="M3.5 10h17M8 3v4M16 3v4" />
+                </svg>
+              ) : (
+                r.big
+              )}
+            </span>
+            <div>
+              <p className="text-[15.5px] font-semibold leading-[1.35]" style={{ color: INK }}>{r.title}</p>
+              <p className="mt-1 text-[14px] leading-[1.6]" style={{ color: BODY }}>{r.body}</p>
+            </div>
+          </div>
+        ))}
+        <div className="px-5 py-3.5">
+          <Link href="/creators/terms" className="text-[14px] font-semibold" style={{ color: "#2F6FC4" }}>Full program terms</Link>
+        </div>
+      </Card>
+
+        </>
+      )}
 
       <p className="mt-6 text-[13.5px] leading-[1.6]" style={{ color: BODY }}>
         Label every post as sponsored, and never say the app treats or cures anything.{" "}
