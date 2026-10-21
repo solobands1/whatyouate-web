@@ -38,7 +38,7 @@ function exampleDash(now: Date): Dash {
   const paid = r(m1.bonus + m1.commission);
   return {
     creator: {
-      name: "there", // the greeting reads "Hi there"
+      name: "Alex",
       email: "you@example.com",
       instagram: "yourhandle",
       tiktok: "",
