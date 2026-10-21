@@ -162,7 +162,7 @@ export function DashboardView({ d, preview = false }: { d: Dash; preview?: boole
       {/* Code and share link */}
       <Card className="mt-7 px-6 py-6">
         <p className="text-[13px] font-medium" style={{ color: BODY }}>Your Code</p>
-        <p className="mt-1 text-[40px] font-bold tracking-[0.04em]" style={{ color: INK }}>{C.code}</p>
+        <p className="mt-1 text-[30px] font-bold tracking-[0.04em]" style={{ color: INK }}>{C.code}</p>
         <p className="mt-1 text-[15px]" style={{ color: BODY }}>
           Your link: <span className="font-semibold" style={{ color: INK }}>{link}</span>
         </p>

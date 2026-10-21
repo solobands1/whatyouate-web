@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { useMemo } from "react";
 import { Card, PrimaryButton } from "./Shell";
 import { DashboardView } from "./Dashboard";
@@ -71,6 +72,12 @@ export default function ExampleDashboard() {
   const d = useMemo(() => exampleDash(new Date()), []);
   return (
     <div>
+      <Link href="/creators" className="mb-5 inline-flex items-center gap-1.5 text-[14px] font-semibold transition hover:opacity-70" style={{ color: BODY }}>
+        <svg viewBox="0 0 16 16" className="h-3.5 w-3.5" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+          <path d="M10 12L6 8l4-4" />
+        </svg>
+        Back to Creators
+      </Link>
       <Card className="mb-10 px-6 py-6">
         <p className="text-[13px] font-semibold uppercase tracking-[0.12em] text-[#2F6FC4]">Example Dashboard</p>
         <p className="mt-2 text-[15.5px] leading-[1.65]" style={{ color: INK }}>
