@@ -330,6 +330,7 @@ export default function Home() {
           </div>
           <nav className="flex flex-wrap justify-center gap-x-8 gap-y-2 text-[14px] text-white/80">
             <Link href="/about" className="transition hover:text-white">About</Link>
+            <Link href="/creators" className="transition hover:text-white">Creators</Link>
             <Link href="/privacy" className="transition hover:text-white">Privacy Policy</Link>
             <Link href="/terms" className="transition hover:text-white">Terms of Use</Link>
             <a href="mailto:support@whatyouate.app" className="transition hover:text-white">Support</a>
