@@ -248,7 +248,7 @@ function KitView({ C }: { C: Dash["creator"] }) {
           className="mt-5 flex w-full items-center justify-center rounded-full px-5 py-3.5 text-[14.5px] font-semibold text-white transition hover:opacity-90"
           style={{ background: INK }}
         >
-          Download everything (15 MB)
+          Download Everything (15 MB)
         </a>
       </Card>
     </div>

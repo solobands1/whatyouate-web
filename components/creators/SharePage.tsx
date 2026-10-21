@@ -64,7 +64,7 @@ export default function SharePage() {
           >
             <span className="text-[24px] font-bold tracking-[0.08em]" style={{ color: INK }}>{code}</span>
             <span className="text-[14px] font-semibold" style={{ color: copied ? "#15803D" : "#2F6FC4" }}>
-              {copied ? "Copied" : "Tap to copy"}
+              {copied ? "Copied" : "Tap To Copy"}
             </span>
           </button>
         )}

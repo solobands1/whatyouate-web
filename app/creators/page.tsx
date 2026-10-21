@@ -114,6 +114,46 @@ function DashboardPreview() {
   );
 }
 
+const FOLLOWER_GETS = [
+  {
+    title: "A Month of Pro, Free",
+    body: "Everything in WhatYouAte Pro for their first month: the food and feeling connections, daily coaching and their full nutrition picture.",
+  },
+  {
+    title: "Easy to Claim",
+    body: "They enter your code when they sign up, or from Profile in their first week. Your link shows them the code.",
+  },
+  {
+    title: "No Surprises",
+    body: "After the free month it's the regular monthly price unless they cancel, and they can cancel anytime in Settings.",
+  },
+];
+
+// A small version of the app's "Your First Month Is Free" screen (components/CreatorOffer.tsx in the app).
+function FollowerOfferMock() {
+  return (
+    <div className="flex flex-col items-center">
+      <div
+        className="w-full max-w-[300px] rounded-[26px] bg-white px-6 py-7 text-center ring-1 ring-[#16233B]/[0.06]"
+        style={{ boxShadow: "0 30px 60px -30px rgba(16,42,86,0.35)" }}
+      >
+        <img src="/icon-512.png" alt="" className="mx-auto h-12 w-12 rounded-[13px]" />
+        <p className="mt-4 text-[11px] font-semibold uppercase tracking-[0.12em] text-[#2F6FC4]">Your code · YOURCODE</p>
+        <p className="mt-1.5 text-[19px] font-bold tracking-[-0.02em]" style={{ color: INK }}>Your First Month Is Free</p>
+        <p className="mt-2 text-[13px] leading-[1.55]" style={{ color: BODY }}>
+          Get everything in WhatYouAte Pro free for a month.
+        </p>
+        <div className="mt-5 rounded-xl bg-[#6FA8FF] py-3 text-[14px] font-semibold text-white">Start My Free Month</div>
+        <p className="mt-2.5 text-[10.5px] leading-[1.5]" style={{ color: "#8FA3C0" }}>
+          Free for 1 month, then the regular monthly price. Cancel anytime in Settings.
+        </p>
+        <p className="mt-2 text-[13px] font-medium" style={{ color: BODY }}>Not now, start with 7 days free</p>
+      </div>
+      <p className="mt-3 text-[12.5px]" style={{ color: "#8FA3C0" }}>What your followers see in the app</p>
+    </div>
+  );
+}
+
 function DashboardPitch() {
   return (
     <div className="mx-auto mt-7 max-w-[30rem] text-center">
@@ -121,7 +161,16 @@ function DashboardPitch() {
         Your dashboard keeps everything in one place: your code and link, signups, subscribers, what you&apos;ve
         earned and when you&apos;ll be paid. No spreadsheets, no chasing payments.
       </p>
-      <SecondaryButton href="/creators/example" className="mt-5">See an example dashboard</SecondaryButton>
+      <Link
+        href="/creators/example"
+        className="mt-5 inline-flex items-center justify-center gap-2 rounded-full px-7 py-[15px] text-[15px] font-semibold tracking-[-0.01em] text-white transition duration-200 hover:-translate-y-0.5"
+        style={{ background: "linear-gradient(135deg, #6FA8FF 0%, #3F7FD6 100%)", boxShadow: "0 14px 32px -14px rgba(47,111,196,0.65)" }}
+      >
+        See Example Dashboard
+        <svg viewBox="0 0 16 16" className="h-3.5 w-3.5" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+          <path d="M6 4l4 4-4 4" />
+        </svg>
+      </Link>
       <p className="mt-3 text-[12.5px]" style={{ color: "#8FA3C0" }}>Example only. What you earn depends on your audience.</p>
     </div>
   );
@@ -130,10 +179,13 @@ function DashboardPitch() {
 export default function Creators() {
   return (
     <Shell>
-      <Reveal>
+      {/* Sits a little closer to the header than the shell's default top padding. */}
+      <Reveal className="-mt-8 sm:-mt-12">
         <Eyebrow>Creators</Eyebrow>
         <h1 className="mt-5 text-balance text-[clamp(34px,5.4vw,56px)] font-bold leading-[1.06] tracking-[-0.04em]">
-          Share WhatYouAte. Earn for a Full Year.
+          Share WhatYouAte
+          <br />
+          Earn For a Full Year
         </h1>
         <p className="mt-6 text-[18px] leading-[1.7]" style={{ color: BODY }}>
           Earn 30% of every subscription you bring in for 12 months, plus $1 for every signup in your first month.
@@ -144,8 +196,8 @@ export default function Creators() {
           <Link href="/creators/terms" className="underline underline-offset-2">program terms</Link>.
         </p>
         <div className="mt-9 flex flex-col gap-3 sm:flex-row">
-          <PrimaryButton href="/creators/join">Join the program</PrimaryButton>
-          <SecondaryButton href="/creators/login">Log in</SecondaryButton>
+          <PrimaryButton href="/creators/join">Join The Program</PrimaryButton>
+          <SecondaryButton href="/creators/login">Log In</SecondaryButton>
         </div>
       </Reveal>
 
@@ -153,6 +205,27 @@ export default function Creators() {
         <DashboardPreview />
         <DashboardPitch />
       </Reveal>
+
+      <Section title="What Your Followers Get">
+        <div className="mt-7 grid items-center gap-8 sm:grid-cols-[1fr_300px]">
+          <Card className="divide-y divide-[#16233B]/[0.06]">
+            {FOLLOWER_GETS.map((g) => (
+              <div key={g.title} className="flex gap-4 px-5 py-4">
+                <span className="mt-0.5 flex h-6 w-6 shrink-0 items-center justify-center rounded-full text-white" style={{ background: "linear-gradient(135deg, #6FA8FF 0%, #3F7FD6 100%)" }}>
+                  <svg viewBox="0 0 12 12" className="h-3 w-3" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                    <path d="M2 6l3 3 5-5" />
+                  </svg>
+                </span>
+                <div>
+                  <p className="text-[15.5px] font-semibold" style={{ color: INK }}>{g.title}</p>
+                  <p className="mt-1 text-[14px] leading-[1.6]" style={{ color: BODY }}>{g.body}</p>
+                </div>
+              </div>
+            ))}
+          </Card>
+          <FollowerOfferMock />
+        </div>
+      </Section>
 
       <Section title="How It Works">
         <div className="mt-7 flex flex-col gap-4">
@@ -235,7 +308,7 @@ export default function Creators() {
           <h2 className="text-balance text-[clamp(24px,3.4vw,34px)] font-bold leading-[1.15] tracking-[-0.03em]">
             Ready to Start?
           </h2>
-          <PrimaryButton href="/creators/join">Join the program</PrimaryButton>
+          <PrimaryButton href="/creators/join">Join The Program</PrimaryButton>
           <p className="text-[14px]" style={{ color: INK }}>
             Questions? <a href={`mailto:${CREATOR_EMAIL}`} className="font-semibold underline underline-offset-2" style={{ color: INK }}>{CREATOR_EMAIL}</a>
           </p>

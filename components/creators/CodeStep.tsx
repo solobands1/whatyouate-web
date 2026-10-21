@@ -78,10 +78,10 @@ export default function CodeStep({
           className="text-[15px] font-semibold"
           style={{ color: "#2F6FC4" }}
         >
-          {resent ? "New code sent" : "Send a new code"}
+          {resent ? "New Code Sent" : "Send A New Code"}
         </button>
         <button type="button" onClick={onBack} className="text-[15px] font-semibold" style={{ color: BODY }}>
-          Use a different email
+          Use A Different Email
         </button>
       </div>
     </Card>

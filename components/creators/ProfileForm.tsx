@@ -43,7 +43,7 @@ function ProfileView({ C }: { C: Dash["creator"] }) {
           Your code no longer works for new signups. You&apos;ll keep earning from the subscribers you already brought
           in until each one&apos;s 12 months are up, paid on the regular dates. Thanks for sharing WhatYouAte.
         </p>
-        <PrimaryButton href="/creators" className="mt-7">Back to Creators</PrimaryButton>
+        <PrimaryButton href="/creators" className="mt-7">Back To Creators</PrimaryButton>
       </Card>
     );
   }
@@ -106,12 +106,12 @@ function ProfileView({ C }: { C: Dash["creator"] }) {
         {error && <p className="text-[14.5px] font-medium text-[#C2410C]">{error}</p>}
 
         <div className="flex items-center gap-5 pt-2">
-          <PrimaryButton type="submit" disabled={!ready || busy}>{busy ? "Saving…" : "Save changes"}</PrimaryButton>
+          <PrimaryButton type="submit" disabled={!ready || busy}>{busy ? "Saving…" : "Save Changes"}</PrimaryButton>
           {saved ? (
             <span className="text-[15px] font-semibold text-[#15803D]">Saved</span>
           ) : (
             <Link href="/creators/dashboard" className="text-[15px] font-semibold" style={{ color: BODY }}>
-              Back to dashboard
+              Back To Dashboard
             </Link>
           )}
         </div>
@@ -132,7 +132,7 @@ function ProfileView({ C }: { C: Dash["creator"] }) {
               className="mt-4 text-[15px] font-semibold"
               style={{ color: "#C2410C" }}
             >
-              Leave the program
+              Leave The Program
             </button>
           </>
         ) : (
@@ -155,7 +155,7 @@ function ProfileView({ C }: { C: Dash["creator"] }) {
                 className="rounded-full px-6 py-3.5 text-[15px] font-semibold text-white"
                 style={{ background: "#C2410C" }}
               >
-                Yes, leave the program
+                Yes, Leave The Program
               </button>
               <SecondaryButton onClick={() => setLeaving(false)}>Stay</SecondaryButton>
             </div>

@@ -235,7 +235,7 @@ export default function JoinForm() {
         <p className="mt-3 text-[16px] leading-[1.65]" style={{ color: BODY }}>
           Your dashboard has your share link, your free Pro code, your numbers, and everything you need to post.
         </p>
-        <PrimaryButton onClick={() => router.push("/creators/dashboard")} className="mt-7">Go to your dashboard</PrimaryButton>
+        <PrimaryButton onClick={() => router.push("/creators/dashboard")} className="mt-7">Go To Your Dashboard</PrimaryButton>
       </Card>
     );
   }
@@ -314,8 +314,8 @@ export default function JoinForm() {
       {error && <p className="text-[14.5px] font-medium text-[#C2410C]">{error}</p>}
 
       <div className="flex flex-col gap-3 pt-2 sm:flex-row">
-        <PrimaryButton type="submit" disabled={!ready || busy}>{busy ? "Just a moment…" : "Create my code"}</PrimaryButton>
-        <SecondaryButton href="/creators/login">I already have an account</SecondaryButton>
+        <PrimaryButton type="submit" disabled={!ready || busy}>{busy ? "Just A Moment…" : "Create My Code"}</PrimaryButton>
+        <SecondaryButton href="/creators/login">I Already Have An Account</SecondaryButton>
       </div>
     </form>
   );

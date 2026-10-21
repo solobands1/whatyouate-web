@@ -100,7 +100,7 @@ function FreePro({ pro, preview = false }: { pro: Dash["pro"]; preview?: boolean
           <p className="mt-3 font-mono text-[18px] font-semibold tracking-[0.06em]" style={{ color: INK }}>{code}</p>
           {preview ? (
             <span className="mt-4 inline-flex rounded-full px-5 py-3 text-[14.5px] font-semibold text-white" style={{ background: INK }}>
-              Redeem in the App Store
+              Redeem In The App Store
             </span>
           ) : (
             <a
@@ -110,7 +110,7 @@ function FreePro({ pro, preview = false }: { pro: Dash["pro"]; preview?: boolean
               className="mt-4 inline-flex rounded-full px-5 py-3 text-[14.5px] font-semibold text-white transition hover:opacity-90"
               style={{ background: INK }}
             >
-              Redeem in the App Store
+              Redeem In The App Store
             </a>
           )}
           <p className="mt-3 text-[12.5px] leading-[1.55]" style={{ color: "#8FA3C0" }}>
@@ -191,7 +191,7 @@ export function DashboardView({ d, preview = false }: { d: Dash; preview?: boole
           <p className="truncate text-[20px] font-bold tracking-[0.04em]" style={{ color: INK }}>{C.code}</p>
         </div>
         <div className="flex shrink-0 gap-2">
-          <CopyButton text={`https://${link}`} label="Copy link" small />
+          <CopyButton text={`https://${link}`} label="Copy Link" small />
         </div>
       </Card>
 
@@ -274,7 +274,7 @@ export function DashboardView({ d, preview = false }: { d: Dash; preview?: boole
           className="mt-4 text-[14px] font-semibold"
           style={{ color: "#2F6FC4" }}
         >
-          Download statement (CSV)
+          Download Statement (CSV)
         </button>
       </Card>
 
@@ -289,11 +289,12 @@ export function DashboardView({ d, preview = false }: { d: Dash; preview?: boole
           Your link: <span className="font-semibold" style={{ color: INK }}>{link}</span>
         </p>
         <div className="mt-5 flex gap-2.5">
-          <CopyButton text={`https://${link}`} label="Copy link" />
-          <CopyButton text={C.code} label="Copy code" />
+          <CopyButton text={`https://${link}`} label="Copy Link" />
+          <CopyButton text={C.code} label="Copy Code" />
         </div>
         <p className="mt-4 text-[13.5px] leading-[1.55]" style={{ color: BODY }}>
-          Followers who enter your code in the app get their first month free. Your link shows them the code.
+          Followers who enter your code in the app get their first month of WhatYouAte Pro free, then the regular
+          price unless they cancel. Your link shows them the code.
         </p>
       </Card>
 

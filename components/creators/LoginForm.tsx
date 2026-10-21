@@ -55,8 +55,8 @@ export default function LoginForm() {
         />
       </Field>
       <div className="flex flex-col gap-3 sm:flex-row">
-        <PrimaryButton type="submit" disabled={!ok || busy}>{busy ? "Sending…" : "Email me a code"}</PrimaryButton>
-        <SecondaryButton href="/creators/join">Join instead</SecondaryButton>
+        <PrimaryButton type="submit" disabled={!ok || busy}>{busy ? "Sending…" : "Email Me A Code"}</PrimaryButton>
+        <SecondaryButton href="/creators/join">Join Instead</SecondaryButton>
       </div>
     </form>
   );
