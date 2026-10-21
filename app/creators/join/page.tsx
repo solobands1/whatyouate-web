@@ -12,6 +12,8 @@ export const metadata: Metadata = {
 export default function Join() {
   return (
     <Shell narrow>
+      {/* A little closer to the header than the shell's default top padding, like the creators page. */}
+      <div className="-mt-8 sm:-mt-12">
       <BackToExample />
       <Eyebrow>Creators</Eyebrow>
       <h1 className="mt-5 text-[clamp(30px,4.6vw,44px)] font-bold leading-[1.08] tracking-[-0.04em]">Get Your Creator Code</h1>
@@ -20,6 +22,7 @@ export default function Join() {
       </p>
       <div className="mt-9">
         <JoinForm />
+      </div>
       </div>
     </Shell>
   );
