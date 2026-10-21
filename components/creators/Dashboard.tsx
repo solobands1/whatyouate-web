@@ -83,7 +83,7 @@ function WeeklyChart({ weekly }: { weekly: Dash["weekly"] }) {
 
 // The creator's own free Pro, through Apple offer codes: 3 months on joining, a year once 3 of
 // their followers have each paid for 2 months or bought a year.
-function FreePro({ pro }: { pro: Dash["pro"] }) {
+function FreePro({ pro, preview = false }: { pro: Dash["pro"]; preview?: boolean }) {
   const code = pro.year ?? pro.threeMonths;
   return (
     <Card className="mt-4 px-6 py-5">
@@ -98,15 +98,21 @@ function FreePro({ pro }: { pro: Dash["pro"] }) {
               : "3 months of WhatYouAte Pro, so you can use the app for real before you post about it."}
           </p>
           <p className="mt-3 font-mono text-[18px] font-semibold tracking-[0.06em]" style={{ color: INK }}>{code}</p>
-          <a
-            href={redeemLink(code)}
-            target="_blank"
-            rel="noreferrer"
-            className="mt-4 inline-flex rounded-full px-5 py-3 text-[14.5px] font-semibold text-white transition hover:opacity-90"
-            style={{ background: INK }}
-          >
-            Redeem in the App Store
-          </a>
+          {preview ? (
+            <span className="mt-4 inline-flex rounded-full px-5 py-3 text-[14.5px] font-semibold text-white" style={{ background: INK }}>
+              Redeem in the App Store
+            </span>
+          ) : (
+            <a
+              href={redeemLink(code)}
+              target="_blank"
+              rel="noreferrer"
+              className="mt-4 inline-flex rounded-full px-5 py-3 text-[14.5px] font-semibold text-white transition hover:opacity-90"
+              style={{ background: INK }}
+            >
+              Redeem in the App Store
+            </a>
+          )}
           <p className="mt-3 text-[12.5px] leading-[1.55]" style={{ color: "#8FA3C0" }}>
             Open this on your iPhone and redeem it within a few weeks. It doesn&apos;t renew, so you won&apos;t be
             charged anything when it ends.
@@ -134,7 +140,8 @@ export default function Dashboard() {
   return <Gate>{(d) => <DashboardView d={d} />}</Gate>;
 }
 
-function DashboardView({ d }: { d: Dash }) {
+/** The dashboard itself. `preview` is the example page (/creators/example): no tabs, nothing redeemable. */
+export function DashboardView({ d, preview = false }: { d: Dash; preview?: boolean }) {
   const C = d.creator;
   const S = d;
   const bonusActive = new Date(C.bonusEnds + "T23:59:59") >= new Date();
@@ -149,7 +156,7 @@ function DashboardView({ d }: { d: Dash }) {
 
   return (
     <div>
-      <CreatorNav />
+      {!preview && <CreatorNav />}
       <h1 className="mt-8 text-[clamp(28px,4.4vw,40px)] font-bold leading-[1.1] tracking-[-0.04em]">Hi {first}</h1>
 
       {/* Code and share link */}
@@ -168,10 +175,10 @@ function DashboardView({ d }: { d: Dash }) {
         </p>
       </Card>
 
-      <FreePro pro={d.pro} />
+      <FreePro pro={d.pro} preview={preview} />
 
       <Link
-        href="/creators/kit"
+        href={preview ? "/creators/join" : "/creators/kit"}
         className="mt-4 flex items-center justify-between gap-4 rounded-3xl px-6 py-5 text-white transition hover:-translate-y-0.5"
         style={{ background: "linear-gradient(135deg, #6FA8FF 0%, #3F7FD6 100%)", boxShadow: "0 18px 40px -22px rgba(47,111,196,0.7)" }}
       >

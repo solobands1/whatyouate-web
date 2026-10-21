@@ -73,8 +73,8 @@ function Section({ title, children }: { title: string; children: React.ReactNode
   );
 }
 
-// What a creator's dashboard looks like, with example numbers. Built in code so it stays sharp and
-// matches the real dashboard (components/creators/Dashboard.tsx).
+// What a creator's dashboard looks like, with the same example numbers as /creators/example
+// (components/creators/ExampleDashboard.tsx). Built in code so it stays sharp and matches the real one.
 function DashboardPreview() {
   return (
     <div className="mt-14 flex justify-center">
@@ -85,16 +85,16 @@ function DashboardPreview() {
         <div className="flex items-start justify-between">
           <div>
             <p className="text-[12px] font-medium" style={{ color: BODY }}>Your Code</p>
-            <p className="mt-0.5 text-[28px] font-bold tracking-[0.04em]" style={{ color: INK }}>YOURCODE</p>
+            <p className="mt-0.5 text-[22px] font-bold tracking-[0.04em]" style={{ color: INK }}>YOURCODE</p>
             <p className="text-[13px]" style={{ color: BODY }}>whatyouate.app/c/YOURCODE</p>
           </div>
           <span className="rounded-full bg-[#EEF5FE] px-2.5 py-1 text-[11px] font-semibold text-[#2F6FC4]">Example</span>
         </div>
         <div className="mt-4 grid grid-cols-3 gap-2">
           {[
-            ["This Month", "$54.40"],
-            ["Signups", "23"],
-            ["Subscribers", "6"],
+            ["This Month", "$99.13"],
+            ["Signups", "35"],
+            ["Subscribers", "18"],
           ].map(([label, value]) => (
             <div key={label} className="rounded-2xl px-3 py-2.5 ring-1 ring-[#16233B]/[0.06]">
               <p className="text-[11px] font-medium" style={{ color: BODY }}>{label}</p>
@@ -105,11 +105,24 @@ function DashboardPreview() {
         <div className="mt-3 rounded-2xl px-4 py-3.5 text-white" style={{ background: "linear-gradient(135deg, #6FA8FF 0%, #3F7FD6 100%)" }}>
           <p className="text-[11px] font-semibold uppercase tracking-[0.12em] text-white/80">Recurring Each Month</p>
           <p className="mt-0.5 text-[20px] font-bold tracking-[-0.02em]">
-            about $22.40 <span className="text-[13px] font-semibold text-white/85">a month</span>
+            about $55 <span className="text-[13px] font-semibold text-white/85">a month</span>
           </p>
           <p className="text-[12px] text-white/85">From your subscribers, without posting again.</p>
         </div>
       </div>
+    </div>
+  );
+}
+
+function DashboardPitch() {
+  return (
+    <div className="mx-auto mt-7 max-w-[30rem] text-center">
+      <p className="text-[16px] leading-[1.7]" style={{ color: BODY }}>
+        Your dashboard keeps everything in one place: your code and link, signups, subscribers, what you&apos;ve
+        earned and when you&apos;ll be paid. No spreadsheets, no chasing payments.
+      </p>
+      <SecondaryButton href="/creators/example" className="mt-5">See an example dashboard</SecondaryButton>
+      <p className="mt-3 text-[12.5px]" style={{ color: "#8FA3C0" }}>Example only. What you earn depends on your audience.</p>
     </div>
   );
 }
@@ -138,6 +151,7 @@ export default function Creators() {
 
       <Reveal>
         <DashboardPreview />
+        <DashboardPitch />
       </Reveal>
 
       <Section title="How It Works">
