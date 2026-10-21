@@ -204,7 +204,10 @@ export function DashboardView({ d, preview = false }: { d: Dash; preview?: boole
         <Stat label="Earned So Far" value={money(S.month.bonus + S.month.commission, cur).replace(` ${cur}`, "")} hint={cur} />
       </div>
       <p className="mt-3 text-[13px]" style={{ color: BODY }}>
-        {money(S.month.bonus, cur)} from signups, {money(S.month.commission, cur)} from subscriptions.
+        {/* The signup bonus only runs in a creator's first month, so after that just show subscriptions. */}
+        {bonusActive || S.month.bonus > 0
+          ? `${money(S.month.bonus, cur)} from signups, ${money(S.month.commission, cur)} from subscriptions.`
+          : `${money(S.month.commission, cur)} from subscriptions.`}
       </p>
 
       {/* Recurring */}
