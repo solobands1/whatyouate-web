@@ -132,38 +132,26 @@ const FOLLOWER_GETS = [
   },
 ];
 
-// A small version of the app's "Your First Month Is Free" screen (components/CreatorOffer.tsx in the app),
-// shown as it appears: a pop-up over the dimmed app.
+// A small version of the app's "Your First Month Is Free" screen (components/CreatorOffer.tsx in the app).
+// The outline and the all-round shadow keep its top edge as clear as the bottom on the pale page.
 function FollowerOfferMock() {
   return (
     <div className="flex flex-col items-center">
       <div
-        className="relative w-full max-w-[300px] overflow-hidden rounded-[30px] px-4 py-12"
-        style={{ background: "#F3F6FB", boxShadow: "0 30px 60px -30px rgba(16,42,86,0.45)" }}
+        className="w-full max-w-[300px] rounded-[26px] bg-white px-6 py-7 text-center ring-1 ring-[#16233B]/[0.09]"
+        style={{ boxShadow: "0 2px 10px rgba(16,42,86,0.08), 0 24px 50px -24px rgba(16,42,86,0.35)" }}
       >
-        {/* Faint app screen behind the pop-up */}
-        <div className="absolute inset-0 space-y-2.5 p-5" aria-hidden="true">
-          <div className="h-3 w-24 rounded-full bg-[#16233B]/15" />
-          <div className="h-16 rounded-2xl bg-white" />
-          <div className="h-10 rounded-2xl bg-white" />
-          <div className="h-24 rounded-2xl bg-white" />
-          <div className="h-12 rounded-2xl bg-white" />
-          <div className="h-20 rounded-2xl bg-white" />
-          <div className="h-12 rounded-2xl bg-white" />
-        </div>
-        {/* Dim layer, like the app's overlay */}
-        <div className="absolute inset-0" style={{ background: "rgba(16,27,46,0.38)" }} aria-hidden="true" />
-        <div className="relative rounded-[20px] bg-white px-5 py-6 text-center shadow-2xl">
-          <img src="/icon-512.png" alt="" className="mx-auto h-11 w-11 rounded-[12px]" />
-          <p className="mt-3 text-[10.5px] font-semibold uppercase tracking-[0.12em] text-[#2F6FC4]">Your code · YOURCODE</p>
-          <p className="mt-1 text-[18px] font-bold tracking-[-0.02em]" style={{ color: INK }}>Your First Month Is Free</p>
-          <p className="mt-1.5 text-[12.5px] leading-[1.5]" style={{ color: BODY }}>Get everything in WhatYouAte Pro free for a month.</p>
-          <div className="mt-4 rounded-xl bg-[#6FA8FF] py-2.5 text-[13.5px] font-semibold text-white">Start My Free Month</div>
-          <p className="mt-2 text-[10px] leading-[1.45]" style={{ color: "#8FA3C0" }}>
-            Free for 1 month, then the regular monthly price. Cancel anytime in Settings.
-          </p>
-          <p className="mt-1.5 text-[12.5px] font-medium" style={{ color: BODY }}>Not now, start with 7 days free</p>
-        </div>
+        <img src="/icon-512.png" alt="" className="mx-auto h-12 w-12 rounded-[13px]" />
+        <p className="mt-4 text-[11px] font-semibold uppercase tracking-[0.12em] text-[#2F6FC4]">Your code · YOURCODE</p>
+        <p className="mt-1.5 text-[19px] font-bold tracking-[-0.02em]" style={{ color: INK }}>Your First Month Is Free</p>
+        <p className="mt-2 text-[13px] leading-[1.55]" style={{ color: BODY }}>
+          Get everything in WhatYouAte Pro free for a month.
+        </p>
+        <div className="mt-5 rounded-xl bg-[#6FA8FF] py-3 text-[14px] font-semibold text-white">Start My Free Month</div>
+        <p className="mt-2.5 text-[10.5px] leading-[1.5]" style={{ color: "#8FA3C0" }}>
+          Free for 1 month, then the regular monthly price. Cancel anytime in Settings.
+        </p>
+        <p className="mt-2 text-[13px] font-medium" style={{ color: BODY }}>Not now, start with 7 days free</p>
       </div>
       <p className="mt-3 text-[12.5px]" style={{ color: "#8FA3C0" }}>What your followers see in the app</p>
     </div>
