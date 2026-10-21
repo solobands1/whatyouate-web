@@ -22,6 +22,7 @@ export function money(n: number, currency: string) {
 const RESERVED = new Set([
   "WHATYOUATE", "WYA", "ADMIN", "SUPPORT", "HELP", "FREE", "TEST", "APPLE", "APPSTORE", "PROMO",
   "CODE", "CREATOR", "CREATORS", "OFFICIAL", "STAFF", "TEAM", "INTEGRITYSTACK",
+  "YOURCODE", "YOURNAME", "EXAMPLE", "SAMPLE",
 ]);
 
 // Instant feedback while typing. The database repeats these checks with a fuller list and

@@ -1,5 +1,4 @@
 import type { Metadata } from "next";
-import Image from "next/image";
 import Link from "next/link";
 import Reveal from "../../components/Reveal";
 import Shell, { Card, Eyebrow, PrimaryButton, SecondaryButton, CREATOR_EMAIL } from "../../components/creators/Shell";
@@ -14,7 +13,7 @@ export const metadata: Metadata = {
 const STEPS = [
   {
     title: "Join and Pick Your Code",
-    body: "Sign up in a minute and choose a code your followers will remember, like SARAH.",
+    body: "Sign up in a minute and choose a code your followers will remember, like your name or handle.",
   },
   {
     title: "Share It Your Way",
@@ -74,6 +73,47 @@ function Section({ title, children }: { title: string; children: React.ReactNode
   );
 }
 
+// What a creator's dashboard looks like, with example numbers. Built in code so it stays sharp and
+// matches the real dashboard (components/creators/Dashboard.tsx).
+function DashboardPreview() {
+  return (
+    <div className="mt-14 flex justify-center">
+      <div
+        className="w-full max-w-[360px] rounded-[28px] bg-white/90 p-5 ring-1 ring-[#16233B]/[0.06]"
+        style={{ boxShadow: "0 30px 60px -30px rgba(16,42,86,0.35)" }}
+      >
+        <div className="flex items-start justify-between">
+          <div>
+            <p className="text-[12px] font-medium" style={{ color: BODY }}>Your Code</p>
+            <p className="mt-0.5 text-[28px] font-bold tracking-[0.04em]" style={{ color: INK }}>YOURCODE</p>
+            <p className="text-[13px]" style={{ color: BODY }}>whatyouate.app/c/YOURCODE</p>
+          </div>
+          <span className="rounded-full bg-[#EEF5FE] px-2.5 py-1 text-[11px] font-semibold text-[#2F6FC4]">Example</span>
+        </div>
+        <div className="mt-4 grid grid-cols-3 gap-2">
+          {[
+            ["This Month", "$54.40"],
+            ["Signups", "23"],
+            ["Subscribers", "6"],
+          ].map(([label, value]) => (
+            <div key={label} className="rounded-2xl px-3 py-2.5 ring-1 ring-[#16233B]/[0.06]">
+              <p className="text-[11px] font-medium" style={{ color: BODY }}>{label}</p>
+              <p className="mt-0.5 text-[18px] font-bold tracking-[-0.02em]" style={{ color: INK }}>{value}</p>
+            </div>
+          ))}
+        </div>
+        <div className="mt-3 rounded-2xl px-4 py-3.5 text-white" style={{ background: "linear-gradient(135deg, #6FA8FF 0%, #3F7FD6 100%)" }}>
+          <p className="text-[11px] font-semibold uppercase tracking-[0.12em] text-white/80">Recurring Each Month</p>
+          <p className="mt-0.5 text-[20px] font-bold tracking-[-0.02em]">
+            about $22.40 <span className="text-[13px] font-semibold text-white/85">a month</span>
+          </p>
+          <p className="text-[12px] text-white/85">From your subscribers, without posting again.</p>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 export default function Creators() {
   return (
     <Shell>
@@ -97,16 +137,7 @@ export default function Creators() {
       </Reveal>
 
       <Reveal>
-        <div className="mt-16 flex justify-center">
-          <Image
-            src="/device/iphone-patterns.webp"
-            alt="The WhatYouAte Patterns screen"
-            width={1500}
-            height={2614}
-            className="h-auto w-[230px] sm:w-[260px]"
-            style={{ filter: "drop-shadow(0 30px 50px rgba(16,42,86,0.25))" }}
-          />
-        </div>
+        <DashboardPreview />
       </Reveal>
 
       <Section title="How It Works">

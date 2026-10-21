@@ -59,7 +59,7 @@ export function CodeInput({ value, onChange, current }: { value: string; onChang
         className={`${inputClass} font-semibold uppercase tracking-[0.06em]`}
         value={code}
         onChange={(e) => onChange(normalizeCode(e.target.value).slice(0, 15))}
-        placeholder="SARAH"
+        placeholder="YOURCODE"
         autoCapitalize="characters"
         autoComplete="off"
         spellCheck={false}
