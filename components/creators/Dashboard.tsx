@@ -237,7 +237,9 @@ export function DashboardView({ d, preview = false }: { d: Dash; preview?: boole
       </div>
       <p className="mt-3 text-[13px]" style={{ color: BODY }}>
         {/* The signup bonus only runs in a creator's first month, so after that just show subscriptions. */}
-        {bonusActive || S.month.bonus > 0
+        {S.month.bonus + S.month.commission === 0
+          ? "Nothing yet this month. Share your link to get your first signups."
+          : bonusActive || S.month.bonus > 0
           ? `${money(S.month.bonus, cur)} from signups, ${money(S.month.commission, cur)} from subscriptions.`
           : `${money(S.month.commission, cur)} from subscriptions.`}
       </p>
@@ -248,34 +250,60 @@ export function DashboardView({ d, preview = false }: { d: Dash; preview?: boole
         style={{ background: "linear-gradient(135deg, #6FA8FF 0%, #3F7FD6 100%)", boxShadow: "0 18px 40px -22px rgba(47,111,196,0.7)" }}
       >
         <p className="text-[13px] font-semibold uppercase tracking-[0.12em] text-white/80">Recurring Each Month</p>
-        <p className="mt-1 text-[30px] font-bold tracking-[-0.03em]">
-          about {money(S.recurring.monthly, cur).replace(` ${cur}`, "")}{" "}
-          <span className="text-[15px] font-semibold text-white/85">{cur} a month</span>
-        </p>
-        <p className="mt-1 text-[14px] leading-[1.55] text-white/85">
-          From your {S.recurring.active} active subscribers, without posting again. Each one keeps earning you for their first 12 months.
-        </p>
+        {S.recurring.active > 0 ? (
+          <>
+            <p className="mt-1 text-[30px] font-bold tracking-[-0.03em]">
+              about {money(S.recurring.monthly, cur).replace(` ${cur}`, "")}{" "}
+              <span className="text-[15px] font-semibold text-white/85">{cur} a month</span>
+            </p>
+            <p className="mt-1 text-[14px] leading-[1.55] text-white/85">
+              From your {S.recurring.active} active subscriber{S.recurring.active === 1 ? "" : "s"}, without posting again.
+              Each one keeps earning you for their first 12 months.
+            </p>
+          </>
+        ) : (
+          <>
+            <p className="mt-1 text-[22px] font-bold tracking-[-0.02em]">Starts with your first subscriber</p>
+            <p className="mt-1 text-[14px] leading-[1.55] text-white/85">
+              Each one keeps earning you every month for their first 12 months, without you posting again.
+            </p>
+          </>
+        )}
       </div>
 
       {/* Weekly */}
       <SectionTitle>Code Uses by Week</SectionTitle>
       <Card className="px-5 pb-4 pt-5">
         <WeeklyChart weekly={S.weekly} />
-        <p className="mt-3 text-[12px]" style={{ color: "#8FA3C0" }}>This week so far is shown lighter.</p>
+        <p className="mt-3 text-[12px]" style={{ color: "#8FA3C0" }}>
+          {S.weekly.some((w) => w.uses > 0) ? "This week so far is shown lighter." : "Each week's code uses will show here."}
+        </p>
       </Card>
 
       {/* Payout */}
       <SectionTitle>Next Payout</SectionTitle>
       <Card className="px-6 py-5">
-        <p className="text-[14px] font-medium" style={{ color: BODY }}>{S.nextPayout.date}</p>
-        <p className="mt-1 text-[28px] font-bold tracking-[-0.03em]" style={{ color: INK }}>
-          about {money(S.nextPayout.estimate, cur).replace(` ${cur}`, "")}{" "}
-          <span className="ml-1.5 text-[14px] font-medium" style={{ color: BODY }}>{cur}</span>
-        </p>
-        <p className="mt-2 text-[14px] leading-[1.55]" style={{ color: BODY }}>
-          By {PAYOUT_LABEL[C.payoutMethod]} to {C.payoutEmail}. Covers earnings through {S.nextPayout.covers}, once
-          refunds have cleared.
-        </p>
+        {S.nextPayout.estimate > 0 ? (
+          <>
+            <p className="text-[14px] font-medium" style={{ color: BODY }}>{S.nextPayout.date}</p>
+            <p className="mt-1 text-[28px] font-bold tracking-[-0.03em]" style={{ color: INK }}>
+              about {money(S.nextPayout.estimate, cur).replace(` ${cur}`, "")}{" "}
+              <span className="ml-1.5 text-[14px] font-medium" style={{ color: BODY }}>{cur}</span>
+            </p>
+            <p className="mt-2 text-[14px] leading-[1.55]" style={{ color: BODY }}>
+              By {PAYOUT_LABEL[C.payoutMethod]} to {C.payoutEmail}. Covers earnings through {S.nextPayout.covers}, once
+              refunds have cleared.
+            </p>
+          </>
+        ) : (
+          <>
+            <p className="text-[20px] font-bold tracking-[-0.02em]" style={{ color: INK }}>No payout yet</p>
+            <p className="mt-1.5 text-[14px] leading-[1.55]" style={{ color: BODY }}>
+              Payouts go out on the 1st of each month by {PAYOUT_LABEL[C.payoutMethod]} to {C.payoutEmail}, once
+              you&apos;ve earned $10.
+            </p>
+          </>
+        )}
       </Card>
 
       {/* All time */}
