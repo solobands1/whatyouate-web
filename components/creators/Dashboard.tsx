@@ -81,8 +81,8 @@ function WeeklyChart({ weekly }: { weekly: Dash["weekly"] }) {
   );
 }
 
-// The creator's own free Pro, through Apple offer codes: 3 months on joining, a year once 3 of
-// their followers have each paid for 2 months or bought a year.
+// The creator's own free Pro, through Apple offer codes: 3 months once their first signup qualifies,
+// a year once 3 of their followers have each paid for 2 months or bought a year.
 function FreePro({ pro, preview = false }: { pro: Dash["pro"]; preview?: boolean }) {
   const code = pro.year ?? pro.threeMonths;
   return (
@@ -119,10 +119,15 @@ function FreePro({ pro, preview = false }: { pro: Dash["pro"]; preview?: boolean
             {pro.year && pro.threeMonths && " If your 3 free months are still running, redeem this after they end."}
           </p>
         </>
+      ) : pro.unlocked ? (
+        <p className="mt-1 text-[14px] leading-[1.6]" style={{ color: BODY }}>
+          Your first signup unlocked 3 months of WhatYouAte Pro. Your code is on its way and will show up here
+          within a day.
+        </p>
       ) : (
         <p className="mt-1 text-[14px] leading-[1.6]" style={{ color: BODY }}>
-          You get 3 months of WhatYouAte Pro free, so you can use the app for real before you post about it. Your
-          code is on its way and will show up here within a day.
+          <span className="font-semibold" style={{ color: INK }}>Unlocks with your first signup.</span> Once someone
+          uses your code and is active in the app on 3 days, you get 3 months of WhatYouAte Pro free.
         </p>
       )}
       {!pro.year && (

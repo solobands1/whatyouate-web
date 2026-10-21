@@ -53,7 +53,7 @@ function exampleDash(now: Date): Dash {
       oldCodes: [],
     },
     // Over 3 followers have paid 2 months or a year by now, so the free year is earned.
-    pro: { threeMonths: "EXAMPLEPROCODE0000", year: "EXAMPLEYEARCODE000", paying: 3 },
+    pro: { threeMonths: "EXAMPLEPROCODE0000", year: "EXAMPLEYEARCODE000", unlocked: true, paying: 3 },
     month: { label: name(0, { month: "long" }), codeUses: 52, qualified: 35, newPaid: 9, bonus: m3.bonus, commission: m3.commission },
     allTime: { paidSubs: 18, earned: r(paid + m2.commission + m3.commission), paidOut: paid },
     nextPayout: { date: name(1, { month: "long", day: "numeric" }), covers: name(-1, { month: "long" }), estimate: m2.commission },

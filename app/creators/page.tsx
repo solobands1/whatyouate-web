@@ -36,7 +36,7 @@ const FAQ = [
   },
   {
     q: "Do I get the app free?",
-    a: "Yes. You get 3 months of WhatYouAte Pro free when you join, and a free year once 3 of your followers have each paid for 2 months, or bought a yearly plan. Neither one renews, so you're never charged.",
+    a: "Yes, up to a year free. Your first signup unlocks 3 months of WhatYouAte Pro, and you get a free year once 3 of your followers have each paid for 2 months, or bought a yearly plan. Neither one renews, so you're never charged.",
   },
   {
     q: "When do I get paid?",
@@ -266,6 +266,13 @@ export default function Creators() {
           <div className="flex items-baseline justify-between gap-6 px-6 py-5">
             <span className="text-[16px]" style={{ color: INK }}>Each Signup in Your First Month</span>
             <span className="text-[20px] font-bold tracking-[-0.02em]" style={{ color: INK }}>$1</span>
+          </div>
+          <div className="flex items-baseline justify-between gap-6 px-6 py-5">
+            <span className="text-[16px]" style={{ color: INK }}>WhatYouAte Pro for You</span>
+            <span className="text-right">
+              <span className="block text-[20px] font-bold tracking-[-0.02em]" style={{ color: INK }}>Free</span>
+              <span className="block whitespace-nowrap text-[13px]" style={{ color: BODY }}>up to a year</span>
+            </span>
           </div>
         </Card>
         <p className="mt-3 text-[13px] leading-[1.6]" style={{ color: "#8FA3C0" }}>

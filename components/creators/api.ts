@@ -39,7 +39,7 @@ export type Dash = {
     bonusEnds: string;
     oldCodes: string[];
   };
-  pro: { threeMonths: string | null; year: string | null; paying: number };
+  pro: { threeMonths: string | null; year: string | null; unlocked: boolean; paying: number };
   month: { label: string; codeUses: number; qualified: number; newPaid: number; bonus: number; commission: number };
   allTime: { paidSubs: number; earned: number; paidOut: number };
   nextPayout: { date: string; covers: string; estimate: number };
