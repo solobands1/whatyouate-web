@@ -25,14 +25,14 @@ export default function CreatorTerms() {
     <Shell>
       <Eyebrow>Creators</Eyebrow>
       <h1 className="mt-5 text-[clamp(30px,4.6vw,44px)] font-bold leading-[1.08] tracking-[-0.04em]">Program Terms</h1>
-      <p className="mt-4 text-[14px]" style={{ color: "#8FA3C0" }}>Last updated: October 19, 2026</p>
+      <p className="mt-4 text-[14px]" style={{ color: "#8FA3C0" }}>Last updated: October 21, 2026</p>
       <p className="mt-6 text-[16px] leading-[1.7]" style={{ color: BODY }}>
         The WhatYouAte creator program is run by Integrity Stack Inc., the company behind WhatYouAte (&ldquo;we&rdquo;,
         &ldquo;us&rdquo;). By joining, you agree to these terms.
       </p>
 
       <S n={1} title="Who Can Join">
-        <p>You must be 18 or older and able to receive payments by Interac e-Transfer (in Canada), bank deposit (sent through Wise) or PayPal. There is no follower minimum. We may decline or remove anyone who doesn&apos;t follow these terms.</p>
+        <p>You must be 18 or older and able to receive payments by Interac e-Transfer (in Canada) or bank deposit (sent through Wise, everywhere else). There is no follower minimum. We may decline or remove anyone who doesn&apos;t follow these terms.</p>
       </S>
 
       <S n={2} title="Your Code and Link">
@@ -49,7 +49,7 @@ export default function CreatorTerms() {
 
       <S n={4} title="Getting Paid">
         <p>Earnings for each month are paid at the start of the month after next, so refunds have time to clear. For example, October&apos;s earnings are paid on December 1. Balances under $10 roll over to the next month.</p>
-        <p>Creators in Canada earn and are paid in Canadian dollars by Interac e-Transfer. Everyone else earns and is paid in US dollars, by bank deposit (sent through Wise) or PayPal. All amounts in these terms, including the signup bonus, the bonus cap and the $10 minimum, are in your currency. If a subscriber you refer pays in a different currency, we convert their payment to yours at the exchange rate on the day they paid. You&apos;re responsible for any taxes on what you earn, and for any fees your payment provider charges you.</p>
+        <p>Creators in Canada earn and are paid in Canadian dollars by Interac e-Transfer. Everyone else earns and is paid in US dollars, by bank deposit (sent through Wise). All amounts in these terms, including the signup bonus, the bonus cap and the $10 minimum, are in your currency. If a subscriber you refer pays in a different currency, we convert their payment to yours at the exchange rate on the day they paid. You&apos;re responsible for any taxes on what you earn, and for any fees your payment provider charges you.</p>
       </S>
 
       <S n={5} title="How You Post">

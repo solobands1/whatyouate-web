@@ -102,40 +102,18 @@ export function PayoutFields({
         </select>
       </Field>
 
-      {canada ? (
-        <p className="-mt-1 text-[14px] leading-[1.6]" style={{ color: BODY }}>
-          You&apos;ll be paid in CAD by Interac e-Transfer.
-        </p>
-      ) : (
-        <Field label="How Should We Pay You?" hint="Paid in USD.">
-          <div className="grid grid-cols-2 gap-2.5">
-            {(["wise", "paypal"] as PayoutMethod[]).map((m) => (
-              <button
-                key={m}
-                type="button"
-                onClick={() => setMethod(m)}
-                className="rounded-2xl px-4 py-3.5 text-[15px] font-semibold transition"
-                style={
-                  method === m
-                    ? { background: INK, color: "#fff" }
-                    : { background: "#fff", color: INK, boxShadow: "inset 0 0 0 1px rgba(22,35,59,0.1)" }
-                }
-              >
-                {m === "paypal" ? "PayPal" : "Bank Deposit"}
-              </button>
-            ))}
-          </div>
-        </Field>
-      )}
+      <p className="-mt-1 text-[14px] leading-[1.6]" style={{ color: BODY }}>
+        {canada
+          ? "You'll be paid in CAD by Interac e-Transfer."
+          : "You'll be paid in USD by bank deposit, sent through Wise. You don't need a Wise account."}
+      </p>
 
       <Field
-        label={canada ? "e-Transfer Email" : method === "paypal" ? "PayPal Email" : "Email for Your Bank Deposit"}
+        label={canada ? "e-Transfer Email" : "Email for Your Bank Deposit"}
         hint={
           canada
             ? "Where your e-Transfers are sent."
-            : method === "paypal"
-              ? "Payments go to the PayPal account with this email."
-              : "Payments are sent through Wise. They email you a secure link to add your bank details, no Wise account needed."
+            : "Wise emails you a secure link to add your bank details."
         }
       >
         <input
