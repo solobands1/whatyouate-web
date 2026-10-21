@@ -35,7 +35,7 @@ export default function CreatorTerms() {
         <p>You must be 18 or older and able to receive payments by Interac e-Transfer (in Canada) or bank deposit (sent through Wise, everywhere else). There is no follower minimum. We may decline or remove anyone who doesn&apos;t follow these terms.</p>
       </S>
 
-      <S n={2} title="Your Code and Link">
+      <S n={2} title="Your Creator Code and Link">
         <p>You choose a code of 3 to 15 letters or numbers. Codes are first come, first served, and we may refuse codes that are reserved, misleading or offensive. You can change your code at any time. Your previous codes keep working and stay linked to you.</p>
         <p>Your followers get their first month of WhatYouAte Pro free when they enter your code in the app as they sign up and start a monthly subscription. After the free month, the subscription renews at the regular price unless they cancel. The free month is for new accounts, and Apple allows one free trial per person. Your link shows them your code and takes them to the App Store.</p>
       </S>

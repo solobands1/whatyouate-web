@@ -12,7 +12,7 @@ export const metadata: Metadata = {
 
 const STEPS = [
   {
-    title: "Join and Pick Your Code",
+    title: "Join and Pick Your Creator Code",
     body: "Sign up in a minute and choose a code your followers will remember, like your name or handle.",
   },
   {

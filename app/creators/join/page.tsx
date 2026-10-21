@@ -14,7 +14,7 @@ export default function Join() {
     <Shell narrow>
       <BackToExample />
       <Eyebrow>Creators</Eyebrow>
-      <h1 className="mt-5 text-[clamp(30px,4.6vw,44px)] font-bold leading-[1.08] tracking-[-0.04em]">Get Your Code</h1>
+      <h1 className="mt-5 text-[clamp(30px,4.6vw,44px)] font-bold leading-[1.08] tracking-[-0.04em]">Get Your Creator Code</h1>
       <p className="mt-4 text-[17px] leading-[1.7]" style={{ color: BODY }}>
         Takes about a minute. Your followers get their first month free with your code.
       </p>

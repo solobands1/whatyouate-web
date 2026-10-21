@@ -209,7 +209,7 @@ export default function JoinForm() {
     return (
       <Card className="px-7 py-9 text-center">
         <p className="text-[15px] font-semibold" style={{ color: "#2F6FC4" }}>You&apos;re In</p>
-        <h2 className="mt-3 text-[28px] font-bold tracking-[-0.03em]" style={{ color: INK }}>Your Code Is {code}</h2>
+        <h2 className="mt-3 text-[28px] font-bold tracking-[-0.03em]" style={{ color: INK }}>Your Creator Code Is {code}</h2>
         <p className="mt-3 text-[16px] leading-[1.65]" style={{ color: BODY }}>
           Your dashboard has your share link, your free Pro code, your numbers, and everything you need to post.
         </p>
