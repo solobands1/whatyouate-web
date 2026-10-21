@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useState } from "react";
-import { Card, CREATOR_EMAIL } from "./Shell";
+import { Card, CREATOR_EMAIL, TrialTag } from "./Shell";
 import CreatorNav from "./CreatorNav";
 import Gate from "./Gate";
 import { redeemLink, type Dash } from "./api";
@@ -163,7 +163,16 @@ export function DashboardView({ d, preview = false }: { d: Dash; preview?: boole
       {!preview && <CreatorNav />}
       <h1 className="mt-8 text-[clamp(28px,4.4vw,40px)] font-bold leading-[1.1] tracking-[-0.04em]">Hi {first}</h1>
 
-      <div className="mt-6 grid grid-cols-2 gap-1 rounded-full bg-white/70 p-1 ring-1 ring-[#16233B]/[0.06]">
+      {/* A segmented switch: a white thumb slides behind the selected side. */}
+      <div role="tablist" className="relative mt-6 grid grid-cols-2 rounded-full bg-[#16233B]/[0.07] p-1">
+        <span
+          aria-hidden="true"
+          className="absolute bottom-1 left-1 top-1 w-[calc(50%-4px)] rounded-full bg-white transition-transform duration-300 ease-out"
+          style={{
+            transform: view === "perks" ? "translateX(100%)" : "translateX(0)",
+            boxShadow: "0 1px 2px rgba(16,42,86,0.12), 0 4px 12px -4px rgba(16,42,86,0.18)",
+          }}
+        />
         {(
           [
             ["numbers", "Your Numbers"],
@@ -173,9 +182,11 @@ export function DashboardView({ d, preview = false }: { d: Dash; preview?: boole
           <button
             key={v}
             type="button"
+            role="tab"
+            aria-selected={view === v}
             onClick={() => setView(v)}
-            className="rounded-full py-2.5 text-[14px] font-semibold tracking-[-0.01em] transition"
-            style={view === v ? { background: INK, color: "#fff" } : { color: BODY }}
+            className="relative z-10 rounded-full py-2.5 text-[14px] font-semibold tracking-[-0.01em] transition-colors"
+            style={{ color: view === v ? INK : BODY }}
           >
             {label}
           </button>
@@ -188,7 +199,10 @@ export function DashboardView({ d, preview = false }: { d: Dash; preview?: boole
       <Card className="mt-6 flex items-center justify-between gap-3 px-5 py-4">
         <div className="min-w-0">
           <p className="text-[12px] font-medium" style={{ color: BODY }}>Your Code</p>
-          <p className="truncate text-[20px] font-bold tracking-[0.04em]" style={{ color: INK }}>{C.code}</p>
+          <div className="flex flex-wrap items-center gap-x-2.5 gap-y-1">
+            <p className="truncate text-[20px] font-bold tracking-[0.04em]" style={{ color: INK }}>{C.code}</p>
+            <TrialTag small />
+          </div>
         </div>
         <div className="flex shrink-0 gap-2">
           <CopyButton text={`https://${link}`} label="Copy Link" small />
@@ -287,8 +301,11 @@ export function DashboardView({ d, preview = false }: { d: Dash; preview?: boole
       {/* Code and share link */}
       <Card className="mt-6 px-6 py-6">
         <p className="text-[13px] font-medium" style={{ color: BODY }}>Your Code</p>
-        <p className="mt-1 text-[30px] font-bold tracking-[0.04em]" style={{ color: INK }}>{C.code}</p>
-        <p className="mt-1 text-[15px]" style={{ color: BODY }}>
+        <div className="mt-1 flex flex-wrap items-center gap-x-3 gap-y-2">
+          <p className="text-[30px] font-bold tracking-[0.04em]" style={{ color: INK }}>{C.code}</p>
+          <TrialTag />
+        </div>
+        <p className="mt-2.5 text-[15px]" style={{ color: BODY }}>
           Your link: <span className="font-semibold" style={{ color: INK }}>{link}</span>
         </p>
         <div className="mt-5 flex gap-2.5">

@@ -131,3 +131,16 @@ export function Field({
 
 export const inputClass =
   "w-full rounded-2xl bg-white px-4 py-3.5 text-[16px] text-[#101B2E] ring-1 ring-[#16233B]/[0.1] outline-none transition placeholder:text-[#9CADC6] focus:ring-2 focus:ring-[#6FA8FF]";
+
+/** What a code gives followers, shown beside the code wherever it appears. */
+export function TrialTag({ small = false }: { small?: boolean }) {
+  return (
+    <span
+      className={`inline-flex shrink-0 items-center rounded-full bg-[#EEF5FE] font-semibold text-[#2F6FC4] ring-1 ring-[#B9D4FA] ${
+        small ? "px-2 py-0.5 text-[11px]" : "px-2.5 py-1 text-[12px]"
+      }`}
+    >
+      1-Month Free Trial
+    </span>
+  );
+}

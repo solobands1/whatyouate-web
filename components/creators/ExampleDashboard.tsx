@@ -38,7 +38,7 @@ function exampleDash(now: Date): Dash {
   const paid = r(m1.bonus + m1.commission);
   return {
     creator: {
-      name: "Jordan Lee",
+      name: "there", // the greeting reads "Hi there"
       email: "you@example.com",
       instagram: "yourhandle",
       tiktok: "",
@@ -79,16 +79,16 @@ export default function ExampleDashboard() {
         Back to Creators
       </Link>
       <div
-        className="mb-2 flex items-center justify-between gap-3 rounded-2xl bg-white/80 py-2.5 pl-4 pr-2.5 ring-1 ring-[#16233B]/[0.06]"
+        className="mb-2 flex items-center justify-between gap-3 rounded-2xl bg-white/80 py-2 pl-4 pr-2 ring-1 ring-[#16233B]/[0.06]"
         style={{ boxShadow: "0 10px 24px -18px rgba(16,42,86,0.3)" }}
       >
         <div className="min-w-0">
-          <p className="text-[13.5px] font-semibold text-[#2F6FC4]">Example Dashboard</p>
-          <p className="text-[12.5px] leading-[1.4]" style={{ color: BODY }}>What you&apos;ll see when you sign up, with made-up numbers.</p>
+          <p className="text-[13.5px] font-semibold leading-[1.3] text-[#2F6FC4]">Example Dashboard</p>
+          <p className="text-[12.5px] leading-[1.35]" style={{ color: BODY }}>What you&apos;ll see when you sign up.</p>
         </div>
         <Link
           href="/creators/join?from=example"
-          className="shrink-0 rounded-full px-4 py-2.5 text-[13.5px] font-semibold text-white transition hover:opacity-90"
+          className="shrink-0 rounded-full px-4 py-2 text-[13.5px] font-semibold text-white transition hover:opacity-90"
           style={{ background: INK }}
         >
           Join

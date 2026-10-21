@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import Reveal from "../../components/Reveal";
-import Shell, { Card, Eyebrow, PrimaryButton, SecondaryButton, CREATOR_EMAIL } from "../../components/creators/Shell";
+import Shell, { Card, Eyebrow, PrimaryButton, SecondaryButton, CREATOR_EMAIL, TrialTag } from "../../components/creators/Shell";
 import { INK, BODY } from "../../components/site";
 
 export const metadata: Metadata = {
@@ -85,7 +85,10 @@ function DashboardPreview() {
         <div className="flex items-start justify-between">
           <div>
             <p className="text-[12px] font-medium" style={{ color: BODY }}>Your Code</p>
-            <p className="mt-0.5 text-[22px] font-bold tracking-[0.04em]" style={{ color: INK }}>YOURCODE</p>
+            <div className="mb-1 mt-0.5 flex flex-wrap items-center gap-x-2.5 gap-y-1">
+              <p className="text-[22px] font-bold tracking-[0.04em]" style={{ color: INK }}>YOURCODE</p>
+              <TrialTag small />
+            </div>
             <p className="text-[13px]" style={{ color: BODY }}>whatyouate.app/c/YOURCODE</p>
           </div>
           <span className="rounded-full bg-[#EEF5FE] px-2.5 py-1 text-[11px] font-semibold text-[#2F6FC4]">Example</span>
@@ -164,7 +167,7 @@ function DashboardPitch() {
       <Link
         href="/creators/example"
         className="mt-5 inline-flex items-center justify-center gap-2 rounded-full px-7 py-[15px] text-[15px] font-semibold tracking-[-0.01em] text-white transition duration-200 hover:-translate-y-0.5"
-        style={{ background: "linear-gradient(135deg, #6FA8FF 0%, #3F7FD6 100%)", boxShadow: "0 14px 32px -14px rgba(47,111,196,0.65)" }}
+        style={{ background: "linear-gradient(135deg, #6FA8FF 0%, #3F7FD6 100%)" }}
       >
         See Example Dashboard
         <svg viewBox="0 0 16 16" className="h-3.5 w-3.5" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
