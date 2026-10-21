@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Card, CREATOR_EMAIL, TrialTag } from "./Shell";
 import CreatorNav from "./CreatorNav";
 import Gate from "./Gate";
@@ -158,6 +158,24 @@ export function DashboardView({ d, preview = false }: { d: Dash; preview?: boole
   const active = S.allTime.earned > 0 || S.statement.some((r) => r.codeUses > 0) || S.weekly.some((w) => w.uses > 0);
   const [view, setView] = useState<"numbers" | "perks">(preview || active ? "numbers" : "perks");
 
+  // The switch side lives in the address (?view=perks) so Back returns to the same side, and #kit
+  // scrolls to the Creator Kit card (coming back from Join on the example dashboard).
+  useEffect(() => {
+    const v = new URLSearchParams(window.location.search).get("view");
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    if (v === "numbers" || v === "perks") setView(v);
+    if (window.location.hash === "#kit") {
+      setTimeout(() => document.getElementById("kit")?.scrollIntoView({ block: "center" }), 60);
+    }
+  }, []);
+  const choose = (v: "numbers" | "perks") => {
+    setView(v);
+    const url = new URL(window.location.href);
+    url.searchParams.set("view", v);
+    url.hash = "";
+    window.history.replaceState(null, "", url);
+  };
+
   return (
     <div>
       {!preview && <CreatorNav />}
@@ -184,7 +202,7 @@ export function DashboardView({ d, preview = false }: { d: Dash; preview?: boole
             type="button"
             role="tab"
             aria-selected={view === v}
-            onClick={() => setView(v)}
+            onClick={() => choose(v)}
             className="relative z-10 rounded-full py-2.5 text-[14px] font-semibold tracking-[-0.01em] transition-colors"
             style={{ color: view === v ? INK : BODY }}
           >
@@ -321,7 +339,8 @@ export function DashboardView({ d, preview = false }: { d: Dash; preview?: boole
       <FreePro pro={d.pro} preview={preview} />
 
       <Link
-        href={preview ? "/creators/join?from=example" : "/creators/kit"}
+        id="kit"
+        href={preview ? "/creators/join?from=example&back=kit" : "/creators/kit"}
         className="mt-4 flex items-center justify-between gap-4 rounded-3xl px-6 py-5 text-white transition hover:-translate-y-0.5"
         style={{ background: "linear-gradient(135deg, #6FA8FF 0%, #3F7FD6 100%)", boxShadow: "0 18px 40px -22px rgba(47,111,196,0.7)" }}
       >
