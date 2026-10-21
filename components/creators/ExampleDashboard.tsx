@@ -82,8 +82,8 @@ export default function ExampleDashboard() {
         style={{ boxShadow: "0 10px 24px -18px rgba(16,42,86,0.3)" }}
       >
         <div className="min-w-0">
-          <p className="text-[13.5px] font-semibold text-[#2F6FC4]">Example dashboard</p>
-          <p className="text-[12.5px] leading-[1.4]" style={{ color: BODY }}>Made-up numbers. Yours depend on your audience.</p>
+          <p className="text-[13.5px] font-semibold text-[#2F6FC4]">Example Dashboard</p>
+          <p className="text-[12.5px] leading-[1.4]" style={{ color: BODY }}>What you&apos;ll see when you sign up, with made-up numbers.</p>
         </div>
         <Link
           href="/creators/join"
