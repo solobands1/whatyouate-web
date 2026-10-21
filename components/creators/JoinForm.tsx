@@ -41,7 +41,7 @@ export function CodeInput({ value, onChange, current }: { value: string; onChang
   const check = useCodeCheck(code, current);
   return (
     <Field
-      label="Your Code"
+      label="Your Creator Code"
       error={check.state === "bad" ? check.message : null}
       hint={
         check.state === "ok" ? (

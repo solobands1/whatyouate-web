@@ -216,7 +216,7 @@ export function DashboardView({ d, preview = false }: { d: Dash; preview?: boole
       {/* Code at a glance, for copying while checking numbers */}
       <Card className="mt-6 flex items-center justify-between gap-3 px-5 py-4">
         <div className="min-w-0">
-          <p className="text-[12px] font-medium" style={{ color: BODY }}>Your Code</p>
+          <p className="text-[12px] font-medium" style={{ color: BODY }}>Your Creator Code</p>
           <div className="flex flex-wrap items-center gap-x-2.5 gap-y-1">
             <p className="truncate text-[20px] font-bold tracking-[0.04em]" style={{ color: INK }}>{C.code}</p>
             <TrialTag small />
@@ -346,7 +346,7 @@ export function DashboardView({ d, preview = false }: { d: Dash; preview?: boole
         <>
       {/* Code and share link */}
       <Card className="mt-6 px-6 py-6">
-        <p className="text-[13px] font-medium" style={{ color: BODY }}>Your Code</p>
+        <p className="text-[13px] font-medium" style={{ color: BODY }}>Your Creator Code</p>
         <div className="mt-1 flex flex-wrap items-center gap-x-3 gap-y-2">
           <p className="text-[30px] font-bold tracking-[0.04em]" style={{ color: INK }}>{C.code}</p>
           <TrialTag />

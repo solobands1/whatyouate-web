@@ -98,7 +98,7 @@ function KitView({ C }: { C: Dash["creator"] }) {
       <H2>Your Links</H2>
       <Card className="divide-y divide-[#16233B]/[0.06]">
         {[
-          { key: "code", label: "Your Code", value: C.code },
+          { key: "code", label: "Your Creator Code", value: C.code },
           { key: "link", label: "Your Link", value: link.replace("https://", "") },
           { key: "store", label: "App Store", value: "apps.apple.com/app/whatyouate", copyText: APP_STORE_URL },
         ].map((r) => (

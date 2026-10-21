@@ -84,7 +84,7 @@ function DashboardPreview() {
       >
         <div className="flex items-start justify-between">
           <div>
-            <p className="text-[12px] font-medium" style={{ color: BODY }}>Your Code</p>
+            <p className="text-[12px] font-medium" style={{ color: BODY }}>Your Creator Code</p>
             <div className="mb-1 mt-0.5 flex flex-wrap items-center gap-x-2.5 gap-y-1">
               <p className="text-[22px] font-bold tracking-[0.04em]" style={{ color: INK }}>YOURCODE</p>
               <TrialTag small />
