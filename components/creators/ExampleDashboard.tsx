@@ -70,8 +70,9 @@ function exampleDash(now: Date): Dash {
 export default function ExampleDashboard() {
   const d = useMemo(() => exampleDash(new Date()), []);
   return (
-    <div>
-      <Link href="/creators" className="mb-5 inline-flex items-center gap-1.5 text-[14px] font-semibold transition hover:opacity-70" style={{ color: BODY }}>
+    // Sits higher than other creator pages: the shell's top padding is sized for a page title.
+    <div className="-mt-8 sm:-mt-16">
+      <Link href="/creators" className="mb-3 inline-flex items-center gap-1.5 text-[14px] font-semibold transition hover:opacity-70" style={{ color: BODY }}>
         <svg viewBox="0 0 16 16" className="h-3.5 w-3.5" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
           <path d="M10 12L6 8l4-4" />
         </svg>
