@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import Shell, { Eyebrow } from "../../../components/creators/Shell";
 import JoinForm from "../../../components/creators/JoinForm";
+import BackToExample from "../../../components/creators/BackToExample";
 import { BODY } from "../../../components/site";
 
 export const metadata: Metadata = {
@@ -11,6 +12,7 @@ export const metadata: Metadata = {
 export default function Join() {
   return (
     <Shell narrow>
+      <BackToExample />
       <Eyebrow>Creators</Eyebrow>
       <h1 className="mt-5 text-[clamp(30px,4.6vw,44px)] font-bold leading-[1.08] tracking-[-0.04em]">Get Your Code</h1>
       <p className="mt-4 text-[17px] leading-[1.7]" style={{ color: BODY }}>

@@ -87,7 +87,7 @@ export default function ExampleDashboard() {
           <p className="text-[12.5px] leading-[1.4]" style={{ color: BODY }}>What you&apos;ll see when you sign up, with made-up numbers.</p>
         </div>
         <Link
-          href="/creators/join"
+          href="/creators/join?from=example"
           className="shrink-0 rounded-full px-4 py-2.5 text-[13.5px] font-semibold text-white transition hover:opacity-90"
           style={{ background: INK }}
         >

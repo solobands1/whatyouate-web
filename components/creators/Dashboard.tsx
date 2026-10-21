@@ -300,7 +300,7 @@ export function DashboardView({ d, preview = false }: { d: Dash; preview?: boole
       <FreePro pro={d.pro} preview={preview} />
 
       <Link
-        href={preview ? "/creators/join" : "/creators/kit"}
+        href={preview ? "/creators/join?from=example" : "/creators/kit"}
         className="mt-4 flex items-center justify-between gap-4 rounded-3xl px-6 py-5 text-white transition hover:-translate-y-0.5"
         style={{ background: "linear-gradient(135deg, #6FA8FF 0%, #3F7FD6 100%)", boxShadow: "0 18px 40px -22px rgba(47,111,196,0.7)" }}
       >
