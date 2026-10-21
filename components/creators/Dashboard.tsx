@@ -6,6 +6,7 @@ import { Card, CREATOR_EMAIL, TrialTag } from "./Shell";
 import CreatorNav from "./CreatorNav";
 import Gate from "./Gate";
 import { redeemLink, type Dash } from "./api";
+import RedeemQr, { useDevice } from "./RedeemQr";
 import { PAYOUT_LABEL, longDate, money } from "./shared";
 import { BODY, INK } from "../site";
 
@@ -85,6 +86,7 @@ function WeeklyChart({ weekly }: { weekly: Dash["weekly"] }) {
 // a year once 3 of their followers have each paid for 2 months or bought a year.
 function FreePro({ pro, preview = false }: { pro: Dash["pro"]; preview?: boolean }) {
   const code = pro.year ?? pro.threeMonths;
+  const device = useDevice();
   return (
     <Card className="mt-4 px-6 py-5">
       <p className="text-[17px] font-bold tracking-[-0.02em]" style={{ color: INK }}>
@@ -98,10 +100,17 @@ function FreePro({ pro, preview = false }: { pro: Dash["pro"]; preview?: boolean
               : "3 months of WhatYouAte Pro, so you can use the app for real before you post about it."}
           </p>
           <p className="mt-3 font-mono text-[18px] font-semibold tracking-[0.06em]" style={{ color: INK }}>{code}</p>
+          <p className="mt-1 text-[12.5px]" style={{ color: BODY }}>
+            This code is for you, not your followers. It gives you free Pro.
+          </p>
           {preview ? (
             <span className="mt-4 inline-flex rounded-full px-5 py-3 text-[14.5px] font-semibold text-white" style={{ background: INK }}>
               Redeem In The App Store
             </span>
+          ) : device === "otherPhone" ? (
+            <p className="mt-4 text-[14px] leading-[1.6]" style={{ color: INK }}>
+              Apple codes only work on an iPhone. Open this page on your iPhone to redeem it.
+            </p>
           ) : (
             <a
               href={redeemLink(code)}
@@ -113,10 +122,11 @@ function FreePro({ pro, preview = false }: { pro: Dash["pro"]; preview?: boolean
               Redeem In The App Store
             </a>
           )}
+          {!preview && device === "computer" && <RedeemQr url={redeemLink(code)} />}
           <p className="mt-3 text-[12.5px] leading-[1.55]" style={{ color: "#8FA3C0" }}>
-            Open this on your iPhone and redeem it within a few weeks. It doesn&apos;t renew, so you won&apos;t be
-            charged anything when it ends.
-            {pro.year && pro.threeMonths && " If your 3 free months are still running, redeem this after they end."}
+            Redeem it within a few weeks. It doesn&apos;t renew, so you won&apos;t be charged anything when it ends.
+            {pro.year && pro.threeMonths && " If your 3 free months are still running, redeem this after they end."} Or
+            redeem it by hand: in the App Store app, tap your profile picture, then Redeem Gift Card or Code.
           </p>
         </>
       ) : pro.unlocked ? (
