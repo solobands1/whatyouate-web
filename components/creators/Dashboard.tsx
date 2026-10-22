@@ -155,6 +155,13 @@ export default function Dashboard() {
   return <Gate>{(d) => <DashboardView d={d} />}</Gate>;
 }
 
+/** Where the money goes: e-Transfers go to an email, Wise emails a link to collect bank details. */
+function payoutTo(C: Dash["creator"]) {
+  return C.payoutMethod === "wise"
+    ? `By bank deposit through Wise. Wise emails ${C.payoutEmail} to collect your bank details.`
+    : `By ${PAYOUT_LABEL[C.payoutMethod]} to ${C.payoutEmail}.`;
+}
+
 /** The dashboard itself. `preview` is the example page (/creators/example): no tabs, nothing redeemable. */
 export function DashboardView({ d, preview = false }: { d: Dash; preview?: boolean }) {
   const C = d.creator;
@@ -259,6 +266,43 @@ export function DashboardView({ d, preview = false }: { d: Dash; preview?: boole
           : `${money(S.month.commission, cur)} from subscriptions.`}
       </p>
 
+      {/* Followers trying Pro right now: started the free month, not paying yet */}
+      <Card className="mt-4 flex items-center justify-between gap-4 px-5 py-4">
+        <div>
+          <p className="text-[13px] font-medium" style={{ color: BODY }}>In Their Free Month</p>
+          <p className="mt-0.5 text-[13px] leading-[1.5]" style={{ color: "#8FA3C0" }}>
+            {S.freeMonth > 0
+              ? "Trying Pro now. They start paying when their free month ends."
+              : "Followers trying Pro for free will show up here."}
+          </p>
+        </div>
+        <p className="shrink-0 text-[26px] font-bold tracking-[-0.03em]" style={{ color: INK }}>{S.freeMonth ?? 0}</p>
+      </Card>
+
+      {/* Payout */}
+      <SectionTitle>Next Payout</SectionTitle>
+      <Card className="px-6 py-5">
+        {S.nextPayout.estimate > 0 ? (
+          <>
+            <p className="text-[14px] font-medium" style={{ color: BODY }}>{S.nextPayout.date}</p>
+            <p className="mt-1 text-[28px] font-bold tracking-[-0.03em]" style={{ color: INK }}>
+              about {money(S.nextPayout.estimate, cur).replace(` ${cur}`, "")}{" "}
+              <span className="ml-1.5 text-[14px] font-medium" style={{ color: BODY }}>{cur}</span>
+            </p>
+            <p className="mt-2 text-[14px] leading-[1.55]" style={{ color: BODY }}>
+              {payoutTo(C)} Covers earnings through {S.nextPayout.covers}, once refunds have cleared.
+            </p>
+          </>
+        ) : (
+          <>
+            <p className="text-[20px] font-bold tracking-[-0.02em]" style={{ color: INK }}>No payout yet</p>
+            <p className="mt-1.5 text-[14px] leading-[1.55]" style={{ color: BODY }}>
+              Payouts go out on the 1st of each month, once you&apos;ve earned $10. {payoutTo(C)}
+            </p>
+          </>
+        )}
+      </Card>
+
       {/* Recurring */}
       <div
         className="mt-5 rounded-3xl px-6 py-5 text-white"
@@ -295,31 +339,7 @@ export function DashboardView({ d, preview = false }: { d: Dash; preview?: boole
         </p>
       </Card>
 
-      {/* Payout */}
-      <SectionTitle>Next Payout</SectionTitle>
-      <Card className="px-6 py-5">
-        {S.nextPayout.estimate > 0 ? (
-          <>
-            <p className="text-[14px] font-medium" style={{ color: BODY }}>{S.nextPayout.date}</p>
-            <p className="mt-1 text-[28px] font-bold tracking-[-0.03em]" style={{ color: INK }}>
-              about {money(S.nextPayout.estimate, cur).replace(` ${cur}`, "")}{" "}
-              <span className="ml-1.5 text-[14px] font-medium" style={{ color: BODY }}>{cur}</span>
-            </p>
-            <p className="mt-2 text-[14px] leading-[1.55]" style={{ color: BODY }}>
-              By {PAYOUT_LABEL[C.payoutMethod]} to {C.payoutEmail}. Covers earnings through {S.nextPayout.covers}, once
-              refunds have cleared.
-            </p>
-          </>
-        ) : (
-          <>
-            <p className="text-[20px] font-bold tracking-[-0.02em]" style={{ color: INK }}>No payout yet</p>
-            <p className="mt-1.5 text-[14px] leading-[1.55]" style={{ color: BODY }}>
-              Payouts go out on the 1st of each month by {PAYOUT_LABEL[C.payoutMethod]} to {C.payoutEmail}, once
-              you&apos;ve earned $10.
-            </p>
-          </>
-        )}
-      </Card>
+
 
       {/* All time */}
       <SectionTitle>All Time</SectionTitle>

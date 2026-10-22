@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import { creatorShareMeta } from "../../../components/creators/shareMeta";
 import Shell, { Eyebrow } from "../../../components/creators/Shell";
 import JoinForm from "../../../components/creators/JoinForm";
 import BackToExample from "../../../components/creators/BackToExample";
@@ -7,6 +8,7 @@ import { BODY } from "../../../components/site";
 export const metadata: Metadata = {
   title: "Join | WhatYouAte Creators",
   description: "Join the WhatYouAte creator program and get your own code.",
+  ...creatorShareMeta("/creators/join"),
 };
 
 export default function Join() {

@@ -1,13 +1,15 @@
 import type { Metadata } from "next";
+import { creatorShareMeta } from "../../components/creators/shareMeta";
 import Link from "next/link";
 import Reveal from "../../components/Reveal";
 import Shell, { Card, Eyebrow, PrimaryButton, SecondaryButton, CREATOR_EMAIL, TrialTag } from "../../components/creators/Shell";
 import { INK, BODY } from "../../components/site";
 
 export const metadata: Metadata = {
-  title: "Creators | WhatYouAte",
+  title: "Creators Program | WhatYouAte",
   description:
-    "Share WhatYouAte with your followers. Earn 30% of every subscription you bring in for a full year, plus $1 for every signup in your first month.",
+    "Share WhatYouAte with your followers. Earn 30% of every subscription you bring in for a full year, plus $1 for every signup in your first month in the program.",
+  ...creatorShareMeta("/creators"),
 };
 
 const STEPS = [
@@ -192,7 +194,7 @@ export default function Creators() {
           Earn For a Full Year
         </h1>
         <p className="mt-6 text-[18px] leading-[1.7]" style={{ color: BODY }}>
-          Earn 30% of every subscription you bring in for 12 months, plus $1 for every signup in your first month.
+          Earn 30% of every subscription you bring in for 12 months, plus $1 for every signup in your first month in the program.
           Your followers get their first month free.
         </p>
         <p className="mt-3 text-[13px]" style={{ color: "#8FA3C0" }}>

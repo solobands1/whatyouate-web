@@ -9,7 +9,7 @@ export const viewport: Viewport = {
   themeColor: "#6FA8FF",
 };
 
-const TITLE = "WhatYouAte — Eat. Reflect. Feel better.";
+const TITLE = "WhatYouAte | Eat. Reflect. Feel Better";
 /** Shown above the domain in link previews. The card already carries the
  *  wordmark and the domain sits right underneath, so the brand is not
  *  repeated a third time here. */
@@ -24,7 +24,7 @@ export const metadata: Metadata = {
   openGraph: {
     title: SHARE_TITLE,
     description: DESCRIPTION,
-    url: "https://whatyouate.app",
+    // No url here: pages inherit this preview, and it would point every one of them at the homepage.
     siteName: "WhatYouAte",
     type: "website",
     locale: "en_CA",

@@ -58,6 +58,8 @@ function exampleDash(now: Date): Dash {
     allTime: { paidSubs: 18, earned: r(paid + m2.commission + m3.commission), paidOut: paid },
     nextPayout: { date: name(1, { month: "long", day: "numeric" }), covers: name(-1, { month: "long" }), estimate: m2.commission },
     recurring: { monthly: r(13 * MONTHLY + (5 * YEARLY) / 12), active: 18 },
+    // Some of this month's 35 signups started their free month and haven't paid yet.
+    freeMonth: 8,
     statement: [
       { month: ym(-2), codeUses: 41, signups: 30, newPaid: 2, bonus: m1.bonus, commission: m1.commission, paid: 0, paidOn: "" },
       { month: ym(-1), codeUses: 38, signups: 27, newPaid: 7, bonus: 0, commission: m2.commission, paid: 0, paidOn: "" },

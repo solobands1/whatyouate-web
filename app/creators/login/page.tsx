@@ -1,10 +1,12 @@
 import type { Metadata } from "next";
+import { creatorShareMeta } from "../../../components/creators/shareMeta";
 import Shell, { Eyebrow } from "../../../components/creators/Shell";
 import LoginForm from "../../../components/creators/LoginForm";
 
 export const metadata: Metadata = {
   title: "Log In | WhatYouAte Creators",
   description: "Log in to your WhatYouAte creator dashboard.",
+  ...creatorShareMeta("/creators/login"),
 };
 
 export default function Login() {

@@ -44,6 +44,7 @@ export type Dash = {
   allTime: { paidSubs: number; earned: number; paidOut: number };
   nextPayout: { date: string; covers: string; estimate: number };
   recurring: { monthly: number; active: number };
+  freeMonth: number;
   statement: { month: string; codeUses: number; signups: number; newPaid: number; bonus: number; commission: number; paid: number; paidOn: string }[];
   weekly: { week: string; uses: number }[];
 };

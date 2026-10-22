@@ -1,10 +1,12 @@
 import type { Metadata } from "next";
+import { creatorShareMeta } from "../../../components/creators/shareMeta";
 import Shell, { Eyebrow, CREATOR_EMAIL } from "../../../components/creators/Shell";
 import { BODY, INK } from "../../../components/site";
 
 export const metadata: Metadata = {
   title: "Program Terms | WhatYouAte Creators",
   description: "The terms of the WhatYouAte creator program.",
+  ...creatorShareMeta("/creators/terms"),
 };
 
 function S({ n, title, children }: { n: number; title: string; children: React.ReactNode }) {
