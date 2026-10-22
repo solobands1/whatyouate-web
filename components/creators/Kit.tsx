@@ -3,6 +3,7 @@
 import Image from "next/image";
 import { useState } from "react";
 import { Card } from "./Shell";
+import CodeCard from "./CodeCard";
 import CreatorNav from "./CreatorNav";
 import Gate from "./Gate";
 import type { Dash } from "./api";
@@ -91,7 +92,7 @@ function KitView({ C }: { C: Dash["creator"] }) {
       <CreatorNav />
       <h1 className="mt-8 text-[clamp(28px,4.4vw,40px)] font-bold leading-[1.1] tracking-[-0.04em]">Creator Kit</h1>
       <p className="mt-3 text-[16px] leading-[1.65]" style={{ color: BODY }}>
-        Everything you need to post: your links, captions, post ideas, videos, logos and screenshots.
+        Everything you need to share WhatYouAte: your links, a card to hand out, captions, post ideas, videos, logos and screenshots.
       </p>
 
       {/* Links */}
@@ -114,6 +115,10 @@ function KitView({ C }: { C: Dash["creator"] }) {
       <p className="mt-2.5 text-[13px] leading-[1.55]" style={{ color: BODY }}>
         Put your link in your bio. It shows your followers your code and sends them to the App Store.
       </p>
+
+      {/* Printable card */}
+      <H2 sub="For clients, friends and anyone you see in person. They point their iPhone camera at the QR code and it opens your page.">Share in Person</H2>
+      <CodeCard code={C.code} />
 
       {/* Captions */}
       <H2 sub="Your code is already filled in. Edit them so they sound like you.">Captions</H2>
