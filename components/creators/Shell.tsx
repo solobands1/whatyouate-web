@@ -121,7 +121,7 @@ export function Field({
       <span className="text-[14px] font-semibold tracking-[-0.01em] text-[#101B2E]">{label}</span>
       <div className="mt-2">{children}</div>
       {error ? (
-        <span className="mt-1.5 block text-[13px] font-medium text-[#C2410C]">{error}</span>
+        <span data-field-error="" className="mt-1.5 block text-[13px] font-medium text-[#C2410C]">{error}</span>
       ) : hint ? (
         <span className="mt-1.5 block text-[13px]" style={{ color: BODY }}>{hint}</span>
       ) : null}

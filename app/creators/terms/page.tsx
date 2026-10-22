@@ -27,7 +27,7 @@ export default function CreatorTerms() {
     <Shell>
       <Eyebrow>Creators</Eyebrow>
       <h1 className="mt-5 text-[clamp(30px,4.6vw,44px)] font-bold leading-[1.08] tracking-[-0.04em]">Program Terms</h1>
-      <p className="mt-4 text-[14px]" style={{ color: "#8FA3C0" }}>Last updated: October 21, 2026</p>
+      <p className="mt-4 text-[14px]" style={{ color: "#8FA3C0" }}>Last updated: October 22, 2026</p>
       <p className="mt-6 text-[16px] leading-[1.7]" style={{ color: BODY }}>
         The WhatYouAte creator program is run by Integrity Stack Inc., the company behind WhatYouAte (&ldquo;we&rdquo;,
         &ldquo;us&rdquo;). By joining, you agree to these terms.
@@ -54,9 +54,9 @@ export default function CreatorTerms() {
         <p>Creators in Canada earn and are paid in Canadian dollars by Interac e-Transfer. Everyone else earns and is paid in US dollars, by bank deposit (sent through Wise). All amounts in these terms, including the signup bonus, the bonus cap and the $10 minimum, are in your currency. If a subscriber you refer pays in a different currency, we convert their payment to yours at the exchange rate on the day they paid. You&apos;re responsible for any taxes on what you earn, and for any fees your payment provider charges you.</p>
       </S>
 
-      <S n={5} title="How You Post">
-        <p>Every post, video or story that mentions WhatYouAte must clearly say it&apos;s sponsored, for example with #ad or the platform&apos;s paid partnership label.</p>
-        <p>Tag @whatyouate.app on Instagram and @whatyouate on TikTok. On Instagram, we also ask you to invite @whatyouate.app as a collaborator, so the post shows on both accounts.</p>
+      <S n={5} title="How You Share">
+        <p>You can share your code however you like: in posts, videos, stories, newsletters, podcasts or in person. Wherever you share it, make it clear you earn from it. Online, that means labelling every post, video or story that mentions WhatYouAte as sponsored, for example with #ad or the platform&apos;s paid partnership label. In person, just tell people you earn a commission if they subscribe.</p>
+        <p>If you post on social media, tag @whatyouate.app on Instagram and @whatyouate on TikTok. On Instagram, we also ask you to invite @whatyouate.app as a collaborator, so the post shows on both accounts.</p>
         <p>WhatYouAte is a wellness and food journal, not a medical product. Never say or suggest that it diagnoses, treats, cures or prevents any condition, or give medical advice. Share your own experience, honestly.</p>
       </S>
 

@@ -467,7 +467,7 @@ export function DashboardView({ d, preview = false }: { d: Dash; preview?: boole
       )}
 
       <p className="mt-6 text-[13.5px] leading-[1.6]" style={{ color: BODY }}>
-        Label every post as sponsored, and never say the app treats or cures anything.{" "}
+        Let people know you earn from your code, and never say the app treats or cures anything.{" "}
         <Link href="/creators/terms" className="font-semibold" style={{ color: "#2F6FC4" }}>Program terms</Link>
       </p>
 

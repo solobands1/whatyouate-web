@@ -174,6 +174,10 @@ function KitView({ C }: { C: Dash["creator"] }) {
           <p className="text-[15.5px] font-semibold" style={{ color: INK }}>TikTok</p>
           <p className="mt-1 text-[14px] leading-[1.55]" style={{ color: BODY }}>Turn on Disclose post content and choose Branded content, or add #ad to your caption.</p>
         </div>
+        <div className="px-6 py-4">
+          <p className="text-[15.5px] font-semibold" style={{ color: INK }}>In Person or by Message</p>
+          <p className="mt-1 text-[14px] leading-[1.55]" style={{ color: BODY }}>Sharing with clients, friends or in a newsletter? Just mention that you earn a commission if they subscribe.</p>
+        </div>
       </Card>
 
       {/* Tagging */}

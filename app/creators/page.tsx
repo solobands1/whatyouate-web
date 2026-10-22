@@ -19,7 +19,7 @@ const STEPS = [
   },
   {
     title: "Share It Your Way",
-    body: "Post about the app and put your link in your bio. Followers who enter your code in the app get their first month free. Your Creator Kit has captions, post ideas, videos and images ready to go.",
+    body: "Post about the app and put your link in your bio, or share your code directly with clients, friends or your community. Followers who enter your code in the app get their first month free. Your Creator Kit has captions, post ideas, videos and images ready to go.",
   },
   {
     title: "Get Paid Every Month",
@@ -51,6 +51,10 @@ const FAQ = [
   {
     q: "Can I see who used my code?",
     a: "No. To protect your followers' privacy, your dashboard shows totals only: code uses, signups, paid subscribers and earnings.",
+  },
+  {
+    q: "Do I have to post on social media?",
+    a: "No. Share your code however you like: posts, stories, newsletters, podcasts, or in person with clients and friends. If they enter your code when they sign up, it counts. Just let people know you earn from it.",
   },
   {
     q: "Do I have to live in Canada or the US?",

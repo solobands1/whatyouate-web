@@ -33,7 +33,7 @@ function ProfileView({ C }: { C: Dash["creator"] }) {
   const check = useCodeCheck(code, savedCode);
   const codeOk = check.state === "ok" || check.state === "current";
   const codeChanged = code !== savedCode;
-  const ready = codeOk && name.trim().length > 1 && (instagram || tiktok) && /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(payoutEmail.trim());
+  const ready = codeOk && name.trim().length > 1 && /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(payoutEmail.trim());
 
   if (left) {
     return (

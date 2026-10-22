@@ -75,6 +75,8 @@ export function PayoutFields({
   setMethod,
   payoutEmail,
   setPayoutEmail,
+  emailFields,
+  error,
 }: {
   country: Country;
   setCountry: (c: Country) => void;
@@ -82,6 +84,9 @@ export function PayoutFields({
   setMethod: (m: PayoutMethod) => void;
   payoutEmail: string;
   setPayoutEmail: (s: string) => void;
+  /** Replaces the single payout email field (the join form asks whether to use the login email). */
+  emailFields?: React.ReactNode;
+  error?: string | null;
 }) {
   const canada = country === "CA";
   return (
@@ -108,23 +113,22 @@ export function PayoutFields({
           : "You'll be paid in USD by bank deposit, sent through Wise. You don't need a Wise account."}
       </p>
 
-      <Field
-        label={canada ? "e-Transfer Email" : "Email for Your Bank Deposit"}
-        hint={
-          canada
-            ? "Where your e-Transfers are sent."
-            : "Wise emails you a secure link to add your bank details."
-        }
-      >
-        <input
-          className={inputClass}
-          type="email"
-          value={payoutEmail}
-          onChange={(e) => setPayoutEmail(e.target.value)}
-          placeholder="you@example.com"
-          autoComplete="email"
-        />
-      </Field>
+      {emailFields ?? (
+        <Field
+          label={canada ? "e-Transfer Email" : "Email for Your Bank Deposit"}
+          error={error}
+          hint={canada ? "Where your e-Transfers are sent." : "Wise emails you a secure link to add your bank details."}
+        >
+          <input
+            className={inputClass}
+            type="email"
+            value={payoutEmail}
+            onChange={(e) => setPayoutEmail(e.target.value)}
+            placeholder="you@example.com"
+            autoComplete="email"
+          />
+        </Field>
+      )}
     </>
   );
 }
@@ -158,6 +162,9 @@ export default function JoinForm() {
   const [method, setMethod] = useState<PayoutMethod>("etransfer");
   const [payoutEmail, setPayoutEmail] = useState("");
   const [code, setCode] = useState("");
+  const [sameEmail, setSameEmail] = useState(true);
+  const [confirmPayout, setConfirmPayout] = useState("");
+  const [showErrors, setShowErrors] = useState(false);
   const [adult, setAdult] = useState(false);
   const [terms, setTerms] = useState(false);
   const [step, setStep] = useState<"form" | "verify" | "done">("form");
@@ -175,10 +182,24 @@ export default function JoinForm() {
   }, []);
 
   const check = useCodeCheck(code);
-  const payout = (payoutEmail || email).trim();
-  const ready =
-    name.trim().length > 1 && EMAIL.test(email.trim()) && (instagram || tiktok) && EMAIL.test(payout) &&
-    check.state === "ok" && adult && terms;
+  const payout = (sameEmail ? email : payoutEmail).trim();
+
+  // Everything a creator must get right, with the message shown under each field. Payouts depend on
+  // the name and the payout email, so both are deliberate: a full name, and a payout email that's
+  // either the verified login email or typed twice.
+  const problems = {
+    name: /\S+\s+\S+/.test(name.trim()) ? null : "Enter your first and last name.",
+    email: EMAIL.test(email.trim()) ? null : "Enter a valid email address.",
+    code:
+      check.state === "ok" ? null : check.state === "bad" ? check.message : check.state === "checking" ? "Checking your code…" : "Choose your creator code.",
+    payout: sameEmail || EMAIL.test(payoutEmail.trim()) ? null : "Enter the email for your payouts.",
+    confirm:
+      sameEmail || payoutEmail.trim().toLowerCase() === confirmPayout.trim().toLowerCase() ? null : "The payout emails don't match.",
+    adult: adult ? null : "Please confirm you're 18 or older.",
+    terms: terms ? null : "Please agree to the program terms.",
+  };
+  const ready = Object.values(problems).every((p) => !p);
+  const err = (k: keyof typeof problems) => (showErrors ? problems[k] : null);
 
   const join = async () => {
     await joinProgram({ name: name.trim(), instagram, tiktok, code, country, payoutMethod: method, payoutEmail: payout });
@@ -223,7 +244,13 @@ export default function JoinForm() {
       className="flex flex-col gap-6"
       onSubmit={async (e) => {
         e.preventDefault();
-        if (!ready || busy) return;
+        if (busy) return;
+        if (!ready) {
+          setShowErrors(true);
+          // Scroll to the first problem once the messages have rendered.
+          setTimeout(() => document.querySelector("[data-field-error]")?.scrollIntoView({ behavior: "smooth", block: "center" }), 50);
+          return;
+        }
         setBusy(true);
         setError(null);
         try {
@@ -240,11 +267,12 @@ export default function JoinForm() {
         }
       }}
     >
-      <Field label="Name">
-        <input className={inputClass} value={name} onChange={(e) => setName(e.target.value)} placeholder="Your name" autoComplete="name" />
+      <Field label="Full Name" error={err("name")} hint="Use the name on your bank account, so payouts go through.">
+        <input className={inputClass} value={name} onChange={(e) => setName(e.target.value)} placeholder="First and last name" autoComplete="name" />
       </Field>
       <Field
         label="Email"
+        error={err("email")}
         hint={signedIn ? "You're signed in with this email." : "Used to sign in. We'll email you a code to confirm it, no password needed."}
       >
         <input
@@ -265,9 +293,16 @@ export default function JoinForm() {
           <input className={inputClass} value={tiktok} onChange={(e) => setTiktok(handle(e.target.value))} placeholder="@yourhandle" autoCapitalize="none" autoComplete="off" />
         </Field>
       </div>
-      <p className="-mt-3 text-[13px]" style={{ color: BODY }}>Add at least one.</p>
+      <p className="-mt-3 text-[13px]" style={{ color: BODY }}>
+        Optional. Add them if you&apos;ll share your code online. Sharing in person or with clients works too.
+      </p>
 
-      <CodeInput value={code} onChange={setCode} />
+      <div>
+        <CodeInput value={code} onChange={setCode} />
+        {showErrors && check.state !== "ok" && check.state !== "bad" && (
+          <p data-field-error="" className="mt-1.5 text-[13px] font-medium text-[#C2410C]">{problems.code}</p>
+        )}
+      </div>
 
       <PayoutFields
         country={country}
@@ -276,6 +311,27 @@ export default function JoinForm() {
         setMethod={setMethod}
         payoutEmail={payoutEmail}
         setPayoutEmail={setPayoutEmail}
+        emailFields={
+          <div className="flex flex-col gap-4">
+            <Check checked={sameEmail} onChange={setSameEmail}>
+              Send my payouts to the email above{email.trim() ? ` (${email.trim()})` : ""}.
+            </Check>
+            {!sameEmail && (
+              <>
+                <Field
+                  label={country === "CA" ? "e-Transfer Email" : "Email for Your Bank Deposit"}
+                  error={err("payout")}
+                  hint={country === "CA" ? "Where your e-Transfers are sent." : "Wise emails you a secure link to add your bank details."}
+                >
+                  <input className={inputClass} type="email" value={payoutEmail} onChange={(e) => setPayoutEmail(e.target.value)} placeholder="you@example.com" autoComplete="email" />
+                </Field>
+                <Field label="Confirm Payout Email" error={err("confirm")}>
+                  <input className={inputClass} type="email" value={confirmPayout} onChange={(e) => setConfirmPayout(e.target.value)} placeholder="Type it again" autoComplete="off" onPaste={(e) => e.preventDefault()} />
+                </Field>
+              </>
+            )}
+          </div>
+        }
       />
 
       <div className="flex flex-col gap-3.5 pt-1">
@@ -285,14 +341,21 @@ export default function JoinForm() {
           <Link href="/creators/terms" className="font-semibold underline underline-offset-2" target="_blank">
             program terms
           </Link>
-          , including labelling sponsored posts and making no health claims.
+          , including making it clear you earn from your code and making no health claims.
         </Check>
+        {(err("adult") || err("terms")) && (
+          <p data-field-error="" className="text-[13px] font-medium text-[#C2410C]">{err("adult") ?? err("terms")}</p>
+        )}
       </div>
+
+      {showErrors && !ready && (
+        <p className="text-[14px] font-medium text-[#C2410C]">Please fix the highlighted fields above.</p>
+      )}
 
       {error && <p className="text-[14.5px] font-medium text-[#C2410C]">{error}</p>}
 
       <div className="flex flex-col gap-3 pt-2 sm:flex-row">
-        <PrimaryButton type="submit" disabled={!ready || busy}>{busy ? "Just A Moment…" : "Create My Code"}</PrimaryButton>
+        <PrimaryButton type="submit" disabled={busy}>{busy ? "Just A Moment…" : "Create My Code"}</PrimaryButton>
         <SecondaryButton href="/creators/login">I Already Have An Account</SecondaryButton>
       </div>
     </form>
