@@ -19,7 +19,7 @@ export default function Shell({ children, narrow = false }: { children: React.Re
               <span className="relative inline-block">
                 e
                 {/* Calibrated so size and position match the app header's AI (measured against the live app). */}
-                <span className="absolute left-[calc(100%+0.45px)] top-[4.6px] text-[5.7px] font-semibold leading-none text-[#1F2937]/60">AI</span>
+                <span className="absolute left-[calc(100%+0.45px)] top-[4.6px] text-[5.7px] font-semibold leading-none text-[#1F2937]/80">AI</span>
               </span>
             </span>
           </Link>
