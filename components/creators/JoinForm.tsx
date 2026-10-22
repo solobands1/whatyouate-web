@@ -6,7 +6,7 @@ import { useRouter } from "next/navigation";
 import { Card, Field, PrimaryButton, SecondaryButton, inputClass } from "./Shell";
 import CodeStep from "./CodeStep";
 import { checkCode, normalizeCode, type Country, type PayoutMethod } from "./shared";
-import { checkCodeRemote, codeProblemText, errorText, joinProgram, requestWelcomeEmail, sendSignInCode, signedInEmail } from "./api";
+import { checkCodeRemote, codeProblemText, errorText, joinProgram, requestWelcomeEmail, sendSignInCode, signedInEmail, signOut } from "./api";
 import { BODY, INK } from "../site";
 
 /** Whether a code can be used: instant local rules, then the database after a short pause. */
@@ -151,6 +151,9 @@ const handle = (s: string) => s.replace(/^@+/, "").replace(/\s/g, "");
 
 const EMAIL = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
+/** The email already has a creator account. Whoever got this far has signed in with it, so it's theirs. */
+const alreadyJoined = (e: unknown) => String((e as { message?: string })?.message ?? e).includes("already_joined");
+
 export default function JoinForm() {
   const router = useRouter();
   const [name, setName] = useState("");
@@ -216,6 +219,10 @@ export default function JoinForm() {
           try {
             await join();
           } catch (err) {
+            if (alreadyJoined(err)) {
+              router.push("/creators/dashboard");
+              return;
+            }
             // Most likely the code was taken while they were checking their email.
             setSignedIn(email.trim().toLowerCase());
             setError(errorText(err));
@@ -262,6 +269,10 @@ export default function JoinForm() {
             setStep("verify");
           }
         } catch (err) {
+          if (alreadyJoined(err)) {
+            router.push("/creators/dashboard");
+            return;
+          }
           setError(errorText(err));
         } finally {
           setBusy(false);
@@ -274,7 +285,29 @@ export default function JoinForm() {
       <Field
         label="Email"
         error={err("email")}
-        hint={signedIn ? "You're signed in with this email." : "Used to sign in. We'll email you a code to confirm it, no password needed."}
+        hint={
+          signedIn ? (
+            <>
+              You&apos;re signed in with this email.{" "}
+              <button
+                type="button"
+                onClick={async (e) => {
+                  e.preventDefault();
+                  await signOut().catch(() => {});
+                  setSignedIn(null);
+                  setEmail("");
+                  setError(null);
+                }}
+                className="font-semibold underline-offset-2 hover:underline"
+                style={{ color: "#2F6FC4" }}
+              >
+                Use a different email
+              </button>
+            </>
+          ) : (
+            "Used to sign in. We'll email you a code to confirm it, no password needed."
+          )
+        }
       >
         <input
           className={inputClass}
