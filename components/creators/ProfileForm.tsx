@@ -24,6 +24,9 @@ function ProfileView({ C }: { C: Dash["creator"] }) {
   const [country, setCountry] = useState<Country>(C.country);
   const [method, setMethod] = useState<PayoutMethod>(C.payoutMethod);
   const [payoutEmail, setPayoutEmail] = useState(C.payoutEmail);
+  // A changed payout email is typed twice: a typo here would send a creator's money to someone else.
+  const [savedPayout, setSavedPayout] = useState(C.payoutEmail);
+  const [confirmPayout, setConfirmPayout] = useState("");
   const [saved, setSaved] = useState(false);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -33,7 +36,10 @@ function ProfileView({ C }: { C: Dash["creator"] }) {
   const check = useCodeCheck(code, savedCode);
   const codeOk = check.state === "ok" || check.state === "current";
   const codeChanged = code !== savedCode;
-  const ready = codeOk && name.trim().length > 1 && /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(payoutEmail.trim());
+  const payoutChanged = payoutEmail.trim().toLowerCase() !== savedPayout.trim().toLowerCase();
+  const payoutConfirmed = !payoutChanged || payoutEmail.trim().toLowerCase() === confirmPayout.trim().toLowerCase();
+  const ready =
+    codeOk && /\S+\s+\S+/.test(name.trim()) && /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(payoutEmail.trim()) && payoutConfirmed;
 
   if (left) {
     return (
@@ -62,6 +68,8 @@ function ProfileView({ C }: { C: Dash["creator"] }) {
             await updateProfile({ name: name.trim(), instagram, tiktok, country, payoutMethod: method, payoutEmail: payoutEmail.trim() });
             if (codeChanged) await changeCode(code);
             setSavedCode(code);
+            setSavedPayout(payoutEmail.trim());
+            setConfirmPayout("");
             setSaved(true);
           } catch (err) {
             setError(errorText(err));
@@ -101,6 +109,43 @@ function ProfileView({ C }: { C: Dash["creator"] }) {
           setMethod={setMethod}
           payoutEmail={payoutEmail}
           setPayoutEmail={setPayoutEmail}
+          emailFields={
+            <div className="flex flex-col gap-4">
+              <Field
+                label={country === "CA" ? "e-Transfer Email" : "Email for Your Bank Deposit"}
+                hint={country === "CA" ? "Where your e-Transfers are sent." : "Wise emails you a secure link to add your bank details."}
+              >
+                <input
+                  className={inputClass}
+                  type="email"
+                  value={payoutEmail}
+                  onChange={(e) => {
+                    setPayoutEmail(e.target.value);
+                    setConfirmPayout("");
+                  }}
+                  placeholder="you@example.com"
+                  autoComplete="email"
+                />
+              </Field>
+              {payoutChanged && (
+                <Field
+                  label="Confirm New Payout Email"
+                  error={confirmPayout && !payoutConfirmed ? "The payout emails don't match." : null}
+                  hint="Type it again, so your payouts don't go to the wrong place."
+                >
+                  <input
+                    className={inputClass}
+                    type="email"
+                    value={confirmPayout}
+                    onChange={(e) => setConfirmPayout(e.target.value)}
+                    placeholder="Type it again"
+                    autoComplete="off"
+                    onPaste={(e) => e.preventDefault()}
+                  />
+                </Field>
+              )}
+            </div>
+          }
         />
 
         {error && <p className="text-[14.5px] font-medium text-[#C2410C]">{error}</p>}
