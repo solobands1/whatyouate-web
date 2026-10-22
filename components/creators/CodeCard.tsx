@@ -13,16 +13,21 @@ import { BODY, INK } from "../site";
 const W = 336;
 const H = 192;
 const FONTS = "/creators/kit/fonts";
-// The version stops browsers showing an older copy of the logo.
-const LOGO = "/creators/kit/brand/whatyouate-logo.png?v=3";
+const ICON = "/creators/kit/brand/whatyouate-icon.png";
+// The logo is drawn as the app icon plus live text rather than the logo image, so it stays sharp at
+// any zoom and in print. Positions in card units, matched to whatyouate-logo.png placed at 18,18 and
+// 116 wide.
+const LOGO = { icon: { x: 19.43, y: 19.43, size: 18.16 }, name: { x: 42.01, y: 33.47, size: 13.9, spacing: 0.55 }, ai: { x: 129.4, y: 26, size: 3.4 } };
+const LOGO_INK = "#1F2937";
+// The downloaded image: 3150 x 1800, 900 pixels to the inch, so it stays crisp when zoomed in.
+const PNG_WIDTH = 3150;
 const PER_SHEET = 8;
 const FAMILY = `"WYA Card",-apple-system,"Helvetica Neue",Arial,sans-serif`;
 
-function fontFaces(bold: string, medium: string) {
-  return (
-    `@font-face{font-family:"WYA Card";font-weight:700;src:url(${bold}) format("woff2")}` +
-    `@font-face{font-family:"WYA Card";font-weight:500;src:url(${medium}) format("woff2")}`
-  );
+function fontFaces() {
+  return (["700:Bold", "600:SemiBold", "500:Medium"] as const)
+    .map((w) => `@font-face{font-family:"WYA Card";font-weight:${w.split(":")[0]};src:url(${FONTS}/Geist-${w.split(":")[1]}.woff2) format("woff2")}`)
+    .join("");
 }
 
 /** The QR as the inside of an <svg>, with its viewBox, so it can be nested in the card. */
@@ -46,7 +51,7 @@ let fontsLoading: Promise<unknown> | null = null;
 /** Registers the card's font with the page, so text can be measured before the card is drawn. */
 function loadFonts() {
   fontsLoading ??= Promise.all(
-    [["700", "Geist-Bold"], ["500", "Geist-Medium"]].map(([weight, file]) =>
+    [["700", "Geist-Bold"], ["600", "Geist-SemiBold"], ["500", "Geist-Medium"]].map(([weight, file]) =>
       new FontFace("WYA Card", `url(${FONTS}/${file}.woff2)`, { weight }).load().then((f) => document.fonts.add(f)),
     ),
   );
@@ -87,12 +92,14 @@ function useFit(code: string, link: string): Fit | null {
   return fit;
 }
 
-function cardSvg(code: string, link: string, qr: { box: string; body: string }, fit: Fit, logo: string, fonts: string) {
+function cardSvg(code: string, link: string, qr: { box: string; body: string }, fit: Fit) {
   const codeSize = fit.code;
   return `<svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" viewBox="0 0 ${W} ${H}" width="${W}" height="${H}">
-<style>${fonts}text{font-family:${FAMILY}}</style>
+<style>${fontFaces()}text{font-family:${FAMILY}}</style>
 <rect width="${W}" height="${H}" fill="#FFFFFF"/>
-<image href="${logo}" xlink:href="${logo}" x="18" y="18" width="116" height="21"/>
+<image href="${ICON}" xlink:href="${ICON}" x="${LOGO.icon.x}" y="${LOGO.icon.y}" width="${LOGO.icon.size}" height="${LOGO.icon.size}"/>
+<text x="${LOGO.name.x}" y="${LOGO.name.y}" font-size="${LOGO.name.size}" font-weight="600" fill="${LOGO_INK}" letter-spacing="${LOGO.name.spacing}">WhatYouAte</text>
+<text x="${LOGO.ai.x}" y="${LOGO.ai.y}" font-size="${LOGO.ai.size}" font-weight="600" fill="${LOGO_INK}">AI</text>
 <text x="18" y="66" font-size="17.5" font-weight="700" fill="${INK}" letter-spacing="-0.35">Your First Month Free</text>
 <text x="18" y="83" font-size="9.5" font-weight="500" fill="${BODY}">Scan to download the app, then</text>
 <text x="18" y="96" font-size="9.5" font-weight="500" fill="${BODY}">enter this code when you sign up:</text>
@@ -102,6 +109,23 @@ function cardSvg(code: string, link: string, qr: { box: string; body: string }, 
 <svg x="222" y="34" width="96" height="96" viewBox="${qr.box}" shape-rendering="crispEdges">${qr.body}</svg>
 <text x="270" y="148" font-size="${fit.link.toFixed(2)}" font-weight="500" fill="${BODY}" text-anchor="middle">${link.replace("https://", "")}</text>
 </svg>`;
+}
+
+/** Shrinks an image by halves to about the size it's drawn at, so its edges stay smooth rather than jagged. */
+function shrunk(img: HTMLImageElement, size: number): CanvasImageSource {
+  let src: HTMLImageElement | HTMLCanvasElement = img;
+  let w = img.naturalWidth;
+  while (w / 2 >= size) {
+    w = Math.round(w / 2);
+    const c = document.createElement("canvas");
+    c.width = c.height = w;
+    const x = c.getContext("2d");
+    if (!x) break;
+    x.imageSmoothingQuality = "high";
+    x.drawImage(src, 0, 0, w, w);
+    src = c;
+  }
+  return src;
 }
 
 function loadImage(src: string) {
@@ -114,13 +138,13 @@ function loadImage(src: string) {
 }
 
 /**
- * The same card as cardSvg, drawn straight onto a canvas as a 1050 x 600 PNG (300 dpi). Safari won't
+ * The same card as cardSvg, drawn straight onto a canvas as a PNG_WIDTH-wide PNG. Safari won't
  * reliably turn an SVG with fonts into an image, so the download doesn't go through the SVG.
  */
 async function renderPng(code: string, link: string, fit: Fit): Promise<Blob | null> {
   await loadFonts().catch(() => {});
-  const logo = await loadImage(LOGO);
-  const s = 1050 / W;
+  const icon = await loadImage(ICON);
+  const s = PNG_WIDTH / W;
   const canvas = document.createElement("canvas");
   canvas.width = Math.round(W * s);
   canvas.height = Math.round(H * s);
@@ -129,7 +153,9 @@ async function renderPng(code: string, link: string, fit: Fit): Promise<Blob | n
   ctx.scale(s, s);
   ctx.fillStyle = "#FFFFFF";
   ctx.fillRect(0, 0, W, H);
-  ctx.drawImage(logo, 18, 18, 116, 21);
+  ctx.imageSmoothingEnabled = true;
+  ctx.imageSmoothingQuality = "high";
+  ctx.drawImage(shrunk(icon, LOGO.icon.size * s), LOGO.icon.x, LOGO.icon.y, LOGO.icon.size, LOGO.icon.size);
 
   // Letter spacing by hand, since older Safari has no ctx.letterSpacing.
   const text = (t: string, x: number, y: number, size: number, weight: number, color: string, opts: { spacing?: number; align?: "left" | "center"; middle?: boolean } = {}) => {
@@ -138,19 +164,19 @@ async function renderPng(code: string, link: string, fit: Fit): Promise<Blob | n
     ctx.textBaseline = opts.middle ? "middle" : "alphabetic";
     const spacing = opts.spacing ?? 0;
     const chars = [...t];
-    const widths = chars.map((c) => ctx.measureText(c).width);
-    const total = widths.reduce((a, b) => a + b, 0) + spacing * chars.length;
-    let cx = opts.align === "center" ? x - total / 2 : x;
+    // Each letter sits where the text before it ends, so the font's kerning ("Yo", "At") is kept.
+    const starts = chars.map((_, i) => ctx.measureText(chars.slice(0, i).join("")).width + spacing * i);
+    const total = ctx.measureText(t).width + spacing * chars.length;
+    const left = opts.align === "center" ? x - total / 2 : x;
     if (!spacing) {
-      ctx.fillText(t, cx, y);
+      ctx.fillText(t, left, y);
       return;
     }
-    chars.forEach((c, i) => {
-      ctx.fillText(c, cx, y);
-      cx += widths[i] + spacing;
-    });
+    chars.forEach((c, i) => ctx.fillText(c, left + starts[i], y));
   };
 
+  text("WhatYouAte", LOGO.name.x, LOGO.name.y, LOGO.name.size, 600, LOGO_INK, { spacing: LOGO.name.spacing });
+  text("AI", LOGO.ai.x, LOGO.ai.y, LOGO.ai.size, 600, LOGO_INK);
   text("Your First Month Free", 18, 66, 17.5, 700, INK, { spacing: -0.35 });
   text("Scan to download the app, then", 18, 83, 9.5, 500, BODY);
   text("enter this code when you sign up:", 18, 96, 9.5, 500, BODY);
@@ -231,7 +257,7 @@ export default function CodeCard({ code }: { code: string }) {
     };
   }, [code, link, fit]);
 
-  const svg = qr && fit ? cardSvg(code, link, qr, fit, LOGO, fontFaces(`${FONTS}/Geist-Bold.woff2`, `${FONTS}/Geist-Medium.woff2`)) : "";
+  const svg = qr && fit ? cardSvg(code, link, qr, fit) : "";
 
   return (
     <Card className="px-5 py-5 sm:px-6">

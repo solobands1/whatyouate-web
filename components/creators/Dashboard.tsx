@@ -90,7 +90,7 @@ function FreePro({ pro, preview = false }: { pro: Dash["pro"]; preview?: boolean
   return (
     <Card className="mt-4 px-6 py-5">
       <p className="text-[17px] font-bold tracking-[-0.02em]" style={{ color: INK }}>
-        {pro.year ? "You Earned a Free Year of Pro" : "Your Free Pro"}
+        {pro.year ? "You Earned A Free Year Of Pro" : "Your Free Pro"}
       </p>
       {code ? (
         <>
@@ -295,7 +295,7 @@ export function DashboardView({ d, preview = false }: { d: Dash; preview?: boole
           </>
         ) : (
           <>
-            <p className="text-[20px] font-bold tracking-[-0.02em]" style={{ color: INK }}>No payout yet</p>
+            <p className="text-[20px] font-bold tracking-[-0.02em]" style={{ color: INK }}>No Payout Yet</p>
             <p className="mt-1.5 text-[14px] leading-[1.55]" style={{ color: BODY }}>
               Payouts go out on the 1st of each month, once you&apos;ve earned $10. {payoutTo(C)}
             </p>
@@ -322,7 +322,7 @@ export function DashboardView({ d, preview = false }: { d: Dash; preview?: boole
           </>
         ) : (
           <>
-            <p className="mt-1 text-[22px] font-bold tracking-[-0.02em]">Starts with your first subscriber</p>
+            <p className="mt-1 text-[22px] font-bold tracking-[-0.02em]">Starts With Your First Subscriber</p>
             <p className="mt-1 text-[14px] leading-[1.55] text-white/85">
               Each one keeps earning you every month for their first 12 months, without you posting again.
             </p>
@@ -459,7 +459,7 @@ export function DashboardView({ d, preview = false }: { d: Dash; preview?: boole
           </div>
         ))}
         <div className="px-5 py-3.5">
-          <Link href="/creators/terms" className="text-[14px] font-semibold" style={{ color: "#2F6FC4" }}>Full program terms</Link>
+          <Link href="/creators/terms" className="text-[14px] font-semibold" style={{ color: "#2F6FC4" }}>Full Program Terms</Link>
         </div>
       </Card>
 
@@ -468,7 +468,7 @@ export function DashboardView({ d, preview = false }: { d: Dash; preview?: boole
 
       <p className="mt-6 text-[13.5px] leading-[1.6]" style={{ color: BODY }}>
         Let people know you earn from your code, and never say the app treats or cures anything.{" "}
-        <Link href="/creators/terms" className="font-semibold" style={{ color: "#2F6FC4" }}>Program terms</Link>
+        <Link href="/creators/terms" className="font-semibold" style={{ color: "#2F6FC4" }}>Program Terms</Link>
       </p>
 
       <p className="mt-10 text-center text-[14px]" style={{ color: INK }}>
