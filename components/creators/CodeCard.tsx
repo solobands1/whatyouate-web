@@ -4,11 +4,12 @@ import { useEffect, useState } from "react";
 import { createPortal } from "react-dom";
 import QRCode from "qrcode";
 import { Card } from "./Shell";
+import { useDevice } from "./RedeemQr";
 import { BODY, INK } from "../site";
 
 // A business card (3.5 x 2 in) with the creator's code and a QR code to their link, for handing to
-// clients and friends. Drawn as one SVG so the preview, the printed sheet and the downloaded image
-// all match. Units are CSS pixels, 96 to the inch.
+// clients and friends. One SVG is the preview and the printed sheet; renderPng draws the same layout
+// for the downloaded image. Units are CSS pixels, 96 to the inch.
 const W = 336;
 const H = 192;
 const FONTS = "/creators/kit/fonts";
@@ -102,36 +103,111 @@ function cardSvg(code: string, link: string, qr: { box: string; body: string }, 
 </svg>`;
 }
 
-async function dataUrl(path: string) {
-  const blob = await (await fetch(path)).blob();
-  return new Promise<string>((resolve, reject) => {
-    const r = new FileReader();
-    r.onload = () => resolve(r.result as string);
-    r.onerror = reject;
-    r.readAsDataURL(blob);
+function loadImage(src: string) {
+  return new Promise<HTMLImageElement>((resolve, reject) => {
+    const img = new Image();
+    img.onload = () => resolve(img);
+    img.onerror = reject;
+    img.src = src;
   });
 }
 
-/** A 1050 x 600 PNG (300 dpi). An SVG drawn as an image can't fetch anything, so the logo and fonts go in as data. */
-async function downloadPng(code: string, link: string, qr: { box: string; body: string }, fit: Fit) {
-  const [logo, bold, medium] = await Promise.all([dataUrl(LOGO), dataUrl(`${FONTS}/Geist-Bold.woff2`), dataUrl(`${FONTS}/Geist-Medium.woff2`)]);
-  const svg = cardSvg(code, link, qr, fit, logo, fontFaces(bold, medium));
-  const img = new Image();
-  img.src = "data:image/svg+xml;charset=utf-8," + encodeURIComponent(svg);
-  await img.decode();
-  // Safari can paint an SVG image before its embedded fonts are ready; a short wait covers it.
-  await new Promise((r) => setTimeout(r, 150));
-  const scale = 1050 / W;
+/**
+ * The same card as cardSvg, drawn straight onto a canvas as a 1050 x 600 PNG (300 dpi). Safari won't
+ * reliably turn an SVG with fonts into an image, so the download doesn't go through the SVG.
+ */
+async function renderPng(code: string, link: string, fit: Fit): Promise<Blob | null> {
+  await loadFonts().catch(() => {});
+  const logo = await loadImage(LOGO);
+  const s = 1050 / W;
   const canvas = document.createElement("canvas");
-  canvas.width = W * scale;
-  canvas.height = H * scale;
+  canvas.width = Math.round(W * s);
+  canvas.height = Math.round(H * s);
   const ctx = canvas.getContext("2d");
-  if (!ctx) return;
-  ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+  if (!ctx) return null;
+  ctx.scale(s, s);
+  ctx.fillStyle = "#FFFFFF";
+  ctx.fillRect(0, 0, W, H);
+  ctx.drawImage(logo, 18, 18, 116, 21);
+
+  // Letter spacing by hand, since older Safari has no ctx.letterSpacing.
+  const text = (t: string, x: number, y: number, size: number, weight: number, color: string, opts: { spacing?: number; align?: "left" | "center"; middle?: boolean } = {}) => {
+    ctx.font = `${weight} ${size}px ${FAMILY}`;
+    ctx.fillStyle = color;
+    ctx.textBaseline = opts.middle ? "middle" : "alphabetic";
+    const spacing = opts.spacing ?? 0;
+    const chars = [...t];
+    const widths = chars.map((c) => ctx.measureText(c).width);
+    const total = widths.reduce((a, b) => a + b, 0) + spacing * chars.length;
+    let cx = opts.align === "center" ? x - total / 2 : x;
+    if (!spacing) {
+      ctx.fillText(t, cx, y);
+      return;
+    }
+    chars.forEach((c, i) => {
+      ctx.fillText(c, cx, y);
+      cx += widths[i] + spacing;
+    });
+  };
+
+  text("Your First Month Free", 18, 66, 17.5, 700, INK, { spacing: -0.35 });
+  text("Scan to download the app, then", 18, 83, 9.5, 500, BODY);
+  text("enter this code when you sign up:", 18, 96, 9.5, 500, BODY);
+
+  const [bx, by, bw, bh, r] = [18, 106, 184, 40, 10];
+  ctx.beginPath();
+  ctx.moveTo(bx + r, by);
+  ctx.arcTo(bx + bw, by, bx + bw, by + bh, r);
+  ctx.arcTo(bx + bw, by + bh, bx, by + bh, r);
+  ctx.arcTo(bx, by + bh, bx, by, r);
+  ctx.arcTo(bx, by, bx + bw, by, r);
+  ctx.closePath();
+  ctx.fillStyle = "#EEF5FE";
+  ctx.fill();
+  ctx.strokeStyle = "#B9D4FA";
+  ctx.lineWidth = 1.2;
+  ctx.stroke();
+  text(code, 110, 126, fit.code, 700, INK, { spacing: fit.code * 0.08, align: "center", middle: true });
+  text("For iPhone. New accounts only.", 18, 172, 7.5, 500, BODY);
+  text(link.replace("https://", ""), 270, 148, fit.link, 500, BODY, { align: "center" });
+
+  // QR modules in whole device pixels, so neighbouring squares don't leave hairline gaps.
+  ctx.setTransform(1, 0, 0, 1, 0, 0);
+  const qr = QRCode.create(link, { errorCorrectionLevel: "M" }).modules;
+  const x0 = 222 * s;
+  const y0 = 34 * s;
+  const cell = (96 * s) / qr.size;
+  ctx.fillStyle = INK;
+  for (let row = 0; row < qr.size; row++) {
+    for (let col = 0; col < qr.size; col++) {
+      if (!qr.data[row * qr.size + col]) continue;
+      const left = Math.round(x0 + col * cell);
+      const top = Math.round(y0 + row * cell);
+      ctx.fillRect(left, top, Math.round(x0 + (col + 1) * cell) - left, Math.round(y0 + (row + 1) * cell) - top);
+    }
+  }
+
+  return new Promise((resolve) => canvas.toBlob(resolve, "image/png"));
+}
+
+/**
+ * Saves the image. Phones get the share sheet (Save Image, Messages and so on), since a plain download
+ * on an iPhone ends up in Files. Has to run straight from the click, so the image is made beforehand.
+ */
+function saveImage(png: Blob, name: string, phone: boolean) {
+  const file = new File([png], name, { type: "image/png" });
+  if (phone && navigator.canShare?.({ files: [file] })) {
+    navigator.share({ files: [file] }).catch(() => {});
+    return;
+  }
+  const url = URL.createObjectURL(png);
   const a = document.createElement("a");
-  a.href = canvas.toDataURL("image/png");
-  a.download = `whatyouate-card-${code}.png`;
+  a.href = url;
+  a.download = name;
+  document.body.appendChild(a);
   a.click();
+  a.remove();
+  setTimeout(() => URL.revokeObjectURL(url), 30000);
 }
 
 export default function CodeCard({ code }: { code: string }) {
@@ -139,9 +215,20 @@ export default function CodeCard({ code }: { code: string }) {
   const qr = useQr(link);
   const fit = useFit(code, link);
   const [mounted, setMounted] = useState(false);
-  const [saving, setSaving] = useState(false);
+  const [png, setPng] = useState<Blob | null>(null);
+  const device = useDevice();
   // eslint-disable-next-line react-hooks/set-state-in-effect
   useEffect(() => setMounted(true), []);
+  useEffect(() => {
+    if (!fit) return;
+    let live = true;
+    renderPng(code, link, fit)
+      .then((b) => live && setPng(b))
+      .catch(() => {});
+    return () => {
+      live = false;
+    };
+  }, [code, link, fit]);
 
   const svg = qr && fit ? cardSvg(code, link, qr, fit, LOGO, fontFaces(`${FONTS}/Geist-Bold.woff2`, `${FONTS}/Geist-Medium.woff2`)) : "";
 
@@ -162,21 +249,16 @@ export default function CodeCard({ code }: { code: string }) {
         </button>
         <button
           type="button"
-          onClick={async () => {
-            if (!qr || !fit || saving) return;
-            setSaving(true);
-            await downloadPng(code, link, qr, fit).catch(() => {});
-            setSaving(false);
-          }}
-          disabled={!svg}
+          onClick={() => png && saveImage(png, `whatyouate-card-${code}.png`, device === "iphone" || device === "otherPhone")}
+          disabled={!png}
           className="rounded-full px-5 py-3 text-[14.5px] font-semibold transition hover:opacity-80 disabled:opacity-50"
           style={{ color: INK, boxShadow: `inset 0 0 0 1.5px ${INK}` }}
         >
-          {saving ? "Saving…" : "Download Image"}
+          {device === "iphone" || device === "otherPhone" ? "Save Image" : "Download Image"}
         </button>
       </div>
       <p className="mt-3 text-[13px] leading-[1.55]" style={{ color: BODY }}>
-        Print Cards gives you a sheet of {PER_SHEET} business cards with cut lines, on regular paper or card stock. Download Image is the same card to send by message or add to a newsletter.
+        Print Cards gives you a sheet of {PER_SHEET} business cards with cut lines, on regular paper or card stock. The image is the same card, to send by message or add to a newsletter.
       </p>
 
       {/* Only this sheet prints: everything else on the page is hidden while printing. */}
