@@ -17,7 +17,10 @@ const ICON = "/creators/kit/brand/whatyouate-icon.png";
 // The logo is drawn as the app icon plus live text rather than the logo image, so it stays sharp at
 // any zoom and in print. Positions in card units, matched to whatyouate-logo.png placed at 18,18 and
 // 116 wide.
-const LOGO = { icon: { x: 19.43, y: 19.43, size: 18.16 }, name: { x: 42.01, y: 33.47, size: 13.9, spacing: 0.55 }, ai: { x: 129.4, y: 26, size: 3.4 } };
+// The AI follows the name like the app header's (Shell.tsx): dx from the end of the name, dy from its
+// baseline, sized and placed in the same proportion to the capitals as measured on the live header.
+// SVG ends the name's letter spacing slightly later than the canvas does, hence its own svgDx.
+const LOGO = { icon: { x: 19.43, y: 19.43, size: 18.16 }, name: { x: 42.01, y: 33.47, size: 13.9, spacing: 0.55 }, ai: { dx: -0.12, svgDx: -0.37, dy: -6.03, size: 4.9 } };
 const LOGO_INK = "#1F2937";
 // The downloaded image: 3150 x 1800, 900 pixels to the inch, so it stays crisp when zoomed in.
 const PNG_WIDTH = 3150;
@@ -98,8 +101,7 @@ function cardSvg(code: string, link: string, qr: { box: string; body: string }, 
 <style>${fontFaces()}text{font-family:${FAMILY}}</style>
 <rect width="${W}" height="${H}" fill="#FFFFFF"/>
 <image href="${ICON}" xlink:href="${ICON}" x="${LOGO.icon.x}" y="${LOGO.icon.y}" width="${LOGO.icon.size}" height="${LOGO.icon.size}"/>
-<text x="${LOGO.name.x}" y="${LOGO.name.y}" font-size="${LOGO.name.size}" font-weight="600" fill="${LOGO_INK}" letter-spacing="${LOGO.name.spacing}">WhatYouAte</text>
-<text x="${LOGO.ai.x}" y="${LOGO.ai.y}" font-size="${LOGO.ai.size}" font-weight="600" fill="${LOGO_INK}">AI</text>
+<text x="${LOGO.name.x}" y="${LOGO.name.y}" font-size="${LOGO.name.size}" font-weight="600" fill="${LOGO_INK}" letter-spacing="${LOGO.name.spacing}">WhatYouAte<tspan dx="${LOGO.ai.svgDx}" dy="${LOGO.ai.dy}" font-size="${LOGO.ai.size}" letter-spacing="0">AI</tspan></text>
 <text x="18" y="66" font-size="17.5" font-weight="700" fill="${INK}" letter-spacing="-0.35">Your First Month Free</text>
 <text x="18" y="83" font-size="9.5" font-weight="500" fill="${BODY}">Scan to download the app, then</text>
 <text x="18" y="96" font-size="9.5" font-weight="500" fill="${BODY}">enter this code when you sign up:</text>
@@ -176,7 +178,10 @@ async function renderPng(code: string, link: string, fit: Fit): Promise<Blob | n
   };
 
   text("WhatYouAte", LOGO.name.x, LOGO.name.y, LOGO.name.size, 600, LOGO_INK, { spacing: LOGO.name.spacing });
-  text("AI", LOGO.ai.x, LOGO.ai.y, LOGO.ai.size, 600, LOGO_INK);
+  // Where the SVG's tspan lands: after the name and its trailing letter spacing.
+  ctx.font = `600 ${LOGO.name.size}px ${FAMILY}`;
+  const nameEnd = LOGO.name.x + ctx.measureText("WhatYouAte").width + LOGO.name.spacing * 10;
+  text("AI", nameEnd + LOGO.ai.dx, LOGO.name.y + LOGO.ai.dy, LOGO.ai.size, 600, LOGO_INK);
   text("Your First Month Free", 18, 66, 17.5, 700, INK, { spacing: -0.35 });
   text("Scan to download the app, then", 18, 83, 9.5, 500, BODY);
   text("enter this code when you sign up:", 18, 96, 9.5, 500, BODY);
