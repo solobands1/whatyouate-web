@@ -322,7 +322,7 @@ export function DashboardView({ d, preview = false }: { d: Dash; preview?: boole
           </>
         ) : (
           <>
-            <p className="mt-1 text-[22px] font-bold tracking-[-0.02em]">Starts With Your First Subscriber</p>
+            <p className="mt-1 text-[20px] font-bold tracking-[-0.02em]">Starts With Your First Subscriber</p>
             <p className="mt-1 text-[14px] leading-[1.55] text-white/85">
               Each one keeps earning you every month for their first 12 months, without you posting again.
             </p>
