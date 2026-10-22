@@ -1,18 +1,23 @@
 import Image from "next/image";
 import Link from "next/link";
 import Menu from "../Menu";
+import CreatorMenu from "./CreatorMenu";
 import Social from "../Social";
 import { BODY } from "../site";
 
 export const CREATOR_EMAIL = "contact@whatyouate.app";
 
-/** Header and footer shared by every creator page, matching the About page. */
-export default function Shell({ children, narrow = false }: { children: React.ReactNode; narrow?: boolean }) {
+/**
+ * Header and footer shared by every creator page, matching the About page. Signed-in pages (dashboard,
+ * kit, profile) leave out the public site: the logo goes to the dashboard, the menu only has Support
+ * and Log Out, and the footer only the creator terms and privacy policy.
+ */
+export default function Shell({ children, narrow = false, signedIn = false }: { children: React.ReactNode; narrow?: boolean; signedIn?: boolean }) {
   return (
     <div className="min-h-screen overflow-x-clip">
       <header className="absolute inset-x-0 top-0 z-30">
         <div className="mx-auto flex max-w-[68rem] items-center justify-between px-6 py-6">
-          <Link href="/" className="flex items-center gap-2.5">
+          <Link href={signedIn ? "/creators/dashboard" : "/"} className="flex items-center gap-2.5">
             <Image src="/icon-512.png" alt="" width={30} height={30} className="rounded-[8px] ring-1 ring-black/5" priority />
             <span className="text-[16px] font-semibold leading-[21.333px] tracking-[-0.015em] text-[#1F2937]">
               WhatYouAt
@@ -23,11 +28,12 @@ export default function Shell({ children, narrow = false }: { children: React.Re
               </span>
             </span>
           </Link>
-          <Menu />
+          {signedIn ? <CreatorMenu /> : <Menu />}
         </div>
       </header>
 
-      <main className="px-6 pt-28 sm:pt-36">
+      {/* Signed-in pages open on the tab row rather than a page title, so they sit closer to the header. */}
+      <main className={`px-6 ${signedIn ? "pt-24 sm:pt-28" : "pt-28 sm:pt-36"}`}>
         <div className={`mx-auto ${narrow ? "max-w-[30rem]" : "max-w-[44rem]"}`}>{children}</div>
       </main>
 
@@ -38,14 +44,23 @@ export default function Shell({ children, narrow = false }: { children: React.Re
         style={{ background: "linear-gradient(180deg, rgba(91,143,210,0) 0%, rgba(91,143,210,0.9) 38%, #4C82C7 100%)" }}
       >
         <div className="mx-auto flex max-w-[64rem] flex-col items-center gap-5 text-center">
-          <nav className="flex flex-wrap justify-center gap-x-8 gap-y-2 text-[14px] text-white/85">
-            <Link href="/" className="transition hover:opacity-70">Home</Link>
-            <Link href="/creators" className="transition hover:opacity-70">Creators</Link>
-            <Link href="/privacy" className="transition hover:opacity-70">Privacy Policy</Link>
-            <Link href="/terms" className="transition hover:opacity-70">Terms of Use</Link>
-            <a href={`mailto:${CREATOR_EMAIL}`} className="transition hover:opacity-70">Contact</a>
-          </nav>
-          <Social className="text-white/85" />
+          {signedIn ? (
+            <nav className="flex flex-wrap justify-center gap-x-8 gap-y-2 text-[14px] text-white/85">
+              <Link href="/creators/terms" className="transition hover:opacity-70">Creator Terms</Link>
+              <Link href="/privacy" className="transition hover:opacity-70">Privacy Policy</Link>
+            </nav>
+          ) : (
+            <>
+              <nav className="flex flex-wrap justify-center gap-x-8 gap-y-2 text-[14px] text-white/85">
+                <Link href="/" className="transition hover:opacity-70">Home</Link>
+                <Link href="/creators" className="transition hover:opacity-70">Creators</Link>
+                <Link href="/privacy" className="transition hover:opacity-70">Privacy Policy</Link>
+                <Link href="/terms" className="transition hover:opacity-70">Terms of Use</Link>
+                <a href={`mailto:${CREATOR_EMAIL}`} className="transition hover:opacity-70">Contact</a>
+              </nav>
+              <Social className="text-white/85" />
+            </>
+          )}
           <span className="text-[13px] text-white/65">
             © {new Date().getFullYear()} WhatYouAte. All rights reserved.
           </span>

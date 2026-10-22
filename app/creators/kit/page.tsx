@@ -9,7 +9,7 @@ export const metadata: Metadata = {
 
 export default function KitPage() {
   return (
-    <Shell>
+    <Shell signedIn>
       <Kit />
     </Shell>
   );

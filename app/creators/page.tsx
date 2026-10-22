@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { creatorShareMeta } from "../../components/creators/shareMeta";
 import Link from "next/link";
 import Reveal from "../../components/Reveal";
+import EarnTable from "../../components/creators/EarnTable";
 import Shell, { Card, Eyebrow, PrimaryButton, SecondaryButton, CREATOR_EMAIL, TrialTag } from "../../components/creators/Shell";
 import { INK, BODY } from "../../components/site";
 
@@ -257,33 +258,7 @@ export default function Creators() {
       </Section>
 
       <Section title="What You Earn">
-        <Card className="mt-7 divide-y divide-[#16233B]/[0.06]">
-          <div className="flex items-baseline justify-between gap-6 px-6 py-5">
-            <span className="text-[16px]" style={{ color: INK }}>Each Yearly Subscriber</span>
-            <span className="text-[20px] font-bold tracking-[-0.02em]" style={{ color: INK }}>about $28</span>
-          </div>
-          <div className="flex items-baseline justify-between gap-6 px-6 py-5">
-            <span className="text-[16px]" style={{ color: INK }}>Each Monthly Subscriber</span>
-            <span className="text-right">
-              <span className="block text-[20px] font-bold tracking-[-0.02em]" style={{ color: INK }}>about $3.30</span>
-              <span className="block whitespace-nowrap text-[13px]" style={{ color: BODY }}>a month, up to a year</span>
-            </span>
-          </div>
-          <div className="flex items-baseline justify-between gap-6 px-6 py-5">
-            <span className="text-[16px]" style={{ color: INK }}>Each Signup in Your First Month</span>
-            <span className="text-[20px] font-bold tracking-[-0.02em]" style={{ color: INK }}>$1</span>
-          </div>
-          <div className="flex items-baseline justify-between gap-6 px-6 py-5">
-            <span className="text-[16px]" style={{ color: INK }}>WhatYouAte Pro for You</span>
-            <span className="text-right">
-              <span className="block text-[20px] font-bold tracking-[-0.02em]" style={{ color: INK }}>Free</span>
-              <span className="block whitespace-nowrap text-[13px]" style={{ color: BODY }}>up to a year</span>
-            </span>
-          </div>
-        </Card>
-        <p className="mt-3 text-[13px] leading-[1.6]" style={{ color: "#8FA3C0" }}>
-          Estimates in US dollars, based on current prices. You earn 30% of each subscription for its first 12 months, after Apple&apos;s fee. Creators in Canada earn in Canadian dollars: about $38 per yearly subscriber, about $4.50 a month per monthly subscriber, and $1 per signup.
-        </p>
+        <EarnTable />
       </Section>
 
       <Section title="What We Ask">

@@ -10,7 +10,7 @@ export const metadata: Metadata = {
 
 export default function Profile() {
   return (
-    <Shell narrow>
+    <Shell narrow signedIn>
       <CreatorNav />
       <h1 className="mt-8 text-[clamp(30px,4.6vw,44px)] font-bold leading-[1.08] tracking-[-0.04em]">Your Profile</h1>
       <div className="mt-9">

@@ -9,7 +9,7 @@ export const metadata: Metadata = {
 
 export default function DashboardPage() {
   return (
-    <Shell>
+    <Shell signedIn>
       <Dashboard />
     </Shell>
   );

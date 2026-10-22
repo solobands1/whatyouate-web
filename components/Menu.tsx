@@ -10,7 +10,13 @@ const LINKS = [
   { label: "Support", href: "mailto:support@whatyouate.app" },
 ];
 
-export default function Menu() {
+type MenuLink = { label: string; href: string };
+
+/**
+ * The header menu. The public site shows its pages and a Download button; signed-in creator pages
+ * pass their own links and a Log Out action instead (see creators/Shell.tsx).
+ */
+export default function Menu({ links = LINKS, onLogOut }: { links?: MenuLink[]; onLogOut?: () => void }) {
   const [open, setOpen] = useState(false);
   const wrap = useRef<HTMLDivElement>(null);
 
@@ -60,7 +66,7 @@ export default function Menu() {
           className="absolute right-0 top-12 w-56 overflow-hidden rounded-2xl bg-[#F2F7FE] p-2 ring-1 ring-[#16233B]/[0.08]"
           style={{ boxShadow: "0 24px 50px -18px rgba(16,42,86,0.35)" }}
         >
-          {LINKS.map((l) => (
+          {links.map((l) => (
             <a
               key={l.label}
               href={l.href}
@@ -72,6 +78,19 @@ export default function Menu() {
             </a>
           ))}
 
+          {onLogOut ? (
+            <button
+              type="button"
+              role="menuitem"
+              onClick={() => {
+                setOpen(false);
+                onLogOut();
+              }}
+              className="flex w-full items-center rounded-xl px-3.5 py-2.5 text-left text-[15px] font-medium text-[#16233B] transition hover:bg-white/70"
+            >
+              Log Out
+            </button>
+          ) : (
           <a
             href={APP_STORE_URL}
             role="menuitem"
@@ -84,6 +103,7 @@ export default function Menu() {
             </svg>
             Download
           </a>
+          )}
         </div>
       )}
     </div>
