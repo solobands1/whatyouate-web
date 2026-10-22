@@ -8,7 +8,7 @@ export default function robots(): MetadataRoute.Robots {
     rules: {
       userAgent: "*",
       allow: "/",
-      disallow: ["/creators/dashboard", "/creators/kit", "/creators/profile", "/creators/login"],
+      disallow: ["/creators/dashboard", "/creators/kit", "/creators/profile", "/creators/login", "/creators/email-test"],
     },
     sitemap: "https://whatyouate.app/sitemap.xml",
   };
