@@ -13,8 +13,9 @@ import { BODY, INK } from "../site";
 const W = 336;
 const H = 192;
 const FONTS = "/creators/kit/fonts";
-const LOGO = "/creators/kit/brand/whatyouate-logo.png";
-const PER_SHEET = 10;
+// The version stops browsers showing an older copy of the logo.
+const LOGO = "/creators/kit/brand/whatyouate-logo.png?v=3";
+const PER_SHEET = 8;
 const FAMILY = `"WYA Card",-apple-system,"Helvetica Neue",Arial,sans-serif`;
 
 function fontFaces(bold: string, medium: string) {
@@ -269,12 +270,14 @@ export default function CodeCard({ code }: { code: string }) {
             <style>{`
               #wya-print-sheet { display: none; }
               @media print {
-                @page { size: letter; margin: 0.5in; }
+                @page { margin: 0.5in; }
+                html, body { margin: 0 !important; padding: 0 !important; background: #fff !important; min-height: 0 !important; }
                 body > *:not(#wya-print-sheet) { display: none !important; }
-                body { background: #fff !important; }
-                #wya-print-sheet { display: grid; grid-template-columns: repeat(2, 3.5in); justify-content: center; }
-                #wya-print-sheet > div { width: 3.5in; height: 2in; outline: 0.5px dashed #B8C2D1; outline-offset: -0.25px; }
-                #wya-print-sheet svg { display: block; width: 3.5in; height: 2in; }
+                /* 2 x 4 business cards is 7 x 8 in. Shrinks to fit if the browser or printer
+                   leaves less room, so it never runs off the left edge or onto a second page. */
+                #wya-print-sheet { display: grid; grid-template-columns: 1fr 1fr; width: min(7in, 100%); margin: 0 auto; break-inside: avoid; }
+                #wya-print-sheet > div { aspect-ratio: ${W} / ${H}; outline: 0.5px dashed #B8C2D1; outline-offset: -0.25px; }
+                #wya-print-sheet svg { display: block; width: 100%; height: 100%; }
               }
             `}</style>
             {Array.from({ length: PER_SHEET }, (_, i) => (
