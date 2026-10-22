@@ -136,13 +136,13 @@ function FreePro({ pro, preview = false }: { pro: Dash["pro"]; preview?: boolean
         </p>
       ) : (
         <p className="mt-1 text-[14px] leading-[1.6]" style={{ color: BODY }}>
-          <span className="font-semibold" style={{ color: INK }}>Unlocks with your first signup.</span> Once someone
+          <span className="font-semibold" style={{ color: INK }}>Unlocks With Your First Signup:</span> Once someone
           uses your code and is active in the app on 3 days, you get 3 months of WhatYouAte Pro free.
         </p>
       )}
       {!pro.year && (
         <p className="mt-4 border-t border-[#16233B]/[0.06] pt-3 text-[14px] leading-[1.55]" style={{ color: BODY }}>
-          <span className="font-semibold" style={{ color: INK }}>A free year:</span> once 3 of your followers have each paid for 2
+          <span className="font-semibold" style={{ color: INK }}>A Free Year:</span> Once 3 of your followers have each paid for 2
           months, or bought a yearly plan.{" "}
           {Math.min(pro.paying, 3)} of 3 so far.
         </p>
