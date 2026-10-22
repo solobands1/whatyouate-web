@@ -96,12 +96,12 @@ function FreePro({ pro, preview = false }: { pro: Dash["pro"]; preview?: boolean
         <>
           <p className="mt-1 text-[14px] leading-[1.6]" style={{ color: BODY }}>
             {pro.year
-              ? "Three of your followers are sticking with it. Here's a year of WhatYouAte Pro, on us."
+              ? "Three people you referred are sticking with it. Here's a year of WhatYouAte Pro, on us."
               : "3 months of WhatYouAte Pro, so you can use the app for real before you post about it."}
           </p>
           <p className="mt-3 font-mono text-[18px] font-semibold tracking-[0.06em]" style={{ color: INK }}>{code}</p>
           <p className="mt-1 text-[12.5px]" style={{ color: BODY }}>
-            This code is for you, not your followers. It gives you free Pro.
+            This code is for you, not the people you share with. It gives you free Pro.
           </p>
           {preview ? (
             <span className="mt-4 inline-flex rounded-full px-5 py-3 text-[14.5px] font-semibold text-white" style={{ background: INK }}>
@@ -142,7 +142,7 @@ function FreePro({ pro, preview = false }: { pro: Dash["pro"]; preview?: boolean
       )}
       {!pro.year && (
         <p className="mt-4 border-t border-[#16233B]/[0.06] pt-3 text-[14px] leading-[1.55]" style={{ color: BODY }}>
-          <span className="font-semibold" style={{ color: INK }}>A Free Year:</span> Once 3 of your followers have each paid for 2
+          <span className="font-semibold" style={{ color: INK }}>A Free Year:</span> Once 3 people who used your code have each paid for 2
           months, or bought a yearly plan.{" "}
           {Math.min(pro.paying, 3)} of 3 so far.
         </p>
@@ -273,7 +273,7 @@ export function DashboardView({ d, preview = false }: { d: Dash; preview?: boole
           <p className="mt-0.5 text-[13px] leading-[1.5]" style={{ color: "#8FA3C0" }}>
             {S.freeMonth > 0
               ? "Trying Pro now. They start paying when their free month ends."
-              : "Followers trying Pro for free will show up here."}
+              : "People trying Pro for free with your code will show up here."}
           </p>
         </div>
         <p className="shrink-0 text-[26px] font-bold tracking-[-0.03em]" style={{ color: INK }}>{S.freeMonth ?? 0}</p>
@@ -394,7 +394,7 @@ export function DashboardView({ d, preview = false }: { d: Dash; preview?: boole
           <CopyButton text={C.code} label="Copy Code" />
         </div>
         <p className="mt-4 text-[13.5px] leading-[1.55]" style={{ color: BODY }}>
-          Followers who enter your code in the app get their first month of WhatYouAte Pro free, then the regular
+          Anyone who enters your code in the app gets their first month of WhatYouAte Pro free, then the regular
           price unless they cancel. Your link shows them the code.
         </p>
       </Card>

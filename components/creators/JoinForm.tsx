@@ -51,7 +51,7 @@ export function CodeInput({ value, onChange, current }: { value: string; onChang
         ) : check.state === "checking" ? (
           "Checking…"
         ) : (
-          "3 to 15 letters or numbers. Your followers type this in the app."
+          "3 to 15 letters or numbers. People type this in the app when they sign up."
         )
       }
     >

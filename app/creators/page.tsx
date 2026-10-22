@@ -19,7 +19,7 @@ const STEPS = [
   },
   {
     title: "Share It Your Way",
-    body: "Post about the app and put your link in your bio, or share your code directly with clients, friends or your community. Followers who enter your code in the app get their first month free. Your Creator Kit has captions, post ideas, videos and images ready to go.",
+    body: "Post about the app and put your link in your bio, or share your code directly with clients, friends or your community. Anyone who enters your code in the app gets their first month free. Your Creator Kit has captions, post ideas, videos and images ready to go.",
   },
   {
     title: "Get Paid Every Month",
@@ -38,7 +38,7 @@ const FAQ = [
   },
   {
     q: "Do I get the app free?",
-    a: "Yes, up to a year free. Your first signup unlocks 3 months of WhatYouAte Pro, and you get a free year once 3 of your followers have each paid for 2 months, or bought a yearly plan. Neither one renews, so you're never charged.",
+    a: "Yes, up to a year free. Your first signup unlocks 3 months of WhatYouAte Pro, and you get a free year once 3 people who used your code have each paid for 2 months, or bought a yearly plan. Neither one renews, so you're never charged.",
   },
   {
     q: "When do I get paid?",
@@ -50,7 +50,7 @@ const FAQ = [
   },
   {
     q: "Can I see who used my code?",
-    a: "No. To protect your followers' privacy, your dashboard shows totals only: code uses, signups, paid subscribers and earnings.",
+    a: "No. To protect their privacy, your dashboard shows totals only: code uses, signups, paid subscribers and earnings.",
   },
   {
     q: "Do I have to post on social media?",
