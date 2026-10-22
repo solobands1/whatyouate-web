@@ -137,6 +137,18 @@ export const joinProgram = (f: ProfileFields & { code: string }) =>
     p_country: f.country, p_payout_method: f.payoutMethod, p_payout_email: f.payoutEmail,
   });
 
+/** Asks the app server to send the welcome email. It sends once per creator, and the daily job catches any miss. */
+export async function requestWelcomeEmail() {
+  const { data } = await sb().auth.getSession();
+  const token = data.session?.access_token;
+  if (!token) return;
+  await fetch("https://whatyouate.vercel.app/api/creators/welcome", {
+    method: "POST",
+    headers: { Authorization: `Bearer ${token}` },
+    keepalive: true,
+  }).catch(() => {});
+}
+
 export const updateProfile = (f: ProfileFields) =>
   rpc("creator_update_profile", {
     p_name: f.name, p_instagram: f.instagram, p_tiktok: f.tiktok,

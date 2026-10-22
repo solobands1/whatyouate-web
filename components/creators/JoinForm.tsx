@@ -6,7 +6,7 @@ import { useRouter } from "next/navigation";
 import { Card, Field, PrimaryButton, SecondaryButton, inputClass } from "./Shell";
 import CodeStep from "./CodeStep";
 import { checkCode, normalizeCode, type Country, type PayoutMethod } from "./shared";
-import { checkCodeRemote, codeProblemText, errorText, joinProgram, sendSignInCode, signedInEmail } from "./api";
+import { checkCodeRemote, codeProblemText, errorText, joinProgram, requestWelcomeEmail, sendSignInCode, signedInEmail } from "./api";
 import { BODY, INK } from "../site";
 
 /** Whether a code can be used: instant local rules, then the database after a short pause. */
@@ -203,6 +203,7 @@ export default function JoinForm() {
 
   const join = async () => {
     await joinProgram({ name: name.trim(), instagram, tiktok, code, country, payoutMethod: method, payoutEmail: payout });
+    void requestWelcomeEmail();
     setStep("done");
   };
 
