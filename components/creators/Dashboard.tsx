@@ -308,7 +308,7 @@ export function DashboardView({ d, preview = false }: { d: Dash; preview?: boole
         className="mt-5 rounded-3xl px-6 py-5 text-white"
         style={{ background: "linear-gradient(135deg, #6FA8FF 0%, #3F7FD6 100%)", boxShadow: "0 18px 40px -22px rgba(47,111,196,0.7)" }}
       >
-        <p className="text-[13px] font-semibold uppercase tracking-[0.12em] text-white/80">Recurring Each Month</p>
+        <p className="text-[11.5px] font-semibold uppercase tracking-[0.12em] text-white/80">Recurring Each Month</p>
         {S.recurring.active > 0 ? (
           <>
             <p className="mt-1 text-[30px] font-bold tracking-[-0.03em]">
