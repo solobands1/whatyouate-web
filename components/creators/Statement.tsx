@@ -4,8 +4,8 @@ import Link from "next/link";
 import { useEffect, useState } from "react";
 import Logo from "../Logo";
 import { Card } from "./Shell";
-import Gate from "./Gate";
-import { loadStatements, type IssuedStatement } from "./api";
+import { useRouter } from "next/navigation";
+import { loadStatements, sb, type IssuedStatement } from "./api";
 import { PAYOUT_LABEL, longDate, money } from "./shared";
 import { BODY, INK } from "../site";
 
@@ -178,29 +178,56 @@ export async function downloadStatementSheet(s: IssuedStatement) {
 
 // ---- Pages ------------------------------------------------------------------------------
 
+/**
+ * Loads the statements once, then moves between the list and a statement without reloading: the
+ * address changes (so links, Back and refresh work) but the page swaps in place. It skips the
+ * dashboard's data, which it doesn't need, so it opens quickly.
+ */
 export default function Statements() {
-  return <Gate>{() => <StatementsLoader />}</Gate>;
-}
-
-function StatementsLoader() {
+  const router = useRouter();
   const [list, setList] = useState<IssuedStatement[] | null>(null);
   const [failed, setFailed] = useState(false);
   const [id, setId] = useState<string | null>(null);
   useEffect(() => {
-    // eslint-disable-next-line react-hooks/set-state-in-effect
-    setId(new URLSearchParams(window.location.search).get("id"));
-    loadStatements()
-      .then(setList)
+    const fromAddress = () => setId(new URLSearchParams(window.location.search).get("id"));
+    fromAddress();
+    window.addEventListener("popstate", fromAddress);
+    sb()
+      .auth.getSession()
+      .then(({ data }) => {
+        if (!data.session) {
+          router.replace(`/creators/login?next=${encodeURIComponent(window.location.pathname + window.location.search)}`);
+          return;
+        }
+        return loadStatements().then(setList);
+      })
       .catch(() => setFailed(true));
-  }, []);
+    return () => window.removeEventListener("popstate", fromAddress);
+  }, [router]);
+  const show = (next: string | null) => {
+    window.history.pushState(null, "", next ? `/creators/statements?id=${next}` : "/creators/statements");
+    setId(next);
+    window.scrollTo(0, 0);
+  };
   if (failed) return <p className="py-24 text-center text-[15px]" style={{ color: BODY }}>Couldn&apos;t load your statements. Try again in a moment.</p>;
   if (!list) return <p className="py-24 text-center text-[15px]" style={{ color: BODY }}>Loading…</p>;
   const one = id ? list.find((s) => s.payout.id === id) : null;
-  return one ? <StatementView s={one} /> : <StatementList list={list} />;
+  return one ? <StatementView s={one} onBack={() => show(null)} /> : <StatementList list={list} onOpen={show} />;
 }
 
-const BackLink = ({ href, children }: { href: string; children: React.ReactNode }) => (
-  <Link href={href} className="inline-flex items-center gap-1.5 text-[14px] font-semibold transition hover:opacity-70" style={{ color: BODY }}>
+const BackLink = ({ href, onClick, children }: { href: string; onClick?: () => void; children: React.ReactNode }) => (
+  <Link
+    href={href}
+    onClick={
+      onClick &&
+      ((e) => {
+        e.preventDefault();
+        onClick();
+      })
+    }
+    className="inline-flex items-center gap-1.5 text-[14px] font-semibold transition hover:opacity-70"
+    style={{ color: BODY }}
+  >
     <svg viewBox="0 0 16 16" className="h-3.5 w-3.5" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
       <path d="M10 12L6 8l4-4" />
     </svg>
@@ -209,7 +236,7 @@ const BackLink = ({ href, children }: { href: string; children: React.ReactNode 
 );
 
 /** Every issued statement, newest first. */
-export function StatementList({ list }: { list: IssuedStatement[] }) {
+export function StatementList({ list, onOpen }: { list: IssuedStatement[]; onOpen?: (id: string) => void }) {
   return (
     <div className="-mt-6 sm:-mt-10">
       <BackLink href="/creators/dashboard">Back To Dashboard</BackLink>
@@ -237,6 +264,13 @@ export function StatementList({ list }: { list: IssuedStatement[] }) {
                     <Link
                       key={s.payout.id}
                       href={`/creators/statements?id=${s.payout.id}`}
+                      onClick={
+                        onOpen &&
+                        ((e) => {
+                          e.preventDefault();
+                          onOpen(s.payout.id);
+                        })
+                      }
                       className="flex items-center justify-between gap-4 px-6 py-4 transition hover:bg-white/60"
                     >
                       <div className="min-w-0">
@@ -269,7 +303,7 @@ export function StatementList({ list }: { list: IssuedStatement[] }) {
 }
 
 /** One issued statement. Save As PDF prints it; the site's header and footer stay off the page. */
-export function StatementView({ s }: { s: IssuedStatement }) {
+export function StatementView({ s, onBack }: { s: IssuedStatement; onBack?: () => void }) {
   const [saving, setSaving] = useState(false);
   const C = s.creator;
   const cur = s.payout.currency;
@@ -281,7 +315,9 @@ export function StatementView({ s }: { s: IssuedStatement }) {
     <div className="-mt-6 sm:-mt-10 print:mt-0">
       {/* Tools, left out of the printout */}
       <div className="mb-4 flex flex-wrap items-center justify-between gap-3 print:hidden">
-        <BackLink href="/creators/statements">All Statements</BackLink>
+        <BackLink href="/creators/statements" onClick={onBack}>
+          All Statements
+        </BackLink>
         <div className="flex items-center gap-4">
           <button
             type="button"

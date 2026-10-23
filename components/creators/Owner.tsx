@@ -7,7 +7,6 @@ import {
   errorText,
   ownerExport,
   ownerOverview,
-  ownerReopenPayout,
   ownerSetCreatorStatus,
   ownerSetPayout,
   ownerUpdateCreator,
@@ -27,7 +26,7 @@ import { BODY, INK } from "../site";
 const FAINT = "#8FA3C0";
 const RED = "#C2410C";
 type Status = "due" | "paid" | "withheld";
-type Action = { c: OwnerCreator; kind: "paid" | "withheld" | "returned" | "remove" | "restore" };
+type Action = { c: OwnerCreator; kind: "paid" | "withheld" | "remove" | "restore" };
 
 const fullDate = (iso: string) => `${longDate(iso)}, ${iso.slice(0, 4)}`;
 const monthName = (ym: string) => new Date(`${ym}-01T12:00:00`).toLocaleDateString("en-CA", { month: "long", year: "numeric" });
@@ -230,7 +229,7 @@ export default function Owner() {
       {/* Phones get stacked cards, so the payout dropdown is always in reach. */}
       <Card className="mt-3 divide-y divide-[#16233B]/[0.06] xl:hidden">
         {rows.map((c) => (
-          <PhoneCard key={c.id} c={c} month={month} onStatus={(to) => onStatus(c, to)} onReturned={() => setAction({ c, kind: "returned" })} onManage={() => setManaging(c)} />
+          <PhoneCard key={c.id} c={c} month={month} onStatus={(to) => onStatus(c, to)} onManage={() => setManaging(c)} />
         ))}
         {!rows.length && <p className="px-5 py-6 text-center text-[14px]" style={{ color: BODY }}>{all.length ? "No creators match that search." : "No creators yet."}</p>}
       </Card>
@@ -248,7 +247,7 @@ export default function Owner() {
           </thead>
           <tbody style={{ color: INK }}>
             {rows.map((c) => (
-              <Row key={c.id} c={c} month={month} onStatus={(to) => onStatus(c, to)} onReturned={() => setAction({ c, kind: "returned" })} onManage={() => setManaging(c)} />
+              <Row key={c.id} c={c} month={month} onStatus={(to) => onStatus(c, to)} onManage={() => setManaging(c)} />
             ))}
             {!rows.length && (
               <tr>
@@ -300,9 +299,6 @@ export default function Owner() {
       } else if (a.kind === "withheld" && a.c.payout) {
         await ownerSetPayout(a.c.payout.id, "withheld", reference);
         setMessage(`${first}'s payout is withheld.`);
-      } else if (a.kind === "returned" && a.c.payout) {
-        await ownerReopenPayout(a.c.payout.id);
-        setMessage(`${first}'s payout is back to due. Resend it, then mark it paid again.`);
       } else if (a.kind === "remove") {
         await ownerSetCreatorStatus(a.c.id, "removed", withhold);
         setMessage(`${a.c.name} is removed from the program. Their code no longer works.`);
@@ -319,7 +315,7 @@ export default function Owner() {
 
 // ---- Rows ------------------------------------------------------------------------------
 
-type RowProps = { c: OwnerCreator; month: string | null; onStatus: (to: Status) => void; onReturned: () => void; onManage: () => void };
+type RowProps = { c: OwnerCreator; month: string | null; onStatus: (to: Status) => void; onManage: () => void };
 
 function Badges({ c }: { c: OwnerCreator }) {
   return (
@@ -330,7 +326,7 @@ function Badges({ c }: { c: OwnerCreator }) {
   );
 }
 
-function Row({ c, month, onStatus, onReturned, onManage }: RowProps) {
+function Row({ c, month, onStatus, onManage }: RowProps) {
   // The currency shows once, under the code, so the amounts stay narrow.
   const amt = (n: number) => money(n, c.currency).replace(` ${c.currency}`, "");
   const cell = "border-b border-[#16233B]/[0.06] px-3 py-3 align-top first:pl-5 last:pr-5";
@@ -359,14 +355,14 @@ function Row({ c, month, onStatus, onReturned, onManage }: RowProps) {
       <td className={`${cell} whitespace-nowrap text-right tabular-nums`}>{amt(c.paidOut)}</td>
       <td className={`${cell} whitespace-nowrap text-right font-semibold tabular-nums`}>{amt(c.owed)}</td>
       <td className={`${cell} w-[260px]`}>
-        <PayoutCell c={c} month={month} onStatus={onStatus} onReturned={onReturned} />
+        <PayoutCell c={c} month={month} onStatus={onStatus} />
       </td>
     </tr>
   );
 }
 
 /** One creator on a phone: the same facts as a table row, stacked. */
-function PhoneCard({ c, month, onStatus, onReturned, onManage }: RowProps) {
+function PhoneCard({ c, month, onStatus, onManage }: RowProps) {
   const amt = (n: number) => money(n, c.currency);
   return (
     <div className="px-5 py-4">
@@ -388,7 +384,7 @@ function PhoneCard({ c, month, onStatus, onReturned, onManage }: RowProps) {
       </p>
       {c.notes && <p className="mt-1 line-clamp-2 text-[12.5px] italic" style={{ color: BODY }}>{c.notes}</p>}
       <div className="mt-3 text-[13.5px]" style={{ color: INK }}>
-        <PayoutCell c={c} month={month} onStatus={onStatus} onReturned={onReturned} />
+        <PayoutCell c={c} month={month} onStatus={onStatus} />
       </div>
       <button type="button" onClick={onManage} className="mt-2 text-[12.5px] font-semibold" style={{ color: "#2F6FC4" }}>
         Notes &amp; Manage
@@ -398,7 +394,7 @@ function PhoneCard({ c, month, onStatus, onReturned, onManage }: RowProps) {
 }
 
 /** The payout's amount and status: a dropdown while it's due or withheld, the paid date after. */
-function PayoutCell({ c, month, onStatus, onReturned }: { c: OwnerCreator; month: string | null; onStatus: (to: Status) => void; onReturned: () => void }) {
+function PayoutCell({ c, month, onStatus }: { c: OwnerCreator; month: string | null; onStatus: (to: Status) => void }) {
   const [copied, setCopied] = useState(false);
   const amt = (n: number) => money(n, c.currency);
   const p = c.payout;
@@ -409,9 +405,6 @@ function PayoutCell({ c, month, onStatus, onReturned }: { c: OwnerCreator; month
         <p className="font-semibold">{amt(p.amount)}</p>
         <p className="text-[12.5px]" style={{ color: "#15803D" }}>Paid {p.paidOn ? fullDate(p.paidOn) : ""}</p>
         {p.reference && <p className="text-[12px]" style={{ color: FAINT }}>Ref {p.reference}</p>}
-        <button type="button" onClick={onReturned} className="text-[12px] font-semibold" style={{ color: RED }}>
-          Came Back? Mark Returned
-        </button>
       </>
     );
   }
@@ -430,7 +423,7 @@ function PayoutCell({ c, month, onStatus, onReturned }: { c: OwnerCreator; month
           <option value="withheld">Withheld</option>
         </select>
       </div>
-      {p.returned && <p className="mt-1 text-[12px] font-semibold" style={{ color: RED }}>Returned once: check the payout email before resending</p>}
+      {p.returned && <p className="mt-1 text-[12px] font-semibold" style={{ color: RED }}>Came back once: check the payout email before resending</p>}
       <p className="mt-1 text-[12.5px]" style={{ color: BODY }}>
         {methodLabel(c)} to {c.payoutEmail}{" "}
         <button
@@ -506,7 +499,7 @@ function Confirm({ a, onCancel, onConfirm }: { a: Action; onCancel: () => void; 
             style={{ color: INK }}
           />
         </label>
-        {small(<>This issues {first}&apos;s statement and emails it to them. Only mark it once the money is sent. If it comes back, you can mark it returned.</>)}
+        {small(<>This issues {first}&apos;s statement and emails it to them. Only mark it once the money is sent.</>)}
         <Buttons onCancel={onCancel} onOk={() => onConfirm(reference, true)} ok="Mark Paid" />
       </Sheet>
     );
@@ -518,21 +511,6 @@ function Confirm({ a, onCancel, onConfirm }: { a: Action; onCancel: () => void; 
         {what}
         {small(<>Nothing is sent to {first}. You can set it back to Due later.</>)}
         <Buttons onCancel={onCancel} onOk={() => onConfirm("", true)} ok="Withhold" danger />
-      </Sheet>
-    );
-  }
-  if (kind === "returned") {
-    return (
-      <Sheet onClose={onCancel}>
-        <h3 className="text-[20px] font-bold tracking-[-0.02em]" style={{ color: INK }}>Payout Came Back?</h3>
-        {what}
-        {small(
-          <>
-            Use this if the e-Transfer expired or bounced, or the deposit failed. It goes back to Due so you can resend it, and {first}&apos;s
-            statement for it is withdrawn until you mark it paid again (which emails them again). Check their payout email with them first.
-          </>,
-        )}
-        <Buttons onCancel={onCancel} onOk={() => onConfirm("", true)} ok="Mark Returned" danger />
       </Sheet>
     );
   }
