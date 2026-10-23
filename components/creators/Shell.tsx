@@ -16,7 +16,7 @@ export default function Shell({ children, narrow = false, wide = false, full = f
   return (
     <div className="min-h-screen overflow-x-clip">
       <header className="absolute inset-x-0 top-0 z-30 print:hidden">
-        <div className={`mx-auto flex ${full ? "max-w-[86rem]" : "max-w-[68rem]"} items-center justify-between px-6 py-6`}>
+        <div className="mx-auto flex max-w-[68rem] items-center justify-between px-6 py-6">
           <Link href={signedIn ? "/creators/dashboard" : "/"}>
             <Logo priority />
           </Link>

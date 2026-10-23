@@ -141,6 +141,8 @@ export default function Owner() {
 
   return (
     <div className="-mt-6 sm:-mt-10">
+      {/* The title and totals keep the site's usual width; only the creators table uses the full page. */}
+      <div className="mx-auto max-w-[65rem]">
       <div className="flex flex-wrap items-end justify-between gap-3">
         <div>
           <h1 className="text-[clamp(28px,4.4vw,40px)] font-bold leading-[1.1] tracking-[-0.04em]">Owner</h1>
@@ -210,6 +212,7 @@ export default function Owner() {
             {t.note && <p className="mt-0.5 text-[12px]" style={{ color: FAINT }}>{t.note}</p>}
           </div>
         ))}
+      </div>
       </div>
 
       {/* Creators */}
