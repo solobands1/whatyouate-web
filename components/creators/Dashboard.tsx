@@ -114,7 +114,7 @@ function FreePro({ pro, preview = false }: { pro: Dash["pro"]; preview?: boolean
           <p className="mt-3 text-[12.5px] leading-[1.55]" style={{ color: "#8FA3C0" }}>
             Redeem it within a few weeks. It doesn&apos;t renew, so you won&apos;t be charged anything when it ends.
             {pro.year && pro.threeMonths && " If your 3 free months are still running, redeem this after they end."} Or
-            redeem it by hand: in the App Store app, tap your profile picture, then Redeem Gift Card or Code.
+            redeem it by hand: in WhatYouAte, go to Profile and tap Redeem Offer Code.
           </p>
         </>
       ) : pro.unlocked ? (

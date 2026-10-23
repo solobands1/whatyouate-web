@@ -218,29 +218,44 @@ export function StatementList({ list }: { list: IssuedStatement[] }) {
         A statement is issued with each payout. Open one to save it as a PDF or download it as a spreadsheet.
       </p>
       {list.length ? (
-        <Card className="mt-7 divide-y divide-[#16233B]/[0.06]">
-          {list.map((s) => {
-            const f = facts(s);
-            return (
-              <Link
-                key={s.payout.id}
-                href={`/creators/statements?id=${s.payout.id}`}
-                className="flex items-center justify-between gap-4 px-6 py-4 transition hover:bg-white/60"
-              >
-                <div className="min-w-0">
-                  <p className="text-[15.5px] font-semibold" style={{ color: INK }}>{f.period}</p>
-                  <p className="text-[13px]" style={{ color: BODY }}>Paid {fullDate(s.payout.paidOn)}</p>
-                </div>
-                <div className="flex shrink-0 items-center gap-3">
-                  <span className="text-[15.5px] font-semibold tabular-nums" style={{ color: INK }}>{money(s.payout.amount, s.payout.currency)}</span>
-                  <svg viewBox="0 0 16 16" className="h-3.5 w-3.5" fill="none" stroke={FAINT} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-                    <path d="M6 4l4 4-4 4" />
-                  </svg>
-                </div>
-              </Link>
-            );
-          })}
-        </Card>
+        // Grouped by the year each was paid, with that year's total (handy at tax time).
+        [...new Set(list.map((s) => s.payout.paidOn.slice(0, 4)))].map((year) => {
+          const inYear = list.filter((s) => s.payout.paidOn.startsWith(year));
+          const cur = inYear[0].payout.currency;
+          return (
+            <section key={year} className="mt-7">
+              <div className="mb-2.5 flex items-baseline justify-between px-1">
+                <h2 className="text-[17px] font-bold tracking-[-0.02em]" style={{ color: INK }}>{year}</h2>
+                <p className="text-[13.5px]" style={{ color: BODY }}>
+                  Paid in {year}: <span className="font-semibold" style={{ color: INK }}>{money(inYear.reduce((t, s) => t + s.payout.amount, 0), cur)}</span>
+                </p>
+              </div>
+              <Card className="divide-y divide-[#16233B]/[0.06]">
+                {inYear.map((s) => {
+                  const f = facts(s);
+                  return (
+                    <Link
+                      key={s.payout.id}
+                      href={`/creators/statements?id=${s.payout.id}`}
+                      className="flex items-center justify-between gap-4 px-6 py-4 transition hover:bg-white/60"
+                    >
+                      <div className="min-w-0">
+                        <p className="text-[15.5px] font-semibold" style={{ color: INK }}>{f.period}</p>
+                        <p className="text-[13px]" style={{ color: BODY }}>Paid {fullDate(s.payout.paidOn)}</p>
+                      </div>
+                      <div className="flex shrink-0 items-center gap-3">
+                        <span className="text-[15.5px] font-semibold tabular-nums" style={{ color: INK }}>{money(s.payout.amount, s.payout.currency)}</span>
+                        <svg viewBox="0 0 16 16" className="h-3.5 w-3.5" fill="none" stroke={FAINT} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                          <path d="M6 4l4 4-4 4" />
+                        </svg>
+                      </div>
+                    </Link>
+                  );
+                })}
+              </Card>
+            </section>
+          );
+        })
       ) : (
         <Card className="mt-7 px-6 py-6">
           <p className="text-[17px] font-bold tracking-[-0.02em]" style={{ color: INK }}>No Statements Yet</p>
