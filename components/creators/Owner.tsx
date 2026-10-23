@@ -212,18 +212,19 @@ export default function Owner() {
       </div>
 
       {/* Phones get stacked cards, so the payout dropdown is always in reach. */}
-      <Card className="mt-3 divide-y divide-[#16233B]/[0.06] md:hidden">
+      <Card className="mt-3 divide-y divide-[#16233B]/[0.06] xl:hidden">
         {rows.map((c) => (
           <PhoneCard key={c.id} c={c} month={month} onStatus={(to) => onStatus(c, to)} onReturned={() => setAction({ c, kind: "returned" })} onManage={() => setManaging(c)} />
         ))}
         {!rows.length && <p className="px-5 py-6 text-center text-[14px]" style={{ color: BODY }}>{all.length ? "No creators match that search." : "No creators yet."}</p>}
       </Card>
-      <Card className="mt-3 hidden overflow-x-auto md:block">
-        <table className="w-full min-w-[980px] border-collapse text-[13.5px]">
+      {/* The full table only where it fits without scrolling sideways; narrower screens get the cards. */}
+      <Card className="mt-3 hidden xl:block">
+        <table className="w-full border-collapse text-[13.5px]">
           <thead>
             <tr style={{ color: FAINT }}>
               {["Creator", "Code", "Users", "Signups", month ? "New Paying" : "Paying", "Earned", "Paid Out", "Owed", "Payout"].map((h, i) => (
-                <th key={h} className={`border-b border-[#16233B]/[0.06] px-4 pb-2.5 pt-4 font-semibold ${i >= 2 && i <= 7 ? "text-right" : "text-left"}`}>
+                <th key={h} className={`border-b border-[#16233B]/[0.06] px-3 pb-2.5 pt-4 font-semibold first:pl-5 last:pr-5 ${i >= 2 && i <= 7 ? "text-right" : "text-left"}`}>
                   {h}
                 </th>
               ))}
@@ -314,30 +315,34 @@ function Badges({ c }: { c: OwnerCreator }) {
 }
 
 function Row({ c, month, onStatus, onReturned, onManage }: RowProps) {
-  const amt = (n: number) => money(n, c.currency);
-  const cell = "border-b border-[#16233B]/[0.06] px-4 py-3 align-top";
+  // The currency shows once, under the code, so the amounts stay narrow.
+  const amt = (n: number) => money(n, c.currency).replace(` ${c.currency}`, "");
+  const cell = "border-b border-[#16233B]/[0.06] px-3 py-3 align-top first:pl-5 last:pr-5";
   return (
     <tr>
-      <td className={`${cell} min-w-[230px] max-w-[300px]`}>
+      <td className={`${cell} min-w-[190px]`}>
         <p className="font-semibold">
           {c.name}
           <Badges c={c} />
         </p>
-        <p className="text-[12.5px]" style={{ color: BODY }}>{c.email}</p>
+        <p className="break-all text-[12.5px]" style={{ color: BODY }}>{c.email}</p>
         <p className="text-[12px]" style={{ color: FAINT }}>{c.country === "OTHER" ? "Outside CA/US" : c.country} · joined {fullDate(c.joined)}</p>
         {c.notes && <p className="mt-1 line-clamp-2 text-[12.5px] italic" style={{ color: BODY }}>{c.notes}</p>}
         <button type="button" onClick={onManage} className="mt-1 text-[12.5px] font-semibold" style={{ color: "#2F6FC4" }}>
           Notes &amp; Manage
         </button>
       </td>
-      <td className={`${cell} font-semibold tracking-[0.03em]`}>{c.code}</td>
+      <td className={cell}>
+        <p className="font-semibold tracking-[0.03em]">{c.code}</p>
+        <p className="text-[12px]" style={{ color: FAINT }}>{c.currency}</p>
+      </td>
       <td className={`${cell} text-right tabular-nums`}>{c.codeUses}</td>
       <td className={`${cell} text-right tabular-nums`}>{c.signups}</td>
       <td className={`${cell} text-right tabular-nums`}>{c.paying}</td>
       <td className={`${cell} whitespace-nowrap text-right tabular-nums`}>{amt(c.earned)}</td>
       <td className={`${cell} whitespace-nowrap text-right tabular-nums`}>{amt(c.paidOut)}</td>
       <td className={`${cell} whitespace-nowrap text-right font-semibold tabular-nums`}>{amt(c.owed)}</td>
-      <td className={`${cell} min-w-[230px]`}>
+      <td className={`${cell} w-[260px]`}>
         <PayoutCell c={c} month={month} onStatus={onStatus} onReturned={onReturned} />
       </td>
     </tr>

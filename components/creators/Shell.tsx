@@ -16,7 +16,7 @@ export default function Shell({ children, narrow = false, wide = false, full = f
   return (
     <div className="min-h-screen overflow-x-clip">
       <header className="absolute inset-x-0 top-0 z-30 print:hidden">
-        <div className="mx-auto flex max-w-[68rem] items-center justify-between px-6 py-6">
+        <div className={`mx-auto flex ${full ? "max-w-[86rem]" : "max-w-[68rem]"} items-center justify-between px-6 py-6`}>
           <Link href={signedIn ? "/creators/dashboard" : "/"}>
             <Logo priority />
           </Link>
@@ -26,7 +26,7 @@ export default function Shell({ children, narrow = false, wide = false, full = f
 
       {/* Signed-in pages open on the tab row rather than a page title, so they sit closer to the header. */}
       <main className={`px-6 print:px-0 print:pt-0 ${signedIn ? "pt-24 sm:pt-28" : "pt-28 sm:pt-36"}`}>
-        <div className={`mx-auto ${narrow ? "max-w-[30rem]" : full ? "max-w-[65rem]" : wide ? "max-w-[54rem] print:max-w-none" : "max-w-[44rem]"}`}>{children}</div>
+        <div className={`mx-auto ${narrow ? "max-w-[30rem]" : full ? "max-w-[83rem]" : wide ? "max-w-[54rem] print:max-w-none" : "max-w-[44rem]"}`}>{children}</div>
       </main>
 
       {/* The footer carries its own fade into the deep blue, so the white text stays readable even on
