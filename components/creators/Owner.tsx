@@ -34,6 +34,19 @@ const monthName = (ym: string) => new Date(`${ym}-01T12:00:00`).toLocaleDateStri
 const methodLabel = (c: { payoutMethod: OwnerCreator["payoutMethod"] }) => (c.payoutMethod === "wise" ? "Wise" : PAYOUT_LABEL[c.payoutMethod]);
 const firstName = (name: string) => name.split(" ")[0];
 
+// Pill dropdowns draw their own arrow, inset from the rounded end: the browser's arrow sits at the
+// very edge and pokes out past the curve in Safari.
+const chevron = (color: string) =>
+  `url("data:image/svg+xml,${encodeURIComponent(`<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 12 12' fill='none' stroke='${color}' stroke-width='1.8' stroke-linecap='round' stroke-linejoin='round'><path d='M3 4.5l3 3 3-3'/></svg>`)}")`;
+const pillSelect = (color: string, inset: number) => ({
+  appearance: "none" as const,
+  WebkitAppearance: "none" as const,
+  backgroundImage: chevron(color),
+  backgroundRepeat: "no-repeat",
+  backgroundPosition: `right ${inset}px center`,
+  backgroundSize: "12px 12px",
+});
+
 /** Sums by currency, shown as "$12.00 CAD" and "$3.00 USD" lines (or $0.00 when there's nothing). */
 function byCurrency(rows: OwnerCreator[], pick: (c: OwnerCreator) => number) {
   const sums: Record<string, number> = {};
@@ -139,8 +152,8 @@ export default function Owner() {
           <select
             value={month ?? ""}
             onChange={(e) => chooseMonth(e.target.value || null)}
-            className="rounded-full bg-white px-4 py-2 text-[14px] font-semibold ring-1 ring-[#16233B]/[0.1] outline-none focus:ring-2 focus:ring-[#6FA8FF]"
-            style={{ color: INK }}
+            className="rounded-full bg-white py-2 pl-4 pr-10 text-[14px] font-semibold ring-1 ring-[#16233B]/[0.1] outline-none focus:ring-2 focus:ring-[#6FA8FF]"
+            style={{ color: INK, ...pillSelect(INK, 16) }}
             aria-label="Month"
           >
             <option value="">All Time</option>
@@ -406,8 +419,8 @@ function PayoutCell({ c, month, onStatus, onReturned }: { c: OwnerCreator; month
         <select
           value={p.status}
           onChange={(e) => onStatus(e.target.value as Status)}
-          className="rounded-full bg-white px-3 py-1 text-[13px] font-semibold ring-1 outline-none"
-          style={{ color: p.status === "due" ? "#2F6FC4" : RED, ["--tw-ring-color" as string]: "#16233B1F" }}
+          className="rounded-full bg-white py-1 pl-3 pr-8 text-[13px] font-semibold ring-1 outline-none"
+          style={{ color: p.status === "due" ? "#2F6FC4" : RED, ["--tw-ring-color" as string]: "#16233B1F", ...pillSelect(p.status === "due" ? "#2F6FC4" : RED, 11) }}
         >
           <option value="due">Due</option>
           <option value="paid">Paid</option>
