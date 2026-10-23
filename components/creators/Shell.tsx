@@ -1,9 +1,9 @@
-import Image from "next/image";
 import Link from "next/link";
 import Menu from "../Menu";
 import CreatorMenu from "./CreatorMenu";
 import Social from "../Social";
 import { BODY } from "../site";
+import Logo from "../Logo";
 
 export const CREATOR_EMAIL = "contact@whatyouate.app";
 
@@ -17,16 +17,8 @@ export default function Shell({ children, narrow = false, signedIn = false }: { 
     <div className="min-h-screen overflow-x-clip">
       <header className="absolute inset-x-0 top-0 z-30">
         <div className="mx-auto flex max-w-[68rem] items-center justify-between px-6 py-6">
-          <Link href={signedIn ? "/creators/dashboard" : "/"} className="flex items-center gap-2.5">
-            <Image src="/icon-512.png" alt="" width={30} height={30} className="rounded-[8px] ring-1 ring-black/5" priority />
-            <span className="text-[16px] font-semibold leading-[21.333px] tracking-[-0.015em] text-[#1F2937]">
-              WhatYouAt
-              <span className="relative inline-block">
-                e
-                {/* Calibrated so size and position match the app header's AI (measured against the live app). */}
-                <span className="absolute left-[calc(100%+0.45px)] top-[4.6px] text-[5.7px] font-semibold leading-none text-[#1F2937]/80">AI</span>
-              </span>
-            </span>
+          <Link href={signedIn ? "/creators/dashboard" : "/"}>
+            <Logo priority />
           </Link>
           {signedIn ? <CreatorMenu /> : <Menu />}
         </div>

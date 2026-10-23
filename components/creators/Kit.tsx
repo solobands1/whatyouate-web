@@ -228,14 +228,14 @@ function KitView({ C }: { C: Dash["creator"] }) {
           <div key={b.file} className="flex items-center justify-between gap-4 px-5 py-4">
             <div className="flex min-w-0 items-center gap-4">
               <div className="flex h-14 w-28 shrink-0 items-center justify-center rounded-xl bg-white px-2 ring-1 ring-[#16233B]/[0.06]">
-                <Image src={`${KIT}/brand/${b.file}?v=3`} alt="" width={96} height={40} className="max-h-10 w-auto object-contain" />
+                <Image src={`${KIT}/brand/${b.file}?v=4`} alt="" width={96} height={40} className="max-h-10 w-auto object-contain" />
               </div>
               <div className="min-w-0">
                 <p className="text-[15px] font-semibold" style={{ color: INK }}>{b.label}</p>
                 <p className="text-[13px]" style={{ color: BODY }}>{b.note}</p>
               </div>
             </div>
-            <a href={`${KIT}/brand/${b.file}?v=3`} download={b.file} className="shrink-0 text-[14px] font-semibold" style={{ color: "#2F6FC4" }}>Download</a>
+            <a href={`${KIT}/brand/${b.file}?v=4`} download={b.file} className="shrink-0 text-[14px] font-semibold" style={{ color: "#2F6FC4" }}>Download</a>
           </div>
         ))}
       </Card>

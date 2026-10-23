@@ -13,14 +13,19 @@ import { BODY, INK } from "../site";
 const W = 336;
 const H = 192;
 const FONTS = "/creators/kit/fonts";
-const ICON = "/creators/kit/brand/whatyouate-icon.png";
-// The logo is drawn as the app icon plus live text rather than the logo image, so it stays sharp at
-// any zoom and in print. Positions in card units, matched to whatyouate-logo.png placed at 18,18 and
-// 116 wide.
-// The AI follows the name like the app header's (Shell.tsx): dx from the end of the name, dy from its
-// baseline, sized and placed in the same proportion to the capitals as measured on the live header.
-// SVG ends the name's letter spacing slightly later than the canvas does, hence its own svgDx.
-const LOGO = { icon: { x: 19.43, y: 19.43, size: 18.16 }, name: { x: 42.01, y: 33.47, size: 13.9, spacing: 0.55 }, ai: { dx: -0.12, svgDx: -0.37, dy: -6.03, size: 4.9 } };
+const ICON = "/icon-512.png";
+// The logo is the site header's (components/Logo.tsx) at 80%: drawn as the icon plus live text so it
+// stays sharp at any zoom and in print. The header's icon is 30px with 8px corners, the name 16px
+// starting 40px in with its baseline 19.95px down, letter spacing -0.015em; here each is x 0.8.
+// The AI follows the name: dx from the end of the name, dy from its baseline, tuned so its gap, height
+// and size match the header (measured against the live header). SVG ends the name's letter spacing a
+// little differently from the canvas, hence its own svgDx.
+const F = 0.8;
+const LOGO = {
+  icon: { x: 18, y: 17, size: 30 * F, radius: 8 * F },
+  name: { x: 18 + 40 * F, y: 17 + 19.95 * F, size: 16 * F, spacing: -0.015 * 16 * F },
+  ai: { dx: 0.5, svgDx: 0.3, dy: -7.0 * F, size: 5.7 * F },
+};
 const LOGO_INK = "#1F2937";
 // The downloaded image: 3150 x 1800, 900 pixels to the inch, so it stays crisp when zoomed in.
 const PNG_WIDTH = 3150;
@@ -100,7 +105,9 @@ function cardSvg(code: string, link: string, qr: { box: string; body: string }, 
   return `<svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" viewBox="0 0 ${W} ${H}" width="${W}" height="${H}">
 <style>${fontFaces()}text{font-family:${FAMILY}}</style>
 <rect width="${W}" height="${H}" fill="#FFFFFF"/>
-<image href="${ICON}" xlink:href="${ICON}" x="${LOGO.icon.x}" y="${LOGO.icon.y}" width="${LOGO.icon.size}" height="${LOGO.icon.size}"/>
+<clipPath id="wya-icon"><rect x="${LOGO.icon.x}" y="${LOGO.icon.y}" width="${LOGO.icon.size}" height="${LOGO.icon.size}" rx="${LOGO.icon.radius}"/></clipPath>
+<image href="${ICON}" xlink:href="${ICON}" x="${LOGO.icon.x}" y="${LOGO.icon.y}" width="${LOGO.icon.size}" height="${LOGO.icon.size}" clip-path="url(#wya-icon)"/>
+<rect x="${LOGO.icon.x - F / 2}" y="${LOGO.icon.y - F / 2}" width="${LOGO.icon.size + F}" height="${LOGO.icon.size + F}" rx="${LOGO.icon.radius + F / 2}" fill="none" stroke="rgba(0,0,0,0.05)" stroke-width="${F}"/>
 <text x="${LOGO.name.x}" y="${LOGO.name.y}" font-size="${LOGO.name.size}" font-weight="600" fill="${LOGO_INK}" letter-spacing="${LOGO.name.spacing}">WhatYouAte<tspan dx="${LOGO.ai.svgDx}" dy="${LOGO.ai.dy}" font-size="${LOGO.ai.size}" letter-spacing="0">AI</tspan></text>
 <text x="18" y="66" font-size="17.5" font-weight="700" fill="${INK}" letter-spacing="-0.35">Your First Month Free</text>
 <text x="18" y="83" font-size="9.5" font-weight="500" fill="${BODY}">Scan to download the app, then</text>
@@ -157,7 +164,26 @@ async function renderPng(code: string, link: string, fit: Fit): Promise<Blob | n
   ctx.fillRect(0, 0, W, H);
   ctx.imageSmoothingEnabled = true;
   ctx.imageSmoothingQuality = "high";
-  ctx.drawImage(shrunk(icon, LOGO.icon.size * s), LOGO.icon.x, LOGO.icon.y, LOGO.icon.size, LOGO.icon.size);
+  const roundRect = (x: number, y: number, w: number, h: number, r: number) => {
+    ctx.beginPath();
+    ctx.moveTo(x + r, y);
+    ctx.arcTo(x + w, y, x + w, y + h, r);
+    ctx.arcTo(x + w, y + h, x, y + h, r);
+    ctx.arcTo(x, y + h, x, y, r);
+    ctx.arcTo(x, y, x + w, y, r);
+    ctx.closePath();
+  };
+  const { x: ix, y: iy, size: is, radius: ir } = LOGO.icon;
+  ctx.save();
+  roundRect(ix, iy, is, is, ir);
+  ctx.clip();
+  ctx.drawImage(shrunk(icon, is * s), ix, iy, is, is);
+  ctx.restore();
+  // The header's faint ring (ring-1 ring-black/5).
+  roundRect(ix - F / 2, iy - F / 2, is + F, is + F, ir + F / 2);
+  ctx.strokeStyle = "rgba(0,0,0,0.05)";
+  ctx.lineWidth = F;
+  ctx.stroke();
 
   // Letter spacing by hand, since older Safari has no ctx.letterSpacing.
   const text = (t: string, x: number, y: number, size: number, weight: number, color: string, opts: { spacing?: number; align?: "left" | "center"; middle?: boolean } = {}) => {

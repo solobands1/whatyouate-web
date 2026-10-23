@@ -5,6 +5,7 @@ import Enter from "../components/Enter";
 import Parallax from "../components/Parallax";
 import Menu from "../components/Menu";
 import Social from "../components/Social";
+import Logo from "../components/Logo";
 import {
   APP_STORE_URL, INK, BODY, FAINT,
   DownloadButton, UiCard, SectionHeading, AppleHealthMark,
@@ -23,10 +24,7 @@ export default function Home() {
       {/* ── NAV ─────────────────────────────────────────────── */}
       <header className="absolute inset-x-0 top-0 z-30">
         <div className="mx-auto flex max-w-[68rem] items-center justify-between px-6 py-6">
-          <div className="flex items-center gap-2.5">
-            <Image src="/icon-512.png" alt="" width={30} height={30} className="rounded-[8px] ring-1 ring-black/5" priority />
-            <span className="text-[16px] font-semibold tracking-[-0.015em]">WhatYouAte</span>
-          </div>
+          <Logo priority />
           <Menu />
         </div>
       </header>
@@ -324,10 +322,7 @@ export default function Home() {
       {/* ── FOOTER ──────────────────────────────────────────── */}
       <footer className="px-6 pb-14">
         <div className="mx-auto flex max-w-[64rem] flex-col items-center gap-5 text-center">
-          <div className="flex items-center gap-2">
-            <Image src="/icon.png" alt="" width={22} height={22} className="rounded-[6px]" />
-            <span className="text-[14px] font-semibold tracking-[-0.015em] text-white">WhatYouAte</span>
-          </div>
+          <Logo small light />
           <nav className="flex flex-wrap justify-center gap-x-8 gap-y-2 text-[14px] text-white/80">
             <Link href="/about" className="transition hover:text-white">About</Link>
             <Link href="/creators" className="transition hover:text-white">Creators</Link>

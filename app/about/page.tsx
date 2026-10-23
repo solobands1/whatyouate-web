@@ -1,10 +1,10 @@
 import type { Metadata } from "next";
-import Image from "next/image";
 import Link from "next/link";
 import Reveal from "../../components/Reveal";
 import Menu from "../../components/Menu";
 import Social from "../../components/Social";
 import { INK, BODY, DownloadButton } from "../../components/site";
+import Logo from "../../components/Logo";
 
 export const metadata: Metadata = {
   title: "Our mission | WhatYouAte",
@@ -40,9 +40,8 @@ export default function About() {
     <div className="min-h-screen overflow-x-clip">
       <header className="absolute inset-x-0 top-0 z-30">
         <div className="mx-auto flex max-w-[68rem] items-center justify-between px-6 py-6">
-          <Link href="/" className="flex items-center gap-2.5">
-            <Image src="/icon-512.png" alt="" width={30} height={30} className="rounded-[8px] ring-1 ring-black/5" priority />
-            <span className="text-[16px] font-semibold tracking-[-0.015em]">WhatYouAte</span>
+          <Link href="/">
+            <Logo priority />
           </Link>
           <Menu />
         </div>
