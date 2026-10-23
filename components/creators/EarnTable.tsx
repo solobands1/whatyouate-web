@@ -80,7 +80,7 @@ export default function EarnTable() {
         <Row label="WhatYouAte Pro For You" value="Free" sub="up to a year" />
       </Card>
       <p className="mt-3 text-[13px] leading-[1.6]" style={{ color: "#8FA3C0" }}>
-        {`Estimates in ${cur === "CAD" ? "Canadian" : "US"} dollars, based on current prices. You earn 30% of each subscription for its first 12 months, after Apple's fee. Creators in Canada earn and are paid in Canadian dollars, and everyone else in US dollars.`}
+        {`Estimates in ${cur === "CAD" ? "Canadian" : "US"} dollars, based on current prices. You earn 30% of each subscription for its first 12 months, after Apple's fee. Creators in Canada earn in Canadian dollars, and everyone else in US dollars (outside the US, Wise deposits it in your own currency).`}
       </p>
     </>
   );

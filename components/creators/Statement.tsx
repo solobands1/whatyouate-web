@@ -374,7 +374,9 @@ export function StatementView({ s, onBack }: { s: IssuedStatement; onBack?: () =
             <p className="font-semibold" style={{ color: INK }}>{method}</p>
             <p>{s.payout.payoutEmail}</p>
             {s.payout.reference && <p>Reference {s.payout.reference}</p>}
-            <p>Paid in {cur === "CAD" ? "Canadian" : "US"} dollars ({cur})</p>
+            <p>
+              {cur === "CAD" ? "Paid in Canadian dollars (CAD)" : C.country === "US" ? "Paid in US dollars (USD)" : "Earned in US dollars (USD), deposited in your own currency"}
+            </p>
           </Info>
         </section>
 

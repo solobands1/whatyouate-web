@@ -220,6 +220,9 @@ export default function Owner() {
           >
             {exporting ? "Preparing…" : "Download Excel"}
           </button>
+          <a href={`/creators/owner/report${month ? `?period=${month}` : ""}`} className="text-[14px] font-semibold" style={{ color: "#2F6FC4" }}>
+            Report
+          </a>
           <button type="button" onClick={() => load(month)} className="text-[14px] font-semibold" style={{ color: "#2F6FC4" }}>
             Refresh
           </button>
@@ -304,7 +307,7 @@ export default function Owner() {
         </table>
       </Card>
 
-      {action && <Confirm a={action} onCancel={() => setAction(null)} onConfirm={(ref, withhold) => run(action, ref, undefined, withhold)} />}
+      {action && <Confirm a={action} onCancel={() => setAction(null)} onConfirm={(ref, withhold, fee) => run(action, ref, undefined, withhold, fee)} />}
       {managing && (
         <Manage
           c={managing}
@@ -328,7 +331,7 @@ export default function Owner() {
     </div>
   );
 
-  async function run(a: Action, reference: string, payoutTo?: "due", withhold = true) {
+  async function run(a: Action, reference: string, payoutTo?: "due", withhold = true, feeCad?: number | null) {
     setAction(null);
     setMessage(null);
     const first = firstName(a.c.name);
@@ -337,7 +340,7 @@ export default function Owner() {
         await ownerSetPayout(a.c.payout.id, "due", "");
         setMessage(`${first}'s payout is back to due.`);
       } else if (a.kind === "paid" && a.c.payout) {
-        await ownerSetPayout(a.c.payout.id, "paid", reference);
+        await ownerSetPayout(a.c.payout.id, "paid", reference, feeCad);
         const emailed = await sendPayoutEmail(a.c.payout.id);
         setMessage(emailed ? `Marked paid. ${first} has been emailed their statement.` : "Marked paid. The statement email didn't go out just now, so tomorrow morning's run will send it.");
       } else if (a.kind === "withheld" && a.c.payout) {
@@ -600,8 +603,9 @@ function Buttons({ onCancel, onOk, ok, danger = false }: { onCancel: () => void;
   );
 }
 
-function Confirm({ a, onCancel, onConfirm }: { a: Action; onCancel: () => void; onConfirm: (reference: string, withhold: boolean) => void }) {
+function Confirm({ a, onCancel, onConfirm }: { a: Action; onCancel: () => void; onConfirm: (reference: string, withhold: boolean, feeCad?: number | null) => void }) {
   const [reference, setReference] = useState("");
+  const [fee, setFee] = useState("");
   const [withhold, setWithhold] = useState(true);
   const { c, kind } = a;
   const first = firstName(c.name);
@@ -628,8 +632,21 @@ function Confirm({ a, onCancel, onConfirm }: { a: Action; onCancel: () => void; 
             style={{ color: INK }}
           />
         </label>
+        {c.payoutMethod === "wise" && (
+          <label className="mt-3 block">
+            <span className="text-[13px] font-semibold" style={{ color: INK }}>Wise fee in CAD (optional, for your books)</span>
+            <input
+              value={fee}
+              onChange={(e) => setFee(e.target.value.replace(/[^0-9.]/g, ""))}
+              inputMode="decimal"
+              placeholder="1.75"
+              className="mt-1.5 w-full rounded-2xl bg-white px-4 py-3 text-[15px] ring-1 ring-[#16233B]/[0.1] outline-none focus:ring-2 focus:ring-[#6FA8FF]"
+              style={{ color: INK }}
+            />
+          </label>
+        )}
         {small(<>This issues {first}&apos;s statement and emails it to them. Only mark it once the money is sent.</>)}
-        <Buttons onCancel={onCancel} onOk={() => onConfirm(reference, true)} ok="Mark Paid" />
+        <Buttons onCancel={onCancel} onOk={() => onConfirm(reference, true, fee ? Number(fee) : null)} ok="Mark Paid" />
       </Sheet>
     );
   }

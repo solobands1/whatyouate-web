@@ -436,7 +436,7 @@ export function DashboardView({ d, preview = false }: { d: Dash; preview?: boole
           {
             big: "cal",
             title: "Paid Every Month",
-            body: `Your earnings land in the first week of each month by ${PAYOUT_LABEL[C.payoutMethod]}${cur === "CAD" ? ", in Canadian dollars" : ", in US dollars"}. Each payment covers the month before last, so refunds have time to clear: ${payNow.earned} earnings arrive in the first week of ${payNow.paid}. Anything under $10 rolls into your next payment.`,
+            body: `Your earnings land in the first week of each month by ${PAYOUT_LABEL[C.payoutMethod]}${cur === "CAD" ? ", in Canadian dollars" : C.country === "US" ? ", in US dollars" : ", earned in US dollars and deposited in your own currency"}. Each payment covers the month before last, so refunds have time to clear: ${payNow.earned} earnings arrive in the first week of ${payNow.paid}. Anything under $10 rolls into your next payment.`,
           },
         ].map((r) => (
           <div key={r.title} className="flex gap-4 px-5 py-4">

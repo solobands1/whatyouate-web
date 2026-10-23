@@ -110,7 +110,9 @@ export function PayoutFields({
       <p className="-mt-1 text-[14px] leading-[1.6]" style={{ color: BODY }}>
         {canada
           ? "You'll be paid in CAD by Interac e-Transfer."
-          : "You'll be paid in USD by bank deposit, sent through Wise. You don't need a Wise account."}
+          : country === "US"
+            ? "You'll be paid in USD by bank deposit, sent through Wise. You don't need a Wise account."
+            : "You'll earn in USD, and Wise deposits it in your own currency. You don't need a Wise account."}
       </p>
 
       {emailFields ?? (

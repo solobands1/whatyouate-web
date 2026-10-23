@@ -208,8 +208,39 @@ export const ownerUpdateCreator = (id: string, notes: string, posted: boolean) =
 export const ownerSetCreatorStatus = (id: string, status: "removed" | "active", withhold = true) =>
   rpc("owner_set_creator_status", { p_creator: id, p_status: status, p_withhold: withhold });
 export const ownerExport = () => rpc<OwnerPayoutRow[]>("owner_export");
-export const ownerSetPayout = (id: string, status: "paid" | "due" | "withheld", reference: string) =>
-  rpc<{ id: string; status: string }>("owner_set_payout", { p_payout: id, p_status: status, p_reference: reference });
+export const ownerSetPayout = (id: string, status: "paid" | "due" | "withheld", reference: string, feeCad?: number | null) =>
+  rpc<{ id: string; status: string }>("owner_set_payout", { p_payout: id, p_status: status, p_reference: reference, p_fee_cad: feeCad ?? null });
+
+export type OwnerReport = {
+  from: string | null;
+  to: string | null;
+  creatorsJoined: number;
+  creatorsActive: number;
+  codeUses: number;
+  signups: number;
+  newPaying: number;
+  earned: { currency: "CAD" | "USD"; amount: number }[];
+  creators: { name: string; code: string; currency: "CAD" | "USD"; country: Country; codeUses: number; signups: number; newPaying: number; earned: number; paid: number }[];
+  payouts: {
+    paidOn: string;
+    name: string;
+    code: string;
+    country: Country;
+    method: PayoutMethod;
+    payoutEmail: string;
+    amount: number;
+    currency: "CAD" | "USD";
+    reference: string;
+    usdCad: number | null;
+    feeCad: number | null;
+    coversBefore: string;
+  }[];
+  withheld: { name: string; amount: number; currency: "CAD" | "USD"; dueOn: string; reason: string }[];
+  owedNow: { currency: "CAD" | "USD"; amount: number }[];
+};
+/** The owner's report for [from, to) (dates as YYYY-MM-DD), or all time with no dates. */
+export const ownerReport = (from?: string | null, to?: string | null) =>
+  rpc<OwnerReport>("owner_report", from && to ? { p_from: from, p_to: to } : {});
 
 /** After a payout is marked paid: asks the app server to email the creator their statement now. */
 export async function sendPayoutEmail(payoutId: string) {
