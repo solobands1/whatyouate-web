@@ -7,20 +7,9 @@ import CreatorNav from "./CreatorNav";
 import Gate from "./Gate";
 import { redeemLink, type Dash } from "./api";
 import RedeemQr, { useDevice } from "./RedeemQr";
+import { downloadStatementCsv } from "./Statement";
 import { PAYOUT_LABEL, longDate, money } from "./shared";
 import { BODY, INK } from "../site";
-
-// Month-by-month earnings and payouts, for the creator's own records and taxes.
-function downloadStatement(cur: string, statement: Dash["statement"]) {
-  const head = ["Month", "Code uses", "Signups that count", "New paid subscribers", `Signup bonus (${cur})`, `Subscription earnings (${cur})`, `Total earned (${cur})`, `Paid (${cur})`, "Paid on"];
-  const rows = statement.map((r) => [r.month, r.codeUses, r.signups, r.newPaid, r.bonus.toFixed(2), r.commission.toFixed(2), (r.bonus + r.commission).toFixed(2), r.paid.toFixed(2), r.paidOn]);
-  const csv = [head, ...rows].map((r) => r.map((v) => `"${String(v).replace(/"/g, '""')}"`).join(",")).join("\n");
-  const a = document.createElement("a");
-  a.href = URL.createObjectURL(new Blob([csv], { type: "text/csv" }));
-  a.download = "whatyouate-creator-statement.csv";
-  a.click();
-  URL.revokeObjectURL(a.href);
-}
 
 function CopyButton({ text, label, small = false }: { text: string; label: string; small?: boolean }) {
   const [copied, setCopied] = useState(false);
@@ -379,14 +368,20 @@ export function DashboardView({ d, preview = false }: { d: Dash; preview?: boole
             Your first payout will show here after {S.nextPayout.date}.
           </p>
         )}
-        <button
-          type="button"
-          onClick={() => downloadStatement(cur, S.statement)}
-          className="mt-4 text-[14px] font-semibold"
-          style={{ color: "#2F6FC4" }}
-        >
-          Download Statement (CSV)
-        </button>
+        {preview ? (
+          <button
+            type="button"
+            onClick={() => downloadStatementCsv(cur, S.statement)}
+            className="mt-4 text-[14px] font-semibold"
+            style={{ color: "#2F6FC4" }}
+          >
+            Download Statement (CSV)
+          </button>
+        ) : (
+          <Link href="/creators/statement" className="mt-4 inline-block text-[14px] font-semibold" style={{ color: "#2F6FC4" }}>
+            View Your Statement
+          </Link>
+        )}
       </Card>
       </div>
 
