@@ -28,7 +28,7 @@ export function creatorShareMeta(path: string): Pick<Metadata, "openGraph" | "tw
 
 // The follower share page (whatyouate.app/c/CODE). The site is pre-built, so the preview can't name the
 // creator or the code; it sells the free month.
-const FOLLOWER_TITLE = "Get Your First Month of WhatYouAte Free";
+const FOLLOWER_TITLE = "Get Your First Month Of WhatYouAte Free";
 const FOLLOWER_DESCRIPTION =
   "A creator you follow sent you a free month of WhatYouAte Pro. See which foods give you energy and which ones drag you down.";
 

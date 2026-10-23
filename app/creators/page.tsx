@@ -15,7 +15,7 @@ export const metadata: Metadata = {
 
 const STEPS = [
   {
-    title: "Join and Pick Your Creator Code",
+    title: "Join And Pick Your Creator Code",
     body: "Sign up in a minute and choose a code your followers will remember, like your name or handle.",
   },
   {
@@ -126,11 +126,11 @@ function DashboardPreview() {
 
 const FOLLOWER_GETS = [
   {
-    title: "A Month of Pro, Free",
+    title: "A Month Of Pro, Free",
     body: "Everything in WhatYouAte Pro for their first month: the food and feeling connections, daily coaching and their full nutrition picture.",
   },
   {
-    title: "Easy to Claim",
+    title: "Easy To Claim",
     body: "They enter your code when they sign up, or from Profile in their first week. Your link shows them the code.",
   },
   {
@@ -196,7 +196,7 @@ export default function Creators() {
         <h1 className="mt-5 text-balance text-[clamp(34px,5.4vw,56px)] font-bold leading-[1.06] tracking-[-0.04em]">
           Share WhatYouAte
           <br />
-          Earn For a Full Year
+          Earn For A Full Year
         </h1>
         <p className="mt-6 text-[18px] leading-[1.7]" style={{ color: BODY }}>
           Earn 30% of every subscription you bring in for 12 months, plus $1 for every signup in your first month in the program.
@@ -298,7 +298,7 @@ export default function Creators() {
       <Reveal>
         <div className="mt-20 flex flex-col items-center gap-5 text-center">
           <h2 className="text-balance text-[clamp(24px,3.4vw,34px)] font-bold leading-[1.15] tracking-[-0.03em]">
-            Ready to Start?
+            Ready To Start?
           </h2>
           <PrimaryButton href="/creators/join">Join The Program</PrimaryButton>
           <p className="text-[14px]" style={{ color: INK }}>

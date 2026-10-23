@@ -44,7 +44,7 @@ function ProfileView({ C }: { C: Dash["creator"] }) {
   if (left) {
     return (
       <Card className="px-7 py-9 text-center">
-        <h2 className="text-[24px] font-bold tracking-[-0.03em]" style={{ color: INK }}>You&apos;ve Left the Program</h2>
+        <h2 className="text-[24px] font-bold tracking-[-0.03em]" style={{ color: INK }}>You&apos;ve Left The Program</h2>
         <p className="mt-3 text-[16px] leading-[1.65]" style={{ color: BODY }}>
           Your code no longer works for new signups. You&apos;ll keep earning from the subscribers you already brought
           in until each one&apos;s 12 months are up, paid on the regular dates. Thanks for sharing WhatYouAte.
@@ -112,7 +112,7 @@ function ProfileView({ C }: { C: Dash["creator"] }) {
           emailFields={
             <div className="flex flex-col gap-4">
               <Field
-                label={country === "CA" ? "e-Transfer Email" : "Email for Your Bank Deposit"}
+                label={country === "CA" ? "e-Transfer Email" : "Email For Your Bank Deposit"}
                 hint={country === "CA" ? "Where your e-Transfers are sent." : "Wise emails you a secure link to add your bank details."}
               >
                 <input
@@ -164,7 +164,7 @@ function ProfileView({ C }: { C: Dash["creator"] }) {
 
       {/* Leaving */}
       <Card className="mt-14 px-6 py-6">
-        <h2 className="text-[17px] font-bold tracking-[-0.02em]" style={{ color: INK }}>Leave the Program</h2>
+        <h2 className="text-[17px] font-bold tracking-[-0.02em]" style={{ color: INK }}>Leave The Program</h2>
         {!leaving ? (
           <>
             <p className="mt-2 text-[14.5px] leading-[1.6]" style={{ color: BODY }}>

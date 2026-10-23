@@ -20,7 +20,7 @@ export default function BackToExample() {
       <svg viewBox="0 0 16 16" className="h-3.5 w-3.5" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
         <path d="M10 12L6 8l4-4" />
       </svg>
-      Back to Example Dashboard
+      Back To Example Dashboard
     </Link>
   );
 }

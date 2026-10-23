@@ -76,8 +76,8 @@ export default function EarnTable() {
       <Card className="mt-3 divide-y divide-[#16233B]/[0.06]">
         <Row label="Each Yearly Subscriber" value={a.yearly} />
         <Row label="Each Monthly Subscriber" value={a.monthly} sub="a month, up to a year" />
-        <Row label="Each Signup in Your First Month" value="$1" />
-        <Row label="WhatYouAte Pro for You" value="Free" sub="up to a year" />
+        <Row label="Each Signup In Your First Month" value="$1" />
+        <Row label="WhatYouAte Pro For You" value="Free" sub="up to a year" />
       </Card>
       <p className="mt-3 text-[13px] leading-[1.6]" style={{ color: "#8FA3C0" }}>
         {`Estimates in ${cur === "CAD" ? "Canadian" : "US"} dollars, based on current prices. You earn 30% of each subscription for its first 12 months, after Apple's fee. Creators in Canada earn and are paid in Canadian dollars, and everyone else in US dollars.`}

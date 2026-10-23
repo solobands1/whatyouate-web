@@ -331,7 +331,7 @@ export function DashboardView({ d, preview = false }: { d: Dash; preview?: boole
       </div>
 
       {/* Weekly */}
-      <SectionTitle>Code Uses by Week</SectionTitle>
+      <SectionTitle>Code Uses By Week</SectionTitle>
       <Card className="px-5 pb-4 pt-5">
         <WeeklyChart weekly={S.weekly} />
         <p className="mt-3 text-[12px]" style={{ color: "#8FA3C0" }}>
@@ -427,7 +427,7 @@ export function DashboardView({ d, preview = false }: { d: Dash; preview?: boole
           },
           {
             big: "$1",
-            title: "A Head Start: $1 for Every New User",
+            title: "A Head Start: $1 For Every New User",
             body: bonusActive
               ? `For your first month, until ${longDate(C.bonusEnds)}, everyone who tries the app with your code earns you $1 ${cur}, even if they never subscribe. They just need to use it on 3 different days in their first week.`
               : `Your first-month bonus ended on ${longDate(C.bonusEnds)}. You still earn 30% of every subscription.`,

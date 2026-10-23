@@ -11,9 +11,9 @@ import { APP_STORE_URL, BODY, INK } from "../site";
 
 const KIT = "/creators/kit";
 const VIDEOS = [
-  { slug: "log-a-meal", title: "Log a Meal in Seconds", note: "14 seconds" },
+  { slug: "log-a-meal", title: "Log A Meal In Seconds", note: "14 seconds" },
   { slug: "patterns", title: "What's Behind Your Low-Energy Days?", note: "15 seconds" },
-  { slug: "nightly-check-in", title: "One Minute a Night", note: "15 seconds" },
+  { slug: "nightly-check-in", title: "One Minute A Night", note: "15 seconds" },
 ];
 const BRAND = [
   { file: "whatyouate-logo.png", label: "Logo", note: "Icon and name" },
@@ -117,7 +117,7 @@ function KitView({ C }: { C: Dash["creator"] }) {
       </p>
 
       {/* Printable card */}
-      <H2 sub="For clients, friends and anyone you see in person. They point their iPhone camera at the QR code and it opens your page.">Share in Person</H2>
+      <H2 sub="For clients, friends and anyone you see in person. They point their iPhone camera at the QR code and it opens your page.">Share In Person</H2>
       <CodeCard code={C.code} />
 
       {/* Captions */}
@@ -146,7 +146,7 @@ function KitView({ C }: { C: Dash["creator"] }) {
       </Card>
 
       {/* Talking points */}
-      <H2>What to Say</H2>
+      <H2>What To Say</H2>
       <div className="grid gap-3 sm:grid-cols-2">
         <Card className="px-6 py-5">
           <p className="text-[14px] font-bold" style={{ color: "#15803D" }}>Say</p>
@@ -169,7 +169,7 @@ function KitView({ C }: { C: Dash["creator"] }) {
       </div>
 
       {/* Disclosure */}
-      <H2 sub="Required on every post, video and story that mentions WhatYouAte.">Label It as Sponsored</H2>
+      <H2 sub="Required on every post, video and story that mentions WhatYouAte.">Label It As Sponsored</H2>
       <Card className="divide-y divide-[#16233B]/[0.06]">
         <div className="px-6 py-4">
           <p className="text-[15.5px] font-semibold" style={{ color: INK }}>Instagram</p>
@@ -180,7 +180,7 @@ function KitView({ C }: { C: Dash["creator"] }) {
           <p className="mt-1 text-[14px] leading-[1.55]" style={{ color: BODY }}>Turn on Disclose post content and choose Branded content, or add #ad to your caption.</p>
         </div>
         <div className="px-6 py-4">
-          <p className="text-[15.5px] font-semibold" style={{ color: INK }}>In Person or by Message</p>
+          <p className="text-[15.5px] font-semibold" style={{ color: INK }}>In Person Or By Message</p>
           <p className="mt-1 text-[14px] leading-[1.55]" style={{ color: BODY }}>Sharing with clients, friends or in a newsletter? Just mention that you earn a commission if they subscribe.</p>
         </div>
       </Card>
@@ -210,7 +210,7 @@ function KitView({ C }: { C: Dash["creator"] }) {
               <p className="text-[15px] font-semibold leading-[1.35]" style={{ color: INK }}>{v.title}</p>
               <p className="mt-0.5 text-[13px]" style={{ color: BODY }}>{v.note}</p>
               <div className="mt-2 flex flex-wrap gap-x-4 gap-y-1 text-[13.5px] font-semibold">
-                <a href={`${KIT}/videos/whatyouate-${v.slug}.mp4`} download style={{ color: "#2F6FC4" }}>Ready to Post</a>
+                <a href={`${KIT}/videos/whatyouate-${v.slug}.mp4`} download style={{ color: "#2F6FC4" }}>Ready To Post</a>
                 <a href={`${KIT}/videos/screen-${v.slug}.mp4`} download style={{ color: "#2F6FC4" }}>Screen Only</a>
               </div>
             </div>
@@ -218,7 +218,7 @@ function KitView({ C }: { C: Dash["creator"] }) {
         ))}
       </Card>
       <p className="mt-2.5 text-[13px] leading-[1.55]" style={{ color: BODY }}>
-        Ready to Post has a headline and our logo at the end. Screen Only is just the app, to use in your own video.
+        Ready To Post has a headline and our logo at the end. Screen Only is just the app, to use in your own video.
       </p>
 
       {/* Logo */}

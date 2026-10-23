@@ -78,7 +78,7 @@ export default function ExampleDashboard() {
         <svg viewBox="0 0 16 16" className="h-3.5 w-3.5" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
           <path d="M10 12L6 8l4-4" />
         </svg>
-        Back to Creators
+        Back To Creators
       </Link>
       <div
         className="mb-2 flex items-center justify-between gap-3 rounded-2xl bg-white/80 py-2 pl-4 pr-2 ring-1 ring-[#16233B]/[0.06]"

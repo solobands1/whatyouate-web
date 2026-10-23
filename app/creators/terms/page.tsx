@@ -37,7 +37,7 @@ export default function CreatorTerms() {
         <p>You must be 18 or older and able to receive payments by Interac e-Transfer (in Canada) or bank deposit (sent through Wise, everywhere else). There is no follower minimum. We may decline or remove anyone who doesn&apos;t follow these terms.</p>
       </S>
 
-      <S n={2} title="Your Creator Code and Link">
+      <S n={2} title="Your Creator Code And Link">
         <p>You choose a code of 3 to 15 letters or numbers. Codes are first come, first served, and we may refuse codes that are reserved, misleading or offensive. You can change your code at any time. Your previous codes keep working and stay linked to you.</p>
         <p>Anyone who enters your code in the app as they sign up gets their first month of WhatYouAte Pro free when they start a monthly subscription. After the free month, the subscription renews at the regular price unless they cancel. The free month is for new accounts, and Apple allows one free trial per person. Your link shows them your code and takes them to the App Store.</p>
       </S>
@@ -73,7 +73,7 @@ export default function CreatorTerms() {
         <p>Your dashboard shows totals only. We never share the identity of anyone who used your code. We use your details to run the program and pay you, as described in our <a href="/privacy" className="font-semibold underline underline-offset-2" style={{ color: INK }}>privacy policy</a>.</p>
       </S>
 
-      <S n={9} title="Changes and Leaving">
+      <S n={9} title="Changes And Leaving">
         <p>You can leave the program at any time from your profile. When you leave, your code stops working for new signups, but you keep earning 30% from the subscribers you&apos;ve already referred until each one&apos;s 12 months are up. Payments continue on the regular dates, and the $10 minimum no longer applies, so even small amounts are paid. If you&apos;re removed for breaking these terms, unpaid earnings may be withheld.</p>
         <p>We may change these terms or end the program with 30 days&apos; notice by email. If we end it, the same payout rules apply.</p>
         <p>You take part as an independent creator, not as an employee or agent of Integrity Stack Inc. These terms are governed by the laws of Ontario, Canada.</p>

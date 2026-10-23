@@ -115,7 +115,7 @@ export function PayoutFields({
 
       {emailFields ?? (
         <Field
-          label={canada ? "e-Transfer Email" : "Email for Your Bank Deposit"}
+          label={canada ? "e-Transfer Email" : "Email For Your Bank Deposit"}
           error={error}
           hint={canada ? "Where your e-Transfers are sent." : "Wise emails you a secure link to add your bank details."}
         >
@@ -353,7 +353,7 @@ export default function JoinForm() {
             {!sameEmail && (
               <>
                 <Field
-                  label={country === "CA" ? "e-Transfer Email" : "Email for Your Bank Deposit"}
+                  label={country === "CA" ? "e-Transfer Email" : "Email For Your Bank Deposit"}
                   error={err("payout")}
                   hint={country === "CA" ? "Where your e-Transfers are sent." : "Wise emails you a secure link to add your bank details."}
                 >
