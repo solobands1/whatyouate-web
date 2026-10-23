@@ -391,14 +391,31 @@ function ToSend({ due, usdCad }: { due: OwnerCreator[]; usdCad: { value: number;
               {m === "wise" &&
                 (load ? (
                   <div className="mt-1.5 text-[13.5px] leading-[1.5]" style={{ color: INK }}>
-                    <p>
-                      Load about <span className="font-bold">{money(Math.ceil(load.viaUsd.total), "CAD")}</span> into Wise, convert it to USD once, then pay each
-                      creator from your USD balance
-                      <span style={{ color: BODY }}> (about {money(load.viaUsd.fees, "CAD")} in fees).</span>
-                    </p>
-                    <p className="mt-1" style={{ color: BODY }}>
-                      Paying each one straight from CAD instead: about {money(Math.ceil(load.direct.total), "CAD")} ({money(load.direct.fees, "CAD")} in fees).
-                    </p>
+                    {/* Converting once is cheaper for payouts under about $370 USD each; above that, sending
+                        straight from CAD wins. Lead with whichever costs less this time. */}
+                    {load.viaUsd.total <= load.direct.total ? (
+                      <>
+                        <p>
+                          Load about <span className="font-bold">{money(Math.ceil(load.viaUsd.total), "CAD")}</span> into Wise, convert it to USD once, then pay
+                          each creator from your USD balance
+                          <span style={{ color: BODY }}> (about {money(load.viaUsd.fees, "CAD")} in fees).</span>
+                        </p>
+                        <p className="mt-1" style={{ color: BODY }}>
+                          Paying each one straight from CAD instead: about {money(Math.ceil(load.direct.total), "CAD")} ({money(load.direct.fees, "CAD")} in fees).
+                        </p>
+                      </>
+                    ) : (
+                      <>
+                        <p>
+                          Load about <span className="font-bold">{money(Math.ceil(load.direct.total), "CAD")}</span> into Wise and pay each creator straight from
+                          your CAD balance
+                          <span style={{ color: BODY }}> (about {money(load.direct.fees, "CAD")} in fees).</span>
+                        </p>
+                        <p className="mt-1" style={{ color: BODY }}>
+                          Converting to USD first instead: about {money(Math.ceil(load.viaUsd.total), "CAD")} ({money(load.viaUsd.fees, "CAD")} in fees).
+                        </p>
+                      </>
+                    )}
                     <p className="mt-1 text-[12.5px]" style={{ color: FAINT }}>
                       At today&apos;s Bank of Canada rate of {usdCad!.value.toFixed(4)}. Wise shows the exact amount when you send.
                     </p>
