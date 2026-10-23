@@ -377,14 +377,16 @@ function ToSend({ due, usdCad }: { due: OwnerCreator[]; usdCad: { value: number;
     );
   }
   const by = (m: OwnerCreator["payoutMethod"]) => due.filter((c) => c.payoutMethod === m);
-  const groups = (["etransfer", "wise", "paypal"] as const).map((m) => ({ m, rows: by(m) })).filter((g) => g.rows.length);
+  // Interac and Wise always show, even at $0.00, so an empty side is clearly empty. (PayPal only if
+  // an older creator still has it.)
+  const groups = (["etransfer", "wise", "paypal"] as const).map((m) => ({ m, rows: by(m) })).filter((g) => g.m !== "paypal" || g.rows.length);
   return (
     <div className="mt-6 rounded-2xl px-5 py-4 ring-1" style={{ background: "#EEF5FE", ["--tw-ring-color" as string]: "#B9D4FA" }}>
       <p className="text-[12px] font-semibold uppercase tracking-[0.12em]" style={{ color: "#2F6FC4" }}>To Send Now</p>
       <div className={`mt-2 grid gap-4 ${groups.length > 1 ? "sm:grid-cols-2" : ""}`}>
         {groups.map(({ m, rows }) => {
           const n = `${rows.length} creator${rows.length === 1 ? "" : "s"}`;
-          const sums = byCurrency(rows, (c) => c.payout?.amount ?? 0, true).join(" + ");
+          const sums = rows.length ? byCurrency(rows, (c) => c.payout?.amount ?? 0, true).join(" + ") : money(0, m === "etransfer" ? "CAD" : "USD");
           const usd = rows.filter((c) => c.currency === "USD").map((c) => c.payout?.amount ?? 0);
           const load = m === "wise" && usdCad && usd.length ? wiseLoad(usd, usdCad.value) : null;
           return (
@@ -392,10 +394,16 @@ function ToSend({ due, usdCad }: { due: OwnerCreator[]; usdCad: { value: number;
               <p className="text-[13px] font-semibold" style={{ color: BODY }}>{m === "etransfer" ? "Interac e-Transfer" : m === "wise" ? "Wise" : PAYOUT_LABEL[m]}</p>
               <p className="text-[20px] font-bold tracking-[-0.02em] tabular-nums" style={{ color: INK }}>{sums}</p>
               <p className="text-[13px]" style={{ color: BODY }}>
-                to {n}
-                {m === "etransfer" && ", from your bank account"}
+                {rows.length ? (
+                  <>
+                    to {n}
+                    {m === "etransfer" && ", from your bank account"}
+                  </>
+                ) : (
+                  `Nothing to send by ${m === "etransfer" ? "Interac" : m === "wise" ? "Wise" : PAYOUT_LABEL[m]} this time`
+                )}
               </p>
-              {m === "wise" &&
+              {m === "wise" && rows.length > 0 &&
                 (load ? (
                   <div className="mt-1.5 text-[13.5px] leading-[1.5]" style={{ color: INK }}>
                     {/* Converting once is cheaper for payouts under about $370 USD each; above that, sending
