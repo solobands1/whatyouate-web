@@ -98,10 +98,14 @@ export default function Owner() {
     load(m);
   };
 
+  // Work to do first: due payouts, then withheld ones, then creators with no payout, then paid ones.
+  // Within each group, the most owed first.
   const rows = useMemo(() => {
     const q = query.trim().toLowerCase();
     const all = data?.creators ?? [];
-    return q ? all.filter((c) => [c.name, c.email, c.code, c.payoutEmail, c.notes].some((v) => v.toLowerCase().includes(q))) : all;
+    const found = q ? all.filter((c) => [c.name, c.email, c.code, c.payoutEmail, c.notes].some((v) => v.toLowerCase().includes(q))) : all;
+    const rank = (c: OwnerCreator) => (!c.payout ? 2 : { due: 0, withheld: 1, paid: 3 }[c.payout.status]);
+    return [...found].sort((a, b) => rank(a) - rank(b) || b.owed - a.owed || a.name.localeCompare(b.name));
   }, [data, query]);
 
   if (state === "loading") return <p className="py-24 text-center text-[15px]" style={{ color: BODY }}>Loading…</p>;
