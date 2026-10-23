@@ -43,7 +43,7 @@ const FAQ = [
   },
   {
     q: "When do I get paid?",
-    a: "Once a month. Each month's earnings are paid out at the start of the month after next, once any refunds have cleared. October's earnings are paid on December 1.",
+    a: "Once a month. Each month's earnings are paid out in the first week of the month after next, once any refunds have cleared. October's earnings are paid in the first week of December, with a statement in your dashboard.",
   },
   {
     q: "How do I get paid?",

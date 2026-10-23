@@ -12,7 +12,7 @@ export const CREATOR_EMAIL = "contact@whatyouate.app";
  * kit, profile) leave out the public site: the logo goes to the dashboard, the menu only has Support
  * and Log Out, and the footer only the creator terms and privacy policy.
  */
-export default function Shell({ children, narrow = false, wide = false, signedIn = false }: { children: React.ReactNode; narrow?: boolean; wide?: boolean; signedIn?: boolean }) {
+export default function Shell({ children, narrow = false, wide = false, full = false, signedIn = false }: { children: React.ReactNode; narrow?: boolean; wide?: boolean; full?: boolean; signedIn?: boolean }) {
   return (
     <div className="min-h-screen overflow-x-clip">
       <header className="absolute inset-x-0 top-0 z-30 print:hidden">
@@ -26,7 +26,7 @@ export default function Shell({ children, narrow = false, wide = false, signedIn
 
       {/* Signed-in pages open on the tab row rather than a page title, so they sit closer to the header. */}
       <main className={`px-6 print:px-0 print:pt-0 ${signedIn ? "pt-24 sm:pt-28" : "pt-28 sm:pt-36"}`}>
-        <div className={`mx-auto ${narrow ? "max-w-[30rem]" : wide ? "max-w-[54rem] print:max-w-none" : "max-w-[44rem]"}`}>{children}</div>
+        <div className={`mx-auto ${narrow ? "max-w-[30rem]" : full ? "max-w-[65rem]" : wide ? "max-w-[54rem] print:max-w-none" : "max-w-[44rem]"}`}>{children}</div>
       </main>
 
       {/* The footer carries its own fade into the deep blue, so the white text stays readable even on

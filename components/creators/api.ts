@@ -49,6 +49,48 @@ export type Dash = {
   weekly: { week: string; uses: number }[];
 };
 
+/** One statement, frozen when its payout was marked paid (creator_statement_snapshot in creators.sql). */
+export type IssuedStatement = {
+  payout: { id: string; amount: number; currency: "CAD" | "USD"; paidOn: string; reference: string; method: PayoutMethod; payoutEmail: string };
+  period: { from: string; to: string };
+  creator: {
+    name: string;
+    email: string;
+    instagram: string;
+    tiktok: string;
+    country: Country;
+    currency: "CAD" | "USD";
+    payoutMethod: PayoutMethod;
+    payoutEmail: string;
+    code: string;
+    joined: string;
+  };
+  months: { month: string; codeUses: number; signups: number; newPaid: number; bonus: number; commission: number }[];
+  allTime: { earned: number; paidOut: number };
+};
+
+export type OwnerCreator = {
+  id: string;
+  name: string;
+  email: string;
+  code: string;
+  country: Country;
+  currency: "CAD" | "USD";
+  status: "active" | "left" | "removed";
+  instagram: string;
+  tiktok: string;
+  payoutMethod: PayoutMethod;
+  payoutEmail: string;
+  joined: string;
+  codeUses: number;
+  signups: number;
+  paying: number;
+  earned: number;
+  paidOut: number;
+  payout: { id: string; amount: number; status: "due" | "paid" | "withheld"; dueOn: string; paidOn: string | null; reference: string } | null;
+};
+export type OwnerOverview = { creators: OwnerCreator[]; proCodes: { threeMonths: number; year: number } };
+
 export function redeemLink(code: string) {
   return `https://apps.apple.com/redeem?ctx=offercodes&id=${APPLE_APP_ID}&code=${encodeURIComponent(code)}`;
 }
@@ -65,6 +107,8 @@ const MESSAGES: Record<string, string> = {
   country_locked: `You can't change your country once you've earned something, because earnings are kept in your currency. Email us and we'll sort it out.`,
   not_a_creator: "Your creator account isn't active.",
   not_signed_in: "Your session ended. Log in again.",
+  not_owner: "This page is only for the program's owners.",
+  already_paid: "That payout is already marked paid.",
   no_account: "We couldn't find a creator account with that email.",
   bad_code: "That code didn't work. Check the email and try again, or send a new one.",
   rate_limited: "Too many tries. Wait a minute and try again.",
@@ -121,6 +165,25 @@ export const publicName = (code: string) => rpc<string | null>("creator_public_n
 export const loadDashboard = () => rpc<Dash | null>("creator_dashboard");
 export const leaveProgram = () => rpc<null>("creator_leave");
 export const changeCode = (code: string) => rpc("creator_change_code", { p_code: code });
+export const loadStatements = () => rpc<IssuedStatement[]>("creator_statements");
+
+// ---- Owner -------------------------------------------------------------------------------
+
+export const isOwner = () => rpc<boolean>("creator_is_owner").catch(() => false);
+export const ownerOverview = () => rpc<OwnerOverview>("owner_overview");
+export const ownerSetPayout = (id: string, status: "paid" | "due" | "withheld", reference: string) =>
+  rpc<{ id: string; status: string }>("owner_set_payout", { p_payout: id, p_status: status, p_reference: reference });
+
+/** After a payout is marked paid: asks the app server to email the creator their statement now. */
+export async function sendPayoutEmail(payoutId: string) {
+  const { data } = await sb().auth.getSession();
+  const res = await fetch("https://whatyouate.vercel.app/api/creators/payout-paid", {
+    method: "POST",
+    headers: { Authorization: `Bearer ${data.session?.access_token ?? ""}`, "Content-Type": "application/json" },
+    body: JSON.stringify({ payoutId }),
+  }).catch(() => null);
+  return !!res?.ok;
+}
 
 export type ProfileFields = {
   name: string;

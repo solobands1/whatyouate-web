@@ -4,7 +4,7 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { Field, PrimaryButton, SecondaryButton, inputClass } from "./Shell";
 import CodeStep from "./CodeStep";
-import { errorText, sendSignInCode } from "./api";
+import { errorText, isOwner, sendSignInCode } from "./api";
 
 export default function LoginForm() {
   const router = useRouter();
@@ -19,10 +19,12 @@ export default function LoginForm() {
       <CodeStep
         email={email.trim().toLowerCase()}
         create={false}
-        onVerified={() => {
-          // Back to the signed-in page they were sent here from (say, the statement link in an email).
+        onVerified={async () => {
+          // Back to the signed-in page they were sent here from (say, the statement link in an email);
+          // otherwise owners go to the owner page and creators to their dashboard.
           const next = new URLSearchParams(window.location.search).get("next") ?? "";
-          router.push(/^\/creators\/(dashboard|kit|profile|statement)\b/.test(next) ? next : "/creators/dashboard");
+          if (/^\/creators\/(dashboard|kit|profile|statements?|owner)\b/.test(next)) router.push(next);
+          else router.push((await isOwner()) ? "/creators/owner" : "/creators/dashboard");
         }}
         onBack={() => setSent(false)}
       />

@@ -1,16 +1,9 @@
 import type { Metadata } from "next";
-import Shell from "../../../components/creators/Shell";
-import Statement from "../../../components/creators/Statement";
+import Redirect from "../../../components/creators/Redirect";
 
-export const metadata: Metadata = {
-  title: "Statement | WhatYouAte Creators",
-  robots: { index: false },
-};
+// The old single live statement; statements are now issued per payout at /creators/statements.
+export const metadata: Metadata = { title: "Statements | WhatYouAte Creators", robots: { index: false } };
 
-export default function StatementPage() {
-  return (
-    <Shell signedIn wide>
-      <Statement />
-    </Shell>
-  );
+export default function OldStatement() {
+  return <Redirect to="/creators/statements" />;
 }

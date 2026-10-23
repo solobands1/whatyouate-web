@@ -7,7 +7,6 @@ import CreatorNav from "./CreatorNav";
 import Gate from "./Gate";
 import { redeemLink, type Dash } from "./api";
 import RedeemQr, { useDevice } from "./RedeemQr";
-import { downloadStatementSheet } from "./Statement";
 import { PAYOUT_LABEL, longDate, money } from "./shared";
 import { BODY, INK } from "../site";
 
@@ -161,6 +160,8 @@ export function DashboardView({ d, preview = false }: { d: Dash; preview?: boole
     const now = new Date(); const m = (k: number) => new Date(now.getFullYear(), now.getMonth() + k, 1).toLocaleDateString("en-CA", { month: "long" });
     return { earned: `${m(-1)}'s`, paid: m(1) };
   })();
+  // Payouts go out in the first week of the month: "November 1" becomes "the first week of November".
+  const payWeek = `the first week of ${S.nextPayout.date.replace(/\s+\d+$/, "")}`;
   const cur = C.currency;
   const link = `whatyouate.app/c/${C.code}`;
   const first = C.name.split(" ")[0];
@@ -285,7 +286,7 @@ export function DashboardView({ d, preview = false }: { d: Dash; preview?: boole
       <Card className="px-6 py-5">
         {S.nextPayout.estimate > 0 ? (
           <>
-            <p className="text-[14px] font-medium" style={{ color: BODY }}>{S.nextPayout.date}</p>
+            <p className="text-[14px] font-medium first-letter:uppercase" style={{ color: BODY }}>{payWeek}</p>
             <p className="mt-1 text-[28px] font-bold tracking-[-0.03em]" style={{ color: INK }}>
               about {money(S.nextPayout.estimate, cur).replace(` ${cur}`, "")}{" "}
               <span className="ml-1.5 text-[14px] font-medium" style={{ color: BODY }}>{cur}</span>
@@ -298,7 +299,7 @@ export function DashboardView({ d, preview = false }: { d: Dash; preview?: boole
           <>
             <p className="text-[20px] font-bold tracking-[-0.02em]" style={{ color: INK }}>No Payout Yet</p>
             <p className="mt-1.5 text-[14px] leading-[1.55]" style={{ color: BODY }}>
-              Payouts go out on the 1st of each month, once you&apos;ve earned $10. {payoutTo(C)}
+              Payouts go out in the first week of each month, once you&apos;ve earned $10. {payoutTo(C)}
             </p>
           </>
         )}
@@ -365,21 +366,12 @@ export function DashboardView({ d, preview = false }: { d: Dash; preview?: boole
           </div>
         ) : (
           <p className="text-[14.5px] leading-[1.55]" style={{ color: BODY }}>
-            Your first payout will show here after {S.nextPayout.date}.
+            Your first payout will show here after {payWeek}.
           </p>
         )}
-        {preview ? (
-          <button
-            type="button"
-            onClick={() => downloadStatementSheet(d)}
-            className="mt-4 text-[14px] font-semibold"
-            style={{ color: "#2F6FC4" }}
-          >
-            Download Statement
-          </button>
-        ) : (
-          <Link href="/creators/statement" className="mt-4 inline-block text-[14px] font-semibold" style={{ color: "#2F6FC4" }}>
-            View Your Statement
+        {!preview && (
+          <Link href="/creators/statements" className="mt-4 inline-block text-[14px] font-semibold" style={{ color: "#2F6FC4" }}>
+            View Your Statements
           </Link>
         )}
       </Card>
@@ -444,7 +436,7 @@ export function DashboardView({ d, preview = false }: { d: Dash; preview?: boole
           {
             big: "cal",
             title: "Paid Every Month",
-            body: `Your earnings land on the 1st of each month by ${PAYOUT_LABEL[C.payoutMethod]}${cur === "CAD" ? ", in Canadian dollars" : ", in US dollars"}. Each payment covers the month before last, so refunds have time to clear: ${payNow.earned} earnings arrive ${payNow.paid} 1. Anything under $10 rolls into your next payment.`,
+            body: `Your earnings land in the first week of each month by ${PAYOUT_LABEL[C.payoutMethod]}${cur === "CAD" ? ", in Canadian dollars" : ", in US dollars"}. Each payment covers the month before last, so refunds have time to clear: ${payNow.earned} earnings arrive in the first week of ${payNow.paid}. Anything under $10 rolls into your next payment.`,
           },
         ].map((r) => (
           <div key={r.title} className="flex gap-4 px-5 py-4">
