@@ -7,7 +7,7 @@ import CreatorNav from "./CreatorNav";
 import Gate from "./Gate";
 import { redeemLink, type Dash } from "./api";
 import RedeemQr, { useDevice } from "./RedeemQr";
-import { downloadStatementCsv } from "./Statement";
+import { downloadStatementSheet } from "./Statement";
 import { PAYOUT_LABEL, longDate, money } from "./shared";
 import { BODY, INK } from "../site";
 
@@ -371,11 +371,11 @@ export function DashboardView({ d, preview = false }: { d: Dash; preview?: boole
         {preview ? (
           <button
             type="button"
-            onClick={() => downloadStatementCsv(cur, S.statement)}
+            onClick={() => downloadStatementSheet(d)}
             className="mt-4 text-[14px] font-semibold"
             style={{ color: "#2F6FC4" }}
           >
-            Download Statement (CSV)
+            Download Statement
           </button>
         ) : (
           <Link href="/creators/statement" className="mt-4 inline-block text-[14px] font-semibold" style={{ color: "#2F6FC4" }}>
