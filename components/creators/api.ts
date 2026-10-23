@@ -87,9 +87,35 @@ export type OwnerCreator = {
   paying: number;
   earned: number;
   paidOut: number;
-  payout: { id: string; amount: number; status: "due" | "paid" | "withheld"; dueOn: string; paidOn: string | null; reference: string } | null;
+  /** All time, whatever month is shown. */
+  owed: number;
+  notes: string;
+  posted: boolean;
+  payout: { id: string; amount: number; status: "due" | "paid" | "withheld"; dueOn: string; paidOn: string | null; reference: string; returned: boolean } | null;
 };
-export type OwnerOverview = { creators: OwnerCreator[]; proCodes: { threeMonths: number; year: number } };
+export type OwnerOverview = {
+  /** "2026-11", or null for all time. */
+  month: string | null;
+  months: string[];
+  creators: OwnerCreator[];
+  proCodes: { threeMonths: number; year: number };
+};
+export type OwnerPayoutRow = {
+  name: string;
+  email: string;
+  code: string;
+  country: Country;
+  payoutMethod: PayoutMethod;
+  payoutEmail: string;
+  dueOn: string;
+  coversBefore: string;
+  amount: number;
+  currency: "CAD" | "USD";
+  status: "due" | "paid" | "withheld";
+  paidOn: string | null;
+  reference: string;
+  returned: boolean;
+};
 
 export function redeemLink(code: string) {
   return `https://apps.apple.com/redeem?ctx=offercodes&id=${APPLE_APP_ID}&code=${encodeURIComponent(code)}`;
@@ -109,6 +135,8 @@ const MESSAGES: Record<string, string> = {
   not_signed_in: "Your session ended. Log in again.",
   not_owner: "This page is only for the program's owners.",
   already_paid: "That payout is already marked paid.",
+  not_paid: "Only a paid payout can be marked returned.",
+  not_removed: "Only a removed creator can be restored.",
   no_account: "We couldn't find a creator account with that email.",
   bad_code: "That code didn't work. Check the email and try again, or send a new one.",
   rate_limited: "Too many tries. Wait a minute and try again.",
@@ -170,7 +198,13 @@ export const loadStatements = () => rpc<IssuedStatement[]>("creator_statements")
 // ---- Owner -------------------------------------------------------------------------------
 
 export const isOwner = () => rpc<boolean>("creator_is_owner").catch(() => false);
-export const ownerOverview = () => rpc<OwnerOverview>("owner_overview");
+export const ownerOverview = (month?: string | null) => rpc<OwnerOverview>("owner_overview", month ? { p_month: `${month}-01` } : {});
+export const ownerReopenPayout = (id: string) => rpc("owner_reopen_payout", { p_payout: id });
+export const ownerUpdateCreator = (id: string, notes: string, posted: boolean) =>
+  rpc("owner_update_creator", { p_creator: id, p_notes: notes, p_posted: posted });
+export const ownerSetCreatorStatus = (id: string, status: "removed" | "active", withhold = true) =>
+  rpc("owner_set_creator_status", { p_creator: id, p_status: status, p_withhold: withhold });
+export const ownerExport = () => rpc<OwnerPayoutRow[]>("owner_export");
 export const ownerSetPayout = (id: string, status: "paid" | "due" | "withheld", reference: string) =>
   rpc<{ id: string; status: string }>("owner_set_payout", { p_payout: id, p_status: status, p_reference: reference });
 
