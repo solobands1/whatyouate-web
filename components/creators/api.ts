@@ -89,9 +89,11 @@ export type OwnerCreator = {
   paidOut: number;
   /** All time, whatever month is shown. */
   owed: number;
+  /** Earned before the latest payout cutoff but under $10, so carried into the next payout. */
+  rolledOver: number;
   notes: string;
   posted: boolean;
-  payout: { id: string; amount: number; status: "due" | "paid" | "withheld"; dueOn: string; paidOn: string | null; reference: string; returned: boolean } | null;
+  payout: { id: string; amount: number; status: "due" | "paid" | "withheld"; dueOn: string; paidOn: string | null; reference: string; returned: boolean; holdReason: string } | null;
 };
 export type OwnerOverview = {
   /** "2026-11", or null for all time. */
@@ -115,6 +117,7 @@ export type OwnerPayoutRow = {
   paidOn: string | null;
   reference: string;
   returned: boolean;
+  holdReason: string;
 };
 
 export function redeemLink(code: string) {

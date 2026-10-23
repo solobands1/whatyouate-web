@@ -47,6 +47,36 @@ const pillSelect = (color: string, inset: number) => ({
   backgroundSize: "12px 12px",
 });
 
+// Wise's pricing for sending CAD to a USD account, worked out from two real transfers (October 2026:
+// $10 CAD cost $2.38, $100 CAD cost $3.10): a fixed fee per transfer plus a percentage. Wise converts
+// at about the Bank of Canada's daily rate. Update these if Wise's prices change.
+const WISE_FIXED_CAD = 2.3;
+const WISE_PERCENT = 0.008;
+
+/** Today's Bank of Canada rate: Canadian dollars per US dollar (null if it can't be fetched). */
+function useUsdCad() {
+  const [rate, setRate] = useState<{ value: number; date: string } | null>(null);
+  useEffect(() => {
+    fetch("https://www.bankofcanada.ca/valet/observations/FXUSDCAD/json?recent=1")
+      .then((r) => r.json())
+      .then((d) => {
+        const o = d?.observations?.[d.observations.length - 1];
+        const v = Number(o?.FXUSDCAD?.v);
+        if (v > 0) setRate({ value: v, date: o.d });
+      })
+      .catch(() => {});
+  }, []);
+  return rate;
+}
+
+/** CAD to load into Wise so each payout arrives in full: one transfer per creator, fees rounded up. */
+function wiseLoad(usdAmounts: number[], rate: number) {
+  const perTransfer = usdAmounts.map((usd) => Math.ceil(((usd * rate + WISE_FIXED_CAD) / (1 - WISE_PERCENT)) * 100) / 100);
+  const total = perTransfer.reduce((a, b) => a + b, 0);
+  const converted = usdAmounts.reduce((a, b) => a + b * rate, 0);
+  return { total, fees: total - converted };
+}
+
 /** Sums by currency, shown as "$12.00 CAD" and "$3.00 USD" lines (or $0.00 when there's nothing). */
 function byCurrency(rows: OwnerCreator[], pick: (c: OwnerCreator) => number) {
   const sums: Record<string, number> = {};
@@ -65,6 +95,7 @@ export default function Owner() {
   const [action, setAction] = useState<Action | null>(null);
   const [managing, setManaging] = useState<OwnerCreator | null>(null);
   const [exporting, setExporting] = useState(false);
+  const usdCad = useUsdCad();
 
   const load = useCallback(
     async (m: string | null) => {
@@ -138,7 +169,7 @@ export default function Owner() {
           lines: byCurrency(withPayout, (c) => c.payout?.amount ?? 0),
           note: `${withPayout.filter((c) => c.payout?.status === "paid").length} paid, ${withPayout.filter((c) => c.payout?.status !== "paid").length} not sent`,
         }
-      : { label: "To Send Now", lines: byCurrency(due, (c) => c.payout?.amount ?? 0), note: `${due.length} payout${due.length === 1 ? "" : "s"} due`, strong: due.length > 0 },
+      : { label: "Rolling Over", lines: byCurrency(all, (c) => c.rolledOver), note: "Under $10, added to the next payout" },
     { label: "Free Pro Codes Left", lines: [`${data.proCodes.threeMonths} three-month`, `${data.proCodes.year} one-year`] },
   ];
   const onStatus = (c: OwnerCreator, to: Status) => (to === "due" ? run({ c, kind: "withheld" }, "", "due") : setAction({ c, kind: to }));
@@ -200,6 +231,9 @@ export default function Owner() {
           {message}
         </div>
       )}
+
+      {/* What to send now, by how it's sent: Interac from the bank account, Wise to be loaded first. */}
+      {!month && <ToSend due={due} usdCad={usdCad} />}
 
       {/* Totals */}
       <div className="mt-6 grid grid-cols-2 gap-3 md:grid-cols-4">
@@ -321,6 +355,54 @@ export default function Owner() {
   }
 }
 
+/** Payouts due now, split by how they're sent, with how much CAD to load into Wise. */
+function ToSend({ due, usdCad }: { due: OwnerCreator[]; usdCad: { value: number; date: string } | null }) {
+  if (!due.length) {
+    return (
+      <p className="mt-6 rounded-2xl bg-white/70 px-5 py-3.5 text-[14px] ring-1 ring-[#16233B]/[0.06]" style={{ color: BODY }}>
+        Nothing to send right now. Payouts are worked out on the 1st.
+      </p>
+    );
+  }
+  const by = (m: OwnerCreator["payoutMethod"]) => due.filter((c) => c.payoutMethod === m);
+  const groups = (["etransfer", "wise", "paypal"] as const).map((m) => ({ m, rows: by(m) })).filter((g) => g.rows.length);
+  return (
+    <div className="mt-6 rounded-2xl px-5 py-4 ring-1" style={{ background: "#EEF5FE", ["--tw-ring-color" as string]: "#B9D4FA" }}>
+      <p className="text-[12px] font-semibold uppercase tracking-[0.12em]" style={{ color: "#2F6FC4" }}>To Send Now</p>
+      <div className={`mt-2 grid gap-4 ${groups.length > 1 ? "sm:grid-cols-2" : ""}`}>
+        {groups.map(({ m, rows }) => {
+          const n = `${rows.length} creator${rows.length === 1 ? "" : "s"}`;
+          const sums = byCurrency(rows, (c) => c.payout?.amount ?? 0).join(" + ");
+          const usd = rows.filter((c) => c.currency === "USD").map((c) => c.payout?.amount ?? 0);
+          const load = m === "wise" && usdCad && usd.length ? wiseLoad(usd, usdCad.value) : null;
+          return (
+            <div key={m}>
+              <p className="text-[13px] font-semibold" style={{ color: BODY }}>{m === "etransfer" ? "Interac e-Transfer" : m === "wise" ? "Wise" : PAYOUT_LABEL[m]}</p>
+              <p className="text-[20px] font-bold tracking-[-0.02em] tabular-nums" style={{ color: INK }}>{sums}</p>
+              <p className="text-[13px]" style={{ color: BODY }}>
+                to {n}
+                {m === "etransfer" && ", from your bank account"}
+              </p>
+              {m === "wise" &&
+                (load ? (
+                  <p className="mt-1.5 text-[13.5px] leading-[1.5]" style={{ color: INK }}>
+                    Load about <span className="font-bold">{money(Math.ceil(load.total), "CAD")}</span> into Wise
+                    <span style={{ color: BODY }}>
+                      {" "}
+                      (about {money(load.fees, "CAD")} of it in fees, at today&apos;s rate of {usdCad!.value.toFixed(4)}). Wise shows the exact amount when you send.
+                    </span>
+                  </p>
+                ) : (
+                  <p className="mt-1.5 text-[13px]" style={{ color: BODY }}>Couldn&apos;t get today&apos;s exchange rate. Wise shows the CAD amount when you send.</p>
+                ))}
+            </div>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
+
 // ---- Rows ------------------------------------------------------------------------------
 
 type RowProps = { c: OwnerCreator; month: string | null; onStatus: (to: Status) => void; onReturned: () => void; onManage: () => void };
@@ -406,7 +488,11 @@ function PayoutCell({ c, month, onStatus, onReturned }: { c: OwnerCreator; month
   const [copied, setCopied] = useState(false);
   const amt = (n: number) => money(n, c.currency);
   const p = c.payout;
-  if (!p) return <span style={{ color: FAINT }}>{month ? "No payout this month" : "No payout yet"}</span>;
+  const rolling =
+    !month && c.rolledOver > 0 && p?.status !== "due" && p?.status !== "withheld" ? (
+      <p className="text-[12.5px]" style={{ color: BODY }}>{amt(c.rolledOver)} rolls over (under $10)</p>
+    ) : null;
+  if (!p) return rolling ?? <span style={{ color: FAINT }}>{month ? "No payout this month" : "No payout yet"}</span>;
   if (p.status === "paid") {
     return (
       <>
@@ -418,6 +504,7 @@ function PayoutCell({ c, month, onStatus, onReturned }: { c: OwnerCreator; month
           </button>
         </p>
         {p.reference && <p className="text-[12px]" style={{ color: FAINT }}>Ref {p.reference}</p>}
+        {rolling && <div className="mt-1">{rolling}</div>}
       </>
     );
   }
@@ -436,6 +523,7 @@ function PayoutCell({ c, month, onStatus, onReturned }: { c: OwnerCreator; month
           <option value="withheld">Withheld</option>
         </select>
       </div>
+      {p.status === "withheld" && p.holdReason && <p className="mt-1 text-[12.5px]" style={{ color: RED }}>Why: {p.holdReason}</p>}
       {p.returned && <p className="mt-1 text-[12px] font-semibold" style={{ color: RED }}>Came back once: check the payout email before resending</p>}
       <p className="mt-1 text-[12.5px]" style={{ color: BODY }}>
         {methodLabel(c)} to {c.payoutEmail}{" "}
@@ -522,8 +610,18 @@ function Confirm({ a, onCancel, onConfirm }: { a: Action; onCancel: () => void; 
       <Sheet onClose={onCancel}>
         <h3 className="text-[20px] font-bold tracking-[-0.02em]" style={{ color: INK }}>Withhold This Payout?</h3>
         {what}
+        <label className="mt-4 block">
+          <span className="text-[13px] font-semibold" style={{ color: INK }}>Why? (optional, only owners see this)</span>
+          <input
+            value={reference}
+            onChange={(e) => setReference(e.target.value)}
+            placeholder="Checking signups, waiting for the right e-Transfer email…"
+            className="mt-1.5 w-full rounded-2xl bg-white px-4 py-3 text-[15px] ring-1 ring-[#16233B]/[0.1] outline-none focus:ring-2 focus:ring-[#6FA8FF]"
+            style={{ color: INK }}
+          />
+        </label>
         {small(<>Nothing is sent to {first}. You can set it back to Due later.</>)}
-        <Buttons onCancel={onCancel} onOk={() => onConfirm("", true)} ok="Withhold" danger />
+        <Buttons onCancel={onCancel} onOk={() => onConfirm(reference, true)} ok="Withhold" danger />
       </Sheet>
     );
   }
@@ -652,11 +750,12 @@ async function downloadOwnerSheet(creators: OwnerCreator[], payouts: Awaited<Ret
       { header: "Country", width: 13 }, { header: "Currency", width: 10 }, { header: "Joined", width: 12 }, { header: "Instagram", width: 16 },
       { header: "TikTok", width: 16 }, { header: "Payout Method", width: 18 }, { header: "Payout Email", width: 28 }, { header: "Users Brought In", width: 15 },
       { header: "Signups That Count", width: 17 }, { header: "Paying Subscribers", width: 17 }, { header: "Earned", width: 12, money: true },
-      { header: "Paid Out", width: 12, money: true }, { header: "Owed", width: 12, money: true }, { header: "Posted", width: 9 }, { header: "Notes", width: 40 },
+      { header: "Paid Out", width: 12, money: true }, { header: "Owed", width: 12, money: true }, { header: "Rolling Over", width: 13, money: true },
+      { header: "Posted", width: 9 }, { header: "Notes", width: 40 },
     ],
     creators.map((c) => [
       c.name, c.email, c.code, c.status, country(c.country), c.currency, c.joined, c.instagram ? `@${c.instagram}` : "", c.tiktok ? `@${c.tiktok}` : "",
-      PAYOUT_LABEL[c.payoutMethod], c.payoutEmail, c.codeUses, c.signups, c.paying, c.earned, c.paidOut, c.owed, c.posted ? "Yes" : "", c.notes,
+      PAYOUT_LABEL[c.payoutMethod], c.payoutEmail, c.codeUses, c.signups, c.paying, c.earned, c.paidOut, c.owed, c.rolledOver, c.posted ? "Yes" : "", c.notes,
     ]),
   );
   sheet(
@@ -665,9 +764,10 @@ async function downloadOwnerSheet(creators: OwnerCreator[], payouts: Awaited<Ret
       { header: "Worked Out", width: 12 }, { header: "Covers Earnings Before", width: 20 }, { header: "Name", width: 22 }, { header: "Code", width: 14 },
       { header: "Amount", width: 12, money: true }, { header: "Currency", width: 10 }, { header: "Status", width: 10 }, { header: "Paid On", width: 12 },
       { header: "Method", width: 18 }, { header: "Payout Email", width: 28 }, { header: "Reference", width: 22 }, { header: "Returned Before", width: 15 },
+      { header: "Withheld Because", width: 30 },
     ],
     payouts.map((p) => [
-      p.dueOn, p.coversBefore, p.name, p.code, p.amount, p.currency, p.status, p.paidOn ?? "", PAYOUT_LABEL[p.payoutMethod], p.payoutEmail, p.reference, p.returned ? "Yes" : "",
+      p.dueOn, p.coversBefore, p.name, p.code, p.amount, p.currency, p.status, p.paidOn ?? "", PAYOUT_LABEL[p.payoutMethod], p.payoutEmail, p.reference, p.returned ? "Yes" : "", p.holdReason,
     ]),
   );
   // Paid in each calendar year, per creator and currency.
