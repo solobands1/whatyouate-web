@@ -242,7 +242,7 @@ export function StatementList({ list, onOpen }: { list: IssuedStatement[]; onOpe
       <BackLink href="/creators/dashboard">Back To Dashboard</BackLink>
       <h1 className="mt-5 text-[clamp(28px,4.4vw,40px)] font-bold leading-[1.1] tracking-[-0.04em]">Your Statements</h1>
       <p className="mt-3 text-[16px] leading-[1.65]" style={{ color: BODY }}>
-        A statement is issued with each payout. Open one to save it as a PDF or download it as a spreadsheet.
+        A statement is issued with each payout. Open one to download it as a PDF or an Excel file.
       </p>
       {list.length ? (
         // Grouped by the year each was paid, with that year's total (handy at tax time).
@@ -302,7 +302,7 @@ export function StatementList({ list, onOpen }: { list: IssuedStatement[]; onOpe
   );
 }
 
-/** One issued statement. Save As PDF prints it; the site's header and footer stay off the page. */
+/** One issued statement. Download PDF prints it (Save as PDF); the site's header and footer stay off the page. */
 export function StatementView({ s, onBack }: { s: IssuedStatement; onBack?: () => void }) {
   const [saving, setSaving] = useState(false);
   const C = s.creator;
@@ -329,7 +329,7 @@ export function StatementView({ s, onBack }: { s: IssuedStatement; onBack?: () =
             className="text-[14px] font-semibold"
             style={{ color: "#2F6FC4" }}
           >
-            {saving ? "Preparing…" : "Download Spreadsheet"}
+            {saving ? "Preparing…" : "Download Excel"}
           </button>
           <button
             type="button"
@@ -337,7 +337,7 @@ export function StatementView({ s, onBack }: { s: IssuedStatement; onBack?: () =
             className="rounded-full px-5 py-2.5 text-[14px] font-semibold text-white transition hover:opacity-90"
             style={{ background: INK }}
           >
-            Save As PDF
+            Download PDF
           </button>
         </div>
       </div>

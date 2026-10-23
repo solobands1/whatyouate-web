@@ -47,11 +47,14 @@ const pillSelect = (color: string, inset: number) => ({
   backgroundSize: "12px 12px",
 });
 
-// Wise's pricing for sending CAD to a USD account, worked out from two real transfers (October 2026:
-// $10 CAD cost $2.38, $100 CAD cost $3.10): a fixed fee per transfer plus a percentage. Wise converts
-// at about the Bank of Canada's daily rate. Update these if Wise's prices change.
-const WISE_FIXED_CAD = 2.3;
-const WISE_PERCENT = 0.008;
+// Wise Business pricing for paying US-dollar creators from Canadian dollars, from Wise's own price
+// calculator (October 2026; it matched a real $100 test transfer to the cent). Wise converts at about
+// the Bank of Canada's daily rate. Update these if Wise's prices change.
+//   Sending from the CAD balance straight to each creator: a fixed fee per transfer plus a percentage.
+//   Converting once into a USD balance (a percentage), then paying each creator from it (a smaller one).
+const WISE_DIRECT_FIXED_CAD = 1.57;
+const WISE_CONVERT_PERCENT = 0.0048;
+const WISE_USD_PAYOUT_PERCENT = 0.003;
 
 /** Today's Bank of Canada rate: Canadian dollars per US dollar (null if it can't be fetched). */
 function useUsdCad() {
@@ -69,12 +72,14 @@ function useUsdCad() {
   return rate;
 }
 
-/** CAD to load into Wise so each payout arrives in full: one transfer per creator, fees rounded up. */
+/** CAD to load into Wise so every payout arrives in full, both ways of paying, fees rounded up. */
 function wiseLoad(usdAmounts: number[], rate: number) {
-  const perTransfer = usdAmounts.map((usd) => Math.ceil(((usd * rate + WISE_FIXED_CAD) / (1 - WISE_PERCENT)) * 100) / 100);
-  const total = perTransfer.reduce((a, b) => a + b, 0);
   const converted = usdAmounts.reduce((a, b) => a + b * rate, 0);
-  return { total, fees: total - converted };
+  const direct = usdAmounts
+    .map((usd) => Math.ceil(((usd * rate + WISE_DIRECT_FIXED_CAD) / (1 - WISE_CONVERT_PERCENT)) * 100) / 100)
+    .reduce((a, b) => a + b, 0);
+  const viaUsd = Math.ceil(((converted * (1 + WISE_USD_PAYOUT_PERCENT)) / (1 - WISE_CONVERT_PERCENT)) * 100) / 100;
+  return { direct: { total: direct, fees: direct - converted }, viaUsd: { total: viaUsd, fees: viaUsd - converted } };
 }
 
 /** Sums by currency, shown as "$12.00 CAD" and "$3.00 USD" lines (or $0.00 when there's nothing). */
@@ -213,7 +218,7 @@ export default function Owner() {
             className="text-[14px] font-semibold"
             style={{ color: "#2F6FC4" }}
           >
-            {exporting ? "Preparing…" : "Download Spreadsheet"}
+            {exporting ? "Preparing…" : "Download Excel"}
           </button>
           <button type="button" onClick={() => load(month)} className="text-[14px] font-semibold" style={{ color: "#2F6FC4" }}>
             Refresh
@@ -385,13 +390,19 @@ function ToSend({ due, usdCad }: { due: OwnerCreator[]; usdCad: { value: number;
               </p>
               {m === "wise" &&
                 (load ? (
-                  <p className="mt-1.5 text-[13.5px] leading-[1.5]" style={{ color: INK }}>
-                    Load about <span className="font-bold">{money(Math.ceil(load.total), "CAD")}</span> into Wise
-                    <span style={{ color: BODY }}>
-                      {" "}
-                      (about {money(load.fees, "CAD")} of it in fees, at today&apos;s rate of {usdCad!.value.toFixed(4)}). Wise shows the exact amount when you send.
-                    </span>
-                  </p>
+                  <div className="mt-1.5 text-[13.5px] leading-[1.5]" style={{ color: INK }}>
+                    <p>
+                      Load about <span className="font-bold">{money(Math.ceil(load.viaUsd.total), "CAD")}</span> into Wise, convert it to USD once, then pay each
+                      creator from your USD balance
+                      <span style={{ color: BODY }}> (about {money(load.viaUsd.fees, "CAD")} in fees).</span>
+                    </p>
+                    <p className="mt-1" style={{ color: BODY }}>
+                      Paying each one straight from CAD instead: about {money(Math.ceil(load.direct.total), "CAD")} ({money(load.direct.fees, "CAD")} in fees).
+                    </p>
+                    <p className="mt-1 text-[12.5px]" style={{ color: FAINT }}>
+                      At today&apos;s Bank of Canada rate of {usdCad!.value.toFixed(4)}. Wise shows the exact amount when you send.
+                    </p>
+                  </div>
                 ) : (
                   <p className="mt-1.5 text-[13px]" style={{ color: BODY }}>Couldn&apos;t get today&apos;s exchange rate. Wise shows the CAD amount when you send.</p>
                 ))}
