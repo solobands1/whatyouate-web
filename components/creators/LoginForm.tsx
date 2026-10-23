@@ -19,7 +19,11 @@ export default function LoginForm() {
       <CodeStep
         email={email.trim().toLowerCase()}
         create={false}
-        onVerified={() => router.push("/creators/dashboard")}
+        onVerified={() => {
+          // Back to the signed-in page they were sent here from (say, the statement link in an email).
+          const next = new URLSearchParams(window.location.search).get("next") ?? "";
+          router.push(/^\/creators\/(dashboard|kit|profile)\b/.test(next) ? next : "/creators/dashboard");
+        }}
         onBack={() => setSent(false)}
       />
     );

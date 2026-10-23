@@ -15,7 +15,10 @@ export default function Gate({ children }: { children: (dash: Dash, reload: () =
   const router = useRouter();
 
   useEffect(() => {
-    if (state.phase === "signedOut") router.replace("/creators/login");
+    if (state.phase === "signedOut") {
+      const here = window.location.pathname + window.location.search + window.location.hash;
+      router.replace(`/creators/login?next=${encodeURIComponent(here)}`);
+    }
     if (state.phase === "notCreator") router.replace("/creators/join");
   }, [state.phase, router]);
 

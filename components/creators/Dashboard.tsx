@@ -180,14 +180,26 @@ export function DashboardView({ d, preview = false }: { d: Dash; preview?: boole
   const active = S.allTime.earned > 0 || S.statement.some((r) => r.codeUses > 0) || S.weekly.some((w) => w.uses > 0);
   const [view, setView] = useState<"numbers" | "perks">(preview || active ? "numbers" : "perks");
 
-  // The switch side lives in the address (?view=perks) so Back returns to the same side, and #kit
-  // scrolls to the Creator Kit card (coming back from Join on the example dashboard).
+  // The switch side lives in the address (?view=perks) so Back returns to the same side. #kit
+  // scrolls to the Creator Kit card (coming back from Join on the example dashboard), and #statement
+  // to Payout History, with a brief highlight (the payout email's See Your Statement button).
   useEffect(() => {
     const v = new URLSearchParams(window.location.search).get("view");
     // eslint-disable-next-line react-hooks/set-state-in-effect
     if (v === "numbers" || v === "perks") setView(v);
     if (window.location.hash === "#kit") {
       setTimeout(() => document.getElementById("kit")?.scrollIntoView({ block: "center" }), 60);
+    }
+    if (window.location.hash === "#statement") {
+      setView("numbers");
+      setTimeout(() => {
+        const el = document.getElementById("statement");
+        el?.scrollIntoView({ block: "start", behavior: "smooth" });
+        el?.lastElementChild?.animate(
+          [{ boxShadow: "0 0 0 3px rgba(111,168,255,0.75)" }, { boxShadow: "0 0 0 3px rgba(111,168,255,0)" }],
+          { duration: 2200, delay: 400, easing: "ease-out" },
+        );
+      }, 120);
     }
   }, []);
   const choose = (v: "numbers" | "perks") => {
@@ -349,7 +361,8 @@ export function DashboardView({ d, preview = false }: { d: Dash; preview?: boole
         <Stat small label="Paid Out" value={money(S.allTime.paidOut, cur).replace(` ${cur}`, "")} />
       </div>
 
-      {/* Payout history */}
+      {/* Payout history, with the downloadable statement */}
+      <div id="statement" className="scroll-mt-6">
       <SectionTitle>Payout History</SectionTitle>
       <Card className="px-6 py-5">
         {S.statement.some((r) => r.paid > 0) ? (
@@ -375,6 +388,7 @@ export function DashboardView({ d, preview = false }: { d: Dash; preview?: boole
           Download Statement (CSV)
         </button>
       </Card>
+      </div>
 
         </>
       ) : (
