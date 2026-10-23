@@ -82,12 +82,16 @@ function wiseLoad(usdAmounts: number[], rate: number) {
   return { direct: { total: direct, fees: direct - converted }, viaUsd: { total: viaUsd, fees: viaUsd - converted } };
 }
 
-/** Sums by currency, shown as "$12.00 CAD" and "$3.00 USD" lines (or $0.00 when there's nothing). */
-function byCurrency(rows: OwnerCreator[], pick: (c: OwnerCreator) => number) {
-  const sums: Record<string, number> = {};
+/**
+ * Sums by currency as "$12.00 CAD" and "$3.00 USD" lines. Totals always show both currencies, $0.00
+ * included, so the cards don't jump around; `onlyUsed` drops a currency with nothing in it.
+ */
+function byCurrency(rows: OwnerCreator[], pick: (c: OwnerCreator) => number, onlyUsed = false) {
+  const sums: Record<string, number> = { CAD: 0, USD: 0 };
   for (const c of rows) sums[c.currency] = (sums[c.currency] ?? 0) + pick(c);
-  const lines = Object.entries(sums).filter(([, v]) => Math.abs(v) >= 0.005).map(([cur, v]) => money(v, cur));
-  return lines.length ? lines : ["$0.00"];
+  return Object.entries(sums)
+    .filter(([, v]) => !onlyUsed || Math.abs(v) >= 0.005)
+    .map(([cur, v]) => money(v, cur));
 }
 
 export default function Owner() {
@@ -167,7 +171,7 @@ export default function Owner() {
     { label: month ? `New Paying Subscribers, ${label}` : "Paying Subscribers", lines: [String(all.reduce((t, c) => t + c.paying, 0))] },
     { label: month ? `Earned In ${label}` : "Earned All Time", lines: byCurrency(all, (c) => c.earned) },
     { label: month ? `Paid Out In ${label}` : "Paid Out", lines: byCurrency(all, (c) => c.paidOut) },
-    { label: "Owed Now", lines: byCurrency(all, (c) => c.owed), note: "Includes earnings not yet due" },
+    { label: "Not Yet Paid", lines: byCurrency(all, (c) => c.owed), note: "Including earnings not due yet" },
     month
       ? {
           label: `Payouts Worked Out In ${label}`,
@@ -380,7 +384,7 @@ function ToSend({ due, usdCad }: { due: OwnerCreator[]; usdCad: { value: number;
       <div className={`mt-2 grid gap-4 ${groups.length > 1 ? "sm:grid-cols-2" : ""}`}>
         {groups.map(({ m, rows }) => {
           const n = `${rows.length} creator${rows.length === 1 ? "" : "s"}`;
-          const sums = byCurrency(rows, (c) => c.payout?.amount ?? 0).join(" + ");
+          const sums = byCurrency(rows, (c) => c.payout?.amount ?? 0, true).join(" + ");
           const usd = rows.filter((c) => c.currency === "USD").map((c) => c.payout?.amount ?? 0);
           const load = m === "wise" && usdCad && usd.length ? wiseLoad(usd, usdCad.value) : null;
           return (

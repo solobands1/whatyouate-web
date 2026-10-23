@@ -65,9 +65,12 @@ function totals(r: Report) {
   };
 }
 
+/** Money totals always show both currencies, $0.00 included. */
 const lines = (rows: { currency: string; amount: number }[] | Record<string, number>) => {
-  const list = Array.isArray(rows) ? rows.map((r) => money(r.amount, r.currency)) : Object.entries(rows).map(([c, v]) => money(v, c));
-  return list.length ? list : ["$0.00"];
+  const sums: Record<string, number> = { CAD: 0, USD: 0 };
+  if (Array.isArray(rows)) for (const r of rows) sums[r.currency] = (sums[r.currency] ?? 0) + r.amount;
+  else for (const [c, v] of Object.entries(rows)) sums[c] = (sums[c] ?? 0) + v;
+  return Object.entries(sums).map(([c, v]) => money(v, c));
 };
 
 export default function OwnerReport() {
@@ -219,7 +222,7 @@ export default function OwnerReport() {
             <Box label="Paid To Creators" lines={lines(t.paid)} note={`${report.payouts.length} payout${report.payouts.length === 1 ? "" : "s"}`} strong />
             <Box label="Paid, In CAD" lines={[money(t.cadTotal, "CAD")]} note={t.missingRates ? `${t.missingRates} rate${t.missingRates === 1 ? "" : "s"} still to be saved` : "USD at the rate on the day paid"} />
             <Box label="Transfer Fees Entered" lines={[money(t.fees, "CAD")]} />
-            <Box label="Owed Now" lines={lines(report.owedNow)} note="As of today" />
+            <Box label="Not Yet Paid" lines={lines(report.owedNow)} note="As of today, including earnings not due yet" />
           </section>
 
           {/* Payouts */}
@@ -271,7 +274,7 @@ export default function OwnerReport() {
           {report.payouts.length > 0 && (
             <p className="mt-3 text-[12.5px]" style={{ color: BODY }}>
               {Object.entries(t.byMethod)
-                .map(([m, v]) => `${m === "wise" ? "Wise" : PAYOUT_LABEL[m as keyof typeof PAYOUT_LABEL]}: ${lines(v.amounts).join(" + ")} to ${v.count} creator${v.count === 1 ? "" : "s"}`)
+                .map(([m, v]) => `${m === "wise" ? "Wise" : PAYOUT_LABEL[m as keyof typeof PAYOUT_LABEL]}: ${Object.entries(v.amounts).map(([c, n]) => money(n, c)).join(" + ")} to ${v.count} creator${v.count === 1 ? "" : "s"}`)
                 .join(" · ")}
             </p>
           )}
@@ -403,7 +406,7 @@ async function downloadReportSheet(r: Report, label: string) {
     ...Object.entries(t.paid).map(([c, v]) => [`Paid To Creators (${c})`, v] as [string, number]),
     ["Paid To Creators, In CAD", t.cadTotal],
     ["Transfer Fees Entered (CAD)", t.fees],
-    ...r.owedNow.map((o) => [`Owed Now (${o.currency})`, o.amount] as [string, number]),
+    ...r.owedNow.map((o) => [`Not Yet Paid Today (${o.currency})`, o.amount] as [string, number]),
   ];
   rows.forEach(([k, v], i) => {
     const row = sum.getRow(i + 4);
