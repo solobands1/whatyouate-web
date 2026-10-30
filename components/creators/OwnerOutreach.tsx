@@ -90,13 +90,20 @@ export default function OwnerOutreach() {
     await load();
   };
 
-  // Blocks with anything still to decide or send come first; finished blocks go in a fold at the bottom.
-  const blocks = useMemo(() => {
+  // Three places, so nobody already emailed ever shows up as someone new to review:
+  //   To Review: creators not emailed yet (needs review or approved and waiting), grouped by block.
+  //   In Progress: emailed and still in the sequence (follow-ups to come).
+  //   Finished: replied, signed up, no thanks, bounced, finished with no reply, or skipped.
+  const groups = useMemo(() => {
+    const all = data?.contacts ?? [];
+    const notSent = all.filter((c) => !c.sent.length && c.decision !== "skip" && c.status === "queued");
     const by = new Map<number, OutreachContact[]>();
-    for (const c of data?.contacts ?? []) by.set(c.block, [...(by.get(c.block) ?? []), c]);
-    const list = [...by.entries()].sort((a, b) => a[0] - b[0]).map(([block, rows]) => ({ block, rows }));
-    const open = (b: { rows: OutreachContact[] }) => b.rows.some((c) => c.decision === "pending" || (c.decision === "approve" && ["queued", "sent"].includes(c.status)));
-    return { open: list.filter(open), done: list.filter((b) => !open(b)) };
+    for (const c of notSent) by.set(c.block, [...(by.get(c.block) ?? []), c]);
+    return {
+      review: [...by.entries()].sort((a, b) => a[0] - b[0]).map(([block, rows]) => ({ block, rows })),
+      inProgress: all.filter((c) => c.sent.length && c.status === "sent"),
+      finished: all.filter((c) => c.decision === "skip" || !["queued", "sent"].includes(c.status)),
+    };
   }, [data]);
 
   if (state === "loading") return <p className="py-24 text-center text-[15px]" style={{ color: BODY }}>Loading…</p>;
@@ -199,24 +206,25 @@ export default function OwnerOutreach() {
         )}
       </div>
 
-      {/* Blocks */}
+      {/* To review: never includes anyone already emailed */}
       <div className="mx-auto max-w-[65rem]">
-        {blocks.open.map((b) => (
+        {groups.review.map((b) => (
           <Block key={b.block} block={b.block} rows={b.rows} act={act} onEdit={setEditing} />
         ))}
-        {!blocks.open.length && (
+        {!groups.review.length && (
           <Card className="mt-8 px-6 py-8 text-center text-[14.5px]">
-            <span style={{ color: BODY }}>No creators waiting. New blocks show up here when they&apos;re added.</span>
+            <span style={{ color: BODY }}>Nobody new to review. Next week&apos;s block is added on Friday.</span>
           </Card>
         )}
-        {blocks.done.length > 0 && (
+        {groups.inProgress.length > 0 && (
+          <List title="In Progress" note="Emailed, follow-ups still to come" rows={groups.inProgress} act={act} onEdit={setEditing} />
+        )}
+        {groups.finished.length > 0 && (
           <details className="mt-8">
             <summary className="cursor-pointer text-[15px] font-semibold" style={{ color: INK }}>
-              Finished Blocks ({blocks.done.length})
+              Finished ({groups.finished.length})
             </summary>
-            {blocks.done.map((b) => (
-              <Block key={b.block} block={b.block} rows={b.rows} act={act} onEdit={setEditing} />
-            ))}
+            <List title="" note="" rows={groups.finished} act={act} onEdit={setEditing} />
           </details>
         )}
       </div>
@@ -269,13 +277,21 @@ function handleLinks(c: OutreachContact) {
   return links;
 }
 
+function List({ title, note, rows, act, onEdit }: { title: string; note: string; rows: OutreachContact[]; act: (fn: () => Promise<unknown>, done?: string) => Promise<void>; onEdit: (c: OutreachContact) => void }) {
+  return <Block block={0} title={title} note={note} rows={rows} act={act} onEdit={onEdit} />;
+}
+
 function Block({
   block,
+  title,
+  note,
   rows,
   act,
   onEdit,
 }: {
   block: number;
+  title?: string;
+  note?: string;
   rows: OutreachContact[];
   act: (fn: () => Promise<unknown>, done?: string) => Promise<void>;
   onEdit: (c: OutreachContact) => void;
@@ -286,6 +302,14 @@ function Block({
   const warmed = warmable.filter((c) => c.commentedAt).length;
   return (
     <section className="mt-8">
+      {title !== undefined ? (
+        title && (
+          <h2 className="text-[19px] font-bold tracking-[-0.02em]" style={{ color: INK }}>
+            {title}
+            <span className="ml-2 text-[14px] font-medium" style={{ color: BODY }}>{rows.length}{note ? ` · ${note}` : ""}</span>
+          </h2>
+        )
+      ) : (
       <div className="flex flex-wrap items-center justify-between gap-3">
         <h2 className="text-[19px] font-bold tracking-[-0.02em]" style={{ color: INK }}>
           Block {block}
@@ -307,6 +331,7 @@ function Block({
           </div>
         )}
       </div>
+      )}
       <Card className="mt-3 divide-y divide-[#16233B]/[0.06]">
         {rows.map((c) => {
           const locked = c.sent.length > 0;
