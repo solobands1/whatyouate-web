@@ -417,7 +417,7 @@ function WarmUp({ c, act }: { c: OutreachContact; act: (fn: () => Promise<unknow
       <div className="flex flex-wrap items-center gap-x-3 gap-y-1">
         <span className="text-[12px] font-semibold uppercase tracking-[0.12em]" style={{ color: FAINT }}>Warm-Up</span>
         <a href={c.warmPostUrl} target="_blank" rel="noreferrer" className="text-[13px] font-semibold" style={{ color: BLUE }}>
-          Open Latest Post ›
+          {c.warmPostUrl.includes("tiktok.com") ? "Open Latest TikTok ›" : "Open Latest Instagram Post ›"}
         </a>
       </div>
       {c.warmComment && (
