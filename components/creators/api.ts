@@ -324,6 +324,7 @@ export type OutreachContact = {
   website: string; currency: "USD" | "CAD"; hook: string; decision: "pending" | "approve" | "skip";
   status: "queued" | "sent" | "done" | "replied" | "joined" | "opted_out" | "bounced"; sent: OutreachSent[];
   repliedAt: string | null; statusAt: string | null;
+  warmPostUrl: string; warmComment: string; commentedAt: string | null;
 };
 export type OutreachData = {
   settings: { live: boolean; paused: boolean; last_send: string | null; last_sync: string | null };
@@ -335,3 +336,4 @@ export const outreachDecide = (id: string, decision: "pending" | "approve" | "sk
 export const outreachDecideBlock = (block: number, decision: "approve" | "skip") => rpc("owner_outreach_decide_block", { p_block: block, p_decision: decision });
 export const outreachUpdateHook = (id: string, hook: string) => rpc("owner_outreach_update_hook", { p_id: id, p_hook: hook });
 export const outreachSettings = (live: boolean | null, paused: boolean | null) => rpc("owner_outreach_settings", { p_live: live, p_paused: paused });
+export const outreachCommented = (id: string, done: boolean) => rpc("owner_outreach_commented", { p_id: id, p_done: done });

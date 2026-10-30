@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { Card } from "./Shell";
 import {
   errorText,
+  outreachCommented,
   outreachDecide,
   outreachDecideBlock,
   outreachList,
@@ -281,6 +282,8 @@ function Block({
 }) {
   const pending = rows.filter((c) => c.decision === "pending").length;
   const approved = rows.filter((c) => c.decision === "approve").length;
+  const warmable = rows.filter((c) => c.warmPostUrl && c.decision !== "skip");
+  const warmed = warmable.filter((c) => c.commentedAt).length;
   return (
     <section className="mt-8">
       <div className="flex flex-wrap items-center justify-between gap-3">
@@ -288,6 +291,7 @@ function Block({
           Block {block}
           <span className="ml-2 text-[14px] font-medium" style={{ color: BODY }}>
             {approved} of {rows.length} approved{pending ? `, ${pending} to review` : ""}
+            {warmable.length > 0 && `, ${warmed} of ${warmable.length} warmed up`}
           </span>
         </h2>
         {pending > 0 && (
@@ -334,6 +338,7 @@ function Block({
                     {c.sent.map((s) => `Email ${s.step}: ${shortDate(s.ts)}`).join(" · ")}
                   </p>
                 )}
+                {c.warmPostUrl && c.decision !== "skip" && <WarmUp c={c} act={act} />}
               </div>
               <div className="flex shrink-0 flex-wrap items-center gap-2 md:w-[15rem] md:justify-end">
                 <Pill s={statusOf(c)} />
@@ -367,6 +372,50 @@ function Block({
         })}
       </Card>
     </section>
+  );
+}
+
+function WarmUp({ c, act }: { c: OutreachContact; act: (fn: () => Promise<unknown>, done?: string) => Promise<void> }) {
+  const [copied, setCopied] = useState(false);
+  const done = !!c.commentedAt;
+  const copy = async () => {
+    try {
+      await navigator.clipboard.writeText(c.warmComment);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 1800);
+    } catch {
+      setCopied(false);
+    }
+  };
+  return (
+    <div className="mt-3 rounded-2xl px-3.5 py-3" style={{ background: done ? "#F1F8F4" : "#F5F8FD" }}>
+      <div className="flex flex-wrap items-center gap-x-3 gap-y-1">
+        <span className="text-[12px] font-semibold uppercase tracking-[0.12em]" style={{ color: FAINT }}>Warm-Up</span>
+        <a href={c.warmPostUrl} target="_blank" rel="noreferrer" className="text-[13px] font-semibold" style={{ color: BLUE }}>
+          Open Latest Post ›
+        </a>
+      </div>
+      {c.warmComment && (
+        <p className="mt-1.5 text-[13.5px] leading-[1.5]" style={{ color: INK }}>
+          &ldquo;{c.warmComment}&rdquo;
+        </p>
+      )}
+      <div className="mt-2 flex flex-wrap gap-2">
+        {c.warmComment && (
+          <button type="button" onClick={copy} className="rounded-full bg-white px-3 py-1 text-[12.5px] font-semibold ring-1 ring-[#16233B]/[0.1]" style={{ color: INK }}>
+            {copied ? "Copied" : "Copy Comment"}
+          </button>
+        )}
+        <button
+          type="button"
+          onClick={() => act(() => outreachCommented(c.id, !done))}
+          className="rounded-full px-3 py-1 text-[12.5px] font-semibold"
+          style={done ? { color: GREEN, background: "#E2F3EA" } : { color: "#FFFFFF", background: GREEN }}
+        >
+          {done ? "✓ Commented" : "Mark Commented"}
+        </button>
+      </div>
+    </div>
   );
 }
 
