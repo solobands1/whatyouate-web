@@ -156,7 +156,7 @@ export default function OwnerOutreach() {
                 ? "Nothing goes out until you turn sending on."
                 : settings.paused
                   ? "Nothing is going out, follow-ups included, until you resume."
-                  : `About 12 new creators a day, 10:30 to 2:00 in their time zone. ${approvedQueued} approved and waiting.`}
+                  : `About 8 new creators a day, Monday to Thursday, 10:30 to 2:00 in their time zone. ${approvedQueued} approved and waiting.`}
             </p>
           </div>
           <div className="flex flex-wrap gap-2">
