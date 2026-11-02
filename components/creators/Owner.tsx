@@ -139,14 +139,14 @@ export default function Owner() {
     load(m);
   };
 
-  // Work to do first: due payouts, then withheld ones, then creators with no payout, then paid ones.
-  // Within each group, the most owed first.
+  // The house code (WhatYouAte's own) always first. Then work to do: due payouts, then withheld ones,
+  // then creators with no payout, then paid ones. Within each group, the most owed first.
   const rows = useMemo(() => {
     const q = query.trim().toLowerCase();
     const all = data?.creators ?? [];
     const found = q ? all.filter((c) => [c.name, c.email, c.code, c.payoutEmail, c.notes].some((v) => v.toLowerCase().includes(q))) : all;
     const rank = (c: OwnerCreator) => (!c.payout ? 2 : { due: 0, withheld: 1, paid: 3 }[c.payout.status]);
-    return [...found].sort((a, b) => rank(a) - rank(b) || b.owed - a.owed || a.name.localeCompare(b.name));
+    return [...found].sort((a, b) => Number(!!b.house) - Number(!!a.house) || rank(a) - rank(b) || b.owed - a.owed || a.name.localeCompare(b.name));
   }, [data, query]);
 
   if (state === "loading") return <p className="py-24 text-center text-[15px]" style={{ color: BODY }}>Loading…</p>;
@@ -166,7 +166,7 @@ export default function Owner() {
   const withPayout = all.filter((c) => c.payout);
   const due = all.filter((c) => c.payout?.status === "due");
   const totals: { label: string; lines: string[]; note?: string; strong?: boolean }[] = [
-    { label: "Creators", lines: [String(all.filter((c) => c.status === "active").length)], note: `${all.length} joined in total` },
+    { label: "Creators", lines: [String(all.filter((c) => c.status === "active" && !c.house).length)], note: `${all.filter((c) => !c.house).length} joined in total` },
     { label: month ? `Users Brought In, ${label}` : "Users Brought In", lines: [String(all.reduce((t, c) => t + c.codeUses, 0))], note: `${all.reduce((t, c) => t + c.signups, 0)} signups that count` },
     { label: month ? `New Paying Subscribers, ${label}` : "Paying Subscribers", lines: [String(all.reduce((t, c) => t + c.paying, 0))] },
     { label: month ? `Earned In ${label}` : "Earned All Time", lines: byCurrency(all, (c) => c.earned) },

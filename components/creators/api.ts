@@ -93,6 +93,8 @@ export type OwnerCreator = {
   rolledOver: number;
   notes: string;
   posted: boolean;
+  /** WhatYouAte's own code (ENERGY): tracked like a creator, but never earns or gets paid. */
+  house?: boolean;
   payout: { id: string; amount: number; status: "due" | "paid" | "withheld"; dueOn: string; paidOn: string | null; reference: string; returned: boolean; holdReason: string } | null;
 };
 export type OwnerOverview = {
