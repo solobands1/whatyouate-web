@@ -45,6 +45,12 @@ function statusOf(c: OutreachContact) {
 }
 
 const shortDate = (ts: number) => new Date(ts).toLocaleDateString("en-CA", { month: "short", day: "numeric" });
+const isoDate = (iso: string) => shortDate(Date.parse(iso));
+/** "added Oct 31", or "added Oct 25 to Nov 1" when a block was filled over several days. */
+const addedLabel = (rows: OutreachContact[]) => {
+  const days = [...new Set(rows.map((r) => r.addedAt).filter((d): d is string => !!d).sort().map(isoDate))];
+  return days.length ? `added ${days[0]}${days.length > 1 ? ` to ${days[days.length - 1]}` : ""}` : "";
+};
 
 function Pill({ s }: { s: { label: string; color: string; bg: string } }) {
   return (
@@ -316,6 +322,7 @@ function Block({
           <span className="ml-2 text-[14px] font-medium" style={{ color: BODY }}>
             {approved} of {rows.length} approved{pending ? `, ${pending} to review` : ""}
             {warmable.length > 0 && `, ${warmed} of ${warmable.length} warmed up`}
+            {addedLabel(rows) && ` · ${addedLabel(rows)}`}
           </span>
         </h2>
         {pending > 0 && (
@@ -419,6 +426,7 @@ function WarmUp({ c, act }: { c: OutreachContact; act: (fn: () => Promise<unknow
         <a href={c.warmPostUrl} target="_blank" rel="noreferrer" className="text-[13px] font-semibold" style={{ color: BLUE }}>
           {c.warmPostUrl.includes("tiktok.com") ? "Open Latest TikTok ›" : "Open Latest Instagram Post ›"}
         </a>
+        {c.warmAt && <span className="text-[12px]" style={{ color: FAINT }}>Pulled {isoDate(c.warmAt)}</span>}
       </div>
       {c.warmComment && (
         <p className="mt-1.5 text-[13.5px] leading-[1.5]" style={{ color: INK }}>

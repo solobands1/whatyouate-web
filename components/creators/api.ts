@@ -327,6 +327,8 @@ export type OutreachContact = {
   status: "queued" | "sent" | "done" | "replied" | "joined" | "opted_out" | "bounced"; sent: OutreachSent[];
   repliedAt: string | null; statusAt: string | null;
   warmPostUrl: string; warmComment: string; commentedAt: string | null;
+  /** When the creator was added, and when their warm-up post was pulled (outreach_dates.sql). */
+  addedAt?: string; warmAt?: string | null;
 };
 export type OutreachData = {
   settings: { live: boolean; paused: boolean; last_send: string | null; last_sync: string | null };
