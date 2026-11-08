@@ -6,6 +6,7 @@ export type Game = {
   name: string;
   tagline: string;
   daily?: boolean;          // has a "Today" challenge that's the same for everyone
+  multiplayer?: boolean;    // can be played live with a friend
 };
 
 export const GAMES: Game[] = [
@@ -38,5 +39,26 @@ export const GAMES: Game[] = [
     name: "Food Fling",
     tagline: "Fling fruit at towers of junk food. Knock every snack off its shelf with three throws.",
     daily: true,
+  },
+  {
+    slug: "food-fight",
+    name: "Food Fight",
+    tagline: "Throw apples, watermelons and blueberries at the other picnic. Mind the wind. Play the computer or a friend.",
+    daily: true,
+    multiplayer: true,
+  },
+  {
+    slug: "sugar-showdown",
+    name: "Sugar Showdown",
+    tagline: "Two foods, one question: which has more sugar? Ten quick rounds. Play solo or race a friend.",
+    daily: true,
+    multiplayer: true,
+  },
+  {
+    slug: "fridge-raid",
+    name: "Fridge Raid",
+    tagline: "Hide five snacks in your fridge, then hunt for theirs. Take on the computer or a friend.",
+    daily: true,
+    multiplayer: true,
   },
 ];

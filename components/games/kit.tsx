@@ -186,10 +186,11 @@ export function ModesHelp({ today, free }: { today: string; free: string }) {
   );
 }
 
-/** The end-of-game card. `fact` (for games with no fact strip) shows one fact in a small card underneath it. */
-export function GameOver({ label, headline, score, best, mode, posted, joined, campaign, pitch, copied, fact, onBoard, onJoin, onAgain, onShare }: {
+/** The end-of-game card. `fact` (for games with no fact strip) shows one fact in a small card underneath it.
+ *  `extra` (optional) goes right under the Play again / Share buttons, e.g. a link to another way to play. */
+export function GameOver({ label, headline, score, best, mode, posted, joined, campaign, pitch, copied, fact, extra, onBoard, onJoin, onAgain, onShare }: {
   label: string; headline?: string; score: number; best: number; mode: Mode; posted: Posted | null; joined: boolean; campaign: string; pitch: string;
-  copied: boolean; fact?: Toast | null; onBoard: () => void; onJoin: () => void; onAgain: () => void; onShare: () => void;
+  copied: boolean; fact?: Toast | null; extra?: ReactNode; onBoard: () => void; onJoin: () => void; onAgain: () => void; onShare: () => void;
 }) {
   return (
     <div className="absolute inset-0 z-10 flex flex-col items-center justify-center gap-2 rounded-[22px] bg-[#101b2e]/45 p-3">
@@ -211,6 +212,7 @@ export function GameOver({ label, headline, score, best, mode, posted, joined, c
           <button onClick={onAgain} className="flex-1 rounded-full bg-[#3f7fd6] py-3 font-semibold text-white">Play again</button>
           <button onClick={onShare} className="flex-1 rounded-full bg-[#e3effe] py-3 font-semibold text-[#3f7fd6]">{copied ? "Copied!" : "Share"}</button>
         </div>
+        {extra}
         <p className="mt-3 text-[13px] leading-snug text-[#5a6b85]">{pitch}</p>
         <a href={appStoreLink(campaign)} className="mt-2 inline-block rounded-full bg-[#101b2e] px-5 py-2.5 text-sm font-semibold text-white">Get WhatYouAte</a>
       </div>

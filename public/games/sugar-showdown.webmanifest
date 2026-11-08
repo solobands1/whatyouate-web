@@ -1,0 +1,11 @@
+{
+  "name": "Sugar Showdown by WhatYouAte",
+  "short_name": "Sugar Showdown",
+  "start_url": "/games/sugar-showdown",
+  "scope": "/games",
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#e3effe",
+  "theme_color": "#e3effe",
+  "icons": [{ "src": "/icon-512.png", "sizes": "512x512", "type": "image/png" }]
+}

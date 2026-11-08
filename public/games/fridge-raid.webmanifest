@@ -1,0 +1,11 @@
+{
+  "name": "Fridge Raid by WhatYouAte",
+  "short_name": "Fridge Raid",
+  "start_url": "/games/fridge-raid",
+  "scope": "/games",
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#e3effe",
+  "theme_color": "#e3effe",
+  "icons": [{ "src": "/icon-512.png", "sizes": "512x512", "type": "image/png" }]
+}

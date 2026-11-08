@@ -1,0 +1,41 @@
+import type { Metadata, Viewport } from "next";
+import FoodFight from "@/components/games/FoodFight";
+
+// Set up as a full-screen web app: no zoom, fills the notch area, and "Add to Home Screen" opens it like an app.
+// No Safari App Store banner here: it can't be resized or timed, and on a small phone it eats into the board.
+// The hub page has it, and the game-over card has its own "Get WhatYouAte" button.
+export const metadata: Metadata = {
+  title: "Food Fight | WhatYouAte",
+  description: "A free food game. Throw apples, watermelons and blueberries at the other picnic basket. Play the computer or a friend.",
+  alternates: { canonical: "/games/food-fight" },
+  manifest: "/games/food-fight.webmanifest",
+  appleWebApp: { capable: true, title: "Food Fight", statusBarStyle: "default" },
+  // Link previews describe the games section as a whole, since more games are planned.
+  openGraph: {
+    title: "WhatYouAte Food Games",
+    description: "Quick, free food games. Can you top the scoreboard?",
+    siteName: "WhatYouAte",
+    type: "website",
+    url: "https://whatyouate.app/games/food-fight",
+    images: [{ url: "/og-games.png", width: 1200, height: 630, alt: "WhatYouAte Food Games" }],
+  },
+  twitter: {
+    card: "summary_large_image",
+    title: "WhatYouAte Food Games",
+    description: "Quick, free food games. Can you top the scoreboard?",
+    images: ["/og-games.png"],
+  },
+};
+
+export const viewport: Viewport = {
+  width: "device-width",
+  initialScale: 1,
+  maximumScale: 1,
+  userScalable: false,
+  viewportFit: "cover",
+  themeColor: "#e3effe",
+};
+
+export default function FoodFightPage() {
+  return <FoodFight />;
+}

@@ -4,7 +4,7 @@ import Menu from "../../components/Menu";
 import Social from "../../components/Social";
 import Logo from "../../components/Logo";
 import { INK, BODY, FAINT, DownloadButton, appStoreLink } from "../../components/site";
-import { GAMES } from "../../components/games/catalog";
+import { GAMES, type Game } from "../../components/games/catalog";
 
 // "Choose Your Game": one card per game in components/games/catalog.ts. Tapping a card opens that game full screen.
 // No Safari App Store banner (two banners looked cluttered): a small Get App button sits in the header instead.
@@ -27,6 +27,47 @@ export const metadata: Metadata = {
     images: ["/og-games.png"],
   },
 };
+
+function GameCard({ g }: { g: Game }) {
+  return (
+    <Link
+      href={`/games/${g.slug}`}
+      className="group flex items-center gap-5 rounded-[28px] bg-white p-5 ring-1 ring-[#16233B]/[0.06] transition duration-200 hover:-translate-y-0.5 sm:gap-7 sm:p-6"
+      style={{ boxShadow: "0 30px 60px -30px rgba(16,42,86,0.40)" }}
+    >
+      {/* eslint-disable-next-line @next/next/no-img-element */}
+      <img src={`/games/cards/${g.slug}.jpg`} alt={`${g.name} game`} width={124} height={124}
+        className="h-[104px] w-[104px] shrink-0 rounded-[22px] object-cover ring-1 ring-[#16233B]/[0.06] sm:h-[124px] sm:w-[124px]" />
+      <div className="min-w-0 flex-1">
+        <div className="flex flex-wrap items-center gap-2">
+          <h3 className="text-[22px] font-bold tracking-[-0.02em]" style={{ color: INK }}>{g.name}</h3>
+          {g.multiplayer ? (
+            <span className="rounded-full bg-[#e3effe] px-2.5 py-0.5 text-[12px] font-semibold text-[#3f7fd6]">Play with a friend</span>
+          ) : g.daily ? (
+            <span className="rounded-full bg-[#fff4d6] px-2.5 py-0.5 text-[12px] font-semibold text-[#8a5a00]">New challenge daily</span>
+          ) : null}
+        </div>
+        <p className="mt-1.5 text-[15px] leading-[1.55]" style={{ color: BODY }}>{g.tagline}</p>
+        <span className="mt-3 inline-flex items-center gap-1.5 rounded-full px-5 py-2 text-[14px] font-semibold text-white transition group-hover:opacity-90" style={{ background: "#3f7fd6" }}>
+          Play ▸
+        </span>
+      </div>
+    </Link>
+  );
+}
+
+function Section({ title, body, games }: { title: string; body: string; games: Game[] }) {
+  if (!games.length) return null;
+  return (
+    <section className="mt-12">
+      <h2 className="text-[clamp(22px,3vw,28px)] font-bold tracking-[-0.03em]" style={{ color: INK }}>{title}</h2>
+      <p className="mt-1 text-[15px]" style={{ color: BODY }}>{body}</p>
+      <div className="mt-5 grid gap-5">
+        {games.map((g) => <GameCard key={g.slug} g={g} />)}
+      </div>
+    </section>
+  );
+}
 
 export default function Games() {
   return (
@@ -64,37 +105,10 @@ export default function Games() {
             Quick food games with a new challenge every day. Can you top the scoreboard?
           </p>
 
-          <div className="mt-12 grid gap-5">
-            {GAMES.map((g) => (
-              <Link
-                key={g.slug}
-                href={`/games/${g.slug}`}
-                className="group flex items-center gap-5 rounded-[28px] bg-white p-5 ring-1 ring-[#16233B]/[0.06] transition duration-200 hover:-translate-y-0.5 sm:gap-7 sm:p-6"
-                style={{ boxShadow: "0 30px 60px -30px rgba(16,42,86,0.40)" }}
-              >
-                {/* eslint-disable-next-line @next/next/no-img-element */}
-                <img src={`/games/cards/${g.slug}.jpg`} alt={`${g.name} game`} width={124} height={124}
-                  className="h-[104px] w-[104px] shrink-0 rounded-[22px] object-cover ring-1 ring-[#16233B]/[0.06] sm:h-[124px] sm:w-[124px]" />
-                <div className="min-w-0 flex-1">
-                  <div className="flex flex-wrap items-center gap-2">
-                    <h2 className="text-[22px] font-bold tracking-[-0.02em]" style={{ color: INK }}>{g.name}</h2>
-                    {g.daily && (
-                      <span className="rounded-full bg-[#fff4d6] px-2.5 py-0.5 text-[12px] font-semibold text-[#8a5a00]">
-                        New challenge daily
-                      </span>
-                    )}
-                  </div>
-                  <p className="mt-1.5 text-[15px] leading-[1.55]" style={{ color: BODY }}>{g.tagline}</p>
-                  <span
-                    className="mt-3 inline-flex items-center gap-1.5 rounded-full px-5 py-2 text-[14px] font-semibold text-white transition group-hover:opacity-90"
-                    style={{ background: "#3f7fd6" }}
-                  >
-                    Play ▸
-                  </span>
-                </div>
-              </Link>
-            ))}
+          <Section title="Multiplayer" body="Play a friend live with a room code, or pass one phone back and forth." games={GAMES.filter((g) => g.multiplayer)} />
+          <Section title="Play Solo" body="A new challenge every day, and a scoreboard to climb." games={GAMES.filter((g) => !g.multiplayer)} />
 
+          <div className="mt-5 grid gap-5">
             <div className="flex items-center justify-center rounded-[28px] border-2 border-dashed border-[#16233B]/[0.10] px-6 py-8 text-center">
               <p className="text-[15px] font-medium" style={{ color: FAINT }}>More games coming soon</p>
             </div>

@@ -72,7 +72,8 @@ type Knock = { piece: Piece; dist: number };
 /** One level's layout. Harder levels add shelves, crates that shield the junk, tables, a high ledge, and more junk. */
 function planLevel(rnd: () => number, n: number): Plan {
   // difficulty climbs about two steps every three levels (level 4 plays like the old level 3, level 10 like the old 7);
-  // the straight one-step-a-level ramp got too hard by level 4
+  // the straight one-step-a-level ramp got too hard by level 4. Crate walls and the tallest stacks wait for step 6
+  // (Today's level 8 on), since level 7 was still a little too hard with them
   const t = Math.min(12, Math.ceil(n * 0.65));
   const rf = (a: number, b: number) => a + rnd() * (b - a);
   const ri = (a: number, b: number) => Math.min(b, Math.floor(rf(a, b + 1)));
@@ -90,7 +91,7 @@ function planLevel(rnd: () => number, n: number): Plan {
   const builds: Record<string, (maxW: number) => Build> = {
     row: (maxW) => { const k = Math.min(t <= 1 ? 2 : ri(2, 3), Math.floor((maxW + 6) / (J + 6))); return { w: rowW(k), place: (cx, y) => row(cx, y, k) }; },
     stack: (maxW) => {
-      const side = maxW >= C + J + 6 && (t <= 3 || rnd() < 0.6), tall = t >= 4 ? ri(0, t >= 5 ? 2 : 1) : 0;   // 0: crate, 1: two crates, 2: crate, junk, crate
+      const side = maxW >= C + J + 6 && (t <= 3 || rnd() < 0.6), tall = t >= 4 ? ri(0, t >= 6 ? 2 : 1) : 0;   // 0: crate, 1: two crates, 2: crate, junk, crate
       const w = side ? C + J + 6 : C;
       return { w, place: (cx, y) => {
         const sx = cx - w / 2 + C / 2;
@@ -123,7 +124,7 @@ function planLevel(rnd: () => number, n: number): Plan {
   };
   const pickBuild = (maxW: number) => {
     const opts: [string, number][] = t <= 1 ? [["row", 1]] : t === 2 ? [["row", 1], ["stack", 1]] : t === 3 ? [["stack", 1], ["table", 1.4]]
-      : [["row", 0.6], ["stack", 1], ["table", maxW >= 84 ? 1.2 : 0], ["wall", t >= 5 && maxW >= C + J + 6 ? 1.2 : 0], ["pyramid", t >= 6 && maxW >= 3 * C + 2 ? 1.2 : 0]];
+      : [["row", 0.6], ["stack", 1], ["table", maxW >= 84 ? 1.2 : 0], ["wall", t >= 6 && maxW >= C + J + 6 ? 1.2 : 0], ["pyramid", t >= 6 && maxW >= 3 * C + 2 ? 1.2 : 0]];
     const sum = opts.reduce((a, o) => a + o[1], 0); let r = rnd() * sum;
     for (const [k, wt] of opts) { r -= wt; if (r < 0) return builds[k](maxW); }
     return builds.row(maxW);
