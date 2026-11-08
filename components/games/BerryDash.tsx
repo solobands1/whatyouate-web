@@ -11,7 +11,7 @@
 // 7 seconds, a careless player in 10 to 40, a careful one lasts about two minutes and scores many times more.
 // Everything around the board comes from ./kit.
 import { useEffect, useRef, useState } from "react";
-import { type Mode, type Toast, GameScreen, GameHeader, BoardArea, GameOver, HelpModal, ModesHelp, ShellPopups,
+import { type Mode, type Toast, GameScreen, GameHeader, BoardArea, GameOver, PauseButton, PausedCard, HelpModal, ModesHelp, ShellPopups,
   useGameShell, fitCanvas, loadImages, dailySeed, dailyNumber, torontoDate, mulberry32, readBest, saveBest, foodPng } from "./kit";
 
 const GAME = "berry-dash";
@@ -59,15 +59,20 @@ const CANDY_FACTS = [
 ];
 const BERRY = "1f353";
 
+// Levels: every 400 m the speed steps up (eased in, never a jolt), with a "Level 3 · Faster!" banner. The steps
+// follow the same overall curve as before, so it's no harder, just easier to feel your progress.
+const LEVEL_PX = 400 * 20;
+const levelAt = (d: number) => 1 + Math.floor(d / LEVEL_PX);
 function baseSpeed(d: number, free: boolean) {
-  if (!free) return 230 + 250 * Math.min(1, d / 70000);                  // Today: ramps to a cap
-  return Math.min(650, 230 + 250 * Math.min(1, d / 50000) + Math.max(0, d - 50000) * 0.002);   // Free Play keeps going
+  const lv = levelAt(d);
+  if (!free) return 230 + 250 * Math.min(1, (lv - 1) / 8);               // Today: tops out at level 9, then holds
+  return Math.min(650, 230 + 250 * Math.min(1, (lv - 1) / 6) + Math.max(0, lv - 7) * 16);   // Free Play keeps going
 }
 const gapTime = (d: number) => Math.max(0.95, 1.9 - (d / 30000) * 0.8);   // seconds between obstacles, roomy at first
 
 type Ent = { k: "o" | "p"; t: number; wx: number; y: number; pair?: boolean; done?: boolean; knocked?: number };
 type Status = "run" | "rush" | "heavy";
-type Result = { meters: number; berries: number; squares: string };
+type Result = { meters: number; berries: number; squares: string; level: number };
 type Hud = { score: number; status: Status };
 const STATUS_LABEL: Record<Status, string> = { run: "Running", rush: "Sugar rush!", heavy: "Heavy legs" };
 const STATUS_COLOR: Record<Status, string> = { run: "#2eaa6e", rush: "#b54bd1", heavy: "#e09a00" };
@@ -142,6 +147,7 @@ export default function BerryDash() {
       nextX = right + gap;
     };
 
+    let speed = baseSpeed(0, free), level = 1;          // speed eases toward each level's target
     let d = 0, ms = 0, y = 0, vy = 0, onGround = true, fast = false, slideUntil = -1, duckHeld = false, duckOnLand = false, jumpBuf = -1;
     let hearts = HEARTS, invUntil = -1, rushUntil = -1, heavyUntil = -1, pts = 0, picks = 0, berries = 0, lastHit = -1, lastHitSugar = false;
     let started = false, ended = false, raf = 0, last = performance.now(), lastHud = 0, realStart = 0, duckHintShown = false;
@@ -167,7 +173,7 @@ export default function BerryDash() {
       mark("hit");
       const squares = segs.slice(0, 20).map(s => (s === "hit" ? "🟥" : s === "candy" ? "🟨" : "🟩")).join("") + (segs.length > 20 ? "+" : "");
       setHud({ score: sc, status: status() });
-      setResult({ meters, berries, squares }); setOver(true);
+      setResult({ meters, berries, squares, level }); setOver(true);
       if (sc > readBest(bestKey)) { saveBest(bestKey, sc); setBest(sc); }
       shell.finishRef.current({ score: sc, drops: picks, ms: performance.now() - realStart });
     };
@@ -175,7 +181,12 @@ export default function BerryDash() {
     const step = (dt: number) => {                 // one slice of the run, at most 17ms
       while (nextX < d + W + 200) gen();
       while (ents.length && ents[0].done && (ents[0].knocked === undefined || ms - ents[0].knocked > 1000)) ents.shift();
-      const v = baseSpeed(d, free) * (ms < rushUntil ? RUSH : 1), heavy = isHeavy();
+      const goal = baseSpeed(d, free); speed += Math.max(-90, Math.min(90, goal - speed)) * Math.min(1, dt / 400);
+      if (levelAt(d) > level) {
+        const faster = baseSpeed(d, free) > baseSpeed((level - 1) * LEVEL_PX, free); level = levelAt(d);
+        float(faster ? `Level ${level} · Faster!` : `Level ${level}!`, "#2eaa6e", W / 2, HUD + 120, true);
+      }
+      const v = speed * (ms < rushUntil ? RUSH : 1), heavy = isHeavy();
       d += (v * dt) / 1000; ms += dt;
       if (jumpBuf >= 0 && ms - jumpBuf > 150) jumpBuf = -1;   // a tap just before landing still counts
       if (jumpBuf >= 0 && onGround) { vy = JUMP_V * (heavy ? HEAVY_JUMP : 1); onGround = false; slideUntil = -1; jumpBuf = -1; }
@@ -330,6 +341,8 @@ export default function BerryDash() {
       for (let i = 0; i < HEARTS; i++) heart(ctx, 26 + i * 26, 12, 20, i < hearts);
       ctx.fillStyle = "#101b2e"; ctx.font = "700 20px system-ui, -apple-system, sans-serif"; ctx.textAlign = "right"; ctx.textBaseline = "alphabetic";
       ctx.fillText(`${Math.floor(d / PXM).toLocaleString()} m`, W - 16, 29);
+      const mw = ctx.measureText(`${Math.floor(d / PXM).toLocaleString()} m`).width;
+      ctx.font = "700 14px system-ui, -apple-system, sans-serif"; ctx.fillStyle = "#2eaa6e"; ctx.fillText(`Lv ${level}`, W - 26 - mw, 28);
       if (st !== "run") {
         const left = st === "rush" ? (rushUntil - ms) / RUSH_MS : (heavyUntil - ms) / HEAVY_MS, bx = 120, bw = 140;
         ctx.fillStyle = "rgba(16,27,46,0.08)"; ctx.beginPath(); ctx.roundRect(bx, 26, bw, 8, 4); ctx.fill();
@@ -357,14 +370,14 @@ export default function BerryDash() {
   }, [mode, run, bestKey]);
 
   const n = dailyNumber(LAUNCH);
-  const headline = !result ? "" : `You ran ${result.meters.toLocaleString()} m 🍓`;
+  const headline = !result ? "" : `Level ${result.level} · ${result.meters.toLocaleString()} m 🍓`;
   const share = () => {
     if (!result) return;
     // Wordle-style: one square per 250 m, green when clean, yellow for a sugar rush, red where you got bumped
     const label = mode === "daily" ? `Berry Dash #${n} (Today's Challenge)` : "Berry Dash (Free Play)";
     const p = shell.scores.posted;
     const rank = p?.rank ? `\n🏆 #${p.rank} of ${p.total} ${mode === "daily" ? "today" : "this week"}` : "";
-    shell.share(`${label}\n${hud.score.toLocaleString()} pts · 🍓 ${result.meters.toLocaleString()} m · 🫐 ${result.berries}${rank}\n${result.squares}\nCan you beat it? whatyouate.app/games/berry-dash`);
+    shell.share(`${label}\n${hud.score.toLocaleString()} pts · Level ${result.level} · 🍓 ${result.meters.toLocaleString()} m · 🫐 ${result.berries}${rank}\n${result.squares}\nCan you beat it? whatyouate.app/games/berry-dash`);
   };
 
   return (
@@ -374,11 +387,15 @@ export default function BerryDash() {
       <div className="mt-2 flex items-center justify-between">
         <div><div className="text-[10px] uppercase tracking-wide text-[#5a6b85]">Score</div><div className="text-2xl font-bold leading-none tabular-nums">{hud.score.toLocaleString()}</div></div>
         <div className="rounded-full px-2.5 py-0.5 text-xs font-bold text-white" style={{ background: STATUS_COLOR[hud.status] }}>{STATUS_LABEL[hud.status]}</div>
-        <div className="text-right"><div className="text-[10px] uppercase tracking-wide text-[#5a6b85]">Best</div><div className="text-lg font-semibold leading-none tabular-nums">{best.toLocaleString()}</div></div>
+        <div className="flex items-center gap-2">
+          <div className="text-right"><div className="text-[10px] uppercase tracking-wide text-[#5a6b85]">Best</div><div className="text-lg font-semibold leading-none tabular-nums">{best.toLocaleString()}</div></div>
+          <PauseButton shell={shell} active={started && !over} />
+        </div>
       </div>
 
       <BoardArea wrapRef={wrapRef} size={board} reserve={0}>
         <canvas ref={canvasRef} className="block rounded-[22px] shadow-[0_14px_40px_rgba(16,42,86,0.18)]" />
+        <PausedCard shell={shell} active={started && !over} />
         {!started && !over && (
           <button onClick={() => startRef.current()} className="absolute inset-0 flex items-center justify-center rounded-[22px] bg-[#101b2e]/25">
             <span className="rounded-3xl bg-white px-6 py-4 text-center shadow-2xl">
@@ -400,7 +417,7 @@ export default function BerryDash() {
           "Tap to jump over things on the counter.",
           "Swipe down to duck under anything flying at you.",
           "Grab blueberries and water for points. Candy gives a sugar rush, then heavy legs that make your jumps smaller.",
-          "Three bumps and your run is over. The farther you go, the faster it gets.",
+          "Three bumps and your run is over. Every 400 m is a new level, and a little faster.",
         ]}>
           <div className="mt-3 space-y-1 rounded-2xl bg-[#f0f6fe] p-2.5 text-xs font-semibold text-[#5a6b85]">
             <Row codes={OBS.filter(o => !o.air).map(o => o.code)} label="Jump" />

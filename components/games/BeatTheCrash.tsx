@@ -10,7 +10,7 @@
 // 10pm about half the time. "Today" gives everyone the same falling foods (seeded) and
 // ends at 10pm; Free Play keeps going day after day, faster each time. Everything around the board comes from ./kit.
 import { useEffect, useRef, useState } from "react";
-import { type Mode, type Toast, GameScreen, GameHeader, BoardArea, GameOver, HelpModal, ModesHelp, ShellPopups,
+import { type Mode, type Toast, GameScreen, GameHeader, BoardArea, GameOver, PauseButton, PausedCard, HelpModal, ModesHelp, ShellPopups,
   useGameShell, fitCanvas, loadImages, dailySeed, dailyNumber, torontoDate, mulberry32, readBest, saveBest, foodPng } from "./kit";
 
 const GAME = "beat-the-crash";
@@ -307,11 +307,15 @@ export default function BeatTheCrash() {
         <div className="rounded-full px-2.5 py-0.5 text-xs font-bold text-white" style={{ background: ZONE_COLOR[hud.zone] }}>
           {ZONE_LABEL[hud.zone]}{hud.zone === "steady" && hud.mult > 1 ? ` ×${hud.mult.toFixed(1)}` : ""}
         </div>
-        <div className="text-right"><div className="text-[10px] uppercase tracking-wide text-[#5a6b85]">Best</div><div className="text-lg font-semibold leading-none tabular-nums">{best.toLocaleString()}</div></div>
+        <div className="flex items-center gap-2">
+          <div className="text-right"><div className="text-[10px] uppercase tracking-wide text-[#5a6b85]">Best</div><div className="text-lg font-semibold leading-none tabular-nums">{best.toLocaleString()}</div></div>
+          <PauseButton shell={shell} active={started && !over} />
+        </div>
       </div>
 
       <BoardArea wrapRef={wrapRef} size={board} reserve={0}>
         <canvas ref={canvasRef} className="block rounded-[22px] shadow-[0_14px_40px_rgba(16,42,86,0.18)]" />
+        <PausedCard shell={shell} active={started && !over} />
         {!started && !over && (
           <button onClick={() => startRef.current()} className="absolute inset-0 flex items-center justify-center rounded-[22px] bg-[#101b2e]/25">
             <span className="rounded-3xl bg-white px-6 py-4 text-center shadow-2xl">

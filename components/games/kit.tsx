@@ -310,10 +310,38 @@ export function useGameShell(game: string, mode: Mode) {
   const [copied, setCopied] = useState(false);
   const finishRef = useRef(scores.finish); finishRef.current = scores.finish;   // the game loop always calls the latest
   const share = async (text: string) => { if (await shareText(text)) { setCopied(true); setTimeout(() => setCopied(false), 2000); } };
-  const paused = help.open || joinOpen || boardOpen;
-  return { player, savePlayer, scores, help, joinOpen, setJoinOpen, boardOpen, setBoardOpen, copied, share, finishRef, paused };
+  // the pause button, plus an automatic pause when you switch apps or lock the phone mid-run (see PauseButton)
+  const [held, setHeld] = useState(false);
+  useEffect(() => { const f = () => { if (document.hidden) setHeld(true); }; document.addEventListener("visibilitychange", f); return () => document.removeEventListener("visibilitychange", f); }, []);
+  const paused = help.open || joinOpen || boardOpen || held;
+  return { player, savePlayer, scores, help, joinOpen, setJoinOpen, boardOpen, setBoardOpen, copied, share, finishRef, paused, held, setHeld };
 }
 export type Shell = ReturnType<typeof useGameShell>;
+
+/** A small pause button for real-time games (put it in the score row). `active` = a run is going. */
+export function PauseButton({ shell, active }: { shell: Shell; active: boolean }) {
+  const { held, setHeld } = shell;
+  useEffect(() => { if (!active && held) setHeld(false); }, [active, held, setHeld]);   // nothing to pause between runs
+  return (
+    <button onClick={() => setHeld(true)} aria-label="Pause" disabled={!active}
+      className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-white/70 text-[#3f7fd6] transition ${active ? "" : "opacity-0"}`}>
+      <svg width="12" height="12" viewBox="0 0 12 12" fill="currentColor"><rect x="1.5" y="1" width="3" height="10" rx="1" /><rect x="7.5" y="1" width="3" height="10" rx="1" /></svg>
+    </button>
+  );
+}
+
+/** The "Paused" card over the board (put it inside BoardArea). */
+export function PausedCard({ shell, active }: { shell: Shell; active: boolean }) {
+  if (!active || !shell.held) return null;
+  return (
+    <div className="absolute inset-0 z-10 flex items-center justify-center rounded-[22px] bg-[#101b2e]/45 p-4">
+      <div className="w-full max-w-[280px] rounded-3xl bg-white p-5 text-center shadow-2xl">
+        <div className="text-xl font-bold">Paused</div>
+        <button onClick={() => shell.setHeld(false)} className="mt-4 w-full rounded-full bg-[#3f7fd6] py-3 font-semibold text-white">Resume</button>
+      </div>
+    </div>
+  );
+}
 
 /** The join form and scoreboard, opened from the 🏆 button or the game-over card. Joining posts the run just played. */
 export function ShellPopups({ shell, game, todayNote }: { shell: Shell; game: string; todayNote: string }) {

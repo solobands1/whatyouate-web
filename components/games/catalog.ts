@@ -42,4 +42,12 @@ export const GAMES: Game[] = [
     tint: "#ffe9e4",
     daily: true,
   },
+  {
+    slug: "food-fling",
+    name: "Food Fling",
+    tagline: "Fling fruit at towers of junk food. Knock every snack off its shelf with three throws.",
+    foods: ["1f34e", "1f349", "1f964", "1f369"],
+    tint: "#eaf6e4",
+    daily: true,
+  },
 ];

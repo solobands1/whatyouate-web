@@ -11,7 +11,7 @@
 // The rules live in one pure block (no DOM) so the balance sim can run the exact same code.
 // Everything around the board comes from ./kit.
 import { useEffect, useRef, useState } from "react";
-import { type Mode, type Toast, GameScreen, GameHeader, BoardArea, GameOver, HelpModal, ModesHelp, ShellPopups,
+import { type Mode, type Toast, GameScreen, GameHeader, BoardArea, GameOver, PauseButton, PausedCard, HelpModal, ModesHelp, ShellPopups,
   useGameShell, fitCanvas, loadImages, dailySeed, dailyNumber, torontoDate, mulberry32, readBest, saveBest, foodPng } from "./kit";
 
 const GAME = "cart-rush";
@@ -76,6 +76,9 @@ const LISTED = 20, EXTRA = 5;                   // points per ingredient on the 
 const TAP_SECS = 0.65;                          // rows closer than this (in time) only ever ask for a one-lane move
 
 /** Seconds since the start at a given distance (speed rises at ACCEL from V0), ignoring Today's cap. Sets the difficulty. */
+/** Levels are labels on the steady speed-up (every 20 seconds of aisle), so you can feel your progress. They don't
+ *  change the speed curve, which the "always a way through" rule depends on. */
+const LEVEL_SECS = 20;
 const timeAt = (d: number) => (Math.sqrt(V0 * V0 + 2 * ACCEL * d) - V0) / ACCEL;
 const speedAt = (d: number, daily: boolean) => { const v = Math.sqrt(V0 * V0 + 2 * ACCEL * d); return daily ? Math.min(DAILY_CAP, v) : v; };
 const recipeBonus = (n: number, perfect: boolean) => 100 * Math.min(n, 10) * (perfect ? 2 : 1);
@@ -206,7 +209,7 @@ export default function CartRush() {
     const list = loadImages(codes), imgs = new Map(codes.map((c, i) => [c, list[i]] as const));
     const img = (c: string) => imgs.get(c)!;
 
-    let cx = laneX(1), shakeUntil = 0;
+    let cx = laneX(1), shakeUntil = 0, level = 1;
     const basket: string[] = [];                       // the last few things you grabbed, shown in the cart
     const floats: { x: number; y: number; text: string; color: string; age: number; big?: boolean }[] = [];
     const float = (text: string, color: string, x = cx, y = CART_Y - CART / 2 - 8, big = false) => floats.push({ x, y, text, color, age: 0, big });
@@ -270,6 +273,11 @@ export default function CartRush() {
       const dt = Math.max(0, Math.min(50, t - last)); last = t;   // frame times can land just before start()
       if (started && !ended && !pausedRef.current) {
         game.update(dt);
+        const lv = 1 + Math.floor(timeAt(s.d) / LEVEL_SECS);
+        if (lv > level && !s.over) {
+          const capped = mode === "daily" && game.speed() >= DAILY_CAP; level = lv;
+          float(capped ? `Level ${level}!` : `Level ${level} · Faster!`, "#2eaa6e", W / 2, H / 2 - 80, true);
+        }
         if (!ended && t - lastHud > 100) { lastHud = t; setHud({ score: game.score(), made: s.done.length }); }
       }
       cx += (laneX(s.lane) - cx) * Math.min(1, dt / 55);
@@ -278,29 +286,49 @@ export default function CartRush() {
       raf = requestAnimationFrame(loop);
     };
 
-    // the cart seen from behind the handle: wire basket ahead, blue handle, your two hands pushing it
+    // the cart seen from behind the handle: a silver wire basket with groceries poking out, the folding child seat,
+    // a red handle and your hands on it
+    function trapezoid(x: number, top: number, bot: number, tw: number, bw: number, r: number) {
+      ctx.beginPath();
+      ctx.moveTo(x - tw + r, top); ctx.lineTo(x + tw - r, top); ctx.arcTo(x + tw, top, x + bw, bot, r);
+      ctx.lineTo(x + bw, bot - r); ctx.arcTo(x + bw, bot, x - bw, bot, r); ctx.lineTo(x - bw + r, bot);
+      ctx.arcTo(x - bw, bot, x - tw, top, r); ctx.lineTo(x - tw, top + r); ctx.arcTo(x - tw, top, x + tw, top, r); ctx.closePath();
+    }
     function drawCart(x: number, y: number) {
-      const top = y - 40, bot = y + 16, tw = 34, bw = 29;
-      ctx.fillStyle = "rgba(16,27,46,0.10)"; ctx.beginPath(); ctx.ellipse(x, bot + 8, 40, 8, 0, 0, Math.PI * 2); ctx.fill();
-      ctx.fillStyle = "#3b4558";                                          // wheels peeking out
-      for (const [wx, wy] of [[x - tw - 2, top + 4], [x + tw - 4, top + 4], [x - bw - 3, bot - 8], [x + bw - 3, bot - 8]]) { ctx.beginPath(); ctx.roundRect(wx, wy, 6, 12, 3); ctx.fill(); }
-      ctx.beginPath(); ctx.moveTo(x - tw, top); ctx.lineTo(x + tw, top); ctx.lineTo(x + bw, bot); ctx.lineTo(x - bw, bot); ctx.closePath();
-      ctx.fillStyle = "rgba(235,242,252,0.95)"; ctx.fill();
-      ctx.save(); ctx.clip();                                              // wire grid inside the basket
-      ctx.strokeStyle = "rgba(122,144,176,0.55)"; ctx.lineWidth = 1.5;
-      for (let k = -3; k <= 3; k++) { ctx.beginPath(); ctx.moveTo(x + k * 10, top); ctx.lineTo(x + k * 8.6, bot); ctx.stroke(); }
-      for (let yy = top + 11; yy < bot; yy += 11) { ctx.beginPath(); ctx.moveTo(x - tw, yy); ctx.lineTo(x + tw, yy); ctx.stroke(); }
-      basket.forEach((c, k) => drawIcon(c, x - 16 + (k % 2) * 32, top + 14 + Math.floor(k / 2) * 22, 26));
+      const top = y - 46, bot = y + 14, tw = 37, bw = 30;
+      ctx.fillStyle = "rgba(16,27,46,0.12)"; ctx.beginPath(); ctx.ellipse(x, bot + 30, 46, 9, 0, 0, Math.PI * 2); ctx.fill();
+      ctx.fillStyle = "#2f3747";                                          // wheels
+      for (const [wx, wy] of [[x - tw - 3, top + 2], [x + tw - 4, top + 2], [x - bw - 4, bot - 4], [x + bw - 3, bot - 4]]) { ctx.beginPath(); ctx.roundRect(wx, wy, 7, 13, 3.5); ctx.fill(); }
+      trapezoid(x, top, bot, tw, bw, 7);
+      const g = ctx.createLinearGradient(0, top, 0, bot); g.addColorStop(0, "#f6f8fc"); g.addColorStop(1, "#dbe3ee");
+      ctx.fillStyle = g; ctx.fill();
+      ctx.save(); trapezoid(x, top, bot, tw, bw, 7); ctx.clip();          // the wire mesh
+      ctx.strokeStyle = "rgba(118,138,168,0.38)"; ctx.lineWidth = 1.2;
+      for (let k = -4; k <= 4; k++) { ctx.beginPath(); ctx.moveTo(x + k * 8.5, top); ctx.lineTo(x + k * 7, bot); ctx.stroke(); }
+      for (let yy = top + 9; yy < bot; yy += 9) { ctx.beginPath(); ctx.moveTo(x - tw, yy); ctx.lineTo(x + tw, yy); ctx.stroke(); }
+      ctx.fillStyle = "rgba(63,127,214,0.85)"; ctx.beginPath(); ctx.roundRect(x - bw + 4, bot - 14, (bw - 4) * 2, 11, 4); ctx.fill();   // folded child seat
       ctx.restore();
-      ctx.strokeStyle = "#7a90b0"; ctx.lineWidth = 3; ctx.beginPath(); ctx.moveTo(x - tw, top); ctx.lineTo(x + tw, top); ctx.lineTo(x + bw, bot); ctx.lineTo(x - bw, bot); ctx.closePath(); ctx.stroke();
-      ctx.strokeStyle = "#7a90b0"; ctx.lineWidth = 3;                     // posts down to the handle
-      ctx.beginPath(); ctx.moveTo(x - bw + 3, bot); ctx.lineTo(x - bw + 1, bot + 14); ctx.moveTo(x + bw - 3, bot); ctx.lineTo(x + bw - 1, bot + 14); ctx.stroke();
-      ctx.fillStyle = "#3f7fd6"; ctx.beginPath(); ctx.roundRect(x - 38, bot + 11, 76, 9, 4.5); ctx.fill();   // the handle
-      for (const side of [-1, 1]) {                                       // arms and hands on the handle
-        const hx = x + side * 22;
-        ctx.fillStyle = "#4b5a78"; ctx.beginPath(); ctx.roundRect(hx - 7, bot + 18, 14, 22, 6); ctx.fill();
-        ctx.fillStyle = "#f2c9a0"; ctx.beginPath(); ctx.ellipse(hx, bot + 15, 9, 7, 0, 0, Math.PI * 2); ctx.fill();
-        ctx.strokeStyle = "rgba(16,27,46,0.15)"; ctx.lineWidth = 1; ctx.stroke();
+      trapezoid(x, top, bot, tw, bw, 7);
+      ctx.strokeStyle = "#8d9fb9"; ctx.lineWidth = 3.5; ctx.stroke();
+      ctx.strokeStyle = "rgba(255,255,255,0.9)"; ctx.lineWidth = 1.2;     // rim highlight
+      ctx.beginPath(); ctx.moveTo(x - tw + 6, top + 2.5); ctx.lineTo(x + tw - 6, top + 2.5); ctx.stroke();
+      const spots = [[-15, 8], [15, 6], [-6, 22], [16, 24]];               // groceries, poking up over the rim
+      basket.forEach((c, k) => { const [dx, dy] = spots[k]; drawIcon(c, x + dx, top + dy, 30); });
+      ctx.strokeStyle = "#8d9fb9"; ctx.lineWidth = 3;                     // frame down to the handle
+      ctx.beginPath(); ctx.moveTo(x - bw + 4, bot); ctx.lineTo(x - bw + 2, bot + 13); ctx.moveTo(x + bw - 4, bot); ctx.lineTo(x + bw - 2, bot + 13); ctx.stroke();
+      for (const side of [-1, 1]) {                                       // sleeves fading toward you
+        const hx = x + side * 24, sg = ctx.createLinearGradient(0, bot + 18, 0, bot + 40);
+        sg.addColorStop(0, "rgba(78,94,128,1)"); sg.addColorStop(1, "rgba(78,94,128,0)");
+        ctx.fillStyle = sg; ctx.beginPath(); ctx.roundRect(hx - 8, bot + 18, 16, 22, 7); ctx.fill();
+      }
+      ctx.fillStyle = "#e8505b"; ctx.beginPath(); ctx.roundRect(x - 41, bot + 11, 82, 10, 5); ctx.fill();   // red handle
+      ctx.fillStyle = "rgba(255,255,255,0.45)"; ctx.beginPath(); ctx.roundRect(x - 37, bot + 12.5, 74, 2.5, 1.25); ctx.fill();
+      for (const side of [-1, 1]) {                                       // hands gripping it
+        const hx = x + side * 24;
+        ctx.fillStyle = "#f2c9a0"; ctx.beginPath(); ctx.roundRect(hx - 8, bot + 9, 16, 13, 6); ctx.fill();
+        ctx.strokeStyle = "rgba(150,100,70,0.35)"; ctx.lineWidth = 1; ctx.stroke();
+        ctx.strokeStyle = "rgba(150,100,70,0.3)";
+        for (const fx of [-3, 1, 5]) { ctx.beginPath(); ctx.moveTo(hx + fx - 1, bot + 10); ctx.lineTo(hx + fx - 1, bot + 15); ctx.stroke(); }
       }
     }
     function drawHeart(x: number, y: number, s: number, full: boolean) {
@@ -374,10 +402,13 @@ export default function CartRush() {
       ctx.strokeStyle = "rgba(63,127,214,0.35)"; ctx.lineWidth = 2; ctx.stroke();
       const px = SHELF + 4 + s.lane * ((W - 2 * SHELF - 8) / LANES);
       ctx.fillStyle = "rgba(63,127,214,0.9)"; ctx.beginPath(); ctx.roundRect(px + 4, PAD_Y + 4, (W - 2 * SHELF - 8) / LANES - 8, PAD_H - 8, 10); ctx.fill();
-      for (let l = 0; l < LANES; l++) {
-        const mx = SHELF + 4 + (l + 0.5) * ((W - 2 * SHELF - 8) / LANES);
-        ctx.fillStyle = l === s.lane ? "#fff" : "rgba(63,127,214,0.55)";
-        for (const dx of [-8, 0, 8]) { ctx.beginPath(); ctx.arc(mx + dx, PAD_Y + PAD_H / 2, 2.5, 0, Math.PI * 2); ctx.fill(); }
+      for (let l = 0; l < LANES; l++) {                  // ◀ left lane, • middle, ▶ right lane
+        const mx = SHELF + 4 + (l + 0.5) * ((W - 2 * SHELF - 8) / LANES), my = PAD_Y + PAD_H / 2;
+        ctx.fillStyle = l === s.lane ? "#fff" : "rgba(63,127,214,0.65)";
+        ctx.beginPath();
+        if (l === 1) ctx.arc(mx, my, 5, 0, Math.PI * 2);
+        else { const d = l === 0 ? -1 : 1; ctx.moveTo(mx + d * 7, my); ctx.lineTo(mx - d * 5, my - 8); ctx.lineTo(mx - d * 5, my + 8); ctx.closePath(); }
+        ctx.fill();
       }
 
       // HUD: the recipe card and hearts
@@ -396,6 +427,7 @@ export default function CartRush() {
       });
       ctx.textAlign = "right"; ctx.font = font(600, 13); ctx.fillStyle = s.perfect ? "#2eaa6e" : "#8a96a8";
       ctx.fillText(s.perfect ? "No extras: ×2 bonus" : "Extras: no ×2 this time", W - 14, 24);
+      ctx.font = font(800, 15); ctx.fillStyle = "#2eaa6e"; ctx.fillText(`Level ${level}`, W - 14, 58);
 
       ctx.textAlign = "center";
       for (const f of floats) {
@@ -438,11 +470,15 @@ export default function CartRush() {
         <div className="rounded-full bg-[#3f7fd6] px-2.5 py-0.5 text-xs font-bold text-white">
           {hud.made === 1 ? "1 recipe made" : `${hud.made} recipes made`}
         </div>
-        <div className="text-right"><div className="text-[10px] uppercase tracking-wide text-[#5a6b85]">Best</div><div className="text-lg font-semibold leading-none tabular-nums">{best.toLocaleString()}</div></div>
+        <div className="flex items-center gap-2">
+          <div className="text-right"><div className="text-[10px] uppercase tracking-wide text-[#5a6b85]">Best</div><div className="text-lg font-semibold leading-none tabular-nums">{best.toLocaleString()}</div></div>
+          <PauseButton shell={shell} active={started && !over} />
+        </div>
       </div>
 
       <BoardArea wrapRef={wrapRef} size={board} reserve={0}>
         <canvas ref={canvasRef} className="block rounded-[22px] shadow-[0_14px_40px_rgba(16,42,86,0.18)]" />
+        <PausedCard shell={shell} active={started && !over} />
         {!started && !over && (
           <button onClick={() => startRef.current()} className="absolute inset-0 flex items-center justify-center rounded-[22px] bg-[#101b2e]/25">
             <span className="rounded-3xl bg-white px-6 py-4 text-center shadow-2xl">
