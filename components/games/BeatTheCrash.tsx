@@ -228,10 +228,8 @@ export default function BeatTheCrash() {
       ctx.fillStyle = "#101b2e"; ctx.font = "700 20px system-ui, -apple-system, sans-serif"; ctx.textAlign = "left"; ctx.textBaseline = "alphabetic";
       ctx.fillText(clock(h), 16, 27);
       const slump = h >= 14 && h < 16;
-      ctx.font = "600 13px system-ui, -apple-system, sans-serif"; ctx.textAlign = "center"; ctx.fillStyle = slump ? "#e8505b" : "#5a6b85";
-      ctx.fillText(slump ? "😩 Slump" : mode === "daily" ? "" : `Day ${day}`, W / 2 + 10, 25);
-      ctx.font = "18px system-ui, -apple-system, sans-serif"; ctx.textAlign = "right";
-      ctx.fillText(Array.from({ length: HEARTS }, (_, k) => (k < hearts ? "❤️" : "🤍")).join(""), W - 14, 27);
+      ctx.font = "600 13px system-ui, -apple-system, sans-serif"; ctx.textAlign = "right"; ctx.fillStyle = slump ? "#e8505b" : "#5a6b85";
+      ctx.fillText(slump ? "😩 Afternoon slump" : mode === "daily" ? "Make it to 10pm" : `Day ${day}`, W - 16, 25);
       const bx = 16, bw = W - 32, by = 38, bh = 14;
       for (const [a, b, c] of BAR) { ctx.fillStyle = c; ctx.fillRect(bx + (a / 100) * bw, by, ((b - a) / 100) * bw, bh); }
       ctx.strokeStyle = "rgba(16,27,46,0.12)"; ctx.lineWidth = 1; ctx.beginPath(); ctx.roundRect(bx, by, bw, bh, 7); ctx.stroke();
@@ -250,6 +248,8 @@ export default function BeatTheCrash() {
         ctx.strokeStyle = "#e8505b"; ctx.lineWidth = 5; ctx.beginPath();
         ctx.arc(px + jx, PLAYER_Y, PR + 7, -Math.PI / 2, -Math.PI / 2 + left * Math.PI * 2); ctx.stroke();
       }
+      // hearts ride just under the face, where your eyes already are
+      for (let k = 0; k < HEARTS; k++) drawHeart(px + jx + (k - 1) * 17, PLAYER_Y + PR + 8, 13, k < hearts);
       ctx.fillStyle = "rgba(16,27,46,0.08)"; ctx.beginPath(); ctx.roundRect(14, GRIP_Y - 9, W - 28, 18, 9); ctx.fill();
       ctx.fillStyle = "#fff"; ctx.strokeStyle = "rgba(63,127,214,0.55)"; ctx.lineWidth = 2;
       ctx.beginPath(); ctx.roundRect(px - 34, GRIP_Y - 15, 68, 30, 15); ctx.fill(); ctx.stroke();
@@ -264,6 +264,16 @@ export default function BeatTheCrash() {
         ctx.fillText(f.text, f.x, f.y - (f.big ? 0 : f.age * 0.05));
       }
       ctx.globalAlpha = 1; ctx.restore();
+    }
+
+    function drawHeart(x: number, y: number, s: number, full: boolean) {
+      ctx.beginPath(); ctx.moveTo(x, y + s * 0.3);
+      ctx.bezierCurveTo(x, y, x - s / 2, y, x - s / 2, y + s * 0.3);
+      ctx.bezierCurveTo(x - s / 2, y + s * 0.6, x, y + s * 0.8, x, y + s);
+      ctx.bezierCurveTo(x, y + s * 0.8, x + s / 2, y + s * 0.6, x + s / 2, y + s * 0.3);
+      ctx.bezierCurveTo(x + s / 2, y, x, y, x, y + s * 0.3); ctx.closePath();
+      if (full) { ctx.fillStyle = "#e8505b"; ctx.fill(); }
+      else { ctx.fillStyle = "rgba(255,255,255,0.7)"; ctx.fill(); ctx.strokeStyle = "rgba(16,27,46,0.25)"; ctx.lineWidth = 1.5; ctx.stroke(); }
     }
 
     raf = requestAnimationFrame(loop);
