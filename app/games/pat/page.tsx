@@ -1,22 +1,32 @@
-import type { Metadata } from "next";
+import type { Metadata, Viewport } from "next";
+import PatsLawnmower from "@/components/games/PatsLawnmower";
 
-// Pat's Lawnmower: a private game (hidden: noindex, not on the games page, menu or sitemap).
-// This is a short "almost ready" page; the game replaces it when it's finished.
+// A private game for family and friends: not in the games list, the menu, the sitemap or robots.txt, and kept out of
+// search. Link previews show the game's own drawing (public/og/pat.png), never a photo of the property.
+const DESC = "Help Pat finish the lawn before the cat gets in the way.";
 export const metadata: Metadata = {
   title: "Pat's Lawnmower",
-  description: "Help Pat finish the lawn before the cat gets in the way.",
-  robots: { index: false, follow: false },
+  description: DESC,
+  robots: { index: false, follow: false, googleBot: { index: false, follow: false } },
+  openGraph: {
+    title: "Pat's Lawnmower",
+    description: DESC,
+    type: "website",
+    url: "https://whatyouate.app/games/pat",
+    images: [{ url: "/og/pat.png", width: 1200, height: 630, alt: "Pat's Lawnmower: Pat on an orange lawn tractor mowing stripes, with the grey cat nearby" }],
+  },
+  twitter: { card: "summary_large_image", title: "Pat's Lawnmower", description: DESC, images: ["/og/pat.png"] },
+};
+
+export const viewport: Viewport = {
+  width: "device-width",
+  initialScale: 1,
+  maximumScale: 1,
+  userScalable: false,
+  viewportFit: "cover",
+  themeColor: "#eef6e3",
 };
 
 export default function PatPage() {
-  return (
-    <main className="fixed inset-0 flex items-center justify-center bg-gradient-to-b from-[#e8f6dc] to-[#9fd383] p-6 text-center text-[#1f3a14]">
-      <div className="max-w-[340px] rounded-3xl bg-white/90 p-7 shadow-xl">
-        <div className="text-5xl">🚜</div>
-        <h1 className="mt-3 text-2xl font-bold">Pat&apos;s Lawnmower</h1>
-        <p className="mt-2 text-[15px] leading-snug text-[#3d5a2e]">Almost ready. Pat&apos;s just gassing up the tractor.</p>
-        <p className="mt-4 text-sm text-[#5a7a4a]">Check back soon. 🐈‍⬛</p>
-      </div>
-    </main>
-  );
+  return <PatsLawnmower />;
 }
