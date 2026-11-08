@@ -6,14 +6,14 @@ import PeaTanks from "@/components/games/PeaTanks";
 // The hub page has it, and the game-over card has its own "Get WhatYouAte" button.
 export const metadata: Metadata = {
   title: "Pea Tanks | WhatYouAte",
-  description: "A free food game. Drive a lunchbox around the kitchen table and fire peas. Play the computer, a friend live, or on one phone.",
+  description: "A free food game. Twin-stick lunchbox battles on the kitchen table: 20 missions, Guard The Lunch, co-op and versus, live or on one phone.",
   alternates: { canonical: "/games/pea-tanks" },
   manifest: "/games/pea-tanks.webmanifest",
   appleWebApp: { capable: true, title: "Pea Tanks", statusBarStyle: "default" },
   // Link previews show this game (public/og/game-<slug>.png, drawn by ~/dev/whatyouate-marketing/games/og.py), so invites and score shares look like it.
   openGraph: {
     title: "Play Pea Tanks With Me",
-    description: "Drive, dodge and fire peas around the kitchen table. Play me live, no app needed. Free in your browser.",
+    description: "Twin-stick lunchbox battles: missions, co-op and versus. Play me live, no app needed. Free in your browser.",
     siteName: "WhatYouAte",
     type: "website",
     url: "https://whatyouate.app/games/pea-tanks",
@@ -22,7 +22,7 @@ export const metadata: Metadata = {
   twitter: {
     card: "summary_large_image",
     title: "Play Pea Tanks With Me",
-    description: "Drive, dodge and fire peas around the kitchen table. Play me live, no app needed. Free in your browser.",
+    description: "Twin-stick lunchbox battles: missions, co-op and versus. Play me live, no app needed. Free in your browser.",
     images: ["/og/game-pea-tanks.png"],
   },
 };

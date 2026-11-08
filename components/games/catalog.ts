@@ -64,7 +64,7 @@ export const GAMES: Game[] = [
   {
     slug: "pea-tanks",
     name: "Pea Tanks",
-    tagline: "Drive a lunchbox around the kitchen table and fire peas. Take on the computer or a friend.",
+    tagline: "Twin-stick lunchbox battles on the kitchen table. Missions, co-op, Guard The Lunch and versus.",
     daily: true,
     multiplayer: true,
   },
