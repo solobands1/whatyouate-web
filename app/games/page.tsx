@@ -72,15 +72,9 @@ export default function Games() {
                 className="group flex items-center gap-5 rounded-[28px] bg-white p-5 ring-1 ring-[#16233B]/[0.06] transition duration-200 hover:-translate-y-0.5 sm:gap-7 sm:p-6"
                 style={{ boxShadow: "0 30px 60px -30px rgba(16,42,86,0.40)" }}
               >
-                <div
-                  className="grid h-[104px] w-[104px] shrink-0 grid-cols-2 place-items-center gap-1 rounded-[22px] p-3 sm:h-[124px] sm:w-[124px]"
-                  style={{ background: g.tint }}
-                >
-                  {g.foods.slice(0, 4).map((c) => (
-                    // eslint-disable-next-line @next/next/no-img-element
-                    <img key={c} src={`/games/foods/${c}.png`} alt="" className="h-9 w-9 sm:h-11 sm:w-11" />
-                  ))}
-                </div>
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img src={`/games/cards/${g.slug}.jpg`} alt={`${g.name} game`} width={124} height={124}
+                  className="h-[104px] w-[104px] shrink-0 rounded-[22px] object-cover ring-1 ring-[#16233B]/[0.06] sm:h-[124px] sm:w-[124px]" />
                 <div className="min-w-0 flex-1">
                   <div className="flex flex-wrap items-center gap-2">
                     <h2 className="text-[22px] font-bold tracking-[-0.02em]" style={{ color: INK }}>{g.name}</h2>
