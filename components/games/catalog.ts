@@ -61,4 +61,11 @@ export const GAMES: Game[] = [
     daily: true,
     multiplayer: true,
   },
+  {
+    slug: "pea-tanks",
+    name: "Pea Tanks",
+    tagline: "Drive a lunchbox around the kitchen table and fire peas. Take on the computer or a friend.",
+    daily: true,
+    multiplayer: true,
+  },
 ];
