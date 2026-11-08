@@ -10,20 +10,20 @@ export const metadata: Metadata = {
   alternates: { canonical: "/games/sugar-showdown" },
   manifest: "/games/sugar-showdown.webmanifest",
   appleWebApp: { capable: true, title: "Sugar Showdown", statusBarStyle: "default" },
-  // Link previews describe the games section as a whole, since more games are planned.
+  // Link previews show this game (public/og/game-<slug>.png, drawn by ~/dev/whatyouate-marketing/games/og.py), so invites and score shares look like it.
   openGraph: {
-    title: "WhatYouAte Food Games",
-    description: "Quick, free food games. Can you top the scoreboard?",
+    title: "Play Sugar Showdown With Me",
+    description: "Which has more sugar? Ten quick rounds. Race me. Free in your browser.",
     siteName: "WhatYouAte",
     type: "website",
     url: "https://whatyouate.app/games/sugar-showdown",
-    images: [{ url: "/og-games.png", width: 1200, height: 630, alt: "WhatYouAte Food Games" }],
+    images: [{ url: "/og/game-sugar-showdown.png", width: 1200, height: 630, alt: "Sugar Showdown, a free WhatYouAte game" }],
   },
   twitter: {
     card: "summary_large_image",
-    title: "WhatYouAte Food Games",
-    description: "Quick, free food games. Can you top the scoreboard?",
-    images: ["/og-games.png"],
+    title: "Play Sugar Showdown With Me",
+    description: "Which has more sugar? Ten quick rounds. Race me. Free in your browser.",
+    images: ["/og/game-sugar-showdown.png"],
   },
 };
 

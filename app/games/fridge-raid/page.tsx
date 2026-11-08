@@ -10,20 +10,20 @@ export const metadata: Metadata = {
   alternates: { canonical: "/games/fridge-raid" },
   manifest: "/games/fridge-raid.webmanifest",
   appleWebApp: { capable: true, title: "Fridge Raid", statusBarStyle: "default" },
-  // Link previews describe the games section as a whole, since more games are planned.
+  // Link previews show this game (public/og/game-<slug>.png, drawn by ~/dev/whatyouate-marketing/games/og.py), so invites and score shares look like it.
   openGraph: {
-    title: "WhatYouAte Food Games",
-    description: "Quick, free food games. Can you top the scoreboard?",
+    title: "Play Fridge Raid With Me",
+    description: "Hide your snacks, hunt for mine. Play me live, no app needed. Free in your browser.",
     siteName: "WhatYouAte",
     type: "website",
     url: "https://whatyouate.app/games/fridge-raid",
-    images: [{ url: "/og-games.png", width: 1200, height: 630, alt: "WhatYouAte Food Games" }],
+    images: [{ url: "/og/game-fridge-raid.png", width: 1200, height: 630, alt: "Fridge Raid, a free WhatYouAte game" }],
   },
   twitter: {
     card: "summary_large_image",
-    title: "WhatYouAte Food Games",
-    description: "Quick, free food games. Can you top the scoreboard?",
-    images: ["/og-games.png"],
+    title: "Play Fridge Raid With Me",
+    description: "Hide your snacks, hunt for mine. Play me live, no app needed. Free in your browser.",
+    images: ["/og/game-fridge-raid.png"],
   },
 };
 

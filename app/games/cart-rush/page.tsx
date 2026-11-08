@@ -10,20 +10,20 @@ export const metadata: Metadata = {
   alternates: { canonical: "/games/cart-rush" },
   manifest: "/games/cart-rush.webmanifest",
   appleWebApp: { capable: true, title: "Cart Rush", statusBarStyle: "default" },
-  // Link previews describe the games section as a whole, since more games are planned.
+  // Link previews show this game (public/og/game-<slug>.png, drawn by ~/dev/whatyouate-marketing/games/og.py), so invites and score shares look like it.
   openGraph: {
-    title: "WhatYouAte Food Games",
-    description: "Quick, free food games. Can you top the scoreboard?",
+    title: "Cart Rush: Can You Beat My Score?",
+    description: "Race your cart up the aisle, grab the recipe, dodge the spills. Free in your browser.",
     siteName: "WhatYouAte",
     type: "website",
     url: "https://whatyouate.app/games/cart-rush",
-    images: [{ url: "/og-games.png", width: 1200, height: 630, alt: "WhatYouAte Food Games" }],
+    images: [{ url: "/og/game-cart-rush.png", width: 1200, height: 630, alt: "Cart Rush, a free WhatYouAte game" }],
   },
   twitter: {
     card: "summary_large_image",
-    title: "WhatYouAte Food Games",
-    description: "Quick, free food games. Can you top the scoreboard?",
-    images: ["/og-games.png"],
+    title: "Cart Rush: Can You Beat My Score?",
+    description: "Race your cart up the aisle, grab the recipe, dodge the spills. Free in your browser.",
+    images: ["/og/game-cart-rush.png"],
   },
 };
 
