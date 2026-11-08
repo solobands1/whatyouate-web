@@ -682,7 +682,7 @@ export default function FridgeRaid() {
   backRef.current = () => {
     if (document.visibilityState !== "visible" || opp !== "live" || !pairedWith.current || !room.code) return;
     const ch = chRef.current as unknown as { state?: string } | null, rt = sb().realtime;
-    if (!rt.isConnected() || !ch || ch.state !== "joined") { joinRoom(room.code, liveNow()); if (!rt.isConnected()) rt.connect(); }   // the socket may have died while we were away
+    if (!rt.isConnected() || !ch || ch.state !== "joined") { joinRoom(room.code, liveNow()); if (!rt.isConnected()) void rt.disconnect().catch(() => {}).then(() => rt.connect()); }   // the socket may have died while we were away; connect() does nothing while a dead one is still attached
     else { chRef.current?.track(meRef.current!); sendResume(); }
   };
   useEffect(() => {

@@ -406,7 +406,7 @@ function useRoom(nameRef: { current: string }, handlers: { current: RoomHandlers
     const back = () => {
       if (document.visibilityState !== "visible" || !s.code || !(s.m || s.friendId)) return;
       const ch = s.ch as unknown as { state?: string } | null, rt = sb().realtime;
-      if (!rt.isConnected() || !ch || ch.state !== "joined") { setReconnecting(true); open(s.code, s.role, current()); if (!rt.isConnected()) rt.connect(); }   // the socket may have died while we were away
+      if (!rt.isConnected() || !ch || ch.state !== "joined") { setReconnecting(true); open(s.code, s.role, current()); if (!rt.isConnected()) void rt.disconnect().catch(() => {}).then(() => rt.connect()); }   // the socket may have died while we were away; connect() does nothing while a dead one is still attached
       else { track(); if (s.m) { setReconnecting(true); sendResume(); } }
     };
     document.addEventListener("visibilitychange", back); window.addEventListener("pageshow", back); window.addEventListener("online", back);
