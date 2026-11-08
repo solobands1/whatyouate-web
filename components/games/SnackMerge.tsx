@@ -8,6 +8,7 @@
 import { useEffect, useRef, useState } from "react";
 import Matter from "matter-js";
 import { APP_STORE_URL } from "@/components/site";
+import { sb } from "@/components/creators/api";
 
 type Food = { name: string; code: string; r: number; color: string; points: number; facts: string[] };   // 5 facts each, one picked at random
 const FOODS: Food[] = [
@@ -47,12 +48,30 @@ export default function SnackMerge() {
   const [combo, setCombo] = useState(0);
   const [copied, setCopied] = useState(false);
   const [board, setBoard] = useState({ w: 0, h: 0 });
-  const [help, setHelp] = useState(false);              // "How to play": shown on a first visit, and from the ⓘ button   // canvas size on screen, fitted to the space left under the header
+  const [help, setHelp] = useState(false);              // "How to play": shown on a first visit, and from the ⓘ button
+  // scoreboard: a player signs up once (name + email); the browser keeps their token and posts new runs itself
+  const [player, setPlayer] = useState<{ token: string; name: string } | null>(null);
+  const [final, setFinal] = useState<{ score: number; drops: number; ms: number } | null>(null);
+  const [posted, setPosted] = useState<{ rank: number | null; total: number } | null>(null);
+  const [joinOpen, setJoinOpen] = useState(false);
+  const [boardOpen, setBoardOpen] = useState(false);
+  const finishRef = useRef<(score: number, drops: number, ms: number) => void>(() => {});
   const bestKey = mode === "daily" ? `snackmerge-daily-${torontoDate()}` : "snackmerge-endless";
 
   useEffect(() => { setBest(readBest(bestKey)); }, [bestKey]);
   useEffect(() => { try { if (!localStorage.getItem("snackmerge-seen-help")) setHelp(true); } catch { setHelp(true); } }, []);
   const closeHelp = () => { setHelp(false); try { localStorage.setItem("snackmerge-seen-help", "1"); } catch {} };
+  useEffect(() => { try { const v = localStorage.getItem("snackmerge-player"); if (v) setPlayer(JSON.parse(v)); } catch {} }, []);
+  const apiMode = mode === "daily" ? "daily" : "free";
+  const boardFor = mode === "daily" ? "today" : "week";
+  const postScore = async (tok: string, f: { score: number; drops: number; ms: number }) => {
+    if (f.score <= 0) return;
+    const { data } = await sb().rpc("game_submit_score", { p_token: tok, p_game: "snack-merge", p_mode: apiMode, p_score: f.score, p_drops: f.drops, p_duration_ms: Math.round(f.ms) });
+    if (!data?.ok) return;
+    const { data: r } = await sb().rpc("game_my_rank", { p_token: tok, p_game: "snack-merge", p_board: boardFor });
+    setPosted({ rank: r?.rank ?? null, total: r?.total ?? 0 });
+  };
+  finishRef.current = (sc, drops, ms) => { const f = { score: sc, drops, ms }; setFinal(f); setPosted(null); if (player) postScore(player.token, f); };
   useEffect(() => {                                    // a web app, not a page: no scrolling, no pull-to-refresh, no bounce
     const h = document.documentElement, b = document.body, prev = [h.style.overflow, b.style.overflow, h.style.overscrollBehavior];
     h.style.overflow = "hidden"; b.style.overflow = "hidden"; h.style.overscrollBehavior = "none";
@@ -77,9 +96,9 @@ export default function SnackMerge() {
     const level = new Map<number, number>();         // body id -> food level
     const born = new Map<number, number>();          // body id -> time added
     let current = pick(), upcoming = pick(), aimX = W / 2, canDrop = true, total = 0, ended = false;
-    let lastMerge = 0, chain = 0, aboveSince = 0, raf = 0;
+    let lastMerge = 0, chain = 0, aboveSince = 0, raf = 0, drops = 0; const started = performance.now();
     const seen = new Set<number>([0, 1, 2, 3, 4]);   // foods you can drop don't need an introduction
-    setNext(upcoming); setScore(0); setOver(false); setCombo(0); setToast(null);
+    setNext(upcoming); setScore(0); setOver(false); setCombo(0); setToast(null); setFinal(null); setPosted(null);
 
     const addFood = (lv: number, x: number, y: number) => {
       const f = FOODS[lv];
@@ -120,7 +139,7 @@ export default function SnackMerge() {
     const onMove = (e: PointerEvent) => { aimX = clampX(toLocal(e.clientX)); };
     const onUp = (e: PointerEvent) => {
       if (ended || !canDrop) return;
-      aimX = clampX(toLocal(e.clientX)); addFood(current, aimX, TOP - 40);
+      aimX = clampX(toLocal(e.clientX)); addFood(current, aimX, TOP - 40); drops++;
       current = upcoming; upcoming = pick(); setNext(upcoming); canDrop = false;
       setTimeout(() => { canDrop = true; }, 550);
     };
@@ -133,7 +152,7 @@ export default function SnackMerge() {
       // lose: a settled food stays above the line for 1.5s
       const settledAbove = engine.world.bodies.some(b => level.has(b.id) && t - (born.get(b.id) || 0) > 1200 && b.position.y - FOODS[level.get(b.id)!].r < TOP);
       if (!ended) {
-        if (settledAbove) { aboveSince ||= t; if (t - aboveSince > 1500) { ended = true; setOver(true); if (total > readBest(bestKey)) { saveBest(bestKey, total); setBest(total); } } }
+        if (settledAbove) { aboveSince ||= t; if (t - aboveSince > 1500) { ended = true; setOver(true); if (total > readBest(bestKey)) { saveBest(bestKey, total); setBest(total); } finishRef.current(total, drops, t - started); } }
         else aboveSince = 0;
       }
       // draw
@@ -188,6 +207,7 @@ export default function SnackMerge() {
               </button>
             ))}
           </div>
+          <button onClick={() => setBoardOpen(true)} aria-label="Scoreboard" className="flex h-8 w-8 items-center justify-center rounded-full bg-white/70 text-base">🏆</button>
           <button onClick={() => setHelp(true)} aria-label="How to play" className="flex h-8 w-8 items-center justify-center rounded-full bg-white/70 text-sm font-bold text-[#3f7fd6]">i</button>
         </div>
 
@@ -208,6 +228,15 @@ export default function SnackMerge() {
                   <div className="text-sm font-semibold text-[#5a6b85]">{mode === "daily" ? `Today's Challenge #${dailyNumber()}` : "Free Play"}</div>
                   <div className="mt-1 text-4xl font-bold tabular-nums">{score.toLocaleString()}</div>
                   <div className="text-sm text-[#5a6b85]">{score >= best && score > 0 ? "New best!" : `Best: ${best.toLocaleString()}`}</div>
+                  {posted?.rank ? (
+                    <button onClick={() => setBoardOpen(true)} className="mt-3 w-full rounded-2xl bg-[#e3effe] px-3 py-2 text-sm font-semibold text-[#3f7fd6]">
+                      🏆 You&apos;re #{posted.rank} of {posted.total} {mode === "daily" ? "today" : "this week"} · See scoreboard
+                    </button>
+                  ) : !player && score > 0 ? (
+                    <button onClick={() => setJoinOpen(true)} className="mt-3 w-full rounded-2xl bg-[#fff4d6] px-3 py-2 text-sm font-semibold text-[#8a5a00]">
+                      🏆 Put your score on the scoreboard
+                    </button>
+                  ) : null}
                   <div className="mt-4 flex gap-2">
                     <button onClick={() => setRun(r => r + 1)} className="flex-1 rounded-full bg-[#3f7fd6] py-3 font-semibold text-white">Play again</button>
                     <button onClick={share} className="flex-1 rounded-full bg-[#e3effe] py-3 font-semibold text-[#3f7fd6]">{copied ? "Copied!" : "Share"}</button>
@@ -238,6 +267,12 @@ export default function SnackMerge() {
         </div>
       </div>
 
+      {joinOpen && <JoinForm onClose={() => setJoinOpen(false)} onJoined={async (pl) => {
+        setPlayer(pl); try { localStorage.setItem("snackmerge-player", JSON.stringify(pl)); } catch {}
+        setJoinOpen(false); if (final) await postScore(pl.token, final); setBoardOpen(true);
+      }} />}
+      {boardOpen && <Scoreboard token={player?.token} initial={boardFor} onClose={() => setBoardOpen(false)} onJoin={() => { setBoardOpen(false); setJoinOpen(true); }} />}
+
       {help && (
         <div className="absolute inset-0 z-20 flex items-center justify-center bg-[#101b2e]/50 p-5" onClick={closeHelp}>
           <div className="w-full max-w-[380px] rounded-3xl bg-white p-5 shadow-2xl" onClick={e => e.stopPropagation()}>
@@ -261,5 +296,81 @@ export default function SnackMerge() {
         </div>
       )}
     </main>
+  );
+}
+
+const NAME_ERRORS: Record<string, string> = {
+  name_short: "Your name needs at least 2 characters.", name_long: "Keep your name to 20 characters.",
+  name_characters: "Use letters, numbers, spaces, dots, dashes or underscores.", name_blocked: "Pick a different name.",
+  name_reserved: "That name is reserved. Pick another.", email: "That email doesn't look right.",
+};
+
+function JoinForm({ onClose, onJoined }: { onClose: () => void; onJoined: (p: { token: string; name: string }) => void }) {
+  const [name, setName] = useState(""); const [email, setEmail] = useState("");
+  const [updates, setUpdates] = useState(false);   // "someone beat your score" emails left out for now (Dillon: it'd get annoying)
+  const [busy, setBusy] = useState(false); const [err, setErr] = useState("");
+  const submit = async () => {
+    setBusy(true); setErr("");
+    const { data, error } = await sb().rpc("game_register", { p_name: name, p_email: email, p_notify: false, p_marketing: updates });
+    setBusy(false);
+    if (error || !data?.ok) { setErr(NAME_ERRORS[data?.error] ?? "Something went wrong. Try again."); return; }
+    onJoined({ token: data.token, name: data.name });
+  };
+  return (
+    <div className="absolute inset-0 z-30 flex items-center justify-center bg-[#101b2e]/50 p-5" onClick={onClose}>
+      <div className="w-full max-w-[380px] rounded-3xl bg-white p-5 shadow-2xl" onClick={e => e.stopPropagation()}>
+        <div className="text-center text-xl font-bold">Join the scoreboard</div>
+        <p className="mt-1 text-center text-sm text-[#5a6b85]">Your name shows on the board. Your email never does.</p>
+        <label className="mt-4 block text-xs font-semibold uppercase tracking-wide text-[#5a6b85]">Name</label>
+        <input value={name} onChange={e => setName(e.target.value)} maxLength={20} placeholder="e.g. SnackKing" className="mt-1 w-full rounded-xl border border-[#d6e2f5] px-3 py-2.5 text-base outline-none focus:border-[#3f7fd6]" />
+        <label className="mt-3 block text-xs font-semibold uppercase tracking-wide text-[#5a6b85]">Email</label>
+        <input value={email} onChange={e => setEmail(e.target.value)} type="email" inputMode="email" autoComplete="email" placeholder="you@example.com" className="mt-1 w-full rounded-xl border border-[#d6e2f5] px-3 py-2.5 text-base outline-none focus:border-[#3f7fd6]" />
+        <label className="mt-3 flex items-start gap-2 text-sm"><input type="checkbox" checked={updates} onChange={e => setUpdates(e.target.checked)} className="mt-0.5 h-4 w-4" />Send me WhatYouAte news and updates</label>
+        {err && <p className="mt-3 text-sm font-semibold text-[#d64545]">{err}</p>}
+        <button disabled={busy} onClick={submit} className="mt-4 w-full rounded-full bg-[#3f7fd6] py-3 font-semibold text-white disabled:opacity-60">{busy ? "Adding you..." : "Add me to the board"}</button>
+        <p className="mt-3 text-center text-[11px] text-[#5a6b85]">You can unsubscribe any time. See our <a href="/privacy" className="underline">privacy policy</a>.</p>
+      </div>
+    </div>
+  );
+}
+
+type Row = { rank: number; name: string; score: number };
+function Scoreboard({ token, initial, onClose, onJoin }: { token?: string; initial: string; onClose: () => void; onJoin: () => void }) {
+  const [tab, setTab] = useState(initial); const [rows, setRows] = useState<Row[] | null>(null);
+  const [mine, setMine] = useState<{ rank: number | null; score?: number; total?: number } | null>(null);
+  useEffect(() => {
+    let live = true; setRows(null); setMine(null);
+    (async () => {
+      const { data } = await sb().rpc("game_leaderboard", { p_game: "snack-merge", p_board: tab, p_limit: 50 });
+      if (live) setRows((data as Row[]) ?? []);
+      if (token) { const { data: m } = await sb().rpc("game_my_rank", { p_token: token, p_game: "snack-merge", p_board: tab }); if (live) setMine(m); }
+    })();
+    return () => { live = false; };
+  }, [tab, token]);
+  const tabs: [string, string][] = [["today", "Today"], ["week", "This Week"], ["all", "All-Time"]];
+  return (
+    <div className="absolute inset-0 z-30 flex items-center justify-center bg-[#101b2e]/50 p-4" onClick={onClose}>
+      <div className="flex max-h-full w-full max-w-[400px] flex-col rounded-3xl bg-white p-4 shadow-2xl" onClick={e => e.stopPropagation()}>
+        <div className="flex items-center justify-between"><div className="text-xl font-bold">🏆 Scoreboard</div>
+          <button onClick={onClose} aria-label="Close" className="h-8 w-8 rounded-full text-xl text-[#5a6b85]">×</button></div>
+        <div className="mt-2 flex rounded-full bg-[#f0f6fe] p-0.5 text-xs font-semibold">
+          {tabs.map(([k, label]) => (<button key={k} onClick={() => setTab(k)} className={`flex-1 rounded-full py-1.5 ${tab === k ? "bg-[#3f7fd6] text-white" : "text-[#3f7fd6]"}`}>{label}</button>))}
+        </div>
+        <p className="mt-2 text-center text-[11px] text-[#5a6b85]">{tab === "today" ? "Today's Challenge: same foods for everyone. Resets at midnight." : tab === "week" ? "Best Free Play scores since Monday." : "Best Free Play scores ever."}</p>
+        <div className="mt-2 min-h-0 flex-1 overflow-y-auto">
+          {rows === null ? <p className="py-6 text-center text-sm text-[#5a6b85]">Loading...</p>
+            : rows.length === 0 ? <p className="py-6 text-center text-sm text-[#5a6b85]">No scores yet. Be the first!</p>
+            : rows.map(r => (
+              <div key={r.rank} className={`flex items-center gap-3 rounded-xl px-2 py-1.5 text-sm ${mine?.rank === r.rank ? "bg-[#e3effe] font-semibold" : ""}`}>
+                <span className="w-7 text-right tabular-nums text-[#5a6b85]">{r.rank <= 3 ? ["🥇", "🥈", "🥉"][r.rank - 1] : r.rank}</span>
+                <span className="min-w-0 flex-1 truncate">{r.name}</span><span className="tabular-nums font-semibold">{r.score.toLocaleString()}</span>
+              </div>))}
+        </div>
+        <div className="mt-2 border-t border-[#e3effe] pt-2 text-center text-sm">
+          {token ? (mine?.rank ? <span>You&apos;re <b>#{mine.rank}</b> of {mine.total} with <b>{mine.score?.toLocaleString()}</b></span> : <span className="text-[#5a6b85]">Play a round to get on this board.</span>)
+            : <button onClick={onJoin} className="font-semibold text-[#3f7fd6]">Join the scoreboard →</button>}
+        </div>
+      </div>
+    </div>
   );
 }

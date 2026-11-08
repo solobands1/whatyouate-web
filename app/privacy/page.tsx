@@ -56,6 +56,8 @@ export default function PrivacyPage() {
             <p>We may collect basic technical information such as device type, operating system version, and crash logs solely for the purpose of maintaining app stability.</p>
             <H3>Creator codes</H3>
             <p>If you enter a creator code when you sign up, we record which code you used, so the creator can be credited for subscriptions you buy in your first year. Creators only ever see totals. We never share your name, email or anything else that identifies you with them.</p>
+            <H3>Website games</H3>
+            <p>If you join a scoreboard in one of the games on whatyouate.app, we collect the display name and email address you enter, and your scores. Your display name and scores are shown publicly on the scoreboard. Your email is never shown. We use it to keep your scores tied to you and, only if you tick the box for it, to send you WhatYouAte news. You can unsubscribe from those emails at any time, or ask us to remove your name, email and scores by writing to support@whatyouate.app.</p>
           </Section>
 
           <Section title="2. Meal Photos">
