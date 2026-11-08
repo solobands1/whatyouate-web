@@ -457,8 +457,8 @@ export default function FoodFling() {
         ctx.globalAlpha = a; ctx.strokeStyle = "#3f7fd6"; ctx.setLineDash([8, 7]); ctx.lineWidth = 2;
         rr(GRIP.x, GRIP.y, GRIP.w, GRIP.h, 18); ctx.stroke(); ctx.setLineDash([]);
         ctx.fillStyle = "#3f7fd6"; ctx.font = "700 15px system-ui, -apple-system, sans-serif"; ctx.textAlign = "center";
-        ctx.fillText("Drag back anywhere here", GRIP.x + GRIP.w / 2, GRIP.y + 26);
-        ctx.font = "600 13px system-ui, -apple-system, sans-serif"; ctx.fillText("then let go", GRIP.x + GRIP.w / 2, GRIP.y + 45);
+        ctx.fillText("Drag Back Anywhere Here", GRIP.x + GRIP.w / 2, GRIP.y + 26);
+        ctx.font = "600 13px system-ui, -apple-system, sans-serif"; ctx.fillText("Then Let Go", GRIP.x + GRIP.w / 2, GRIP.y + 45);
         ctx.globalAlpha = 1;
       }
 
