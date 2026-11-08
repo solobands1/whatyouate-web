@@ -10,9 +10,11 @@
   },
   "dependencies": {
     "@supabase/supabase-js": "^2.118.0",
+    "@types/matter-js": "^0.20.2",
     "@types/qrcode": "^1.5.5",
     "exceljs": "^4.4.0",
     "geist": "^1.7.0",
+    "matter-js": "^0.20.0",
     "next": "16.2.6",
     "qrcode": "^1.5.4",
     "react": "19.2.4",
