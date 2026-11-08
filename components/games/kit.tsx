@@ -204,12 +204,14 @@ export function GameOver({ label, headline, score, best, mode, posted, joined, c
             🏆 You&apos;re #{posted.rank} of {posted.total} {mode === "daily" ? "today" : "this week"} · See scoreboard
           </button>
         ) : !joined && score > 0 ? (
-          <button onClick={onJoin} className="mt-3 w-full rounded-2xl bg-[#fff4d6] px-3 py-2 text-sm font-semibold text-[#8a5a00]">
-            🏆 Put your score on the scoreboard
+          <button onClick={onJoin} className="wya-pulse mt-3 w-full rounded-full py-3 text-[15px] font-bold text-[#4a2f00] shadow-[0_8px_20px_-8px_rgba(217,154,23,0.8)] active:scale-[0.98]"
+            style={{ background: "linear-gradient(180deg, #ffd45e 0%, #f5b301 100%)" }}>
+            <style>{`@keyframes wya-pulse { 0%, 100% { transform: scale(1) } 50% { transform: scale(1.03) } } .wya-pulse { animation: wya-pulse 1.8s ease-in-out infinite }`}</style>
+            🏆 Put My Score On The Board
           </button>
         ) : null}
         <div className="mt-3 flex gap-2">
-          <button onClick={onAgain} className="flex-1 rounded-full bg-[#3f7fd6] py-3 font-semibold text-white">Play again</button>
+          <button onClick={onAgain} className="flex-1 rounded-full bg-[#3f7fd6] py-3 font-semibold text-white">Play Again</button>
           <button onClick={onShare} className="flex-1 rounded-full bg-[#e3effe] py-3 font-semibold text-[#3f7fd6]">{copied ? "Copied!" : "Share"}</button>
         </div>
         {extra}
