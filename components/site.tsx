@@ -1,6 +1,16 @@
 import Image from "next/image";
 
 export const APP_STORE_URL = "https://apps.apple.com/app/id6762287393";
+export const APP_STORE_ID = "6762287393";
+
+/* App Store Connect campaign links: downloads from a tagged link show up under Acquisition > Campaigns, so we can
+   tell whether a page (like the games) actually brings in installs. Apple only counts them once APP_STORE_PT,
+   the provider token from App Store Connect's campaign link generator, is filled in; until then they are plain links. */
+export const APP_STORE_PT = "";
+export function appStoreLink(campaign: string) {
+  if (!APP_STORE_PT) return `${APP_STORE_URL}?ct=${encodeURIComponent(campaign)}`;
+  return `https://apps.apple.com/app/apple-store/id${APP_STORE_ID}?pt=${APP_STORE_PT}&ct=${encodeURIComponent(campaign)}&mt=8`;
+}
 
 /* Light and airy by default. Colour is an accent, not a slab. */
 /* Section colour now comes from one continuous wash on <body>, so nothing
@@ -13,14 +23,16 @@ export const FAINT = "#8FA3C0";
 export function DownloadButton({
   tone = "dark",
   className = "",
+  href = APP_STORE_URL,
 }: {
   tone?: "dark" | "light";
   className?: string;
+  href?: string;
 }) {
   const dark = tone === "dark";
   return (
     <a
-      href={APP_STORE_URL}
+      href={href}
       className={`inline-flex items-center justify-center gap-2.5 rounded-full px-7 py-[15px] text-[15px] font-semibold tracking-[-0.01em] transition duration-200 hover:-translate-y-0.5 hover:shadow-xl active:translate-y-0 ${className}`}
       style={{
         background: dark ? INK : "#FFFFFF",

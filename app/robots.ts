@@ -1,6 +1,6 @@
 import type { MetadataRoute } from "next";
 
-// Built into /robots.txt. Creator account pages are private and stay out of search.
+// Built into /robots.txt. Creator account pages are private and stay out of search. The games are public.
 export const dynamic = "force-static";
 
 export default function robots(): MetadataRoute.Robots {
@@ -8,7 +8,7 @@ export default function robots(): MetadataRoute.Robots {
     rules: {
       userAgent: "*",
       allow: "/",
-      disallow: ["/creators/dashboard", "/creators/kit", "/creators/profile", "/creators/login", "/creators/email-test", "/creators/statement", "/creators/statements", "/creators/owner", "/creators/owner/report", "/games"],
+      disallow: ["/creators/dashboard", "/creators/kit", "/creators/profile", "/creators/login", "/creators/email-test", "/creators/statement", "/creators/statements", "/creators/owner", "/creators/owner/report"],
     },
     sitemap: "https://whatyouate.app/sitemap.xml",
   };

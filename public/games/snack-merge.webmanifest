@@ -1,7 +1,7 @@
 {
   "name": "Snack Merge by WhatYouAte",
   "short_name": "Snack Merge",
-  "start_url": "/games",
+  "start_url": "/games/snack-merge",
   "scope": "/games",
   "display": "standalone",
   "orientation": "portrait",

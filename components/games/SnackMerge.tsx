@@ -3,11 +3,11 @@
 // Snack Merge: a Suika-style merge game. Drop foods into the lunchbox; two of the same touching merge into the
 // next food up the chain, ending at a Power Bowl. Scores come from merges (bigger foods are worth far more, and
 // quick chains earn a combo bonus), so scores spread widely and ties are rare. "Daily Drop" gives everyone the
-// same food sequence for the day (seeded), so the daily score compares skill on equal terms. Prototype: best
-// scores are kept in this browser only; the shared leaderboard comes later.
+// same food sequence for the day (seeded), so the daily score compares skill on equal terms. Players who join the
+// scoreboard post their runs to Supabase (supabase/games.sql in the app repo); best scores are also kept in the browser.
 import { useEffect, useRef, useState } from "react";
 import Matter from "matter-js";
-import { APP_STORE_URL } from "@/components/site";
+import { appStoreLink } from "@/components/site";
 import { sb } from "@/components/creators/api";
 
 type Food = { name: string; code: string; r: number; color: string; points: number; facts: string[] };   // 5 facts each, one picked at random
@@ -47,6 +47,7 @@ export default function SnackMerge() {
   const [toast, setToast] = useState<{ title: string; body: string } | null>(null);
   const [combo, setCombo] = useState(0);
   const [copied, setCopied] = useState(false);
+  const [top, setTop] = useState(4);                   // highest food reached this run, for the share message
   const [board, setBoard] = useState({ w: 0, h: 0 });
   const [help, setHelp] = useState(false);              // "How to play": shown on a first visit, and from the ⓘ button
   // scoreboard: a player signs up once (name + email); the browser keeps their token and posts new runs itself
@@ -98,6 +99,7 @@ export default function SnackMerge() {
     let current = pick(), upcoming = pick(), aimX = W / 2, canDrop = true, total = 0, ended = false;
     let lastMerge = 0, chain = 0, aboveSince = 0, raf = 0, drops = 0; const started = performance.now();
     const seen = new Set<number>([0, 1, 2, 3, 4]);   // foods you can drop don't need an introduction
+    let reached = 4; setTop(4);
     setNext(upcoming); setScore(0); setOver(false); setCombo(0); setToast(null); setFinal(null); setPosted(null);
 
     const addFood = (lv: number, x: number, y: number) => {
@@ -119,6 +121,7 @@ export default function SnackMerge() {
         const mult = 1 + 0.25 * chain;                 // chains of quick merges are worth more
         if (a === FOODS.length - 1) { total += Math.round(200 * mult); setScore(total); continue; }   // two Power Bowls: both clear, big bonus
         const nb = addFood(a + 1, x, y); Matter.Body.setVelocity(nb, { x: 0, y: -1.5 });
+        if (a + 1 > reached) { reached = a + 1; setTop(reached); }
         total += Math.round(FOODS[a + 1].points * mult); setScore(total);
         if (!seen.has(a + 1)) { seen.add(a + 1); { const fs = FOODS[a + 1].facts; setToast({ title: `New: ${FOODS[a + 1].name}!`, body: fs[Math.floor(Math.random() * fs.length)] }); } }
       }
@@ -187,8 +190,11 @@ export default function SnackMerge() {
   useEffect(() => { if (!toast) return; const t = setTimeout(() => setToast(null), 5000); return () => clearTimeout(t); }, [toast]);
 
   const share = async () => {
-    const label = mode === "daily" ? `Snack Merge, Today's Challenge #${dailyNumber()}` : "Snack Merge";
-    const text = `${label} 🍲 ${score.toLocaleString()} pts\nCan you beat it? whatyouate.app/games`;
+    // Wordle-style: the food chain shows how far up you got, so friends can compare at a glance
+    const label = mode === "daily" ? `Snack Merge #${dailyNumber()} (Today's Challenge)` : "Snack Merge (Free Play)";
+    const chain = FOODS.map((f, i) => i <= top ? String.fromCodePoint(parseInt(f.code, 16)) : "⬜").join("");
+    const rank = posted?.rank ? `\n🏆 #${posted.rank} of ${posted.total} ${mode === "daily" ? "today" : "this week"}` : "";
+    const text = `${label}\n${score.toLocaleString()} pts${rank}\n${chain}\nCan you beat it? whatyouate.app/games/snack-merge`;
     try { if (navigator.share) await navigator.share({ text }); else { await navigator.clipboard.writeText(text); setCopied(true); setTimeout(() => setCopied(false), 2000); } } catch {}
   };
 
@@ -197,7 +203,9 @@ export default function SnackMerge() {
       style={{ paddingTop: "max(env(safe-area-inset-top), 10px)", paddingBottom: "max(env(safe-area-inset-bottom), 10px)", paddingLeft: 12, paddingRight: 12 }}>
       <div className="mx-auto flex h-full w-full max-w-[440px] flex-col">
         <div className="flex items-center gap-2">
-          <img src="/icon-512.png" alt="WhatYouAte" className="h-8 w-8 rounded-lg" />
+          <a href="/games" aria-label="All games" className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-white/70 text-[#3f7fd6]">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.6" strokeLinecap="round" strokeLinejoin="round"><path d="M15 5l-7 7 7 7" /></svg>
+          </a>
           <h1 className="text-lg font-bold tracking-tight">Snack Merge</h1>
           <div className="ml-auto flex rounded-full bg-white/70 p-0.5 text-xs font-semibold">
             {(["daily", "endless"] as Mode[]).map(m => (
@@ -242,7 +250,7 @@ export default function SnackMerge() {
                     <button onClick={share} className="flex-1 rounded-full bg-[#e3effe] py-3 font-semibold text-[#3f7fd6]">{copied ? "Copied!" : "Share"}</button>
                   </div>
                   <p className="mt-4 text-sm text-[#5a6b85]">Real food stacks up too. WhatYouAte shows you how your meals affect your energy.</p>
-                  <a href={APP_STORE_URL} className="mt-2 inline-block rounded-full bg-[#101b2e] px-5 py-2.5 text-sm font-semibold text-white">Get WhatYouAte</a>
+                  <a href={appStoreLink("snack-merge")} className="mt-2 inline-block rounded-full bg-[#101b2e] px-5 py-2.5 text-sm font-semibold text-white">Get WhatYouAte</a>
                 </div>
               </div>
             )}
