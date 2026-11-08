@@ -1,10 +1,11 @@
 "use client";
 
-// Cart Rush: push a shopping cart up a 3-lane grocery aisle. Tap the left or right side (or swipe, or use the
-// arrow keys) to switch lanes. A recipe card lists 3 or 4 ingredients; grab them to finish the recipe and get a
+// Cart Rush: push a shopping cart up a 3-lane grocery aisle, seen from behind the handle. Tap or slide along the
+// lane pad under the cart (or tap either side, swipe, or use the arrow keys) to switch lanes, so your finger never
+// covers the cart; your hearts ride under the cart where you're looking. A recipe card lists 3 or 4 ingredients; grab them to finish the recipe and get a
 // bonus that grows with each recipe, doubled when you grabbed nothing off the list. Wet floors, boxes and rolling
 // cans cost one of 3 hearts; every 4th recipe gives one back. Score is distance plus ingredients plus recipe
-// bonuses. No facts pop up mid-run: the strip shows one at the end, about the recipe you were shopping for.
+// bonuses. No facts pop up mid-run: the game-over card shows one, about the recipe you were shopping for.
 // "Today" gives everyone the same aisle (hazards and item spots are seeded) and the same recipe order, and its
 // speed levels off while the aisle keeps getting busier; Free Play is random and keeps speeding up.
 // The rules live in one pure block (no DOM) so the balance sim can run the exact same code.
@@ -67,7 +68,7 @@ const HAZARDS: Hazard[] = [
 ];
 const ALL_ITEMS = Object.keys(ITEMS);
 const LANES = 3, HEARTS = 3;
-const V0 = 230, ACCEL = 2.2, DAILY_CAP = 440;   // px/s, px/s² (speed rises steadily with time), Today's top speed
+const V0 = 230, ACCEL = 2.2, DAILY_CAP = 410;   // px/s, px/s² (speed rises steadily with time), Today's top speed
 const AHEAD = 560;                              // rows are laid out this far ahead of the cart (just above the top of the board)
 const HIT_HAZARD = 30, HIT_ITEM = 44;           // how close (along the aisle) counts as touching; hazards are a bit forgiving
 const P_ITEM = 0.34, P_NEEDED = 0.45;           // chance a free spot holds an item; chance that item is one you still need
@@ -171,7 +172,8 @@ function createRun(daily: boolean, seed: number, rng: (seed: number) => () => nu
 const W = 400, H = 600, HUD = 78;                 // logical board; the top strip holds the recipe card and hearts
 const SHELF = 32, LANE_W = (W - 2 * SHELF) / LANES;
 const laneX = (l: number) => SHELF + LANE_W * (l + 0.5);
-const CART_Y = H - 78, CART = 70, IR = 27;        // cart position and size, item radius
+const CART_Y = H - 132, CART = 70, IR = 27;       // cart position and size, item radius
+const PAD_Y = H - 52, PAD_H = 42;                 // the lane pad under the cart: tap or slide here to pick a lane
 const SHELF_COLORS = ["#f6b8b0", "#ffd98a", "#b9e4c3", "#a9cdf6", "#d9c3f2", "#ffc49b", "#f2f2f2"];
 const font = (w: number, px: number) => `${w} ${px}px system-ui, -apple-system, sans-serif`;
 
@@ -205,9 +207,11 @@ export default function CartRush() {
     const img = (c: string) => imgs.get(c)!;
 
     let cx = laneX(1), shakeUntil = 0;
+    const basket: string[] = [];                       // the last few things you grabbed, shown in the cart
     const floats: { x: number; y: number; text: string; color: string; age: number; big?: boolean }[] = [];
     const float = (text: string, color: string, x = cx, y = CART_Y - CART / 2 - 8, big = false) => floats.push({ x, y, text, color, age: 0, big });
     const game = createRun(mode === "daily", mode === "daily" ? dailySeed(0xca127) : Math.floor(Math.random() * 1e9), mulberry32, (e) => {
+      if (e.type === "grab") { basket.push(e.code); if (basket.length > 4) basket.shift(); }
       if (e.type === "grab") float(e.listed ? `+${e.pts}` : `Not on the list +${e.pts}`, e.listed ? "#2eaa6e" : "#8a96a8");
       else if (e.type === "recipe") float(`${e.recipe.name} done! +${e.pts}${e.heart ? " ❤️" : ""}`, e.perfect ? "#2eaa6e" : "#3f7fd6", W / 2, H / 2 - 30, true);
       else if (e.type === "hit") { float(`💔 ${e.hazard.hit}`, "#e8505b"); shakeUntil = performance.now() + 260; }
@@ -233,16 +237,21 @@ export default function CartRush() {
 
     const start = () => { if (started || ended) return; started = true; realStart = performance.now(); last = realStart; setStarted(true); };
     startRef.current = start;
-    // Tap the left or right half to switch lanes (your finger stays off the cart), or swipe from anywhere.
-    let down: { x: number; lane: number; swiped: boolean } | null = null;
+    // The lane pad under the cart: tap a lane, or slide along it. Elsewhere, tap either side or swipe.
+    const toY = (clientY: number) => { const r = canvas.getBoundingClientRect(); return ((clientY - r.top) / r.height) * H; };
+    const padLane = (x: number) => Math.max(0, Math.min(LANES - 1, Math.floor((x - SHELF) / LANE_W)));
+    let down: { x: number; lane: number; swiped: boolean; pad: boolean } | null = null;
     const onDown = (e: PointerEvent) => {
       if (pausedRef.current || ended) return;
       if (!started) { start(); return; }
-      const x = toLocal(e.clientX); down = { x, lane: s.lane, swiped: false };
-      game.move(x < W / 2 ? -1 : 1);
+      const x = toLocal(e.clientX), pad = toY(e.clientY) >= PAD_Y - 24;
+      down = { x, lane: s.lane, swiped: false, pad };
+      if (pad) game.setLane(padLane(x)); else game.move(x < W / 2 ? -1 : 1);
     };
     const onMove = (e: PointerEvent) => {
-      if (!down || down.swiped || !started || pausedRef.current) return;
+      if (!down || !started || pausedRef.current) return;
+      if (down.pad) { game.setLane(padLane(toLocal(e.clientX))); return; }
+      if (down.swiped) return;
       const dx = toLocal(e.clientX) - down.x;
       if (Math.abs(dx) > 28) { down.swiped = true; game.setLane(down.lane + Math.sign(dx)); }   // the swipe wins over the tap
     };
@@ -269,6 +278,40 @@ export default function CartRush() {
       raf = requestAnimationFrame(loop);
     };
 
+    // the cart seen from behind the handle: wire basket ahead, blue handle, your two hands pushing it
+    function drawCart(x: number, y: number) {
+      const top = y - 40, bot = y + 16, tw = 34, bw = 29;
+      ctx.fillStyle = "rgba(16,27,46,0.10)"; ctx.beginPath(); ctx.ellipse(x, bot + 8, 40, 8, 0, 0, Math.PI * 2); ctx.fill();
+      ctx.fillStyle = "#3b4558";                                          // wheels peeking out
+      for (const [wx, wy] of [[x - tw - 2, top + 4], [x + tw - 4, top + 4], [x - bw - 3, bot - 8], [x + bw - 3, bot - 8]]) { ctx.beginPath(); ctx.roundRect(wx, wy, 6, 12, 3); ctx.fill(); }
+      ctx.beginPath(); ctx.moveTo(x - tw, top); ctx.lineTo(x + tw, top); ctx.lineTo(x + bw, bot); ctx.lineTo(x - bw, bot); ctx.closePath();
+      ctx.fillStyle = "rgba(235,242,252,0.95)"; ctx.fill();
+      ctx.save(); ctx.clip();                                              // wire grid inside the basket
+      ctx.strokeStyle = "rgba(122,144,176,0.55)"; ctx.lineWidth = 1.5;
+      for (let k = -3; k <= 3; k++) { ctx.beginPath(); ctx.moveTo(x + k * 10, top); ctx.lineTo(x + k * 8.6, bot); ctx.stroke(); }
+      for (let yy = top + 11; yy < bot; yy += 11) { ctx.beginPath(); ctx.moveTo(x - tw, yy); ctx.lineTo(x + tw, yy); ctx.stroke(); }
+      basket.forEach((c, k) => drawIcon(c, x - 16 + (k % 2) * 32, top + 14 + Math.floor(k / 2) * 22, 26));
+      ctx.restore();
+      ctx.strokeStyle = "#7a90b0"; ctx.lineWidth = 3; ctx.beginPath(); ctx.moveTo(x - tw, top); ctx.lineTo(x + tw, top); ctx.lineTo(x + bw, bot); ctx.lineTo(x - bw, bot); ctx.closePath(); ctx.stroke();
+      ctx.strokeStyle = "#7a90b0"; ctx.lineWidth = 3;                     // posts down to the handle
+      ctx.beginPath(); ctx.moveTo(x - bw + 3, bot); ctx.lineTo(x - bw + 1, bot + 14); ctx.moveTo(x + bw - 3, bot); ctx.lineTo(x + bw - 1, bot + 14); ctx.stroke();
+      ctx.fillStyle = "#3f7fd6"; ctx.beginPath(); ctx.roundRect(x - 38, bot + 11, 76, 9, 4.5); ctx.fill();   // the handle
+      for (const side of [-1, 1]) {                                       // arms and hands on the handle
+        const hx = x + side * 22;
+        ctx.fillStyle = "#4b5a78"; ctx.beginPath(); ctx.roundRect(hx - 7, bot + 18, 14, 22, 6); ctx.fill();
+        ctx.fillStyle = "#f2c9a0"; ctx.beginPath(); ctx.ellipse(hx, bot + 15, 9, 7, 0, 0, Math.PI * 2); ctx.fill();
+        ctx.strokeStyle = "rgba(16,27,46,0.15)"; ctx.lineWidth = 1; ctx.stroke();
+      }
+    }
+    function drawHeart(x: number, y: number, s: number, full: boolean) {
+      ctx.beginPath(); ctx.moveTo(x, y + s * 0.3);
+      ctx.bezierCurveTo(x, y, x - s / 2, y, x - s / 2, y + s * 0.3);
+      ctx.bezierCurveTo(x - s / 2, y + s * 0.6, x, y + s * 0.8, x, y + s);
+      ctx.bezierCurveTo(x, y + s * 0.8, x + s / 2, y + s * 0.6, x + s / 2, y + s * 0.3);
+      ctx.bezierCurveTo(x + s / 2, y, x, y, x, y + s * 0.3); ctx.closePath();
+      if (full) { ctx.fillStyle = "#e8505b"; ctx.fill(); }
+      else { ctx.fillStyle = "rgba(255,255,255,0.7)"; ctx.fill(); ctx.strokeStyle = "rgba(16,27,46,0.25)"; ctx.lineWidth = 1.5; ctx.stroke(); }
+    }
     function drawIcon(code: string, x: number, y: number, size: number) { const i = img(code); if (i.complete && i.naturalWidth) ctx.drawImage(i, x - size / 2, y - size / 2, size, size); }
 
     function draw(t: number) {
@@ -323,8 +366,19 @@ export default function CartRush() {
 
       // the cart (blinks for a moment after a bump)
       const hurt = s.ms < s.hurtUntil && Math.floor(t / 110) % 2 === 0;
-      ctx.fillStyle = "rgba(16,27,46,0.10)"; ctx.beginPath(); ctx.ellipse(cx, CART_Y + CART / 2 - 4, 30, 7, 0, 0, Math.PI * 2); ctx.fill();
-      ctx.globalAlpha = hurt ? 0.35 : 1; drawIcon("1f6d2", cx, CART_Y, CART); ctx.globalAlpha = 1;
+      ctx.globalAlpha = hurt ? 0.35 : 1; drawCart(cx, CART_Y); ctx.globalAlpha = 1;
+      for (let k = 0; k < HEARTS; k++) drawHeart(cx + (k - 1) * 17, CART_Y + 62, 13, k < s.hearts);   // hearts ride under the cart
+
+      // the lane pad: where your finger goes
+      ctx.fillStyle = "rgba(255,255,255,0.85)"; ctx.beginPath(); ctx.roundRect(SHELF + 4, PAD_Y, W - 2 * SHELF - 8, PAD_H, 14); ctx.fill();
+      ctx.strokeStyle = "rgba(63,127,214,0.35)"; ctx.lineWidth = 2; ctx.stroke();
+      const px = SHELF + 4 + s.lane * ((W - 2 * SHELF - 8) / LANES);
+      ctx.fillStyle = "rgba(63,127,214,0.9)"; ctx.beginPath(); ctx.roundRect(px + 4, PAD_Y + 4, (W - 2 * SHELF - 8) / LANES - 8, PAD_H - 8, 10); ctx.fill();
+      for (let l = 0; l < LANES; l++) {
+        const mx = SHELF + 4 + (l + 0.5) * ((W - 2 * SHELF - 8) / LANES);
+        ctx.fillStyle = l === s.lane ? "#fff" : "rgba(63,127,214,0.55)";
+        for (const dx of [-8, 0, 8]) { ctx.beginPath(); ctx.arc(mx + dx, PAD_Y + PAD_H / 2, 2.5, 0, Math.PI * 2); ctx.fill(); }
+      }
 
       // HUD: the recipe card and hearts
       ctx.fillStyle = "rgba(255,255,255,0.94)"; ctx.fillRect(0, 0, W, HUD);
@@ -340,10 +394,8 @@ export default function CartRush() {
           ctx.strokeStyle = "#fff"; ctx.lineWidth = 2.5; ctx.beginPath(); ctx.moveTo(ix + 7.5, iy + 10); ctx.lineTo(ix + 11, iy + 13.5); ctx.lineTo(ix + 16.5, iy + 6.5); ctx.stroke();
         }
       });
-      for (let i = 0; i < HEARTS; i++) { ctx.globalAlpha = i < s.hearts ? 1 : 0.2; drawIcon("2764", W - 24 - (HEARTS - 1 - i) * 28, 22, 22); }
-      ctx.globalAlpha = 1;
       ctx.textAlign = "right"; ctx.font = font(600, 13); ctx.fillStyle = s.perfect ? "#2eaa6e" : "#8a96a8";
-      ctx.fillText(s.perfect ? "No extras: ×2 bonus" : "Extras: no ×2 this time", W - 14, 60);
+      ctx.fillText(s.perfect ? "No extras: ×2 bonus" : "Extras: no ×2 this time", W - 14, 24);
 
       ctx.textAlign = "center";
       for (const f of floats) {
@@ -395,7 +447,7 @@ export default function CartRush() {
           <button onClick={() => startRef.current()} className="absolute inset-0 flex items-center justify-center rounded-[22px] bg-[#101b2e]/25">
             <span className="rounded-3xl bg-white px-6 py-4 text-center shadow-2xl">
               <span className="block text-lg font-bold">Tap to start</span>
-              <span className="mt-1 block text-sm text-[#5a6b85]">Tap left or right to switch lanes</span>
+              <span className="mt-1 block text-sm text-[#5a6b85]">Use the pad under your cart to switch lanes</span>
             </span>
           </button>
         )}
@@ -409,7 +461,7 @@ export default function CartRush() {
 
       {shell.help.open && (
         <HelpModal onClose={shell.help.close} steps={[
-          "Tap the left or right side to switch lanes. Swipes and arrow keys work too.",
+          "Tap a lane on the pad under your cart to switch, or slide along it. Swipes and arrow keys work too.",
           "Grab what's on your recipe card. Those items glow green. Finish the recipe for a bonus.",
           "Stick to the list. No extras in the cart doubles the bonus.",
           "Wet floors, boxes and rolling cans cost a heart. Lose all 3 and the shop's over. Every 4th recipe earns one back.",
