@@ -75,4 +75,11 @@ export const GAMES: Game[] = [
     daily: true,
     multiplayer: true,
   },
+  {
+    slug: "food-rally",
+    name: "Food Rally",
+    tagline: "Race a food car round the kitchen. Hot sauce for speed, syrup slows you down. Take on the computer or a friend.",
+    daily: true,
+    multiplayer: true,
+  },
 ];
