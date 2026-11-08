@@ -320,7 +320,7 @@ export default function BeatTheCrash() {
         {!started && !over && (
           <button onClick={() => startRef.current()} className="absolute inset-0 flex items-center justify-center rounded-[22px] bg-[#101b2e]/25">
             <span className="rounded-3xl bg-white px-6 py-4 text-center shadow-2xl">
-              <span className="block text-lg font-bold">Tap to start</span>
+              <span className="block text-lg font-bold">Tap To Start</span>
               <span className="mt-1 block text-sm text-[#5a6b85]">Drag the bar at the bottom to move</span>
             </span>
           </button>

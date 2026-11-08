@@ -218,7 +218,7 @@ export default function BerryDash() {
         }
       }
       if (ms >= rushUntil && ms - dt < rushUntil && heavyUntil > ms) float("Heavy legs...", "#e09a00", W / 2, HUD + 80, true);
-      if (!duckHintShown) { const a = ents.find(e => !e.done && e.k === "o" && OBS[e.t].air); if (a && a.wx - d + PX < W - 10) { duckHintShown = true; float("Swipe down to duck!", "#3f7fd6", W / 2, HUD + 80, true); } }
+      if (!duckHintShown) { const a = ents.find(e => !e.done && e.k === "o" && OBS[e.t].air); if (a && a.wx - d + PX < W - 10) { duckHintShown = true; float("Swipe Down To Duck!", "#3f7fd6", W / 2, HUD + 80, true); } }
     };
 
     // input: tap jumps, a swipe down ducks. A tap fires on release, or after 80ms if the finger hasn't moved down.
@@ -400,7 +400,7 @@ export default function BerryDash() {
         {!started && !over && (
           <button onClick={() => startRef.current()} className="absolute inset-0 flex items-center justify-center rounded-[22px] bg-[#101b2e]/25">
             <span className="rounded-3xl bg-white px-6 py-4 text-center shadow-2xl">
-              <span className="block text-lg font-bold">Tap to start</span>
+              <span className="block text-lg font-bold">Tap To Start</span>
               <span className="mt-1 block text-sm text-[#5a6b85]">Tap to jump, swipe down to duck</span>
             </span>
           </button>
