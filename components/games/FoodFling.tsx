@@ -71,7 +71,9 @@ type Knock = { piece: Piece; dist: number };
 
 /** One level's layout. Harder levels add shelves, crates that shield the junk, tables, a high ledge, and more junk. */
 function planLevel(rnd: () => number, n: number): Plan {
-  const t = Math.min(n, 12);
+  // difficulty climbs about two steps every three levels (level 4 plays like the old level 3, level 10 like the old 7);
+  // the straight one-step-a-level ramp got too hard by level 4
+  const t = Math.min(12, Math.ceil(n * 0.65));
   const rf = (a: number, b: number) => a + rnd() * (b - a);
   const ri = (a: number, b: number) => Math.min(b, Math.floor(rf(a, b + 1)));
   const shelves: Shelf[] = [], parts: Part[] = [];
