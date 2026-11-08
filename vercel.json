@@ -1,3 +1,4 @@
 {
-  "rewrites": [{ "source": "/c/:code", "destination": "/c" }]
+  "rewrites": [{ "source": "/c/:code", "destination": "/c" }],
+  "redirects": [{ "source": "/games/melon-bowling", "destination": "/games", "permanent": true }]
 }

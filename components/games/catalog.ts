@@ -69,13 +69,6 @@ export const GAMES: Game[] = [
     multiplayer: true,
   },
   {
-    slug: "melon-bowling",
-    name: "Melon Bowling",
-    tagline: "Roll a watermelon at soda bottles. Ten frames, real scoring. Bowl the computer or a friend.",
-    daily: true,
-    multiplayer: true,
-  },
-  {
     slug: "food-rally",
     name: "Food Rally",
     tagline: "Race a food car round the kitchen. Hot sauce for speed, syrup slows you down. Take on the computer or a friend.",
