@@ -9,19 +9,19 @@ import { useEffect, useRef, useState } from "react";
 import Matter from "matter-js";
 import { APP_STORE_URL } from "@/components/site";
 
-type Food = { name: string; code: string; r: number; color: string; points: number; fact: string };
+type Food = { name: string; code: string; r: number; color: string; points: number; facts: string[] };   // 5 facts each, one picked at random
 const FOODS: Food[] = [
-  { name: "Blueberry", code: "1fad0", r: 15, color: "#dfe6ff", points: 1, fact: "Frozen blueberries keep their nutrients as well as fresh ones." },
-  { name: "Cherry", code: "1f352", r: 21, color: "#ffe1e4", points: 3, fact: "Tart cherries naturally contain melatonin, the hormone that helps you sleep." },
-  { name: "Strawberry", code: "1f353", r: 28, color: "#ffe4e1", points: 6, fact: "The average strawberry has about 200 seeds on the outside." },
-  { name: "Egg", code: "1f95a", r: 35, color: "#fff3df", points: 10, fact: "Brown and white eggs are the same inside. Shell colour just comes from the breed of hen." },
-  { name: "Kiwi", code: "1f95d", r: 43, color: "#e8f6dc", points: 15, fact: "You can eat kiwi skin. It's fuzzy, but it holds a lot of the fibre." },
-  { name: "Tomato", code: "1f345", r: 52, color: "#ffe2dc", points: 21, fact: "Cooked tomato, like pasta sauce, gives you more lycopene than raw." },
-  { name: "Apple", code: "1f34e", r: 61, color: "#ffe0e0", points: 28, fact: "Apples float because about a quarter of an apple is air." },
-  { name: "Avocado", code: "1f951", r: 71, color: "#eaf5dd", points: 36, fact: "Avocados only ripen after they're picked. A paper bag with a banana speeds it up." },
-  { name: "Broccoli", code: "1f966", r: 82, color: "#e2f4e4", points: 45, fact: "A cup of broccoli has about as much vitamin C as an orange." },
-  { name: "Pineapple", code: "1f34d", r: 94, color: "#fff4d6", points: 55, fact: "Pineapple has an enzyme that breaks down protein. That's why it makes your mouth tingle." },
-  { name: "Power Bowl", code: "1f957", r: 108, color: "#e3efff", points: 66, fact: "Protein plus fibre is the combo that keeps your energy steady for hours." },
+  { name: "Blueberry", code: "1fad0", r: 15, color: "#dfe6ff", points: 1, facts: ["Frozen blueberries keep their nutrients as well as fresh ones.", "Blueberries are pale green inside. All that blue is in the skin.", "A cup of blueberries has about 4 grams of fibre.", "Wild blueberries are smaller than farmed ones and have a stronger flavour.", "Canada is one of the world's biggest growers of wild blueberries."] },
+  { name: "Cherry", code: "1f352", r: 21, color: "#ffe1e4", points: 3, facts: ["Tart cherries naturally contain melatonin, the hormone that helps you sleep.", "Cherries don't ripen after they're picked, so buy them ripe.", "A cup of sweet cherries has about 3 grams of fibre.", "Don't chew cherry pits. They hold a compound that can release cyanide when crushed.", "Cherries are in the same plant family as roses, almonds and peaches."] },
+  { name: "Strawberry", code: "1f353", r: 28, color: "#ffe4e1", points: 6, facts: ["The average strawberry has about 200 seeds on the outside.", "Gram for gram, strawberries have more vitamin C than oranges.", "Strawberries don't ripen after they're picked, so pick the reddest ones.", "Botanically, strawberries aren't berries. Bananas are.", "Wash strawberries right before you eat them. Washing them early makes them go mouldy faster."] },
+  { name: "Egg", code: "1f95a", r: 35, color: "#fff3df", points: 10, facts: ["Brown and white eggs are the same inside. Shell colour just comes from the breed of hen.", "A large egg has about 6 grams of protein.", "A fresh egg sinks in water. An old one floats because its air pocket has grown.", "Yolk colour comes from what the hen eats, not how healthy the egg is.", "Older eggs are easier to peel once they're hard-boiled."] },
+  { name: "Kiwi", code: "1f95d", r: 43, color: "#e8f6dc", points: 15, facts: ["You can eat kiwi skin. It's fuzzy, but it holds a lot of the fibre.", "Two kiwis have more vitamin C than a large orange.", "Kiwis used to be called Chinese gooseberries.", "Kiwi has an enzyme that breaks down protein, so it can tenderise meat in a marinade.", "Put a hard kiwi in a bag with an apple or banana and it ripens faster."] },
+  { name: "Tomato", code: "1f345", r: 52, color: "#ffe2dc", points: 21, facts: ["Cooked tomato, like pasta sauce, gives you more lycopene than raw.", "Botanically, a tomato is a fruit.", "Keep tomatoes on the counter, not in the fridge. The cold dulls their flavour.", "Tomatoes are about 95% water.", "Tomatoes are in the same plant family as potatoes and peppers."] },
+  { name: "Apple", code: "1f34e", r: 61, color: "#ffe0e0", points: 28, facts: ["Apples float because about a quarter of an apple is air.", "Keep the skin on. That's where a lot of an apple's fibre is.", "Apples give off a gas that makes other fruit near them ripen faster.", "A medium apple has about 4 grams of fibre.", "Apples are in the rose family."] },
+  { name: "Avocado", code: "1f951", r: 71, color: "#eaf5dd", points: 36, facts: ["Avocados only ripen after they're picked. A paper bag with a banana speeds it up.", "Botanically, an avocado is a berry with one big seed.", "Avocado in a salad helps your body absorb more of the vitamins in the veggies.", "Half an avocado has about 7 grams of fibre.", "A squeeze of lime or lemon slows down cut avocado turning brown."] },
+  { name: "Broccoli", code: "1f966", r: 82, color: "#e2f4e4", points: 45, facts: ["A cup of broccoli has about as much vitamin C as an orange.", "Broccoli stems are just as good to eat. Peel them and slice them thin.", "Steaming broccoli keeps more vitamin C than boiling it.", "Broccoli, cauliflower, cabbage and kale are all the same plant species, bred differently.", "A cup of raw broccoli has about 2.5 grams of protein."] },
+  { name: "Pineapple", code: "1f34d", r: 94, color: "#fff4d6", points: 55, facts: ["Pineapple has an enzyme that breaks down protein. That's why it makes your mouth tingle.", "A pineapple plant takes about two years to grow one pineapple.", "Pineapples don't get any sweeter after they're picked.", "A pineapple is actually lots of small fruits fused together.", "Canned pineapple doesn't tingle. Heating it switches off the enzyme."] },
+  { name: "Power Bowl", code: "1f957", r: 108, color: "#e3efff", points: 66, facts: ["Protein plus fibre is the combo that keeps your energy steady for hours.", "Beans and lentils add protein and fibre to a bowl at the same time.", "More colours on the plate usually means a wider mix of nutrients.", "Whole grains like brown rice and quinoa digest slower than white rice, so energy lasts longer.", "A palm-sized portion of protein is an easy guide for one meal."] },
 ];
 const SPAWN_LEVELS = 5;                 // only the five smallest foods are ever dropped
 const W = 400, H = 600, TOP = 90;       // logical box size; foods above TOP for too long end the game
@@ -98,7 +98,7 @@ export default function SnackMerge() {
         if (a === FOODS.length - 1) { total += Math.round(200 * mult); setScore(total); continue; }   // two Power Bowls: both clear, big bonus
         const nb = addFood(a + 1, x, y); Matter.Body.setVelocity(nb, { x: 0, y: -1.5 });
         total += Math.round(FOODS[a + 1].points * mult); setScore(total);
-        if (!seen.has(a + 1)) { seen.add(a + 1); setToast({ title: `New: ${FOODS[a + 1].name}!`, body: FOODS[a + 1].fact }); }
+        if (!seen.has(a + 1)) { seen.add(a + 1); { const fs = FOODS[a + 1].facts; setToast({ title: `New: ${FOODS[a + 1].name}!`, body: fs[Math.floor(Math.random() * fs.length)] }); } }
       }
     });
 
