@@ -319,13 +319,13 @@ function JoinForm({ onClose, onJoined }: { onClose: () => void; onJoined: (p: { 
   return (
     <div className="absolute inset-0 z-30 flex items-center justify-center bg-[#101b2e]/50 p-5" onClick={onClose}>
       <div className="w-full max-w-[380px] rounded-3xl bg-white p-5 shadow-2xl" onClick={e => e.stopPropagation()}>
-        <div className="text-center text-xl font-bold">Join the scoreboard</div>
+        <div className="text-center text-xl font-bold">Join The Scoreboard</div>
         <p className="mt-1 text-center text-sm text-[#5a6b85]">Your name shows on the board. Your email never does.</p>
         <label className="mt-4 block text-xs font-semibold uppercase tracking-wide text-[#5a6b85]">Name</label>
         <input value={name} onChange={e => setName(e.target.value)} maxLength={20} placeholder="e.g. SnackKing" className="mt-1 w-full rounded-xl border border-[#d6e2f5] px-3 py-2.5 text-base outline-none focus:border-[#3f7fd6]" />
         <label className="mt-3 block text-xs font-semibold uppercase tracking-wide text-[#5a6b85]">Email</label>
         <input value={email} onChange={e => setEmail(e.target.value)} type="email" inputMode="email" autoComplete="email" placeholder="you@example.com" className="mt-1 w-full rounded-xl border border-[#d6e2f5] px-3 py-2.5 text-base outline-none focus:border-[#3f7fd6]" />
-        <label className="mt-3 flex items-start gap-2 text-sm"><input type="checkbox" checked={updates} onChange={e => setUpdates(e.target.checked)} className="mt-0.5 h-4 w-4" />Send me WhatYouAte news and updates</label>
+        <label className="mt-3 flex items-start gap-2 text-sm"><input type="checkbox" checked={updates} onChange={e => setUpdates(e.target.checked)} className="mt-0.5 h-4 w-4" />Send me WhatYouAte news, new games and food tips</label>
         {err && <p className="mt-3 text-sm font-semibold text-[#d64545]">{err}</p>}
         <button disabled={busy} onClick={submit} className="mt-4 w-full rounded-full bg-[#3f7fd6] py-3 font-semibold text-white disabled:opacity-60">{busy ? "Adding you..." : "Add me to the board"}</button>
         <p className="mt-3 text-center text-[11px] text-[#5a6b85]">You can unsubscribe any time. See our <a href="/privacy" className="underline">privacy policy</a>.</p>
@@ -368,7 +368,7 @@ function Scoreboard({ token, initial, onClose, onJoin }: { token?: string; initi
         </div>
         <div className="mt-2 border-t border-[#e3effe] pt-2 text-center text-sm">
           {token ? (mine?.rank ? <span>You&apos;re <b>#{mine.rank}</b> of {mine.total} with <b>{mine.score?.toLocaleString()}</b></span> : <span className="text-[#5a6b85]">Play a round to get on this board.</span>)
-            : <button onClick={onJoin} className="font-semibold text-[#3f7fd6]">Join the scoreboard →</button>}
+            : <button onClick={onJoin} className="font-semibold text-[#3f7fd6]">Join The Scoreboard →</button>}
         </div>
       </div>
     </div>
