@@ -204,9 +204,8 @@ export function GameOver({ label, headline, score, best, mode, posted, joined, c
             🏆 You&apos;re #{posted.rank} of {posted.total} {mode === "daily" ? "today" : "this week"} · See scoreboard
           </button>
         ) : !joined && score > 0 ? (
-          <button onClick={onJoin} className="wya-pulse mt-3 w-full rounded-full py-3 text-[15px] font-bold text-[#4a2f00] shadow-[0_8px_20px_-8px_rgba(217,154,23,0.8)] active:scale-[0.98]"
-            style={{ background: "linear-gradient(180deg, #ffd45e 0%, #f5b301 100%)" }}>
-            <style>{`@keyframes wya-pulse { 0%, 100% { transform: scale(1) } 50% { transform: scale(1.03) } } .wya-pulse { animation: wya-pulse 1.8s ease-in-out infinite }`}</style>
+          <button onClick={onJoin} className="wya-pulse mt-3 w-full rounded-full bg-[#22a861] py-3.5 text-[16px] font-bold text-white shadow-[0_4px_0_#167a45,0_10px_18px_-8px_rgba(22,122,69,0.7)] transition active:translate-y-[3px] active:shadow-[0_1px_0_#167a45]">
+            <style>{`@keyframes wya-pulse { 0%, 100% { transform: scale(1) } 50% { transform: scale(1.03) } } .wya-pulse { animation: wya-pulse 1.8s ease-in-out infinite } .wya-pulse:active { animation: none }`}</style>
             🏆 Put My Score On The Board
           </button>
         ) : null}
