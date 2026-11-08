@@ -31,11 +31,12 @@ export async function shareText(text: string) {
   try { if (navigator.share) { await navigator.share({ text }); return false; } await navigator.clipboard.writeText(text); return true; } catch { return false; }
 }
 
-/** Sizes a canvas to fit the board area (width AND height, minus the fact strip): no scrolling on any phone. */
-export function fitCanvas(canvas: HTMLCanvasElement, wrap: HTMLElement, W: number, H: number, onSize: (s: { w: number; h: number }) => void) {
+/** Sizes a canvas to fit the board area (width AND height, minus the fact strip if the game has one): no scrolling
+ *  on any phone. Action games pass reserve 0: no strip, a bigger board, and the end fact goes on the game-over card. */
+export function fitCanvas(canvas: HTMLCanvasElement, wrap: HTMLElement, W: number, H: number, onSize: (s: { w: number; h: number }) => void, reserve = STRIP) {
   const ctx = canvas.getContext("2d")!;
   const resize = () => {
-    const s = Math.min(wrap.clientWidth / W, (wrap.clientHeight - STRIP) / H), dpr = window.devicePixelRatio || 1;
+    const s = Math.min(wrap.clientWidth / W, (wrap.clientHeight - reserve) / H), dpr = window.devicePixelRatio || 1;
     canvas.style.width = `${W * s}px`; canvas.style.height = `${H * s}px`; onSize({ w: W * s, h: H * s });
     canvas.width = Math.round(W * s * dpr); canvas.height = Math.round(H * s * dpr);
     ctx.setTransform(s * dpr, 0, 0, s * dpr, 0, 0);
@@ -123,9 +124,9 @@ export function GameHeader({ title, mode, onMode, onBoard, onHelp }: { title: st
 }
 
 /** The board area: fills the space left on screen, keeping room for the fact strip underneath. */
-export function BoardArea({ wrapRef, size, children }: { wrapRef: React.RefObject<HTMLDivElement | null>; size: { w: number; h: number }; children: ReactNode }) {
+export function BoardArea({ wrapRef, size, children, reserve = STRIP }: { wrapRef: React.RefObject<HTMLDivElement | null>; size: { w: number; h: number }; children: ReactNode; reserve?: number }) {
   return (
-    <div ref={wrapRef} className="mt-2 flex min-h-0 flex-1 items-start justify-center touch-none select-none" style={{ paddingBottom: STRIP }}>
+    <div ref={wrapRef} className="mt-2 flex min-h-0 flex-1 items-start justify-center touch-none select-none" style={{ paddingBottom: reserve }}>
       <div className="relative" style={{ width: size.w, height: size.h }}>{children}</div>
     </div>
   );
@@ -185,13 +186,14 @@ export function ModesHelp({ today, free }: { today: string; free: string }) {
   );
 }
 
-export function GameOver({ label, headline, score, best, mode, posted, joined, campaign, pitch, copied, onBoard, onJoin, onAgain, onShare }: {
+/** The end-of-game card. `fact` (for games with no fact strip) shows one fact in a small card underneath it. */
+export function GameOver({ label, headline, score, best, mode, posted, joined, campaign, pitch, copied, fact, onBoard, onJoin, onAgain, onShare }: {
   label: string; headline?: string; score: number; best: number; mode: Mode; posted: Posted | null; joined: boolean; campaign: string; pitch: string;
-  copied: boolean; onBoard: () => void; onJoin: () => void; onAgain: () => void; onShare: () => void;
+  copied: boolean; fact?: Toast | null; onBoard: () => void; onJoin: () => void; onAgain: () => void; onShare: () => void;
 }) {
   return (
-    <div className="absolute inset-0 z-10 flex items-center justify-center rounded-[22px] bg-[#101b2e]/45 p-3">
-      <div className="max-h-full w-full overflow-y-auto rounded-3xl bg-white p-4 text-center shadow-2xl">
+    <div className="absolute inset-0 z-10 flex flex-col items-center justify-center gap-2 rounded-[22px] bg-[#101b2e]/45 p-3">
+      <div className="min-h-0 w-full shrink overflow-y-auto rounded-3xl bg-white p-4 text-center shadow-2xl">
         <div className="text-sm font-semibold text-[#5a6b85]">{label}</div>
         {headline && <div className="mt-1 text-base font-bold">{headline}</div>}
         <div className="mt-0.5 text-4xl font-bold leading-tight tabular-nums">{score.toLocaleString()}</div>
@@ -212,6 +214,13 @@ export function GameOver({ label, headline, score, best, mode, posted, joined, c
         <p className="mt-3 text-[13px] leading-snug text-[#5a6b85]">{pitch}</p>
         <a href={appStoreLink(campaign)} className="mt-2 inline-block rounded-full bg-[#101b2e] px-5 py-2.5 text-sm font-semibold text-white">Get WhatYouAte</a>
       </div>
+      {fact && (
+        <div className="flex w-full shrink-0 items-start gap-2 rounded-2xl bg-white/95 px-3 py-2 text-left shadow-md">
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img src={foodPng(fact.img)} alt="" className="mt-0.5 h-7 w-7" />
+          <div className="min-w-0 flex-1"><div className="text-xs font-bold text-[#3f7fd6]">{fact.title}</div><div className="text-[13px] leading-snug">{fact.body}</div></div>
+        </div>
+      )}
     </div>
   );
 }

@@ -26,4 +26,20 @@ export const GAMES: Game[] = [
     tint: "#fff1dc",
     daily: true,
   },
+  {
+    slug: "cart-rush",
+    name: "Cart Rush",
+    tagline: "Race your cart up the aisle. Grab what's on the recipe card, skip the extras, dodge the spills.",
+    foods: ["1f6d2", "1f951", "1f9c0", "1f4e6"],
+    tint: "#fdf3e4",
+    daily: true,
+  },
+  {
+    slug: "berry-dash",
+    name: "Berry Dash",
+    tagline: "Run the kitchen counter. Jump the salt shaker, duck the bees, grab the blueberries. Careful with candy.",
+    foods: ["1f353", "1fad0", "1f41d", "1f36c"],
+    tint: "#ffe9e4",
+    daily: true,
+  },
 ];

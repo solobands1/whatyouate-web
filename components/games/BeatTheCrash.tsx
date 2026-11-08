@@ -5,12 +5,12 @@
 // Two clear ways to lose: run out of hearts (too much sugar) or let energy hit zero (fall asleep). Energy drains
 // faster in the afternoon slump (2 to 4pm). Points build while energy sits in the green, faster on a streak of
 // real food; eating when already full, or a sugar high, breaks the streak. No facts pop up mid-game (too
-// distracting): the game-over strip explains what ended your day. Balance was checked with simulated players:
+// distracting), and no strip under the board, so the board is bigger: the game-over card explains what ended your day. Balance was checked with simulated players:
 // eating everything dies by mid-morning, doing nothing falls asleep before lunch, a careful player makes it to
 // 10pm about half the time. "Today" gives everyone the same falling foods (seeded) and
 // ends at 10pm; Free Play keeps going day after day, faster each time. Everything around the board comes from ./kit.
-import { useCallback, useEffect, useRef, useState } from "react";
-import { type Mode, type Toast, GameScreen, GameHeader, BoardArea, FactStrip, GameOver, HelpModal, ModesHelp, ShellPopups,
+import { useEffect, useRef, useState } from "react";
+import { type Mode, type Toast, GameScreen, GameHeader, BoardArea, GameOver, HelpModal, ModesHelp, ShellPopups,
   useGameShell, fitCanvas, loadImages, dailySeed, dailyNumber, torontoDate, mulberry32, readBest, saveBest, foodPng } from "./kit";
 
 const GAME = "beat-the-crash";
@@ -85,11 +85,10 @@ export default function BeatTheCrash() {
   const startRef = useRef<() => void>(() => {});
   const bestKey = mode === "daily" ? `beatthecrash-daily-${torontoDate()}` : "beatthecrash-endless";
   useEffect(() => { setBest(readBest(bestKey)); }, [bestKey]);
-  const clearToast = useCallback(() => setToast(null), []);
 
   useEffect(() => {
     const canvas = canvasRef.current!, wrap = wrapRef.current!;
-    const { ctx, toLocal, stop } = fitCanvas(canvas, wrap, W, H, setBoard);
+    const { ctx, toLocal, stop } = fitCanvas(canvas, wrap, W, H, setBoard, 0);   // no fact strip: the board gets the room
     const imgs = loadImages(FOODS.map(f => f.code)), faces = loadImages(Object.values(FACES));
     const rnd = mulberry32(mode === "daily" ? dailySeed(0x3c7a5) : Math.floor(Math.random() * 1e9));
 
@@ -289,14 +288,6 @@ export default function BeatTheCrash() {
     shell.share(`${label}\n${hud.score.toLocaleString()} pts · ${mode === "daily" ? "" : `Day ${result.day} · `}${how}${rank}\n${result.squares}\nCan you beat it? whatyouate.app/games/beat-the-crash`);
   };
 
-  const Legend = ({ codes, label }: { codes: string[]; label: string }) => (
-    <span className="flex items-center gap-1">
-      {/* eslint-disable-next-line @next/next/no-img-element */}
-      {codes.map(c => <img key={c} src={foodPng(c)} alt="" className="h-[18px] w-[18px]" />)}
-      <span className="text-[11px] font-semibold text-[#5a6b85]">{label}</span>
-    </span>
-  );
-
   return (
     <GameScreen>
       <GameHeader title="Beat The Crash" mode={mode} onMode={m => { setMode(m); setRun(r => r + 1); }} onBoard={() => shell.setBoardOpen(true)} onHelp={shell.help.show} />
@@ -309,7 +300,7 @@ export default function BeatTheCrash() {
         <div className="text-right"><div className="text-[10px] uppercase tracking-wide text-[#5a6b85]">Best</div><div className="text-lg font-semibold leading-none tabular-nums">{best.toLocaleString()}</div></div>
       </div>
 
-      <BoardArea wrapRef={wrapRef} size={board}>
+      <BoardArea wrapRef={wrapRef} size={board} reserve={0}>
         <canvas ref={canvasRef} className="block rounded-[22px] shadow-[0_14px_40px_rgba(16,42,86,0.18)]" />
         {!started && !over && (
           <button onClick={() => startRef.current()} className="absolute inset-0 flex items-center justify-center rounded-[22px] bg-[#101b2e]/25">
@@ -320,17 +311,10 @@ export default function BeatTheCrash() {
           </button>
         )}
         {over && <GameOver label={mode === "daily" ? `Today's Challenge #${n}` : "Free Play"} headline={headline} score={hud.score} best={best} mode={mode}
-          posted={shell.scores.posted} joined={!!shell.player} campaign={GAME} copied={shell.copied}
+          posted={shell.scores.posted} joined={!!shell.player} campaign={GAME} copied={shell.copied} fact={toast}
           pitch="Real meals work the same way. WhatYouAte shows you which ones keep your energy steady."
           onBoard={() => shell.setBoardOpen(true)} onJoin={() => shell.setJoinOpen(true)} onAgain={() => setRun(r => r + 1)} onShare={share} />}
       </BoardArea>
-
-      <FactStrip toast={toast} onDismiss={clearToast} width={board.w} sticky idle={
-        <div className="flex items-center gap-3">
-          <Legend codes={["1f963", "1f95a"]} label="Steady" />
-          <Legend codes={["1f369", "1f964"]} label="Costs a ❤️" />
-          <Legend codes={["1f4a7"]} label="Slows drain" />
-        </div>} />
 
       <ShellPopups shell={shell} game={GAME} todayNote="Today's Challenge: same foods for everyone. Resets at midnight." />
 
