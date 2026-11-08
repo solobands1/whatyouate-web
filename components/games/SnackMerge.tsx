@@ -203,8 +203,8 @@ export default function SnackMerge() {
       style={{ paddingTop: "max(env(safe-area-inset-top), 10px)", paddingBottom: "max(env(safe-area-inset-bottom), 10px)", paddingLeft: 12, paddingRight: 12 }}>
       <div className="mx-auto flex h-full w-full max-w-[440px] flex-col">
         <div className="flex items-center gap-2">
-          <a href="/games" aria-label="All games" className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-white/70 text-[#3f7fd6]">
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.6" strokeLinecap="round" strokeLinejoin="round"><path d="M15 5l-7 7 7 7" /></svg>
+          <a href="/games" aria-label="All games" className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-white/70 text-[#3f7fd6]">
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.6" strokeLinecap="round" strokeLinejoin="round"><path d="M15 5l-7 7 7 7" /></svg>
           </a>
           <h1 className="text-lg font-bold tracking-tight">Snack Merge</h1>
           <div className="ml-auto flex rounded-full bg-white/70 p-0.5 text-xs font-semibold">

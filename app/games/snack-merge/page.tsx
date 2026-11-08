@@ -1,15 +1,14 @@
 import type { Metadata, Viewport } from "next";
 import SnackMerge from "@/components/games/SnackMerge";
-import { APP_STORE_ID } from "@/components/site";
 
 // Set up as a full-screen web app: no zoom, fills the notch area, and "Add to Home Screen" opens it like an app.
-// itunes adds Safari's App Store banner for WhatYouAte above the page.
+// No Safari App Store banner here: it can't be resized or timed, and on a small phone it eats into the board.
+// The hub page has it, and the game-over card has its own "Get WhatYouAte" button.
 export const metadata: Metadata = {
   title: "Snack Merge | WhatYouAte",
   description: "A free food merge game. Match two foods to grow them, reach the Power Bowl, and top today's scoreboard.",
   alternates: { canonical: "/games/snack-merge" },
   manifest: "/games/snack-merge.webmanifest",
-  itunes: { appId: APP_STORE_ID },
   appleWebApp: { capable: true, title: "Snack Merge", statusBarStyle: "default" },
   // Link previews describe the games section as a whole, since more games are planned.
   openGraph: {
