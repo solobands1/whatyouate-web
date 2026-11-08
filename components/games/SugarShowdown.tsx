@@ -120,39 +120,68 @@ type Msg =
   | { t: "lobby"; id: string; name: string; to: string; ready: boolean }   // host to guest: you're paired, here's my name and whether I'm ready
   | { t: "ready"; id: string; ready: boolean }                             // I tapped I'm Ready on the Get Ready card
   | { t: "start"; m: number; seed: number; names: string[]; ids: string[] }
-  | { t: "q"; m: number; i: number }
-  | { t: "ans"; m: number; i: number; pick: number; ms: number }
+  | { t: "q"; m: number; i: number; k: number }                            // k: which time this question was asked (re-asked after a break)
+  | { t: "ans"; m: number; i: number; k: number; pick: number; ms: number }
   | { t: "res"; m: number; i: number; picks: number[]; ms: number[]; winner: number; scores: number[] }
   | { t: "again" }
+  | { t: "resume"; id: string; host: boolean; snap: unknown }   // back from a break: here is what I have
+  | { t: "state"; host: boolean; snap: unknown }               // and here is what I have
   | { t: "bye" };
 type GameMsg = Extract<Msg, { i: number }>;
 type Member = { id: string; name: string; role: "host" | "guest"; at: number; ready?: boolean };
 type RoomUi = { s: "waiting" | "joining" | "lobby" | "full" | "empty" | "left" | "error"; code: string };
 type StartInfo = { code: string; m: number; seed: number; me: 0 | 1; names: string[] };
-type RoomHandlers = { start: (p: StartInfo) => void; game: (m: GameMsg) => void; left: () => void };
+type RoomHandlers = { start: (p: StartInfo) => void; game: (m: GameMsg) => void; left: () => void; snapshot: () => Snap | null; apply: (snap: Snap) => void; resumed: (asked: boolean) => void; away: (on: boolean) => void };
+
+// A saved seat in a room: the same id comes back after a reload or a dropped connection, so it rejoins as the same player.
+type Saved = { code: string; role: Member["role"]; id: string; at: number; friendId: string; friendName: string; m: number; t: number };
+// A snapshot of the shared match, for catching up after someone stepped away. Newer wins: a later match (m), then more
+// progress (p). Equal progress means the same state, so nothing changes.
+type Snap = { m: number; p: number; [k: string]: unknown };
+const ROOM_KEY = "sugar-showdown-room", AWAY_MS = 60000;
+function readSaved(code?: string): Saved | null {
+  try {
+    const v = JSON.parse(sessionStorage.getItem(ROOM_KEY) ?? localStorage.getItem(ROOM_KEY) ?? "null") as Saved | null;
+    if (!v || (code && v.code !== code) || Date.now() - v.t > 3 * 3600 * 1000) return null;
+    return v;
+  } catch { return null; }
+}
 
 function useRoom(nameRef: { current: string }, handlers: { current: RoomHandlers }) {
   const [ui, setUi] = useState<RoomUi | null>(null);
   const [again, setAgainState] = useState({ me: false, them: false });
   const [ready, setReadyState] = useState({ me: false, them: false });   // the Get Ready card, before the first game
   const [friendName, setFriendName] = useState("Guest");
+  const [away, setAwayState] = useState<number | null>(null);            // the friend stepped away: when their 60 seconds run out
+  const [reconnecting, setReconnecting] = useState(false);               // we're catching up after our own break
   const s = useRef({ ch: null as RealtimeChannel | null, code: "", role: "host" as Member["role"], id: "", at: 0, friendId: "", friendName: "Guest",
-    seen: false, m: 0, last: null as Msg | null, again: { me: false, them: false }, ready: { me: false, them: false }, timers: [] as ReturnType<typeof setTimeout>[] }).current;
+    seen: false, m: 0, last: null as Msg | null, again: { me: false, them: false }, ready: { me: false, them: false }, timers: [] as ReturnType<typeof setTimeout>[],
+    away: 0, awayT: null as ReturnType<typeof setTimeout> | null }).current;
   const setAgain = (a: { me: boolean; them: boolean }) => { s.again = a; setAgainState(a); };
   const setReady = (r: { me: boolean; them: boolean }) => { s.ready = r; setReadyState(r); };
+  const current = (): Saved => ({ code: s.code, role: s.role, id: s.id, at: s.at, friendId: s.friendId, friendName: s.friendName, m: s.m, t: Date.now() });
+  const save = () => { if (!s.code) return; const v = JSON.stringify(current()); try { sessionStorage.setItem(ROOM_KEY, v); localStorage.setItem(ROOM_KEY, v); } catch {} };
+  const forget = () => { try { sessionStorage.removeItem(ROOM_KEY); localStorage.removeItem(ROOM_KEY); } catch {} };
   const setFriend = (id: string, name: string) => {
     s.friendId = id; s.friendName = name || "Guest"; setFriendName(s.friendName);
     s.seen = !!id && !!s.ch && members(s.ch).some(m => m.id === id);    // already in presence? then a later absence means they left
+    save();
   };
   const send = (msg: Msg) => { void s.ch?.send({ type: "broadcast", event: "m", payload: msg }); };
   const track = () => { void s.ch?.track({ id: s.id, name: nameRef.current, role: s.role, at: s.at, ready: s.ready.me }); };   // presence keeps "ready" too
-  const close = (bye: boolean) => {
+  const clearAway = () => {
+    if (s.awayT) clearTimeout(s.awayT); s.awayT = null;
+    if (s.away) { s.away = 0; setAwayState(null); handlers.current.away(false); }
+  };
+  const close = (bye: boolean, keep = false) => {
     s.timers.forEach(t => { clearTimeout(t); clearInterval(t); }); s.timers = [];
     const ch = s.ch; s.ch = null;
     if (ch) {
       if (bye) void ch.send({ type: "broadcast", event: "m", payload: { t: "bye" } });
       void ch.untrack().catch(() => {}); void sb().removeChannel(ch);
     }
+    if (keep) return;                                                  // reconnecting: the match carries on
+    clearAway(); setReconnecting(false);
     setFriend("", "Guest"); s.seen = false; s.m = 0; s.last = null; setAgain({ me: false, them: false }); setReady({ me: false, them: false });
   };
   const members = (ch: RealtimeChannel) => {
@@ -160,12 +189,18 @@ function useRoom(nameRef: { current: string }, handlers: { current: RoomHandlers
     for (const k in st) for (const m of st[k]) if (m.id && !seen.has(m.id)) { seen.add(m.id); out.push(m); }
     return out.sort((a, b) => a.at - b.at || (a.id < b.id ? -1 : 1));
   };
-  const friendGone = () => {
-    if (!s.ch) return;
+  // gone from presence mid-match: give them 60 seconds (they may have just answered a text); "bye" or the 60s ending is final
+  const friendGone = (final = false) => {
+    if (!s.ch && !s.away) return;
     if (s.role === "host" && !s.m) {                                     // left from the Get Ready card: keep the room open for them
       setFriend("", "Guest"); s.seen = false; setReady({ me: false, them: false }); track(); setUi({ s: "waiting", code: s.code }); return;
     }
-    const code = s.code; close(false); setUi({ s: "left", code }); handlers.current.left();
+    if (!final && s.m) {
+      if (s.away) return;
+      s.away = Date.now() + AWAY_MS; setAwayState(s.away); handlers.current.away(true);
+      s.awayT = setTimeout(() => friendGone(true), AWAY_MS); return;
+    }
+    const code = s.code; close(false); forget(); setUi({ s: "left", code }); handlers.current.left();
   };
   // the host starts the first game only when both have tapped I'm Ready and the friend is still here
   const hostCheck = () => {
@@ -177,20 +212,30 @@ function useRoom(nameRef: { current: string }, handlers: { current: RoomHandlers
     const list = members(ch), mine = list.findIndex(m => m.id === s.id);
     if (mine < 0) return;                                              // our own entry hasn't landed yet
     if (s.role === "host" && !s.friendId && list.some((m, i) => i < mine && m.role === "host")) { open(newCode(), "host"); return; }   // code already taken
-    if (s.role === "guest" && !s.m && mine >= 2) { const code = s.code; close(false); setUi({ s: "full", code }); return; }
+    if (s.role === "guest" && !s.m && !s.friendId && mine >= 2) { const code = s.code; close(false); setUi({ s: "full", code }); return; }
     if (s.friendId) {
       const f = list.find(m => m.id === s.friendId);
-      if (f) { s.seen = true; if (!s.m && f.ready && !s.ready.them) setReady({ ...s.ready, them: true }); hostCheck(); }
+      if (f) { s.seen = true; clearAway(); if (!s.m && f.ready && !s.ready.them) setReady({ ...s.ready, them: true }); hostCheck(); }
       else if (s.seen) friendGone();
     }
   };
   const begin = () => {
     s.m++;  setAgain({ me: false, them: false });
     const msg: Msg = { t: "start", m: s.m, seed: Math.floor(Math.random() * 1e9), names: [nameRef.current, s.friendName], ids: [s.id, s.friendId] };
-    s.last = msg; send(msg); setUi(null);
+    s.last = msg; send(msg); setUi(null); save();
     handlers.current.start({ code: s.code, m: s.m, seed: msg.seed, me: 0, names: msg.names });
   };
   const lobbyMsg = (): Msg => ({ t: "lobby", id: s.id, name: nameRef.current, to: s.friendId, ready: s.ready.me });
+  // catching up: whoever comes back says "resume" with its snapshot; the other answers with its own; each keeps the newer
+  const sendResume = () => { send({ t: "resume", id: s.id, host: s.role === "host", snap: handlers.current.snapshot() }); s.timers.push(setTimeout(() => setReconnecting(false), 4000)); };
+  const consider = (snap: Snap | null, fromHost: boolean) => {
+    if (!snap) return;
+    const mine = handlers.current.snapshot();
+    if (!mine || snap.m > mine.m || (snap.m === mine.m && snap.p > mine.p)) {
+      if (snap.m > s.m) { s.m = snap.m; save(); }
+      handlers.current.apply(snap);
+    }
+  };
   const onMsg = (msg: Msg) => {
     if (msg.t === "hello") {
       if (s.role !== "host") return;
@@ -210,21 +255,30 @@ function useRoom(nameRef: { current: string }, handlers: { current: RoomHandlers
     } else if (msg.t === "again") {
       setAgain({ ...s.again, them: true });
       if (s.role === "host" && s.again.me) begin();
-    } else if (msg.t === "bye") friendGone();
+    } else if (msg.t === "resume") {
+      if (msg.id !== s.friendId) return;
+      clearAway(); send({ t: "state", host: s.role === "host", snap: handlers.current.snapshot() });
+      consider(msg.snap as Snap | null, msg.host); handlers.current.resumed(true);
+    } else if (msg.t === "state") {
+      consider(msg.snap as Snap | null, msg.host); setReconnecting(false); handlers.current.resumed(false);
+    } else if (msg.t === "bye") friendGone(true);
     else handlers.current.game(msg);
   };
-  function open(code: string, role: Member["role"]) {
-    close(false);
-    s.code = code; s.role = role; s.id = Math.random().toString(36).slice(2, 10); s.at = Date.now();
+  function open(code: string, role: Member["role"], resume?: Saved) {
+    close(false, !!resume);
+    const prior = resume ?? readSaved(code);                           // same room as before: same seat
+    s.code = code; s.role = role; s.id = prior?.id ?? Math.random().toString(36).slice(2, 10); s.at = prior?.at ?? Date.now();
+    if (resume) { s.friendId = resume.friendId; s.friendName = resume.friendName || "Guest"; setFriendName(s.friendName); s.m = resume.m;  s.seen = false; }
     const ch = sb().channel(`sugar-showdown:${code}`, { config: { broadcast: { self: false }, presence: { key: s.id } } });
-    s.ch = ch;
+    s.ch = ch; save();
     ch.on("broadcast", { event: "m" }, ({ payload }) => { if (s.ch === ch) onMsg(payload as Msg); });
     ch.on("presence", { event: "sync" }, () => { if (s.ch === ch) onPresence(ch); });
     ch.subscribe(status => {
       if (s.ch !== ch) return;
       if (status === "SUBSCRIBED") {
         track();
-        if (role === "guest") {
+        if (s.m) sendResume();
+        else if (role === "guest" && !s.friendId) {
           const hello = () => { if (!s.m && !s.friendId) send({ t: "hello", id: s.id, name: nameRef.current }); };
           hello(); s.timers.push(setInterval(hello, 1500));
           s.timers.push(setTimeout(() => {                             // nobody answering: no host, or the host is busy with someone else
@@ -233,16 +287,38 @@ function useRoom(nameRef: { current: string }, handlers: { current: RoomHandlers
             if (!host || others > 0) { close(false); setUi({ s: host ? "full" : "empty", code }); }
           }, 8000));
         }
-      } else if (status === "CHANNEL_ERROR" || status === "TIMED_OUT") { close(false); setUi({ s: "error", code }); }
+      } else if (status === "CHANNEL_ERROR" || status === "TIMED_OUT" || status === "CLOSED") {
+        if (s.m || s.friendId) { setReconnecting(true); s.timers.push(setTimeout(() => { if (s.ch === ch || !s.ch) open(s.code, s.role, current()); }, 1500)); }   // try again, same seat
+        else { close(false); setUi({ s: "error", code }); }
+      }
     });
-    setUi({ s: role === "host" ? "waiting" : "joining", code });
+    if (resume && resume.m) { setUi(null); setReconnecting(true); }
+    else setUi({ s: role === "host" ? "waiting" : "joining", code });
   }
+  // back from another app (or the network): make sure we're still in the room, and catch up
+  useEffect(() => {
+    const back = () => {
+      if (document.visibilityState !== "visible" || !s.code || !(s.m || s.friendId)) return;
+      const ch = s.ch as unknown as { state?: string } | null, rt = sb().realtime;
+      if (!rt.isConnected() || !ch || ch.state !== "joined") { setReconnecting(true); open(s.code, s.role, current()); if (!rt.isConnected()) rt.connect(); }   // the socket may have died while we were away
+      else { track(); if (s.m) { setReconnecting(true); sendResume(); } }
+    };
+    document.addEventListener("visibilitychange", back); window.addEventListener("pageshow", back); window.addEventListener("online", back);
+    return () => { document.removeEventListener("visibilitychange", back); window.removeEventListener("pageshow", back); window.removeEventListener("online", back); };
+  }, []);   // eslint-disable-line react-hooks/exhaustive-deps
   return {
-    ui, again, ready, friendName,
+    ui, again, ready, friendName, away, reconnecting,
+    
     isHost: () => s.role === "host",
+    code: () => s.code,
+    saved: () => { const v = readSaved(); return v && v.m ? v : null; },
+    isAway: () => !!s.away,
+    pushState: () => send({ t: "state", host: s.role === "host", snap: handlers.current.snapshot() }),   // after a break: here's the latest, in case they missed it
+    rejoin: (v: Saved) => open(v.code, v.role, v),
+    forget,
     create: () => open(newCode(), "host"),
-    join: (code: string) => open(code, "guest"),
-    leave: () => { close(true); setUi(null); },
+    join: (code: string) => { const v = readSaved(code); if (v && v.m) open(code, v.role, v); else open(code, "guest"); },
+    leave: () => { close(true); forget(); setUi(null); },
     dismiss: () => setUi(null),
     // tapping I'm Ready: tell them straight away, keep it in presence too, and let the host check
     markReady: () => { if (s.ready.me || s.m) return; setReady({ ...s.ready, me: true }); send({ t: "ready", id: s.id, ready: true }); track(); hostCheck(); },
@@ -254,8 +330,13 @@ function useRoom(nameRef: { current: string }, handlers: { current: RoomHandlers
 // ── live match state ───────────────────────────────────────────────────────
 // Players are [host, guest]; `me` is which one this phone is.
 type LiveRes = { i: number; picks: number[]; ms: number[]; winner: number };
-type Live = { code: string; m: number; me: 0 | 1; names: string[]; qs: Question[]; i: number;
-  phase: "count" | "ask" | "wait" | "reveal" | "done"; pick: number | null; scores: number[]; res: LiveRes | null };
+type Live = { code: string; m: number; me: 0 | 1; names: string[]; qs: Question[]; seed: number; i: number; k: number;
+  phase: "count" | "hold" | "ask" | "wait" | "reveal" | "done"; pick: number | null; scores: number[]; res: LiveRes | null };   // hold: catching up after a break
+const LIVE_KEY = "sugar-showdown-live";   // the live match in progress, for picking it back up after a reload
+type SavedLive = { code: string; m: number; seed: number; me: 0 | 1; names: string[]; i: number; scores: number[]; done: boolean; t: number };
+function readLive(): SavedLive | null {
+  try { const v = JSON.parse(localStorage.getItem(LIVE_KEY) ?? "null") as SavedLive | null; return v && Date.now() - v.t < 3 * 3600 * 1000 ? v : null; } catch { return null; }
+}
 type Ans = { pick: number; ms: number };
 
 // ── solo ───────────────────────────────────────────────────────────────────
@@ -340,19 +421,26 @@ export default function SugarShowdown() {
 
   // ── live ──
   const [live, setLiveState] = useState<Live | null>(null);
-  const L = useRef({ live: null as Live | null, ans: [[], []] as (Ans | null)[][], timers: [] as ReturnType<typeof setTimeout>[] });
-  const setLive = (v: Live | null) => { L.current.live = v; setLiveState(v); };
+  const L = useRef({ live: null as Live | null, ans: [[], []] as (Ans | null)[][], timers: [] as ReturnType<typeof setTimeout>[], resumedAt: 0 });
+  const setLive = (v: Live | null) => {
+    L.current.live = v; setLiveState(v);
+    if (v) try { localStorage.setItem(LIVE_KEY, JSON.stringify({ code: v.code, m: v.m, seed: v.seed, me: v.me, names: v.names, i: v.i, scores: v.scores, done: v.phase === "done", t: Date.now() })); } catch {}
+  };
   const liveClock = useRef<Clock>(newClock());
   const clearLive = () => { L.current.timers.forEach(clearTimeout); L.current.timers = []; liveClock.current.running = false; };
   const later = (f: () => void, ms: number) => { L.current.timers.push(setTimeout(f, ms)); };
   const nameRef = useRef("Guest"); nameRef.current = shell.player?.name || "Guest";
-  const handlers = useRef<RoomHandlers>({ start: () => {}, game: () => {}, left: () => {} });
+  const handlers = useRef<RoomHandlers>({ start: () => {}, game: () => {}, left: () => {}, snapshot: () => null, apply: () => {}, resumed: () => {}, away: () => {} });
   const room = useRoom(nameRef, handlers);
   const roomRef = useRef(room); roomRef.current = room;
+  const awayRef = useRef(false); awayRef.current = !!room.away || room.reconnecting;   // question timers stop while either of you is away
+  const [offer, setOffer] = useState<{ saved: Saved; live: SavedLive } | null>(null);   // a match from before a reload
+  const [tick, setTick] = useState(0);
+  useEffect(() => { if (!room.away) return; const t = setInterval(() => setTick(x => x + 1), 500); return () => clearInterval(t); }, [room.away]);
 
-  const showQ = (i: number) => {
+  const showQ = (i: number, k: number) => {
     const v = L.current.live; if (!v) return;
-    setLive({ ...v, i, phase: "ask", pick: null, res: null });
+    setLive({ ...v, i, k, phase: "ask", pick: null, res: null });
     Object.assign(liveClock.current, { ms: 0, running: true, limit: DUEL_MS, tick: performance.now() });
   };
   const applyRes = (r: Extract<Msg, { t: "res" }>) => {
@@ -379,9 +467,10 @@ export default function SugarShowdown() {
   const hostAsk = (i: number) => {
     const v = L.current.live; if (!v || v.me !== 0) return;
     L.current.ans[0][i] = null; L.current.ans[1][i] = null;
-    roomRef.current.send({ t: "q", m: v.m, i }); showQ(i);
-    later(() => {                                       // their answer never came: count it as out of time
-      const w = L.current.live; if (!w || w.m !== v.m) return;
+    const k = v.k + 1;
+    roomRef.current.send({ t: "q", m: v.m, i, k }); showQ(i, k);
+    later(() => {                                       // their answer never came: count it as out of time (not while they're away)
+      const w = L.current.live; if (!w || w.m !== v.m || w.k !== k || awayRef.current) return;
       if (!L.current.ans[1][i]) { L.current.ans[1][i] = { pick: -1, ms: DUEL_MS }; hostTry(i); }
     }, DUEL_MS + 3000);
   };
@@ -391,36 +480,65 @@ export default function SugarShowdown() {
     const ms = Math.round(p < 0 ? DUEL_MS : readMs(c)); c.running = false;
     setLive({ ...v, phase: "wait", pick: p });
     if (v.me === 0) { L.current.ans[0][v.i] = { pick: p, ms }; hostTry(v.i); }
-    else roomRef.current.send({ t: "ans", m: v.m, i: v.i, pick: p, ms });
+    else roomRef.current.send({ t: "ans", m: v.m, i: v.i, k: v.k, pick: p, ms });
   };
   handlers.current = {
     start: p => {
       clearLive(); L.current.ans = [[], []];
       setMenu(null); liveClock.current.ms = 0;
-      setLive({ code: p.code, m: p.m, me: p.me, names: p.names, qs: buildRound(mulberry32(p.seed)), i: -1, phase: "count", pick: null, scores: [0, 0], res: null });
+      setLive({ code: p.code, m: p.m, me: p.me, names: p.names, qs: buildRound(mulberry32(p.seed)), seed: p.seed, i: -1, k: 0, phase: "count", pick: null, scores: [0, 0], res: null });
       if (p.me === 0) later(() => hostAsk(0), 3000);
     },
     game: msg => {
       const v = L.current.live; if (!v || msg.m !== v.m) return;
-      if (msg.t === "q" && v.me === 1 && (msg.i > v.i || (msg.i === v.i && v.phase === "count"))) showQ(msg.i);
-      else if (msg.t === "ans" && v.me === 0) { L.current.ans[1][msg.i] = { pick: msg.pick, ms: msg.ms }; hostTry(msg.i); }
+      if (msg.t === "q" && v.me === 1 && (msg.i > v.i || (msg.i === v.i && msg.k !== v.k))) showQ(msg.i, msg.k);
+      else if (msg.t === "ans" && v.me === 0 && msg.k === v.k) { L.current.ans[1][msg.i] = { pick: msg.pick, ms: msg.ms }; hostTry(msg.i); }
       else if (msg.t === "res" && v.me === 1) applyRes(msg);
     },
-    left: () => { clearLive(); setLive(null); },
+    left: () => { clearLive(); setLive(null); try { localStorage.removeItem(LIVE_KEY); } catch {} },
+    // catching up after a break: the match so far (the host rules, so its copy wins a tie), then the host asks the question again
+    snapshot: () => {
+      const v = L.current.live; if (!v) return null;
+      const step = { count: 0, hold: 0, ask: 1, wait: 1, reveal: 2, done: 3 }[v.phase];
+      return { m: v.m, p: v.phase === "done" ? 1e5 : Math.max(0, v.i) * 4 + step, seed: v.seed, names: v.names, i: v.i, scores: v.scores, done: v.phase === "done" };
+    },
+    apply: sn => {
+      clearLive();
+      const v = L.current.live, base = v && v.m === sn.m ? v : { code: roomRef.current.code(), m: sn.m, me: (roomRef.current.isHost() ? 0 : 1) as 0 | 1, names: sn.names as string[],
+        qs: buildRound(mulberry32(sn.seed as number)), seed: sn.seed as number, k: 0 };
+      setMenu(null); setOffer(null);
+      setLive({ ...base, i: sn.i as number, scores: sn.scores as number[], phase: sn.done ? "done" : "hold", pick: null, res: null });
+    },
+    resumed: () => {
+      const v = L.current.live; if (!v || v.me !== 0 || v.phase === "done") return;
+      if (Date.now() - L.current.resumedAt < 1500) return; L.current.resumedAt = Date.now();
+      clearLive();
+      if (v.phase === "reveal" && v.i >= ROUND - 1) { setLive({ ...v, phase: "done" }); return; }
+      const next = v.phase === "reveal" ? v.i + 1 : Math.max(0, v.i);
+      setLive({ ...v, phase: "hold" }); later(() => hostAsk(next), 1200);
+    },
+    away: () => {},
   };
 
-  // a shared link (?room=ABCD) joins that room straight away; leaving the page says goodbye
+  // a shared link (?room=ABCD) joins that room straight away, or picks a saved match back up. Minimising or reloading the
+  // page doesn't leave the room (the friend sees "Stepped Away"); only Leave, or leaving the game for another page, does.
+  const rejoinNow = (saved: Saved, sl: SavedLive) => {
+    clearLive(); setMenu(null); setOffer(null);
+    setLive({ code: sl.code, m: sl.m, me: sl.me, names: sl.names, qs: buildRound(mulberry32(sl.seed)), seed: sl.seed, i: sl.i, k: 0, phase: "hold", pick: null, scores: sl.scores, res: null });
+    roomRef.current.rejoin(saved);
+  };
   useEffect(() => {
     const c = new URLSearchParams(window.location.search).get("room")?.toUpperCase() ?? "";
-    if (/^[A-Z]{4}$/.test(c)) roomRef.current.join(c);
-    const bye = () => roomRef.current.leave();
-    window.addEventListener("pagehide", bye);
-    return () => { window.removeEventListener("pagehide", bye); bye(); };
-  }, []);
+    const saved = roomRef.current.saved(), sl = readLive();
+    const resumable = !!saved && !!sl && sl.code === saved.code && sl.m === saved.m && !sl.done;
+    if (resumable && (!c || c === saved!.code)) { if (c) rejoinNow(saved!, sl!); else setOffer({ saved: saved!, live: sl! }); }
+    else if (/^[A-Z]{4}$/.test(c)) roomRef.current.join(c);
+    return () => { roomRef.current.leave(); };
+  }, []);   // eslint-disable-line react-hooks/exhaustive-deps
   useEffect(() => () => { L.current.timers.forEach(clearTimeout); }, []);
 
   const dropRoomParam = () => { try { const u = new URL(window.location.href); if (u.searchParams.has("room")) { u.searchParams.delete("room"); history.replaceState(null, "", u.pathname + u.search); } } catch {} };
-  const toSolo = () => { if (live || room.ui) room.leave(); clearLive(); setLive(null); setMenu(null); setCouch(null); dropRoomParam(); setRun(r => r + 1); };
+  const toSolo = () => { if (live || room.ui) room.leave(); try { localStorage.removeItem(LIVE_KEY); } catch {} setOffer(null); clearLive(); setLive(null); setMenu(null); setCouch(null); dropRoomParam(); setRun(r => r + 1); };
   const openRoom = () => { setMenu(null); room.create(); };
   const joinRoom = () => { if (code.length === 4) { setMenu(null); room.join(code); } };
   const shareRoom = (c: string) => shell.share(`Which has more sugar? Play Sugar Showdown with me! Room ${c}: ${window.location.origin}/games/sugar-showdown?room=${c}`);
@@ -468,8 +586,8 @@ export default function SugarShowdown() {
   const q = live ? (live.i >= 0 ? live.qs[live.i] : null) : cur?.q ?? null;
   const reveal = live ? live.phase === "reveal" : phase === "reveal";
   const myPick = live ? live.pick : pick;
-  const canTap = live ? live.phase === "ask" : phase === "ask" && !shell.paused;
-  const hideCards = solo && phase === "ask" && shell.paused;   // no reading the question while paused
+  const canTap = live ? live.phase === "ask" && !room.away && !room.reconnecting : phase === "ask" && !shell.paused;
+  const hideCards = (solo && phase === "ask" && shell.paused) || (!!live && live.phase === "ask" && !!room.away);   // no reading the question while paused
   let line: ReactNode = "Which Has More Sugar?", lineColor = "text-[#101b2e]", times = "";
   if (live) {
     const r = live.res;
@@ -518,7 +636,7 @@ export default function SugarShowdown() {
             )}
           </div>
           <div className="mt-1.5 shrink-0">
-            {live ? <TimerBar clock={liveClock} paused={false} onTimeout={() => liveAnswer(-1)} />
+            {live ? <TimerBar clock={liveClock} paused={!!room.away || room.reconnecting} onTimeout={() => liveAnswer(-1)} />
               : <TimerBar clock={clock} paused={shell.paused} onTimeout={() => answer(-1)} />}
           </div>
           <div className={`mt-2 shrink-0 truncate text-center text-lg font-bold ${lineColor}`}>{q ? line : " "}</div>
@@ -583,6 +701,29 @@ export default function SugarShowdown() {
             <button onClick={startCouch} className="mt-4 w-full rounded-full bg-[#3f7fd6] py-3 font-semibold text-white">Start</button>
             <button onClick={() => setMenu(null)} className="mt-2 w-full py-2 text-sm font-semibold text-[#5a6b85]">Back</button>
           </Card>
+        )}
+
+        {offer && !rui && !live && (
+          <Card>
+            <div className="text-xl font-bold">Rejoin Your Game</div>
+            <p className="mt-1 text-sm text-[#5a6b85]">You were in the middle of a match in room {offer.saved.code}.</p>
+            <button onClick={() => rejoinNow(offer.saved, offer.live)} className="mt-4 w-full rounded-full bg-[#3f7fd6] py-3 font-semibold text-white">Rejoin</button>
+            <button onClick={() => { room.forget(); try { localStorage.removeItem(LIVE_KEY); } catch {} setOffer(null); }} className="mt-2 w-full py-2 text-sm font-semibold text-[#5a6b85]">No Thanks</button>
+          </Card>
+        )}
+
+        {live && room.away && !rui && (
+          <Card>
+            <div className="text-xl font-bold">{friend} Stepped Away...</div>
+            <div className="mt-2 text-4xl font-bold tabular-nums text-[#3f7fd6]">{Math.max(0, Math.ceil((room.away - Date.now()) / 1000) + tick * 0)}s</div>
+            <p className="mt-2 text-sm text-[#5a6b85]">The game is paused. It picks up right where you left off when they&apos;re back.</p>
+            <button onClick={toSolo} className="mt-3 w-full py-2 text-sm font-semibold text-[#5a6b85]">Leave</button>
+          </Card>
+        )}
+        {live && (room.reconnecting || live.phase === "hold") && !room.away && !rui && (
+          <div className="pointer-events-none absolute inset-x-0 top-3 z-10 flex justify-center">
+            <div className="rounded-full bg-white/95 px-4 py-2 text-sm font-semibold text-[#3f7fd6] shadow-md">Reconnecting...</div>
+          </div>
         )}
 
         {rui?.s === "lobby" && (

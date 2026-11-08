@@ -211,6 +211,8 @@ type Msg =
   | { t: "aim"; m: number; n: number; px: number; py: number; f: number }   // the thrower's pull while they drag (whole numbers, 8 a second at most)
   | { t: "aimEnd"; m: number; n: number }                                   // they let go without throwing
   | { t: "again" }
+  | { t: "resume"; id: string; host: boolean; snap: unknown }   // back from a break: here is what I have
+  | { t: "state"; host: boolean; snap: unknown }               // and here is what I have
   | { t: "bye" };
 type GameMsg = Extract<Msg, { n: number }>;
 type LivePlay = { kind: "live"; code: string; m: number; seed: number; me: 0 | 1; first: 0 | 1; names: string[] };
@@ -230,30 +232,62 @@ const ALPHA = "ACDEFHJKMNPRTWXY";   // no I/L/1, O/Q/0, S/5, Z/2, B/8, G/6, U/V
 const newCode = () => Array.from({ length: 4 }, () => ALPHA[Math.floor(Math.random() * ALPHA.length)]).join("");
 type Member = { id: string; name: string; role: "host" | "guest"; at: number; ready?: boolean };
 type RoomUi = { s: "waiting" | "joining" | "lobby" | "full" | "empty" | "left" | "error"; code: string };
-type RoomHandlers = { start: (p: LivePlay) => void; game: (m: GameMsg) => void; left: () => void };
+const LIVE_KEY = "food-fight-live";   // the live match in progress, for picking it back up after a reload
+type SavedLive = { code: string; play: LivePlay; snap: Snap | null; t: number };
+function readLive(): SavedLive | null {
+  try { const v = JSON.parse(localStorage.getItem(LIVE_KEY) ?? "null") as SavedLive | null; return v && Date.now() - v.t < 3 * 3600 * 1000 ? v : null; } catch { return null; }
+}
+type RoomHandlers = { start: (p: LivePlay) => void; game: (m: GameMsg) => void; left: () => void; snapshot: () => Snap | null; apply: (snap: Snap) => void; resumed: (asked: boolean) => void; away: (on: boolean) => void };
+
+// A saved seat in a room: the same id comes back after a reload or a dropped connection, so it rejoins as the same player.
+type Saved = { code: string; role: Member["role"]; id: string; at: number; friendId: string; friendName: string; m: number; first: 0 | 1; loser: 0 | 1; t: number };
+// A snapshot of the shared match, for catching up after someone stepped away. Newer wins: a later match (m), then more
+// progress (p). Equal progress means the same state, so nothing changes.
+type Snap = { m: number; p: number; [k: string]: unknown };
+const ROOM_KEY = "food-fight-room", AWAY_MS = 60000;
+function readSaved(code?: string): Saved | null {
+  try {
+    const v = JSON.parse(sessionStorage.getItem(ROOM_KEY) ?? localStorage.getItem(ROOM_KEY) ?? "null") as Saved | null;
+    if (!v || (code && v.code !== code) || Date.now() - v.t > 3 * 3600 * 1000) return null;
+    return v;
+  } catch { return null; }
+}
 
 function useRoom(nameRef: { current: string }, handlers: { current: RoomHandlers }) {
   const [ui, setUi] = useState<RoomUi | null>(null);
   const [again, setAgainState] = useState({ me: false, them: false });
   const [ready, setReadyState] = useState({ me: false, them: false });   // the Get Ready card, before the first game
   const [friendName, setFriendName] = useState("Guest");
+  const [away, setAwayState] = useState<number | null>(null);            // the friend stepped away: when their 60 seconds run out
+  const [reconnecting, setReconnecting] = useState(false);               // we're catching up after our own break
   const s = useRef({ ch: null as RealtimeChannel | null, code: "", role: "host" as Member["role"], id: "", at: 0, friendId: "", friendName: "Guest",
-    seen: false, m: 0, first: 0 as 0 | 1, loser: 1 as 0 | 1, last: null as Msg | null, again: { me: false, them: false }, ready: { me: false, them: false }, timers: [] as ReturnType<typeof setTimeout>[] }).current;
+    seen: false, m: 0, first: 0 as 0 | 1, loser: 1 as 0 | 1, last: null as Msg | null, again: { me: false, them: false }, ready: { me: false, them: false }, timers: [] as ReturnType<typeof setTimeout>[],
+    away: 0, awayT: null as ReturnType<typeof setTimeout> | null }).current;
   const setAgain = (a: { me: boolean; them: boolean }) => { s.again = a; setAgainState(a); };
   const setReady = (r: { me: boolean; them: boolean }) => { s.ready = r; setReadyState(r); };
+  const current = (): Saved => ({ code: s.code, role: s.role, id: s.id, at: s.at, friendId: s.friendId, friendName: s.friendName, m: s.m, first: s.first, loser: s.loser, t: Date.now() });
+  const save = () => { if (!s.code) return; const v = JSON.stringify(current()); try { sessionStorage.setItem(ROOM_KEY, v); localStorage.setItem(ROOM_KEY, v); } catch {} };
+  const forget = () => { try { sessionStorage.removeItem(ROOM_KEY); localStorage.removeItem(ROOM_KEY); } catch {} };
   const setFriend = (id: string, name: string) => {
     s.friendId = id; s.friendName = name || "Guest"; setFriendName(s.friendName);
     s.seen = !!id && !!s.ch && members(s.ch).some(m => m.id === id);    // already in presence? then a later absence means they left
+    save();
   };
   const send = (msg: Msg) => { void s.ch?.send({ type: "broadcast", event: "m", payload: msg }); };
   const track = () => { void s.ch?.track({ id: s.id, name: nameRef.current, role: s.role, at: s.at, ready: s.ready.me }); };   // presence keeps "ready" too
-  const close = (bye: boolean) => {
+  const clearAway = () => {
+    if (s.awayT) clearTimeout(s.awayT); s.awayT = null;
+    if (s.away) { s.away = 0; setAwayState(null); handlers.current.away(false); }
+  };
+  const close = (bye: boolean, keep = false) => {
     s.timers.forEach(t => { clearTimeout(t); clearInterval(t); }); s.timers = [];
     const ch = s.ch; s.ch = null;
     if (ch) {
       if (bye) void ch.send({ type: "broadcast", event: "m", payload: { t: "bye" } });
       void ch.untrack().catch(() => {}); void sb().removeChannel(ch);
     }
+    if (keep) return;                                                  // reconnecting: the match carries on
+    clearAway(); setReconnecting(false);
     setFriend("", "Guest"); s.seen = false; s.m = 0; s.last = null; setAgain({ me: false, them: false }); setReady({ me: false, them: false });
   };
   const members = (ch: RealtimeChannel) => {
@@ -261,12 +295,18 @@ function useRoom(nameRef: { current: string }, handlers: { current: RoomHandlers
     for (const k in st) for (const m of st[k]) if (m.id && !seen.has(m.id)) { seen.add(m.id); out.push(m); }
     return out.sort((a, b) => a.at - b.at || (a.id < b.id ? -1 : 1));
   };
-  const friendGone = () => {
-    if (!s.ch) return;
+  // gone from presence mid-match: give them 60 seconds (they may have just answered a text); "bye" or the 60s ending is final
+  const friendGone = (final = false) => {
+    if (!s.ch && !s.away) return;
     if (s.role === "host" && !s.m) {                                     // left from the Get Ready card: keep the room open for them
       setFriend("", "Guest"); s.seen = false; setReady({ me: false, them: false }); track(); setUi({ s: "waiting", code: s.code }); return;
     }
-    const code = s.code; close(false); setUi({ s: "left", code }); handlers.current.left();
+    if (!final && s.m) {
+      if (s.away) return;
+      s.away = Date.now() + AWAY_MS; setAwayState(s.away); handlers.current.away(true);
+      s.awayT = setTimeout(() => friendGone(true), AWAY_MS); return;
+    }
+    const code = s.code; close(false); forget(); setUi({ s: "left", code }); handlers.current.left();
   };
   // the host starts the first game only when both have tapped I'm Ready and the friend is still here
   const hostCheck = () => {
@@ -278,20 +318,30 @@ function useRoom(nameRef: { current: string }, handlers: { current: RoomHandlers
     const list = members(ch), mine = list.findIndex(m => m.id === s.id);
     if (mine < 0) return;                                              // our own entry hasn't landed yet
     if (s.role === "host" && !s.friendId && list.some((m, i) => i < mine && m.role === "host")) { open(newCode(), "host"); return; }   // code already taken
-    if (s.role === "guest" && !s.m && mine >= 2) { const code = s.code; close(false); setUi({ s: "full", code }); return; }
+    if (s.role === "guest" && !s.m && !s.friendId && mine >= 2) { const code = s.code; close(false); setUi({ s: "full", code }); return; }
     if (s.friendId) {
       const f = list.find(m => m.id === s.friendId);
-      if (f) { s.seen = true; if (!s.m && f.ready && !s.ready.them) setReady({ ...s.ready, them: true }); hostCheck(); }
+      if (f) { s.seen = true; clearAway(); if (!s.m && f.ready && !s.ready.them) setReady({ ...s.ready, them: true }); hostCheck(); }
       else if (s.seen) friendGone();
     }
   };
   const begin = (first: 0 | 1) => {
     s.m++; s.first = first; setAgain({ me: false, them: false });
     const msg: Msg = { t: "start", m: s.m, seed: Math.floor(Math.random() * 1e9), first, names: [nameRef.current, s.friendName], ids: [s.id, s.friendId] };
-    s.last = msg; send(msg); setUi(null);
+    s.last = msg; send(msg); setUi(null); save();
     handlers.current.start({ kind: "live", code: s.code, m: s.m, seed: msg.seed, me: 0, first, names: msg.names });
   };
   const lobbyMsg = (): Msg => ({ t: "lobby", id: s.id, name: nameRef.current, to: s.friendId, ready: s.ready.me });
+  // catching up: whoever comes back says "resume" with its snapshot; the other answers with its own; each keeps the newer
+  const sendResume = () => { send({ t: "resume", id: s.id, host: s.role === "host", snap: handlers.current.snapshot() }); s.timers.push(setTimeout(() => setReconnecting(false), 4000)); };
+  const consider = (snap: Snap | null, fromHost: boolean) => {
+    if (!snap) return;
+    const mine = handlers.current.snapshot();
+    if (!mine || snap.m > mine.m || (snap.m === mine.m && snap.p > mine.p)) {
+      if (snap.m > s.m) { s.m = snap.m; save(); }
+      handlers.current.apply(snap);
+    }
+  };
   const onMsg = (msg: Msg) => {
     if (msg.t === "hello") {
       if (s.role !== "host") return;
@@ -311,21 +361,30 @@ function useRoom(nameRef: { current: string }, handlers: { current: RoomHandlers
     } else if (msg.t === "again") {
       setAgain({ ...s.again, them: true });
       if (s.role === "host" && s.again.me) begin(s.loser);
-    } else if (msg.t === "bye") friendGone();
+    } else if (msg.t === "resume") {
+      if (msg.id !== s.friendId) return;
+      clearAway(); send({ t: "state", host: s.role === "host", snap: handlers.current.snapshot() });
+      consider(msg.snap as Snap | null, msg.host); handlers.current.resumed(true);
+    } else if (msg.t === "state") {
+      consider(msg.snap as Snap | null, msg.host); setReconnecting(false); handlers.current.resumed(false);
+    } else if (msg.t === "bye") friendGone(true);
     else handlers.current.game(msg);
   };
-  function open(code: string, role: Member["role"]) {
-    close(false);
-    s.code = code; s.role = role; s.id = Math.random().toString(36).slice(2, 10); s.at = Date.now();
+  function open(code: string, role: Member["role"], resume?: Saved) {
+    close(false, !!resume);
+    const prior = resume ?? readSaved(code);                           // same room as before: same seat
+    s.code = code; s.role = role; s.id = prior?.id ?? Math.random().toString(36).slice(2, 10); s.at = prior?.at ?? Date.now();
+    if (resume) { s.friendId = resume.friendId; s.friendName = resume.friendName || "Guest"; setFriendName(s.friendName); s.m = resume.m; s.first = resume.first; s.loser = resume.loser; s.seen = false; }
     const ch = sb().channel(`food-fight:${code}`, { config: { broadcast: { self: false }, presence: { key: s.id } } });
-    s.ch = ch;
+    s.ch = ch; save();
     ch.on("broadcast", { event: "m" }, ({ payload }) => { if (s.ch === ch) onMsg(payload as Msg); });
     ch.on("presence", { event: "sync" }, () => { if (s.ch === ch) onPresence(ch); });
     ch.subscribe(status => {
       if (s.ch !== ch) return;
       if (status === "SUBSCRIBED") {
         track();
-        if (role === "guest") {
+        if (s.m) sendResume();
+        else if (role === "guest" && !s.friendId) {
           const hello = () => { if (!s.m && !s.friendId) send({ t: "hello", id: s.id, name: nameRef.current }); };
           hello(); s.timers.push(setInterval(hello, 1500));
           s.timers.push(setTimeout(() => {                             // nobody answering: no host, or the host is busy with someone else
@@ -334,17 +393,39 @@ function useRoom(nameRef: { current: string }, handlers: { current: RoomHandlers
             if (!host || others > 0) { close(false); setUi({ s: host ? "full" : "empty", code }); }
           }, 8000));
         }
-      } else if (status === "CHANNEL_ERROR" || status === "TIMED_OUT") { close(false); setUi({ s: "error", code }); }
+      } else if (status === "CHANNEL_ERROR" || status === "TIMED_OUT" || status === "CLOSED") {
+        if (s.m || s.friendId) { setReconnecting(true); s.timers.push(setTimeout(() => { if (s.ch === ch || !s.ch) open(s.code, s.role, current()); }, 1500)); }   // try again, same seat
+        else { close(false); setUi({ s: "error", code }); }
+      }
     });
-    setUi({ s: role === "host" ? "waiting" : "joining", code });
+    if (resume && resume.m) { setUi(null); setReconnecting(true); }
+    else setUi({ s: role === "host" ? "waiting" : "joining", code });
   }
+  // back from another app (or the network): make sure we're still in the room, and catch up
+  useEffect(() => {
+    const back = () => {
+      if (document.visibilityState !== "visible" || !s.code || !(s.m || s.friendId)) return;
+      const ch = s.ch as unknown as { state?: string } | null, rt = sb().realtime;
+      if (!rt.isConnected() || !ch || ch.state !== "joined") { setReconnecting(true); open(s.code, s.role, current()); if (!rt.isConnected()) rt.connect(); }   // the socket may have died while we were away
+      else { track(); if (s.m) { setReconnecting(true); sendResume(); } }
+    };
+    document.addEventListener("visibilitychange", back); window.addEventListener("pageshow", back); window.addEventListener("online", back);
+    return () => { document.removeEventListener("visibilitychange", back); window.removeEventListener("pageshow", back); window.removeEventListener("online", back); };
+  }, []);   // eslint-disable-line react-hooks/exhaustive-deps
   return {
-    ui, again, ready, friendName,
+    ui, again, ready, friendName, away, reconnecting,
     friend: () => s.friendName,
-    ended: (winner: number) => { s.loser = (winner < 0 ? 1 - s.first : 1 - winner) as 0 | 1; },
+    ended: (winner: number) => { s.loser = (winner < 0 ? 1 - s.first : 1 - winner) as 0 | 1; save(); },
+    isHost: () => s.role === "host",
+    code: () => s.code,
+    saved: () => { const v = readSaved(); return v && v.m ? v : null; },
+    isAway: () => !!s.away,
+    pushState: () => send({ t: "state", host: s.role === "host", snap: handlers.current.snapshot() }),   // after a break: here's the latest, in case they missed it
+    rejoin: (v: Saved) => open(v.code, v.role, v),
+    forget,
     create: () => open(newCode(), "host"),
-    join: (code: string) => open(code, "guest"),
-    leave: () => { close(true); setUi(null); },
+    join: (code: string) => { const v = readSaved(code); if (v && v.m) open(code, v.role, v); else open(code, "guest"); },
+    leave: () => { close(true); forget(); setUi(null); },
     dismiss: () => setUi(null),
     // tapping I'm Ready: tell them straight away, keep it in presence too, and let the host check
     markReady: () => { if (s.ready.me || s.m) return; setReady({ ...s.ready, me: true }); send({ t: "ready", id: s.id, ready: true }); track(); hostCheck(); },
@@ -381,28 +462,49 @@ export default function FoodFight() {
   const startRef = useRef<() => void>(() => {});
   const nextRef = useRef<() => void>(() => {});
   const passRef = useRef<() => void>(() => {});
-  const engineRef = useRef<{ m: number; remote: (msg: GameMsg) => void } | null>(null);
+  const engineRef = useRef<{ m: number; remote: (msg: GameMsg) => void; snap: () => Snap | null; apply: (sn: Snap) => void } | null>(null);
+  const pendingSnap = useRef<Snap | null>(null);           // a snapshot to load once the live match it belongs to is set up
+  const turnBreak = useRef(false);                          // someone stepped away during this turn: share the state when the next one starts
+  const [liveMine, setLiveMine] = useState(false);          // live: it's your throw (you can play on while your friend is away)
   const inbox = useRef<GameMsg[]>([]);
   const nameRef = useRef("Guest"); nameRef.current = shell.player?.name || "Guest";
-  const handlers = useRef<RoomHandlers>({ start: () => {}, game: () => {}, left: () => {} });
+  const handlers = useRef<RoomHandlers>({ start: () => {}, game: () => {}, left: () => {}, snapshot: () => null, apply: () => {}, resumed: () => {}, away: () => {} });
   handlers.current = {
     start: p => { inbox.current = inbox.current.filter(q => q.m >= p.m); setMatchEnd(null); setMenu(null); setPlay(p); },
     game: msg => { const e = engineRef.current; if (e && e.m === msg.m) e.remote(msg); else inbox.current.push(msg); },
-    left: () => { setMatchEnd(null); setPlay({ kind: "cpu" }); },
+    left: () => { setMatchEnd(null); setPlay({ kind: "cpu" }); try { localStorage.removeItem(LIVE_KEY); } catch {} },
+    snapshot: () => engineRef.current?.snap() ?? null,
+    apply: sn => {
+      const P = playRef.current;
+      if (P.kind === "live" && P.m === sn.m && engineRef.current) { engineRef.current.apply(sn); return; }
+      pendingSnap.current = sn; setMatchEnd(null); setMenu(null);
+      setPlay({ kind: "live", code: roomRef.current.code(), m: sn.m, seed: sn.seed as number, me: roomRef.current.isHost() ? 0 : 1, first: sn.first as 0 | 1, names: sn.names as string[] });
+    },
+    resumed: asked => { if (asked) turnBreak.current = true; },
+    away: on => { if (on) turnBreak.current = true; },
   };
   const room = useRoom(nameRef, handlers);
   const roomRef = useRef(room); roomRef.current = room;
+  const awayRef = useRef(false); awayRef.current = !!room.away || room.reconnecting;   // live turn timers stop while either of you is away
+  const [offer, setOffer] = useState<{ saved: Saved; live: SavedLive } | null>(null);   // a match from before a reload
+  const [tick, setTick] = useState(0);
+  useEffect(() => { if (!room.away) return; const t = setInterval(() => setTick(x => x + 1), 500); return () => clearInterval(t); }, [room.away]);
   const bestKey = mode === "daily" ? `foodfight-daily-${torontoDate()}` : "foodfight-endless";
   useEffect(() => { setBest(readBest(bestKey)); }, [bestKey]);
 
-  // a shared link (?room=ABCD) joins that room straight away; leaving the page says goodbye
+  // a shared link (?room=ABCD) joins that room straight away, or picks a saved match back up. Minimising or reloading the
+  // page doesn't leave the room (the friend sees "Stepped Away"); only Leave, or leaving the game for another page, does.
+  const rejoinNow = (saved: Saved, live: SavedLive) => {
+    pendingSnap.current = live.snap; setWins([0, 0]); setMenu(null); setOffer(null); setPlay(live.play); roomRef.current.rejoin(saved);
+  };
   useEffect(() => {
     const c = new URLSearchParams(window.location.search).get("room")?.toUpperCase() ?? "";
-    if (/^[A-Z]{4}$/.test(c)) { setWins([0, 0]); roomRef.current.join(c); }
-    const bye = () => roomRef.current.leave();
-    window.addEventListener("pagehide", bye);
-    return () => { window.removeEventListener("pagehide", bye); bye(); };
-  }, []);
+    const saved = roomRef.current.saved(), live = readLive();
+    const resumable = !!saved && !!live && live.code === saved.code && live.play.m === saved.m && !(live.snap && live.snap.end != null);
+    if (resumable && (!c || c === saved!.code)) { if (c) rejoinNow(saved!, live!); else setOffer({ saved: saved!, live: live! }); }
+    else if (/^[A-Z]{4}$/.test(c)) { setWins([0, 0]); roomRef.current.join(c); }
+    return () => { roomRef.current.leave(); };
+  }, []);   // eslint-disable-line react-hooks/exhaustive-deps
 
   const playKey = play.kind === "cpu" ? "cpu" : play.kind === "live" ? `live-${play.code}-${play.m}` : `local-${play.m}`;
   useEffect(() => {
@@ -428,6 +530,7 @@ export default function FoodFight() {
     // the other player's aim as we last heard it (live), or the computer's (eased toward its throw while it "thinks"); x, y ease toward tx, ty
     const seen = { x: 0, y: 0, tx: 0, ty: 0, f: 0, on: false };
     let cpuShot: { px: number; py: number; f: number } | null = null, aimSent = "", aimAt = 0;
+    let turnStart = { ground: [] as number[], hp: [] as number[], melons: [] as number[], shots: [] as number[] }, ended: number | null = null;
     let snap: { ground: number[]; hp: number[] } | null = null, pending: Extract<GameMsg, { t: "hit" }> | null = null, hits: Hit[] = [];
     let drag: { sx: number; sy: number; px: number; py: number; id: number } | null = null;
     const lastAim: ({ deg: number; pow: number } | null)[] = [null, null];
@@ -446,6 +549,11 @@ export default function FoodFight() {
     const send = (msg: Msg) => { if (live) roomRef.current.send(msg); };
 
     function beginTurn() {
+      turnStart = { ground: w.ground.slice(), hp: w.hp.slice(), melons: w.melons.slice(), shots: w.shots.slice() }; persist();
+      if (live) {
+        setLiveMine(shooter === me);
+        if (turnBreak.current && !roomRef.current.isAway()) { turnBreak.current = false; roomRef.current.pushState(); }   // the returner catches up exactly
+      }
       w.wind = windFor(seed, round, turn, cpu ? windMax(mode as GameMode, round) : 0.7);
       turnLeft = TURN_MS; drag = null; aimSent = ""; Object.assign(seen, { x: 0, y: 0, tx: 0, ty: 0, on: false });
       if (local) { viewer = shooter; phase = "pass"; setPassTo(pnames[shooter]); }
@@ -520,6 +628,7 @@ export default function FoodFight() {
       drag = null;
       if (!cpu) {
         phase = "over"; const winner = win === 2 ? -1 : win;
+        ended = winner; turnStart = { ground: w.ground.slice(), hp: w.hp.slice(), melons: w.melons.slice(), shots: w.shots.slice() }; persist();
         if (live) roomRef.current.ended(winner);
         setWins(v => (winner < 0 ? v : v.map((n, i) => (i === winner ? n + 1 : n))));
         setMatchEnd({ winner }); return;
@@ -561,8 +670,24 @@ export default function FoodFight() {
         }
       }
     }
+    // catching up after a break: the state at the start of the current turn, and loading someone else's
+    function takeSnap(): Snap | null {
+      if (P.kind !== "live") return null;
+      return { m: P.m, p: ended !== null ? 1e5 : turn, seed: P.seed, first: P.first, names: P.names, n: turn, ground: turnStart.ground, hp: turnStart.hp, melons: turnStart.melons, shots: turnStart.shots, end: ended };
+    }
+    function loadSnap(sn: Snap) {
+      w.ground = (sn.ground as number[]).slice(); w.hp = (sn.hp as number[]).slice(); w.melons = (sn.melons as number[]).slice(); w.shots = (sn.shots as number[]).slice();
+      w.projs = []; mail.length = 0; pending = null; snap = null; hits = []; drag = null;
+      turn = sn.n as number; shooter = (((P.kind === "cpu" ? 0 : P.first) + turn) % 2) as 0 | 1;
+      if (sn.end != null) { phase = "over"; ended = sn.end as number; turnStart = { ground: w.ground.slice(), hp: w.hp.slice(), melons: w.melons.slice(), shots: w.shots.slice() }; roomRef.current.ended?.(ended); setMatchEnd({ winner: ended }); persist(); }
+      else { ended = null; setMatchEnd(null); beginTurn(); }
+    }
+    function persist() {
+      if (P.kind !== "live") return;
+      try { localStorage.setItem(LIVE_KEY, JSON.stringify({ code: P.code, play: P, snap: takeSnap(), t: Date.now() })); } catch {}
+    }
     if (P.kind === "live") {
-      engineRef.current = { m: P.m, remote: msg => {
+      engineRef.current = { m: P.m, snap: takeSnap, apply: loadSnap, remote: msg => {
         if (msg.t !== "aim" && msg.t !== "aimEnd") { mail.push(msg); return; }
         if (msg.n !== turn || shooter === me || phase !== "aim") return;   // aim is just for show: drop anything stale
         if (msg.t === "aim") Object.assign(seen, { tx: msg.px, ty: msg.py, f: msg.f, on: true }); else Object.assign(seen, { tx: 0, ty: 0 });
@@ -605,6 +730,7 @@ export default function FoodFight() {
     canvas.addEventListener("pointerdown", onDown); canvas.addEventListener("pointermove", onMove);
     canvas.addEventListener("pointerup", onUp); canvas.addEventListener("pointercancel", onCancel);
     beginTurn();
+    if (P.kind === "live" && pendingSnap.current?.m === P.m) { const sn = pendingSnap.current; pendingSnap.current = null; loadSnap(sn); }
 
     const loop = (t: number) => {
       const dt = Math.max(0, Math.min(100, t - last)); last = t;
@@ -626,7 +752,7 @@ export default function FoodFight() {
           wait -= dt; if (wait <= 0) next();
         } else if (phase === "aim" && live) {
           sendAim(t);
-          turnLeft -= dt;
+          if (!awayRef.current) turnLeft -= dt;                       // paused while either of you is away
           if (turnLeft <= 0 && shooter === me) { send({ t: "pass", m: P.kind === "live" ? P.m : 0, n: turn }); doPass(); }
         }
         roundAge += dt;
@@ -847,7 +973,7 @@ export default function FoodFight() {
     const how = mode === "daily" ? (result.kind === "won" ? `Won ${result.won}-${result.lost}` : `Lost ${result.won}-${result.lost}`) : `${result.won} rounds won`;
     shell.share(`${label}\n${hud.score.toLocaleString()} pts · ${how}${rank}\n${result.squares}\nCan you beat it? whatyouate.app/games/food-fight`);
   };
-  const toCpu = () => { if (isLive || room.ui) room.leave(); setMatchEnd(null); setMenu(null); setPlay({ kind: "cpu" }); setRun(r => r + 1); };
+  const toCpu = () => { if (isLive || room.ui) room.leave(); try { localStorage.removeItem(LIVE_KEY); } catch {} setOffer(null); setMatchEnd(null); setMenu(null); setPlay({ kind: "cpu" }); setRun(r => r + 1); };
   const openRoom = () => { setWins([0, 0]); setMenu(null); room.create(); };
   const joinRoom = () => { if (code.length === 4) { setWins([0, 0]); setMenu(null); room.join(code); } };
   const startLocal = () => {
@@ -930,6 +1056,34 @@ export default function FoodFight() {
             <button onClick={startLocal} className="mt-4 w-full rounded-full bg-[#3f7fd6] py-3 font-semibold text-white">Start</button>
             <button onClick={() => setMenu(null)} className="mt-2 w-full py-2 text-sm font-semibold text-[#5a6b85]">Back</button>
           </Card>
+        )}
+
+        {offer && !rui && !isLive && (
+          <Card>
+            <div className="text-xl font-bold">Rejoin Your Game</div>
+            <p className="mt-1 text-sm text-[#5a6b85]">You were in the middle of a match in room {offer.saved.code}.</p>
+            <button onClick={() => rejoinNow(offer.saved, offer.live)} className="mt-4 w-full rounded-full bg-[#3f7fd6] py-3 font-semibold text-white">Rejoin</button>
+            <button onClick={() => { room.forget(); try { localStorage.removeItem(LIVE_KEY); } catch {} setOffer(null); }} className="mt-2 w-full py-2 text-sm font-semibold text-[#5a6b85]">No Thanks</button>
+          </Card>
+        )}
+
+        {isLive && room.away && !rui && liveMine && !matchEnd && (
+          <div className="pointer-events-none absolute inset-x-0 top-[88px] z-10 flex justify-center">
+            <div className="rounded-full bg-white/95 px-4 py-2 text-sm font-semibold text-[#3f7fd6] shadow-md">{friend} Stepped Away... {Math.max(0, Math.ceil((room.away - Date.now()) / 1000) + tick * 0)}s · Your Throw</div>
+          </div>
+        )}
+        {isLive && room.away && !rui && (!liveMine || !!matchEnd) && (
+          <Card>
+            <div className="text-xl font-bold">{friend} Stepped Away...</div>
+            <div className="mt-2 text-4xl font-bold tabular-nums text-[#3f7fd6]">{Math.max(0, Math.ceil((room.away - Date.now()) / 1000) + tick * 0)}s</div>
+            <p className="mt-2 text-sm text-[#5a6b85]">The game is paused. It picks up right where you left off when they&apos;re back.</p>
+            <button onClick={toCpu} className="mt-3 w-full py-2 text-sm font-semibold text-[#5a6b85]">Leave</button>
+          </Card>
+        )}
+        {isLive && room.reconnecting && !room.away && !rui && (
+          <div className="pointer-events-none absolute inset-x-0 top-3 z-10 flex justify-center">
+            <div className="rounded-full bg-white/95 px-4 py-2 text-sm font-semibold text-[#3f7fd6] shadow-md">Reconnecting...</div>
+          </div>
         )}
 
         {rui?.s === "lobby" && (
