@@ -46,9 +46,15 @@ export default function SnackMerge() {
   const [toast, setToast] = useState<{ title: string; body: string } | null>(null);
   const [combo, setCombo] = useState(0);
   const [copied, setCopied] = useState(false);
+  const [board, setBoard] = useState({ w: 0, h: 0 });   // canvas size on screen, fitted to the space left under the header
   const bestKey = mode === "daily" ? `snackmerge-daily-${torontoDate()}` : "snackmerge-endless";
 
   useEffect(() => { setBest(readBest(bestKey)); }, [bestKey]);
+  useEffect(() => {                                    // a web app, not a page: no scrolling, no pull-to-refresh, no bounce
+    const h = document.documentElement, b = document.body, prev = [h.style.overflow, b.style.overflow, h.style.overscrollBehavior];
+    h.style.overflow = "hidden"; b.style.overflow = "hidden"; h.style.overscrollBehavior = "none";
+    return () => { h.style.overflow = prev[0]; b.style.overflow = prev[1]; h.style.overscrollBehavior = prev[2]; };
+  }, []);
 
   useEffect(() => {
     const canvas = canvasRef.current!, wrap = wrapRef.current!;
@@ -96,14 +102,15 @@ export default function SnackMerge() {
       }
     });
 
-    const scale = () => wrap.clientWidth / W;
+    const scale = () => Math.min(wrap.clientWidth / W, (wrap.clientHeight - 64) / H);   // fit width AND height (minus the fact strip below): no scrolling
     const resize = () => {
       const s = scale(), dpr = window.devicePixelRatio || 1;
-      canvas.style.width = `${W * s}px`; canvas.style.height = `${H * s}px`;
+      canvas.style.width = `${W * s}px`; canvas.style.height = `${H * s}px`; setBoard({ w: W * s, h: H * s });
       canvas.width = Math.round(W * s * dpr); canvas.height = Math.round(H * s * dpr);
       ctx.setTransform(s * dpr, 0, 0, s * dpr, 0, 0);
     };
     resize(); window.addEventListener("resize", resize);
+    const ro = new ResizeObserver(resize); ro.observe(wrap);
 
     const toLocal = (clientX: number) => { const r = canvas.getBoundingClientRect(); return ((clientX - r.left) / r.width) * W; };
     const clampX = (x: number) => Math.max(FOODS[current].r + 2, Math.min(W - FOODS[current].r - 2, x));
@@ -149,13 +156,13 @@ export default function SnackMerge() {
     }
     raf = requestAnimationFrame(loop);
     return () => {
-      cancelAnimationFrame(raf); window.removeEventListener("resize", resize);
+      cancelAnimationFrame(raf); window.removeEventListener("resize", resize); ro.disconnect();
       canvas.removeEventListener("pointermove", onMove); canvas.removeEventListener("pointerdown", onMove); canvas.removeEventListener("pointerup", onUp);
       Matter.Engine.clear(engine);
     };
   }, [mode, run, bestKey]);
 
-  useEffect(() => { if (!toast) return; const t = setTimeout(() => setToast(null), 3500); return () => clearTimeout(t); }, [toast]);
+  useEffect(() => { if (!toast) return; const t = setTimeout(() => setToast(null), 5000); return () => clearTimeout(t); }, [toast]);
 
   const share = async () => {
     const label = mode === "daily" ? `Snack Merge Daily #${dailyNumber()}` : "Snack Merge";
@@ -164,63 +171,65 @@ export default function SnackMerge() {
   };
 
   return (
-    <main className="min-h-dvh bg-gradient-to-b from-[#e3effe] via-[#f0f6fe] to-[#6fa8ff] px-4 py-5 text-[#101b2e]">
-      <div className="mx-auto w-full max-w-[440px]">
-        <div className="flex items-center justify-between">
-          <div>
-            <h1 className="text-2xl font-bold tracking-tight">Snack Merge</h1>
-            <p className="text-sm text-[#5a6b85]">Match two foods to grow them. Reach the Power Bowl.</p>
+    <main className="fixed inset-0 flex flex-col overflow-hidden bg-gradient-to-b from-[#e3effe] via-[#f0f6fe] to-[#6fa8ff] text-[#101b2e]"
+      style={{ paddingTop: "max(env(safe-area-inset-top), 10px)", paddingBottom: "max(env(safe-area-inset-bottom), 10px)", paddingLeft: 12, paddingRight: 12 }}>
+      <div className="mx-auto flex h-full w-full max-w-[440px] flex-col">
+        <div className="flex items-center gap-2">
+          <img src="/icon-512.png" alt="WhatYouAte" className="h-8 w-8 rounded-lg" />
+          <h1 className="text-lg font-bold tracking-tight">Snack Merge</h1>
+          <div className="ml-auto flex rounded-full bg-white/70 p-0.5 text-xs font-semibold">
+            {(["daily", "endless"] as Mode[]).map(m => (
+              <button key={m} onClick={() => { setMode(m); setRun(r => r + 1); }}
+                className={`rounded-full px-3 py-1.5 ${mode === m ? "bg-[#3f7fd6] text-white" : "text-[#3f7fd6]"}`}>
+                {m === "daily" ? `Daily #${dailyNumber()}` : "Endless"}
+              </button>
+            ))}
           </div>
-          <img src="/icon-512.png" alt="WhatYouAte" className="h-10 w-10 rounded-xl" />
         </div>
 
-        <div className="mt-3 flex gap-2 rounded-full bg-white/70 p-1 text-sm font-semibold">
-          {(["daily", "endless"] as Mode[]).map(m => (
-            <button key={m} onClick={() => { setMode(m); setRun(r => r + 1); }}
-              className={`flex-1 rounded-full py-2 ${mode === m ? "bg-[#3f7fd6] text-white" : "text-[#3f7fd6]"}`}>
-              {m === "daily" ? `Daily Drop #${dailyNumber()}` : "Endless"}
-            </button>
-          ))}
+        <div className="mt-2 flex items-center justify-between">
+          <div><div className="text-[10px] uppercase tracking-wide text-[#5a6b85]">Score</div><div className="text-2xl font-bold leading-none tabular-nums">{score.toLocaleString()}</div></div>
+          <div className="h-6">{combo > 0 && <div className="rounded-full bg-[#2eaa6e] px-2.5 py-0.5 text-xs font-bold text-white">Combo ×{combo + 1}</div>}</div>
+          <div className="text-right"><div className="text-[10px] uppercase tracking-wide text-[#5a6b85]">Best</div><div className="text-lg font-semibold leading-none tabular-nums">{best.toLocaleString()}</div></div>
+          <div className="ml-3 flex items-center gap-1"><div className="text-[10px] uppercase tracking-wide text-[#5a6b85]">Next</div>
+            <img src={`/games/foods/${FOODS[next].code}.png`} alt={FOODS[next].name} className="h-8 w-8" /></div>
         </div>
 
-        <div className="mt-3 flex items-end justify-between">
-          <div><div className="text-xs uppercase tracking-wide text-[#5a6b85]">Score</div><div className="text-3xl font-bold tabular-nums">{score.toLocaleString()}</div></div>
-          <div className="text-center">{combo > 0 && <div className="rounded-full bg-[#2eaa6e] px-3 py-1 text-sm font-bold text-white">Combo ×{combo + 1}</div>}</div>
-          <div className="text-right"><div className="text-xs uppercase tracking-wide text-[#5a6b85]">Best</div><div className="text-xl font-semibold tabular-nums">{best.toLocaleString()}</div></div>
-          <div className="ml-3 flex flex-col items-center"><div className="text-xs uppercase tracking-wide text-[#5a6b85]">Next</div>
-            <img src={`/games/foods/${FOODS[next].code}.png`} alt={FOODS[next].name} className="h-9 w-9" /></div>
-        </div>
-
-        <div ref={wrapRef} className="relative mt-2 w-full touch-none select-none">
-          <canvas ref={canvasRef} className="block w-full rounded-[22px] shadow-[0_14px_40px_rgba(16,42,86,0.18)]" />
-          {toast && (
-            <div className="pointer-events-none absolute inset-x-3 top-3 rounded-2xl bg-white/95 p-3 text-center shadow-lg">
-              <div className="text-sm font-bold text-[#3f7fd6]">{toast.title}</div>
-              <div className="text-sm">{toast.body}</div>
-            </div>
-          )}
-          {over && (
-            <div className="absolute inset-0 flex items-center justify-center rounded-[22px] bg-[#101b2e]/45 p-5">
-              <div className="w-full rounded-3xl bg-white p-6 text-center shadow-2xl">
-                <div className="text-sm font-semibold text-[#5a6b85]">{mode === "daily" ? `Daily Drop #${dailyNumber()}` : "Endless"}</div>
-                <div className="mt-1 text-4xl font-bold tabular-nums">{score.toLocaleString()}</div>
-                <div className="text-sm text-[#5a6b85]">{score >= best && score > 0 ? "New best!" : `Best: ${best.toLocaleString()}`}</div>
-                <div className="mt-4 flex gap-2">
-                  <button onClick={() => setRun(r => r + 1)} className="flex-1 rounded-full bg-[#3f7fd6] py-3 font-semibold text-white">Play again</button>
-                  <button onClick={share} className="flex-1 rounded-full bg-[#e3effe] py-3 font-semibold text-[#3f7fd6]">{copied ? "Copied!" : "Share"}</button>
+        <div ref={wrapRef} className="mt-2 flex min-h-0 flex-1 items-start justify-center touch-none select-none" style={{ paddingBottom: 64 }}>
+          <div className="relative" style={{ width: board.w, height: board.h }}>
+            <canvas ref={canvasRef} className="block rounded-[22px] shadow-[0_14px_40px_rgba(16,42,86,0.18)]" />
+            {over && (
+              <div className="absolute inset-0 flex items-center justify-center rounded-[22px] bg-[#101b2e]/45 p-4">
+                <div className="w-full rounded-3xl bg-white p-5 text-center shadow-2xl">
+                  <div className="text-sm font-semibold text-[#5a6b85]">{mode === "daily" ? `Daily Drop #${dailyNumber()}` : "Endless"}</div>
+                  <div className="mt-1 text-4xl font-bold tabular-nums">{score.toLocaleString()}</div>
+                  <div className="text-sm text-[#5a6b85]">{score >= best && score > 0 ? "New best!" : `Best: ${best.toLocaleString()}`}</div>
+                  <div className="mt-4 flex gap-2">
+                    <button onClick={() => setRun(r => r + 1)} className="flex-1 rounded-full bg-[#3f7fd6] py-3 font-semibold text-white">Play again</button>
+                    <button onClick={share} className="flex-1 rounded-full bg-[#e3effe] py-3 font-semibold text-[#3f7fd6]">{copied ? "Copied!" : "Share"}</button>
+                  </div>
+                  <p className="mt-4 text-sm text-[#5a6b85]">Real food stacks up too. WhatYouAte shows you how your meals affect your energy.</p>
+                  <a href={APP_STORE_URL} className="mt-2 inline-block rounded-full bg-[#101b2e] px-5 py-2.5 text-sm font-semibold text-white">Get WhatYouAte</a>
                 </div>
-                <p className="mt-5 text-sm text-[#5a6b85]">Real food stacks up too. WhatYouAte shows you how your meals affect your energy.</p>
-                <a href={APP_STORE_URL} className="mt-2 inline-block rounded-full bg-[#101b2e] px-5 py-2.5 text-sm font-semibold text-white">Get WhatYouAte</a>
               </div>
-            </div>
-          )}
+            )}
+          </div>
         </div>
 
-        <div className="mt-4 rounded-2xl bg-white/70 p-3">
-          <div className="text-xs font-semibold uppercase tracking-wide text-[#5a6b85]">The chain</div>
-          <div className="mt-1 flex flex-wrap items-center gap-0.5">
-            {FOODS.map((f, i) => (<span key={f.code} className="flex items-center gap-1">
-              <img src={`/games/foods/${f.code}.png`} alt={f.name} title={f.name} className="h-[22px] w-[22px]" />{i < FOODS.length - 1 && <span className="text-xs text-[#a9c3ef]">›</span>}</span>))}
+        <div className="pointer-events-none absolute inset-x-0 flex justify-center px-3" style={{ bottom: "max(env(safe-area-inset-bottom), 10px)" }}>
+          <div className="pointer-events-auto w-full max-w-[440px]" style={{ maxWidth: board.w || undefined }}>
+            {toast ? (
+              <div className="flex items-start gap-2 rounded-2xl bg-white/95 px-3 py-2 shadow-md">
+                <img src={`/games/foods/${FOODS.find(f => toast.title.includes(f.name))?.code ?? FOODS[0].code}.png`} alt="" className="mt-0.5 h-7 w-7" />
+                <div className="min-w-0 flex-1"><div className="text-xs font-bold text-[#3f7fd6]">{toast.title}</div><div className="text-[13px] leading-snug">{toast.body}</div></div>
+                <button onClick={() => setToast(null)} aria-label="Dismiss" className="-mr-1 -mt-1 h-8 w-8 shrink-0 rounded-full text-lg leading-none text-[#5a6b85]">×</button>
+              </div>
+            ) : (
+              <div className="flex h-[52px] items-center justify-center gap-0.5">
+                {FOODS.map((f, i) => (<span key={f.code} className="flex items-center gap-0.5">
+                  <img src={`/games/foods/${f.code}.png`} alt={f.name} title={f.name} className="h-[18px] w-[18px]" />{i < FOODS.length - 1 && <span className="text-[10px] text-[#a9c3ef]">›</span>}</span>))}
+              </div>
+            )}
           </div>
         </div>
       </div>
