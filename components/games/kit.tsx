@@ -6,7 +6,7 @@
 // Scores go through the game_* functions in supabase/games.sql (app repo). One sign-up covers every game.
 import { useEffect, useRef, useState, type ReactNode } from "react";
 import { sb } from "@/components/creators/api";
-import { appStoreLink } from "@/components/site";
+import { appStoreLink, APP_STORE_ID } from "@/components/site";
 
 export type Mode = "daily" | "endless";
 export type Player = { token: string; name: string };
@@ -313,8 +313,9 @@ export function useGameShell(game: string, mode: Mode) {
   // the pause button, plus an automatic pause when you switch apps or lock the phone mid-run (see PauseButton)
   const [held, setHeld] = useState(false);
   useEffect(() => { const f = () => { if (document.hidden) setHeld(true); }; document.addEventListener("visibilitychange", f); return () => document.removeEventListener("visibilitychange", f); }, []);
-  const paused = help.open || joinOpen || boardOpen || held;
-  return { player, savePlayer, scores, help, joinOpen, setJoinOpen, boardOpen, setBoardOpen, copied, share, finishRef, paused, held, setHeld };
+  const prize = usePrize();
+  const paused = help.open || joinOpen || boardOpen || held || prize.step !== null;
+  return { game, player, savePlayer, scores, help, joinOpen, setJoinOpen, boardOpen, setBoardOpen, copied, share, finishRef, paused, held, setHeld, prize };
 }
 export type Shell = ReturnType<typeof useGameShell>;
 
@@ -345,14 +346,116 @@ export function PausedCard({ shell, active }: { shell: Shell; active: boolean })
 
 /** The join form and scoreboard, opened from the 🏆 button or the game-over card. Joining posts the run just played. */
 export function ShellPopups({ shell, game, todayNote }: { shell: Shell; game: string; todayNote: string }) {
-  const { player, savePlayer, scores, joinOpen, setJoinOpen, boardOpen, setBoardOpen } = shell;
+  const { player, savePlayer, scores, joinOpen, setJoinOpen, boardOpen, setBoardOpen, prize } = shell;
   return (
     <>
+      {prize.step && <PrizeCard shell={shell} />}
       {joinOpen && <JoinForm onClose={() => setJoinOpen(false)} onJoined={async (p) => {
-        savePlayer(p); setJoinOpen(false); if (scores.final) await scores.post(p.token, scores.final); setBoardOpen(true);
+        savePlayer(p); setJoinOpen(false); if (scores.final) await scores.post(p.token, scores.final);
+        if (!prize.step) setBoardOpen(true);                // joining to claim a prize goes back to the prize card
       }} />}
       {boardOpen && <Scoreboard game={game} token={player?.token} initial={scores.board} todayNote={todayNote}
         onClose={() => setBoardOpen(false)} onJoin={() => { setBoardOpen(false); setJoinOpen(true); }} />}
     </>
+  );
+}
+
+// ── daily logo prize ───────────────────────────────────────────────────────
+// Once a day (per device, across every game) a gold WhatYouAte logo floats across the board for a few seconds.
+// Catch it, join the scoreboard if you haven't, answer the skill-testing question, and get a one-time App Store
+// code for 30 days of Pro. The server (supabase/games_prize.sql) holds the switch, the daily cap (3) and the
+// one-prize-per-person rule; the logo only shows while it's on and prizes are left today.
+const PRIZE_DAY_KEY = "wya-prize-chance", PRIZE_WON_KEY = "wya-prize-won";
+type PrizeStep = "caught" | "claiming" | "won" | "gone" | "tried" | "error";
+function usePrize() {
+  const [armed, setArmed] = useState(false);          // the logo may show this session
+  const [step, setStep] = useState<PrizeStep | null>(null);
+  const [code, setCode] = useState<string | null>(null);
+  useEffect(() => {
+    try { if (localStorage.getItem(PRIZE_WON_KEY) || localStorage.getItem(PRIZE_DAY_KEY) === torontoDate()) return; } catch { return; }
+    sb().rpc("game_prize_status").then(({ data }) => { if (data?.on && data.left > 0) setArmed(true); });
+  }, []);
+  const used = () => { setArmed(false); try { localStorage.setItem(PRIZE_DAY_KEY, torontoDate()); } catch {} };
+  return { armed, used, step, setStep, code, setCode };
+}
+
+/** The floating logo. Put it inside BoardArea; `active` = a run is going (it waits for real play time). */
+export function PrizeLogo({ shell, active }: { shell: Shell; active: boolean }) {
+  const { prize } = shell, armed = prize.armed;
+  const [show, setShow] = useState<{ y: number; fromLeft: boolean } | null>(null);
+  const wait = useRef(6000 + Math.random() * 24000);   // 6 to 30 seconds of play
+  const used = useRef(prize.used); used.current = prize.used;   // games re-render often; keep the countdown running
+  useEffect(() => {
+    if (!armed || !active || show) return;
+    const t = setInterval(() => {
+      wait.current -= 250;
+      if (wait.current <= 0) { clearInterval(t); used.current(); setShow({ y: 18 + Math.random() * 45, fromLeft: Math.random() < 0.5 }); }
+    }, 250);
+    return () => clearInterval(t);
+  }, [armed, active, show]);
+  useEffect(() => { if (!show) return; const t = setTimeout(() => setShow(null), 3200); return () => clearTimeout(t); }, [show]);
+  if (!show) return null;
+  return (
+    <button aria-label="Catch the WhatYouAte logo"
+      onPointerDown={e => { e.stopPropagation(); e.preventDefault(); setShow(null); prize.setStep("caught"); }}
+      className="absolute z-[5] flex h-[72px] w-[72px] items-center justify-center rounded-full"
+      style={{ top: `${show.y}%`, animation: `wya-prize-${show.fromLeft ? "ltr" : "rtl"} 3.2s linear forwards`,
+        background: "radial-gradient(circle, #ffe9a8 0%, #f5c542 60%, #d99a17 100%)", boxShadow: "0 0 0 4px rgba(255,255,255,0.8), 0 0 28px 8px rgba(245,197,66,0.75)" }}>
+      {/* eslint-disable-next-line @next/next/no-img-element */}
+      <img src="/icon-512.png" alt="" className="h-[50px] w-[50px] rounded-[12px]" />
+      <style>{`@keyframes wya-prize-ltr { 0% { left: -80px; transform: translateY(0) } 50% { transform: translateY(-18px) } 100% { left: calc(100% + 8px); transform: translateY(0) } }
+        @keyframes wya-prize-rtl { 0% { left: calc(100% + 8px); transform: translateY(0) } 50% { transform: translateY(-18px) } 100% { left: -80px; transform: translateY(0) } }`}</style>
+    </button>
+  );
+}
+
+function PrizeCard({ shell }: { shell: Shell }) {
+  const { prize, player, setJoinOpen } = shell;
+  const [q] = useState(() => { const a = 3 + Math.floor(Math.random() * 7), b = 2 + Math.floor(Math.random() * 7), c = 1 + Math.floor(Math.random() * 9); return { text: `${a} × ${b} + ${c}`, answer: a * b + c }; });
+  const [answer, setAnswer] = useState(""); const [wrong, setWrong] = useState(false); const [copied, setCopied] = useState(false);
+  const close = () => prize.setStep(null);
+  const claim = async () => {
+    if (Number(answer.trim()) !== q.answer) { setWrong(true); return; }
+    if (!player) return;
+    prize.setStep("claiming");
+    const { data, error } = await sb().rpc("game_prize_claim", { p_token: player.token, p_game: shell.game });
+    if (error || !data) { prize.setStep("error"); return; }
+    if (data.ok) { prize.setCode(data.code); prize.setStep("won"); try { localStorage.setItem(PRIZE_WON_KEY, "1"); } catch {} return; }
+    prize.setStep(data.error === "tried_today" ? "tried" : data.error === "gone" || data.error === "off" ? "gone" : "error");
+  };
+  const step = prize.step;
+  return (
+    <Modal onClose={step === "claiming" ? () => {} : close} z="z-30">
+      <div className="text-center text-4xl">🎉</div>
+      {step === "caught" && (<>
+        <div className="mt-1 text-center text-xl font-bold">You Caught Today&apos;s Logo!</div>
+        <p className="mt-1 text-center text-sm text-[#5a6b85]">Claim a free month of WhatYouAte Pro on iPhone.</p>
+        {!player ? (<>
+          <p className="mt-4 text-center text-sm">First, join the scoreboard so we know who won.</p>
+          <button onClick={() => setJoinOpen(true)} className="mt-3 w-full rounded-full bg-[#3f7fd6] py-3 font-semibold text-white">Join to claim</button>
+        </>) : (<>
+          <label className="mt-4 block text-center text-sm">One quick question to claim it: what&apos;s <b>{q.text}</b>?</label>
+          <input value={answer} onChange={e => { setAnswer(e.target.value); setWrong(false); }} inputMode="numeric" autoFocus
+            className="mx-auto mt-2 block w-28 rounded-xl border border-[#d6e2f5] px-3 py-2.5 text-center text-lg outline-none focus:border-[#3f7fd6]" />
+          {wrong && <p className="mt-2 text-center text-sm font-semibold text-[#d64545]">Not quite. Try again.</p>}
+          <button onClick={claim} className="mt-4 w-full rounded-full bg-[#3f7fd6] py-3 font-semibold text-white">Claim my free month</button>
+        </>)}
+        <p className="mt-3 text-center text-[11px] text-[#5a6b85]">One prize per person, 3 a day. <a href="/games/prize-rules" target="_blank" className="underline">Rules</a></p>
+      </>)}
+      {step === "claiming" && <p className="mt-3 text-center text-sm text-[#5a6b85]">Checking...</p>}
+      {step === "won" && prize.code && (<>
+        <div className="mt-1 text-center text-xl font-bold">Your Free Month</div>
+        <p className="mt-1 text-center text-sm text-[#5a6b85]">30 days of WhatYouAte Pro. Save this code: it works once.</p>
+        <div className="mt-4 rounded-2xl bg-[#f0f6fe] px-3 py-3 text-center font-mono text-lg font-bold tracking-wider">{prize.code}</div>
+        <button onClick={async () => { try { await navigator.clipboard.writeText(prize.code!); setCopied(true); } catch {} }} className="mt-2 w-full rounded-full bg-[#e3effe] py-2.5 text-sm font-semibold text-[#3f7fd6]">{copied ? "Copied!" : "Copy code"}</button>
+        <a href={`https://apps.apple.com/redeem?ctx=offercodes&id=${APP_STORE_ID}&code=${encodeURIComponent(prize.code)}`} className="mt-2 block w-full rounded-full bg-[#101b2e] py-3 text-center font-semibold text-white">Redeem in the App Store</a>
+        <button onClick={close} className="mt-2 w-full py-2 text-sm font-semibold text-[#5a6b85]">Back to the game</button>
+      </>)}
+      {(step === "gone" || step === "tried" || step === "error") && (<>
+        <div className="mt-1 text-center text-xl font-bold">{step === "gone" ? "Today's Prizes Are Gone" : step === "tried" ? "You've Had Today's Chance" : "Something Went Wrong"}</div>
+        <p className="mt-2 text-center text-sm text-[#5a6b85]">{step === "gone" ? "Nice catch, but all 3 of today's prizes were claimed. The logo's back tomorrow." : step === "tried" ? "One try a day. The logo's back tomorrow." : "We couldn't check your prize. Try again in a moment."}</p>
+        <button onClick={close} className="mt-4 w-full rounded-full bg-[#3f7fd6] py-3 font-semibold text-white">Back to the game</button>
+      </>)}
+    </Modal>
   );
 }

@@ -7,7 +7,7 @@
 // board (header, popups, scoreboard, game-over card, fact strip) comes from ./kit, shared with the other games.
 import { useCallback, useEffect, useRef, useState } from "react";
 import Matter from "matter-js";
-import { type Mode, type Toast, GameScreen, GameHeader, BoardArea, FactStrip, GameOver, HelpModal, ModesHelp, ShellPopups,
+import { type Mode, type Toast, GameScreen, GameHeader, BoardArea, PrizeLogo, FactStrip, GameOver, HelpModal, ModesHelp, ShellPopups,
   useGameShell, fitCanvas, loadImages, dailySeed, dailyNumber, torontoDate, mulberry32, readBest, saveBest, foodPng, emoji } from "./kit";
 
 const GAME = "snack-merge";
@@ -170,6 +170,7 @@ export default function SnackMerge() {
 
       <BoardArea wrapRef={wrapRef} size={board}>
         <canvas ref={canvasRef} className="block rounded-[22px] shadow-[0_14px_40px_rgba(16,42,86,0.18)]" />
+        <PrizeLogo shell={shell} active={!over && !shell.paused} />
         {over && <GameOver label={mode === "daily" ? `Today's Challenge #${dailyNumber("2026-11-01")}` : "Free Play"} score={score} best={best} mode={mode}
           posted={shell.scores.posted} joined={!!shell.player} campaign={GAME} copied={shell.copied}
           pitch="Real food stacks up too. WhatYouAte shows you how your meals affect your energy."

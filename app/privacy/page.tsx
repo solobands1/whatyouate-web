@@ -58,6 +58,7 @@ export default function PrivacyPage() {
             <p>If you enter a creator code when you sign up, we record which code you used, so the creator can be credited for subscriptions you buy in your first year. Creators only ever see totals. We never share your name, email or anything else that identifies you with them.</p>
             <H3>Website games</H3>
             <p>If you join a scoreboard in one of the games on whatyouate.app, we collect the display name and email address you enter, and your scores. Your display name and scores are shown publicly on the scoreboard. Your email is never shown. We use it to keep your scores tied to you and, only if you tick the box for it, to send you WhatYouAte news. You can unsubscribe from those emails at any time, or ask us to remove your name, email and scores by writing to support@whatyouate.app.</p>
+            <p>If you win the daily logo prize, we record which player won and which App Store code they received, so we can keep to one prize per person.</p>
           </Section>
 
           <Section title="2. Meal Photos">

@@ -13,7 +13,7 @@
 // Everything around the board comes from ./kit.
 import { useEffect, useRef, useState } from "react";
 import Matter from "matter-js";
-import { type Mode, type Toast, GameScreen, GameHeader, BoardArea, GameOver, HelpModal, ModesHelp, ShellPopups,
+import { type Mode, type Toast, GameScreen, GameHeader, BoardArea, PrizeLogo, GameOver, HelpModal, ModesHelp, ShellPopups,
   useGameShell, fitCanvas, loadImages, dailySeed, dailyNumber, torontoDate, mulberry32, readBest, saveBest, foodPng } from "./kit";
 
 const GAME = "food-fling";
@@ -518,6 +518,7 @@ export default function FoodFling() {
 
       <BoardArea wrapRef={wrapRef} size={board} reserve={0}>
         <canvas ref={canvasRef} className="block rounded-[22px] shadow-[0_14px_40px_rgba(16,42,86,0.18)]" />
+        <PrizeLogo shell={shell} active={!over && !shell.paused} />
         {clear && !over && (
           <div className="absolute inset-0 z-10 flex items-center justify-center rounded-[22px] bg-[#101b2e]/30 p-6">
             <div className="w-full max-w-[260px] rounded-3xl bg-white p-4 text-center shadow-2xl">
