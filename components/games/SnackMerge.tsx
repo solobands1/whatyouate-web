@@ -46,10 +46,13 @@ export default function SnackMerge() {
   const [toast, setToast] = useState<{ title: string; body: string } | null>(null);
   const [combo, setCombo] = useState(0);
   const [copied, setCopied] = useState(false);
-  const [board, setBoard] = useState({ w: 0, h: 0 });   // canvas size on screen, fitted to the space left under the header
+  const [board, setBoard] = useState({ w: 0, h: 0 });
+  const [help, setHelp] = useState(false);              // "How to play": shown on a first visit, and from the ⓘ button   // canvas size on screen, fitted to the space left under the header
   const bestKey = mode === "daily" ? `snackmerge-daily-${torontoDate()}` : "snackmerge-endless";
 
   useEffect(() => { setBest(readBest(bestKey)); }, [bestKey]);
+  useEffect(() => { try { if (!localStorage.getItem("snackmerge-seen-help")) setHelp(true); } catch { setHelp(true); } }, []);
+  const closeHelp = () => { setHelp(false); try { localStorage.setItem("snackmerge-seen-help", "1"); } catch {} };
   useEffect(() => {                                    // a web app, not a page: no scrolling, no pull-to-refresh, no bounce
     const h = document.documentElement, b = document.body, prev = [h.style.overflow, b.style.overflow, h.style.overscrollBehavior];
     h.style.overflow = "hidden"; b.style.overflow = "hidden"; h.style.overscrollBehavior = "none";
@@ -165,7 +168,7 @@ export default function SnackMerge() {
   useEffect(() => { if (!toast) return; const t = setTimeout(() => setToast(null), 5000); return () => clearTimeout(t); }, [toast]);
 
   const share = async () => {
-    const label = mode === "daily" ? `Snack Merge Daily #${dailyNumber()}` : "Snack Merge";
+    const label = mode === "daily" ? `Snack Merge, Today's Challenge #${dailyNumber()}` : "Snack Merge";
     const text = `${label} 🍲 ${score.toLocaleString()} pts\nCan you beat it? whatyouate.app/games`;
     try { if (navigator.share) await navigator.share({ text }); else { await navigator.clipboard.writeText(text); setCopied(true); setTimeout(() => setCopied(false), 2000); } } catch {}
   };
@@ -181,10 +184,11 @@ export default function SnackMerge() {
             {(["daily", "endless"] as Mode[]).map(m => (
               <button key={m} onClick={() => { setMode(m); setRun(r => r + 1); }}
                 className={`rounded-full px-3 py-1.5 ${mode === m ? "bg-[#3f7fd6] text-white" : "text-[#3f7fd6]"}`}>
-                {m === "daily" ? `Daily #${dailyNumber()}` : "Endless"}
+                {m === "daily" ? "Today" : "Free Play"}
               </button>
             ))}
           </div>
+          <button onClick={() => setHelp(true)} aria-label="How to play" className="flex h-8 w-8 items-center justify-center rounded-full bg-white/70 text-sm font-bold text-[#3f7fd6]">i</button>
         </div>
 
         <div className="mt-2 flex items-center justify-between">
@@ -201,7 +205,7 @@ export default function SnackMerge() {
             {over && (
               <div className="absolute inset-0 flex items-center justify-center rounded-[22px] bg-[#101b2e]/45 p-4">
                 <div className="w-full rounded-3xl bg-white p-5 text-center shadow-2xl">
-                  <div className="text-sm font-semibold text-[#5a6b85]">{mode === "daily" ? `Daily Drop #${dailyNumber()}` : "Endless"}</div>
+                  <div className="text-sm font-semibold text-[#5a6b85]">{mode === "daily" ? `Today's Challenge #${dailyNumber()}` : "Free Play"}</div>
                   <div className="mt-1 text-4xl font-bold tabular-nums">{score.toLocaleString()}</div>
                   <div className="text-sm text-[#5a6b85]">{score >= best && score > 0 ? "New best!" : `Best: ${best.toLocaleString()}`}</div>
                   <div className="mt-4 flex gap-2">
@@ -233,6 +237,29 @@ export default function SnackMerge() {
           </div>
         </div>
       </div>
+
+      {help && (
+        <div className="absolute inset-0 z-20 flex items-center justify-center bg-[#101b2e]/50 p-5" onClick={closeHelp}>
+          <div className="w-full max-w-[380px] rounded-3xl bg-white p-5 shadow-2xl" onClick={e => e.stopPropagation()}>
+            <div className="text-center text-xl font-bold">How to play</div>
+            <ol className="mt-3 space-y-2 text-[15px]">
+              <li className="flex gap-3"><span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-[#e3effe] text-sm font-bold text-[#3f7fd6]">1</span>Tap where you want to drop the food.</li>
+              <li className="flex gap-3"><span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-[#e3effe] text-sm font-bold text-[#3f7fd6]">2</span>Two of the same food merge into the next one. Quick merges in a row are a combo.</li>
+              <li className="flex gap-3"><span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-[#e3effe] text-sm font-bold text-[#3f7fd6]">3</span>Don&apos;t let foods pile up past the dashed line.</li>
+            </ol>
+            <div className="mt-3 flex flex-wrap items-center justify-center gap-0.5 rounded-2xl bg-[#f0f6fe] p-2">
+              {FOODS.map((f, i) => (<span key={f.code} className="flex items-center gap-0.5">
+                <img src={`/games/foods/${f.code}.png`} alt={f.name} className="h-5 w-5" />{i < FOODS.length - 1 && <span className="text-[10px] text-[#a9c3ef]">›</span>}</span>))}
+            </div>
+            <div className="mt-1 text-center text-xs text-[#5a6b85]">Reach the Power Bowl 🥗</div>
+            <div className="mt-4 space-y-1.5 text-sm">
+              <p><b>Today:</b> everyone gets the same foods today. Fair fight, new one every day.</p>
+              <p><b>Free Play:</b> random foods every game. Chase your high score.</p>
+            </div>
+            <button onClick={closeHelp} className="mt-5 w-full rounded-full bg-[#3f7fd6] py-3 font-semibold text-white">Let&apos;s play</button>
+          </div>
+        </div>
+      )}
     </main>
   );
 }
