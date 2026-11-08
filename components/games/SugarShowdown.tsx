@@ -16,7 +16,7 @@ import { useEffect, useRef, useState, type ReactNode } from "react";
 import type { RealtimeChannel } from "@supabase/supabase-js";
 import { sb } from "@/components/creators/api";
 import { appStoreLink } from "@/components/site";
-import { type Mode, type Toast, type Shell, GameScreen, GameHeader, BoardArea, PrizeLogo, GameOver, PauseButton, PausedCard, HelpModal, ModesHelp,
+import { type Mode, type Toast, type Shell, GameScreen, GameHeader, BoardArea, PrizeLogo, GameOver, PauseButton, PausedCard, ReadyCard, HelpModal, ModesHelp,
   ShellPopups, useGameShell, dailySeed, dailyNumber, torontoDate, mulberry32, readBest, saveBest, foodPng } from "./kit";
 import { SUGAR_FOODS, type Question, answerOf, buildRound, nextFree, points, ROUND, TODAY_MS, DUEL_MS, COUCH_MS, HEARTS, freeMs } from "./sugarData";
 
@@ -110,12 +110,15 @@ function useBoardSize(ref: React.RefObject<HTMLDivElement | null>, away: boolean
 
 // ── live rooms ─────────────────────────────────────────────────────────────
 // One Realtime channel per room, "sugar-showdown:CODE". Presence says who's in (2 at most; a third is told it's full).
-// The guest says hello until the host sends start (with the seed). Then: q (host shows question i on both phones),
+// The guest says hello and the host answers with "lobby": both see the Get Ready card, and each "ready" is broadcast (and kept
+// in presence). Only when both are ready does the host send start (with the seed). Then: q (host shows question i on both phones),
 // ans (the guest's pick and time), res (the host's ruling and the score), again (rematch), bye (leaving).
 const ALPHA = "ACDEFHJKMNPRTWXY";   // no I/L/1, O/Q/0, S/5, Z/2, B/8, G/6, U/V
 const newCode = () => Array.from({ length: 4 }, () => ALPHA[Math.floor(Math.random() * ALPHA.length)]).join("");
 type Msg =
   | { t: "hello"; id: string; name: string }
+  | { t: "lobby"; id: string; name: string; to: string; ready: boolean }   // host to guest: you're paired, here's my name and whether I'm ready
+  | { t: "ready"; id: string; ready: boolean }                             // I tapped I'm Ready on the Get Ready card
   | { t: "start"; m: number; seed: number; names: string[]; ids: string[] }
   | { t: "q"; m: number; i: number }
   | { t: "ans"; m: number; i: number; pick: number; ms: number }
@@ -123,18 +126,26 @@ type Msg =
   | { t: "again" }
   | { t: "bye" };
 type GameMsg = Extract<Msg, { i: number }>;
-type Member = { id: string; name: string; role: "host" | "guest"; at: number };
-type RoomUi = { s: "waiting" | "joining" | "full" | "empty" | "left" | "error"; code: string };
+type Member = { id: string; name: string; role: "host" | "guest"; at: number; ready?: boolean };
+type RoomUi = { s: "waiting" | "joining" | "lobby" | "full" | "empty" | "left" | "error"; code: string };
 type StartInfo = { code: string; m: number; seed: number; me: 0 | 1; names: string[] };
 type RoomHandlers = { start: (p: StartInfo) => void; game: (m: GameMsg) => void; left: () => void };
 
 function useRoom(nameRef: { current: string }, handlers: { current: RoomHandlers }) {
   const [ui, setUi] = useState<RoomUi | null>(null);
   const [again, setAgainState] = useState({ me: false, them: false });
+  const [ready, setReadyState] = useState({ me: false, them: false });   // the Get Ready card, before the first game
+  const [friendName, setFriendName] = useState("Guest");
   const s = useRef({ ch: null as RealtimeChannel | null, code: "", role: "host" as Member["role"], id: "", at: 0, friendId: "", friendName: "Guest",
-    seen: false, m: 0, last: null as Msg | null, again: { me: false, them: false }, timers: [] as ReturnType<typeof setTimeout>[] }).current;
+    seen: false, m: 0, last: null as Msg | null, again: { me: false, them: false }, ready: { me: false, them: false }, timers: [] as ReturnType<typeof setTimeout>[] }).current;
   const setAgain = (a: { me: boolean; them: boolean }) => { s.again = a; setAgainState(a); };
+  const setReady = (r: { me: boolean; them: boolean }) => { s.ready = r; setReadyState(r); };
+  const setFriend = (id: string, name: string) => {
+    s.friendId = id; s.friendName = name || "Guest"; setFriendName(s.friendName);
+    s.seen = !!id && !!s.ch && members(s.ch).some(m => m.id === id);    // already in presence? then a later absence means they left
+  };
   const send = (msg: Msg) => { void s.ch?.send({ type: "broadcast", event: "m", payload: msg }); };
+  const track = () => { void s.ch?.track({ id: s.id, name: nameRef.current, role: s.role, at: s.at, ready: s.ready.me }); };   // presence keeps "ready" too
   const close = (bye: boolean) => {
     s.timers.forEach(t => { clearTimeout(t); clearInterval(t); }); s.timers = [];
     const ch = s.ch; s.ch = null;
@@ -142,38 +153,59 @@ function useRoom(nameRef: { current: string }, handlers: { current: RoomHandlers
       if (bye) void ch.send({ type: "broadcast", event: "m", payload: { t: "bye" } });
       void ch.untrack().catch(() => {}); void sb().removeChannel(ch);
     }
-    s.friendId = ""; s.seen = false; s.m = 0; s.last = null; setAgain({ me: false, them: false });
+    setFriend("", "Guest"); s.seen = false; s.m = 0; s.last = null; setAgain({ me: false, them: false }); setReady({ me: false, them: false });
   };
   const members = (ch: RealtimeChannel) => {
     const st = ch.presenceState() as unknown as Record<string, Member[]>, seen = new Set<string>(), out: Member[] = [];
     for (const k in st) for (const m of st[k]) if (m.id && !seen.has(m.id)) { seen.add(m.id); out.push(m); }
     return out.sort((a, b) => a.at - b.at || (a.id < b.id ? -1 : 1));
   };
-  const friendGone = () => { if (!s.ch) return; const code = s.code; close(false); setUi({ s: "left", code }); handlers.current.left(); };
+  const friendGone = () => {
+    if (!s.ch) return;
+    if (s.role === "host" && !s.m) {                                     // left from the Get Ready card: keep the room open for them
+      setFriend("", "Guest"); s.seen = false; setReady({ me: false, them: false }); track(); setUi({ s: "waiting", code: s.code }); return;
+    }
+    const code = s.code; close(false); setUi({ s: "left", code }); handlers.current.left();
+  };
+  // the host starts the first game only when both have tapped I'm Ready and the friend is still here
+  const hostCheck = () => {
+    if (s.role !== "host" || s.m || !s.ch || !s.friendId || !s.ready.me || !s.ready.them) return;
+    if (!members(s.ch).some(m => m.id === s.friendId)) return;          // presence will call back when they show up
+    begin();
+  };
   const onPresence = (ch: RealtimeChannel) => {
     const list = members(ch), mine = list.findIndex(m => m.id === s.id);
     if (mine < 0) return;                                              // our own entry hasn't landed yet
     if (s.role === "host" && !s.friendId && list.some((m, i) => i < mine && m.role === "host")) { open(newCode(), "host"); return; }   // code already taken
     if (s.role === "guest" && !s.m && mine >= 2) { const code = s.code; close(false); setUi({ s: "full", code }); return; }
     if (s.friendId) {
-      if (list.some(m => m.id === s.friendId)) s.seen = true;
+      const f = list.find(m => m.id === s.friendId);
+      if (f) { s.seen = true; if (!s.m && f.ready && !s.ready.them) setReady({ ...s.ready, them: true }); hostCheck(); }
       else if (s.seen) friendGone();
     }
   };
   const begin = () => {
-    s.m++; setAgain({ me: false, them: false });
+    s.m++;  setAgain({ me: false, them: false });
     const msg: Msg = { t: "start", m: s.m, seed: Math.floor(Math.random() * 1e9), names: [nameRef.current, s.friendName], ids: [s.id, s.friendId] };
     s.last = msg; send(msg); setUi(null);
     handlers.current.start({ code: s.code, m: s.m, seed: msg.seed, me: 0, names: msg.names });
   };
+  const lobbyMsg = (): Msg => ({ t: "lobby", id: s.id, name: nameRef.current, to: s.friendId, ready: s.ready.me });
   const onMsg = (msg: Msg) => {
     if (msg.t === "hello") {
       if (s.role !== "host") return;
-      if (!s.friendId) { s.friendId = msg.id; s.friendName = msg.name || "Guest"; begin(); }
-      else if (msg.id === s.friendId && s.last) send(s.last);          // they missed the start
+      if (!s.friendId) { setFriend(msg.id, msg.name); setReady({ me: false, them: false }); track(); setUi({ s: "lobby", code: s.code }); }
+      if (msg.id === s.friendId) send(s.m && s.last ? s.last : lobbyMsg());   // in the lobby, or they missed the start
+    } else if (msg.t === "lobby") {
+      if (s.role !== "guest" || msg.to !== s.id || s.m) return;
+      if (!s.friendId) { setFriend(msg.id, msg.name); setUi({ s: "lobby", code: s.code }); }
+      if (msg.ready !== s.ready.them) setReady({ ...s.ready, them: msg.ready });
+    } else if (msg.t === "ready") {
+      if (msg.id !== s.friendId || s.m) return;
+      setReady({ ...s.ready, them: msg.ready }); hostCheck();
     } else if (msg.t === "start") {
       if (s.role !== "guest" || msg.ids[1] !== s.id || msg.m <= s.m) return;
-      s.m = msg.m; s.friendId = msg.ids[0]; s.friendName = msg.names[0] || "Guest"; setAgain({ me: false, them: false }); setUi(null);
+      s.m = msg.m;  setFriend(msg.ids[0], msg.names[0]); setAgain({ me: false, them: false }); setUi(null);
       handlers.current.start({ code: s.code, m: msg.m, seed: msg.seed, me: 1, names: msg.names });
     } else if (msg.t === "again") {
       setAgain({ ...s.again, them: true });
@@ -191,12 +223,12 @@ function useRoom(nameRef: { current: string }, handlers: { current: RoomHandlers
     ch.subscribe(status => {
       if (s.ch !== ch) return;
       if (status === "SUBSCRIBED") {
-        void ch.track({ id: s.id, name: nameRef.current, role, at: s.at });
+        track();
         if (role === "guest") {
-          const hello = () => { if (!s.m) send({ t: "hello", id: s.id, name: nameRef.current }); };
+          const hello = () => { if (!s.m && !s.friendId) send({ t: "hello", id: s.id, name: nameRef.current }); };
           hello(); s.timers.push(setInterval(hello, 1500));
           s.timers.push(setTimeout(() => {                             // nobody answering: no host, or the host is busy with someone else
-            if (s.m || s.ch !== ch) return;
+            if (s.m || s.friendId || s.ch !== ch) return;
             const list = members(ch), host = list.some(m => m.role === "host"), others = list.filter(m => m.role === "guest" && m.id !== s.id).length;
             if (!host || others > 0) { close(false); setUi({ s: host ? "full" : "empty", code }); }
           }, 8000));
@@ -206,12 +238,14 @@ function useRoom(nameRef: { current: string }, handlers: { current: RoomHandlers
     setUi({ s: role === "host" ? "waiting" : "joining", code });
   }
   return {
-    ui, again,
+    ui, again, ready, friendName,
     isHost: () => s.role === "host",
     create: () => open(newCode(), "host"),
     join: (code: string) => open(code, "guest"),
     leave: () => { close(true); setUi(null); },
     dismiss: () => setUi(null),
+    // tapping I'm Ready: tell them straight away, keep it in presence too, and let the host check
+    markReady: () => { if (s.ready.me || s.m) return; setReady({ ...s.ready, me: true }); send({ t: "ready", id: s.id, ready: true }); track(); hostCheck(); },
     rematch: () => { setAgain({ ...s.again, me: true }); send({ t: "again" }); if (s.role === "host" && s.again.them) begin(); },
     send,
   };
@@ -551,7 +585,16 @@ export default function SugarShowdown() {
           </Card>
         )}
 
-        {rui && (
+        {rui?.s === "lobby" && (
+          <ReadyCard me={nameRef.current === "Guest" ? "You" : nameRef.current} friend={room.friendName === "Guest" ? "Your Friend" : room.friendName}
+            ready={[room.ready.me, room.ready.them]} onReady={room.markReady} onLeave={toSolo} steps={[
+              "Two foods pop up. Tap the one with more sugar.",
+              "The faster right answer wins the round. A wrong tap or running out of time gets nothing.",
+              "10 questions. Win the most rounds to take the match.",
+            ]} />
+        )}
+
+        {rui && rui.s !== "lobby" && (
           <Card>
             {rui.s === "waiting" && (<>
               <div className="text-sm font-semibold text-[#5a6b85]">Your Room Code</div>
@@ -584,7 +627,7 @@ export default function SugarShowdown() {
         {live && live.phase === "count" && !rui && (
           <Card>
             <div className="text-sm font-semibold text-[#5a6b85]">You Vs {friendName}</div>
-            <div className="mt-1 text-2xl font-bold">Get Ready</div>
+            <div className="mt-1 text-2xl font-bold">Here We Go</div>
             <p className="mt-1 text-sm text-[#5a6b85]">10 questions. Faster right answer wins each one.</p>
             <Countdown key={live.m} />
           </Card>

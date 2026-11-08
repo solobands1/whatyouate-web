@@ -13,6 +13,7 @@
 import { useEffect, useRef, useState } from "react";
 import { type Mode, type Toast, GameScreen, GameHeader, BoardArea, PrizeLogo, GameOver, PauseButton, PausedCard, HelpModal, ModesHelp, ShellPopups,
   useGameShell, fitCanvas, loadImages, dailySeed, dailyNumber, torontoDate, mulberry32, readBest, saveBest, foodPng } from "./kit";
+import { useDuel } from "./duels";
 
 const GAME = "berry-dash";
 const LAUNCH = "2026-11-08";   // Today's Challenge #1
@@ -107,6 +108,7 @@ export default function BerryDash() {
   const [toast, setToast] = useState<Toast | null>(null);
   const [board, setBoard] = useState({ w: 0, h: 0 });
   const shell = useGameShell(GAME, mode);
+  const duel = useDuel(shell, GAME, "Berry Dash", mode, () => { if (mode !== "daily") { setMode("daily"); setRun(r => r + 1); } });   // Friend Duels
   const { reset: resetScores } = shell.scores;
   const pausedRef = useRef(false); pausedRef.current = shell.paused;   // popups pause the run
   const startRef = useRef<() => void>(() => {});
@@ -408,10 +410,11 @@ export default function BerryDash() {
         {over && <GameOver label={mode === "daily" ? `Today's Challenge #${n}` : "Free Play"} headline={headline} score={hud.score} best={best} mode={mode}
           posted={shell.scores.posted} joined={!!shell.player} campaign={GAME} copied={shell.copied} fact={toast}
           pitch="Real snacks keep you going too. WhatYouAte shows you which ones work for you."
-          onBoard={() => shell.setBoardOpen(true)} onJoin={() => shell.setJoinOpen(true)} onAgain={() => setRun(r => r + 1)} onShare={share} />}
+          onBoard={() => shell.setBoardOpen(true)} onJoin={() => shell.setJoinOpen(true)} onAgain={() => setRun(r => r + 1)} onShare={share}  extra={duel.button} />}
       </BoardArea>
 
       <ShellPopups shell={shell} game={GAME} todayNote="Today's Challenge: same counter for everyone. Resets at midnight." />
+      {duel.popup}
 
       {shell.help.open && (
         <HelpModal onClose={shell.help.close} steps={[

@@ -333,6 +333,33 @@ export function PauseButton({ shell, active }: { shell: Shell; active: boolean }
   );
 }
 
+/** Live matches: the "Get Ready" card both players see before the first game (put it inside BoardArea). A short how-to,
+ *  both names with a ✓ once they're ready, and a big I'm Ready button. `ready` is [you, your friend]. */
+export function ReadyCard({ steps, me, friend, ready, onReady, onLeave, title = "Get Ready" }: {
+  steps: ReactNode[]; me: string; friend: string; ready: [boolean, boolean]; onReady: () => void; onLeave: () => void; title?: string;
+}) {
+  return (
+    <div className="absolute inset-0 z-10 flex items-center justify-center rounded-[22px] bg-[#101b2e]/45 p-4">
+      <div className="max-h-full w-full max-w-[320px] overflow-y-auto rounded-3xl bg-white p-5 text-center shadow-2xl [@media(max-height:700px)]:p-4">
+        <div className="text-xl font-bold">{title}</div>
+        <ol className="mt-3 space-y-1.5 text-left text-sm leading-snug">
+          {steps.map((s, i) => (
+            <li key={i} className="flex gap-2"><span className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-[#e3effe] text-xs font-bold text-[#3f7fd6]">{i + 1}</span><span>{s}</span></li>
+          ))}
+        </ol>
+        <div className="mt-3 space-y-1 rounded-2xl bg-[#f0f6fe] px-3 py-2 text-sm font-semibold">
+          <div className={ready[0] ? "text-[#2eaa6e]" : "text-[#5a6b85]"}>{ready[0] ? `${me} ✓` : me}</div>
+          <div className={ready[1] ? "text-[#2eaa6e]" : "text-[#5a6b85]"}>{ready[1] ? `${friend} ✓` : `Waiting For ${friend}...`}</div>
+        </div>
+        <button onClick={onReady} disabled={ready[0]} className="mt-4 w-full rounded-full bg-[#3f7fd6] py-3.5 text-lg font-bold text-white disabled:bg-[#e3effe] disabled:text-[#3f7fd6]">
+          {ready[0] ? "You're Ready ✓" : "I'm Ready"}
+        </button>
+        <button onClick={onLeave} className="mt-1 w-full py-2 text-sm font-semibold text-[#5a6b85]">Leave</button>
+      </div>
+    </div>
+  );
+}
+
 /** The "Paused" card over the board (put it inside BoardArea). */
 export function PausedCard({ shell, active }: { shell: Shell; active: boolean }) {
   if (!active || !shell.held) return null;

@@ -9,6 +9,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import Matter from "matter-js";
 import { type Mode, type Toast, GameScreen, GameHeader, BoardArea, PrizeLogo, FactStrip, GameOver, HelpModal, ModesHelp, ShellPopups,
   useGameShell, fitCanvas, loadImages, dailySeed, dailyNumber, torontoDate, mulberry32, readBest, saveBest, foodPng, emoji } from "./kit";
+import { useDuel } from "./duels";
 
 const GAME = "snack-merge";
 type Food = { name: string; code: string; r: number; color: string; points: number; facts: string[] };   // 5 facts each, one picked at random
@@ -44,6 +45,7 @@ export default function SnackMerge() {
   const [top, setTop] = useState(4);                   // highest food reached this run, for the share message
   const [board, setBoard] = useState({ w: 0, h: 0 });
   const shell = useGameShell(GAME, mode);
+  const duel = useDuel(shell, GAME, "Snack Merge", mode, () => { if (mode !== "daily") { setMode("daily"); setRun(r => r + 1); } });   // Friend Duels
   const { reset: resetScores } = shell.scores;
   const bestKey = mode === "daily" ? `snackmerge-daily-${torontoDate()}` : "snackmerge-endless";
   useEffect(() => { setBest(readBest(bestKey)); }, [bestKey]);
@@ -174,7 +176,7 @@ export default function SnackMerge() {
         {over && <GameOver label={mode === "daily" ? `Today's Challenge #${dailyNumber("2026-11-01")}` : "Free Play"} score={score} best={best} mode={mode}
           posted={shell.scores.posted} joined={!!shell.player} campaign={GAME} copied={shell.copied}
           pitch="Real food stacks up too. WhatYouAte shows you how your meals affect your energy."
-          onBoard={() => shell.setBoardOpen(true)} onJoin={() => shell.setJoinOpen(true)} onAgain={() => setRun(r => r + 1)} onShare={share} />}
+          onBoard={() => shell.setBoardOpen(true)} onJoin={() => shell.setJoinOpen(true)} onAgain={() => setRun(r => r + 1)} onShare={share}  extra={duel.button} />}
       </BoardArea>
 
       <FactStrip toast={toast} onDismiss={clearToast} width={board.w} idle={
@@ -185,6 +187,7 @@ export default function SnackMerge() {
         </div>} />
 
       <ShellPopups shell={shell} game={GAME} todayNote="Today's Challenge: same foods for everyone. Resets at midnight." />
+      {duel.popup}
 
       {shell.help.open && (
         <HelpModal onClose={shell.help.close} steps={[

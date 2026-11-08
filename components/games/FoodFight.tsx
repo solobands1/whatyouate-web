@@ -18,7 +18,7 @@ import { useEffect, useRef, useState, type ReactNode } from "react";
 import type { RealtimeChannel } from "@supabase/supabase-js";
 import { sb } from "@/components/creators/api";
 import { appStoreLink } from "@/components/site";
-import { type Mode, type Toast, GameScreen, GameHeader, BoardArea, PrizeLogo, GameOver, PauseButton, PausedCard, HelpModal, ModesHelp, ShellPopups,
+import { type Mode, type Toast, GameScreen, GameHeader, BoardArea, PrizeLogo, GameOver, PauseButton, PausedCard, ReadyCard, HelpModal, ModesHelp, ShellPopups,
   useGameShell, fitCanvas, loadImages, dailySeed, dailyNumber, torontoDate, mulberry32, readBest, saveBest, foodPng } from "./kit";
 
 const GAME = "food-fight";
@@ -202,10 +202,14 @@ const FONT = "system-ui, -apple-system, sans-serif";
 
 type Msg =
   | { t: "hello"; id: string; name: string }
+  | { t: "lobby"; id: string; name: string; to: string; ready: boolean }   // host to guest: you're paired, here's my name and whether I'm ready
+  | { t: "ready"; id: string; ready: boolean }                             // I tapped I'm Ready on the Get Ready card
   | { t: "start"; m: number; seed: number; first: 0 | 1; names: string[]; ids: string[] }
   | { t: "shot"; m: number; n: number; px: number; py: number; f: number }
   | { t: "hit"; m: number; n: number; imp: number[][]; hp: number[] }
   | { t: "pass"; m: number; n: number }
+  | { t: "aim"; m: number; n: number; px: number; py: number; f: number }   // the thrower's pull while they drag (whole numbers, 8 a second at most)
+  | { t: "aimEnd"; m: number; n: number }                                   // they let go without throwing
   | { t: "again" }
   | { t: "bye" };
 type GameMsg = Extract<Msg, { n: number }>;
@@ -219,21 +223,30 @@ type RoundCard = { round: number; won: boolean; tie: boolean; points: number };
 
 // ── live rooms ─────────────────────────────────────────────────────────────
 // One Realtime channel per room, "food-fight:CODE". Presence says who's in (2 at most; a third is told it's full).
-// The guest says hello, the host picks the seed and sends start, then each throw is a "shot" from the thrower and a
+// The guest says hello and the host answers with "lobby": both see the Get Ready card, and each "ready" is broadcast (and kept
+// in presence). Only when both are ready does the host pick the seed and send start; then each throw is a "shot" from the thrower and a
 // "hit" with the outcome once it lands. "pass" when a turn's 30 seconds run out, "again" for a rematch, "bye" on leaving.
 const ALPHA = "ACDEFHJKMNPRTWXY";   // no I/L/1, O/Q/0, S/5, Z/2, B/8, G/6, U/V
 const newCode = () => Array.from({ length: 4 }, () => ALPHA[Math.floor(Math.random() * ALPHA.length)]).join("");
-type Member = { id: string; name: string; role: "host" | "guest"; at: number };
-type RoomUi = { s: "waiting" | "joining" | "full" | "empty" | "left" | "error"; code: string };
+type Member = { id: string; name: string; role: "host" | "guest"; at: number; ready?: boolean };
+type RoomUi = { s: "waiting" | "joining" | "lobby" | "full" | "empty" | "left" | "error"; code: string };
 type RoomHandlers = { start: (p: LivePlay) => void; game: (m: GameMsg) => void; left: () => void };
 
 function useRoom(nameRef: { current: string }, handlers: { current: RoomHandlers }) {
   const [ui, setUi] = useState<RoomUi | null>(null);
   const [again, setAgainState] = useState({ me: false, them: false });
+  const [ready, setReadyState] = useState({ me: false, them: false });   // the Get Ready card, before the first game
+  const [friendName, setFriendName] = useState("Guest");
   const s = useRef({ ch: null as RealtimeChannel | null, code: "", role: "host" as Member["role"], id: "", at: 0, friendId: "", friendName: "Guest",
-    seen: false, m: 0, first: 0 as 0 | 1, loser: 1 as 0 | 1, last: null as Msg | null, again: { me: false, them: false }, timers: [] as ReturnType<typeof setTimeout>[] }).current;
+    seen: false, m: 0, first: 0 as 0 | 1, loser: 1 as 0 | 1, last: null as Msg | null, again: { me: false, them: false }, ready: { me: false, them: false }, timers: [] as ReturnType<typeof setTimeout>[] }).current;
   const setAgain = (a: { me: boolean; them: boolean }) => { s.again = a; setAgainState(a); };
+  const setReady = (r: { me: boolean; them: boolean }) => { s.ready = r; setReadyState(r); };
+  const setFriend = (id: string, name: string) => {
+    s.friendId = id; s.friendName = name || "Guest"; setFriendName(s.friendName);
+    s.seen = !!id && !!s.ch && members(s.ch).some(m => m.id === id);    // already in presence? then a later absence means they left
+  };
   const send = (msg: Msg) => { void s.ch?.send({ type: "broadcast", event: "m", payload: msg }); };
+  const track = () => { void s.ch?.track({ id: s.id, name: nameRef.current, role: s.role, at: s.at, ready: s.ready.me }); };   // presence keeps "ready" too
   const close = (bye: boolean) => {
     s.timers.forEach(t => { clearTimeout(t); clearInterval(t); }); s.timers = [];
     const ch = s.ch; s.ch = null;
@@ -241,21 +254,34 @@ function useRoom(nameRef: { current: string }, handlers: { current: RoomHandlers
       if (bye) void ch.send({ type: "broadcast", event: "m", payload: { t: "bye" } });
       void ch.untrack().catch(() => {}); void sb().removeChannel(ch);
     }
-    s.friendId = ""; s.seen = false; s.m = 0; s.last = null; setAgain({ me: false, them: false });
+    setFriend("", "Guest"); s.seen = false; s.m = 0; s.last = null; setAgain({ me: false, them: false }); setReady({ me: false, them: false });
   };
   const members = (ch: RealtimeChannel) => {
     const st = ch.presenceState() as unknown as Record<string, Member[]>, seen = new Set<string>(), out: Member[] = [];
     for (const k in st) for (const m of st[k]) if (m.id && !seen.has(m.id)) { seen.add(m.id); out.push(m); }
     return out.sort((a, b) => a.at - b.at || (a.id < b.id ? -1 : 1));
   };
-  const friendGone = () => { if (!s.ch) return; const code = s.code; close(false); setUi({ s: "left", code }); handlers.current.left(); };
+  const friendGone = () => {
+    if (!s.ch) return;
+    if (s.role === "host" && !s.m) {                                     // left from the Get Ready card: keep the room open for them
+      setFriend("", "Guest"); s.seen = false; setReady({ me: false, them: false }); track(); setUi({ s: "waiting", code: s.code }); return;
+    }
+    const code = s.code; close(false); setUi({ s: "left", code }); handlers.current.left();
+  };
+  // the host starts the first game only when both have tapped I'm Ready and the friend is still here
+  const hostCheck = () => {
+    if (s.role !== "host" || s.m || !s.ch || !s.friendId || !s.ready.me || !s.ready.them) return;
+    if (!members(s.ch).some(m => m.id === s.friendId)) return;          // presence will call back when they show up
+    begin(0);
+  };
   const onPresence = (ch: RealtimeChannel) => {
     const list = members(ch), mine = list.findIndex(m => m.id === s.id);
     if (mine < 0) return;                                              // our own entry hasn't landed yet
     if (s.role === "host" && !s.friendId && list.some((m, i) => i < mine && m.role === "host")) { open(newCode(), "host"); return; }   // code already taken
     if (s.role === "guest" && !s.m && mine >= 2) { const code = s.code; close(false); setUi({ s: "full", code }); return; }
     if (s.friendId) {
-      if (list.some(m => m.id === s.friendId)) s.seen = true;
+      const f = list.find(m => m.id === s.friendId);
+      if (f) { s.seen = true; if (!s.m && f.ready && !s.ready.them) setReady({ ...s.ready, them: true }); hostCheck(); }
       else if (s.seen) friendGone();
     }
   };
@@ -265,14 +291,22 @@ function useRoom(nameRef: { current: string }, handlers: { current: RoomHandlers
     s.last = msg; send(msg); setUi(null);
     handlers.current.start({ kind: "live", code: s.code, m: s.m, seed: msg.seed, me: 0, first, names: msg.names });
   };
+  const lobbyMsg = (): Msg => ({ t: "lobby", id: s.id, name: nameRef.current, to: s.friendId, ready: s.ready.me });
   const onMsg = (msg: Msg) => {
     if (msg.t === "hello") {
       if (s.role !== "host") return;
-      if (!s.friendId) { s.friendId = msg.id; s.friendName = msg.name || "Guest"; begin(0); }
-      else if (msg.id === s.friendId && s.last) send(s.last);          // they missed the start
+      if (!s.friendId) { setFriend(msg.id, msg.name); setReady({ me: false, them: false }); track(); setUi({ s: "lobby", code: s.code }); }
+      if (msg.id === s.friendId) send(s.m && s.last ? s.last : lobbyMsg());   // in the lobby, or they missed the start
+    } else if (msg.t === "lobby") {
+      if (s.role !== "guest" || msg.to !== s.id || s.m) return;
+      if (!s.friendId) { setFriend(msg.id, msg.name); setUi({ s: "lobby", code: s.code }); }
+      if (msg.ready !== s.ready.them) setReady({ ...s.ready, them: msg.ready });
+    } else if (msg.t === "ready") {
+      if (msg.id !== s.friendId || s.m) return;
+      setReady({ ...s.ready, them: msg.ready }); hostCheck();
     } else if (msg.t === "start") {
       if (s.role !== "guest" || msg.ids[1] !== s.id || msg.m <= s.m) return;
-      s.m = msg.m; s.first = msg.first; s.friendId = msg.ids[0]; s.friendName = msg.names[0] || "Guest"; setAgain({ me: false, them: false }); setUi(null);
+      s.m = msg.m; s.first = msg.first; setFriend(msg.ids[0], msg.names[0]); setAgain({ me: false, them: false }); setUi(null);
       handlers.current.start({ kind: "live", code: s.code, m: msg.m, seed: msg.seed, me: 1, first: msg.first, names: msg.names });
     } else if (msg.t === "again") {
       setAgain({ ...s.again, them: true });
@@ -290,12 +324,12 @@ function useRoom(nameRef: { current: string }, handlers: { current: RoomHandlers
     ch.subscribe(status => {
       if (s.ch !== ch) return;
       if (status === "SUBSCRIBED") {
-        void ch.track({ id: s.id, name: nameRef.current, role, at: s.at });
+        track();
         if (role === "guest") {
-          const hello = () => { if (!s.m) send({ t: "hello", id: s.id, name: nameRef.current }); };
+          const hello = () => { if (!s.m && !s.friendId) send({ t: "hello", id: s.id, name: nameRef.current }); };
           hello(); s.timers.push(setInterval(hello, 1500));
           s.timers.push(setTimeout(() => {                             // nobody answering: no host, or the host is busy with someone else
-            if (s.m || s.ch !== ch) return;
+            if (s.m || s.friendId || s.ch !== ch) return;
             const list = members(ch), host = list.some(m => m.role === "host"), others = list.filter(m => m.role === "guest" && m.id !== s.id).length;
             if (!host || others > 0) { close(false); setUi({ s: host ? "full" : "empty", code }); }
           }, 8000));
@@ -305,12 +339,15 @@ function useRoom(nameRef: { current: string }, handlers: { current: RoomHandlers
     setUi({ s: role === "host" ? "waiting" : "joining", code });
   }
   return {
-    ui, again, friend: () => s.friendName,
+    ui, again, ready, friendName,
+    friend: () => s.friendName,
+    ended: (winner: number) => { s.loser = (winner < 0 ? 1 - s.first : 1 - winner) as 0 | 1; },
     create: () => open(newCode(), "host"),
     join: (code: string) => open(code, "guest"),
     leave: () => { close(true); setUi(null); },
     dismiss: () => setUi(null),
-    ended: (winner: number) => { s.loser = (winner < 0 ? 1 - s.first : 1 - winner) as 0 | 1; },
+    // tapping I'm Ready: tell them straight away, keep it in presence too, and let the host check
+    markReady: () => { if (s.ready.me || s.m) return; setReady({ ...s.ready, me: true }); send({ t: "ready", id: s.id, ready: true }); track(); hostCheck(); },
     rematch: () => { setAgain({ ...s.again, me: true }); send({ t: "again" }); if (s.role === "host" && s.again.them) begin(s.loser); },
     send,
   };
@@ -388,6 +425,9 @@ export default function FoodFight() {
     let round = 1, w = makeRound(1), g0 = w.ground.slice(), turn = 0, shooter = P.kind === "cpu" ? 0 : P.first, viewer = live ? me : shooter;
     let phase: Phase = "aim", started = !cpu, food = 0, wait = 0, turnLeft = TURN_MS, acc = 0, pendingAge = 0;
     let total = 0, dealt = 0, won = 0, lost = 0, throws = 0, realStart = performance.now(), roundAge = 0, raf = 0, last = performance.now();
+    // the other player's aim as we last heard it (live), or the computer's (eased toward its throw while it "thinks"); x, y ease toward tx, ty
+    const seen = { x: 0, y: 0, tx: 0, ty: 0, f: 0, on: false };
+    let cpuShot: { px: number; py: number; f: number } | null = null, aimSent = "", aimAt = 0;
     let snap: { ground: number[]; hp: number[] } | null = null, pending: Extract<GameMsg, { t: "hit" }> | null = null, hits: Hit[] = [];
     let drag: { sx: number; sy: number; px: number; py: number; id: number } | null = null;
     const lastAim: ({ deg: number; pow: number } | null)[] = [null, null];
@@ -407,16 +447,16 @@ export default function FoodFight() {
 
     function beginTurn() {
       w.wind = windFor(seed, round, turn, cpu ? windMax(mode as GameMode, round) : 0.7);
-      turnLeft = TURN_MS; drag = null;
+      turnLeft = TURN_MS; drag = null; aimSent = ""; Object.assign(seen, { x: 0, y: 0, tx: 0, ty: 0, on: false });
       if (local) { viewer = shooter; phase = "pass"; setPassTo(pnames[shooter]); }
-      else if (cpu && shooter === 1) { phase = "think"; wait = THINK_MS; }
+      else if (cpu && shooter === 1) { phase = "think"; wait = THINK_MS; cpuShot = aiShot(w, brain); seen.f = cpuShot.f; seen.on = true; }   // same throw as deciding at the end
       else phase = "aim";
       if (food === 1 && w.melons[local ? shooter : me] <= 0) food = 0;
     }
     passRef.current = () => { if (phase !== "pass") return; phase = "aim"; setPassTo(null); };
 
     function fire(px: number, py: number, f: number) {
-      snap = { ground: w.ground.slice(), hp: w.hp.slice() }; hits = []; pending = null; pendingAge = 0;
+      snap = { ground: w.ground.slice(), hp: w.hp.slice() }; hits = []; pending = null; pendingAge = 0; seen.on = false;
       launch(w, shooter, px, py, f);
       trails.length = 0; w.projs.forEach(() => trails.push([]));
       if (human(shooter)) {
@@ -522,7 +562,11 @@ export default function FoodFight() {
       }
     }
     if (P.kind === "live") {
-      engineRef.current = { m: P.m, remote: msg => mail.push(msg) };
+      engineRef.current = { m: P.m, remote: msg => {
+        if (msg.t !== "aim" && msg.t !== "aimEnd") { mail.push(msg); return; }
+        if (msg.n !== turn || shooter === me || phase !== "aim") return;   // aim is just for show: drop anything stale
+        if (msg.t === "aim") Object.assign(seen, { tx: msg.px, ty: msg.py, f: msg.f, on: true }); else Object.assign(seen, { tx: 0, ty: 0 });
+      } };
       inbox.current = inbox.current.filter(q => { if (q.m === P.m) { mail.push(q); return false; } return q.m > P.m; });
     } else engineRef.current = null;
 
@@ -543,12 +587,21 @@ export default function FoodFight() {
     const onUp = (e: PointerEvent) => {
       if (!drag || e.pointerId !== drag.id) return;
       onMove(e); const d = drag; drag = null;
-      if (!canAim() || Math.hypot(d.px, d.py) < MIN_PULL) return;
+      if (!canAim() || Math.hypot(d.px, d.py) < MIN_PULL) { aimEnd(); return; }
       const px = Math.round((viewer === 1 ? -d.px : d.px) * 100) / 100, py = Math.round(d.py * 100) / 100;   // board pull, the same on both screens
       if (food === 1 && w.melons[shooter] <= 0) food = 0;
       fire(px, py, food);
     };
-    const onCancel = () => { drag = null; };
+    const onCancel = () => { if (drag) aimEnd(); drag = null; };
+    // live: let the other phone see the pull (whole numbers, only when it changed, 8 a second at most), and say when it's dropped
+    const aimKey = () => { if (!drag) return `0,0,${food}`; const c = clampPull(drag.px, drag.py); return `${Math.round(viewer === 1 ? -c.x : c.x)},${Math.round(c.y)},${food}`; };
+    function aimEnd() { if (live && shooter === me && phase === "aim") { send({ t: "aimEnd", m: P.kind === "live" ? P.m : 0, n: turn }); aimSent = `0,0,${food}`; } }
+    function sendAim(t: number) {
+      if (!live || shooter !== me || phase !== "aim" || t - aimAt < 125) return;
+      const k = aimKey(); if (k === aimSent) return;
+      const [px, py, f] = k.split(",").map(Number); aimSent = k; aimAt = t;
+      send({ t: "aim", m: P.kind === "live" ? P.m : 0, n: turn, px, py, f });
+    }
     canvas.addEventListener("pointerdown", onDown); canvas.addEventListener("pointermove", onMove);
     canvas.addEventListener("pointerup", onUp); canvas.addEventListener("pointercancel", onCancel);
     beginTurn();
@@ -566,14 +619,18 @@ export default function FoodFight() {
           if (pending && phase === "fly" && (pendingAge += dt) > 3000) { applyAuth(pending); settle(); }   // way behind: catch up
         } else if (phase === "think") {
           wait -= dt;
-          if (wait <= 0) { const s = aiShot(w, brain); fire(s.px, s.py, s.f); }
+          const c = cpuShot ?? (cpuShot = aiShot(w, brain)), k = Math.min(1, Math.max(0, 1.4 * (1 - wait / THINK_MS) - 0.2)), e = k * k * (3 - 2 * k);
+          seen.tx = c.px * e + Math.sin(t / 70) * 4 * (1 - e); seen.ty = c.py * e + Math.cos(t / 90) * 3 * (1 - e);   // a little wobble, then settle on the throw
+          if (wait <= 0) { cpuShot = null; fire(c.px, c.py, c.f); }
         } else if (phase === "settle") {
           wait -= dt; if (wait <= 0) next();
         } else if (phase === "aim" && live) {
+          sendAim(t);
           turnLeft -= dt;
           if (turnLeft <= 0 && shooter === me) { send({ t: "pass", m: P.kind === "live" ? P.m : 0, n: turn }); doPass(); }
         }
         roundAge += dt;
+        const ease = Math.min(1, dt / 90); seen.x += (seen.tx - seen.x) * ease; seen.y += (seen.ty - seen.y) * ease;
         for (let k = floats.length - 1; k >= 0; k--) { floats[k].age += dt; if (floats[k].age > (floats[k].big ? 2200 : 1100)) floats.splice(k, 1); }
         for (let k = poofs.length - 1; k >= 0; k--) { poofs[k].age += dt; if (poofs[k].age > 500) poofs.splice(k, 1); }
         for (let i = 0; i < 2; i++) shake[i] = Math.max(0, shake[i] - dt);
@@ -641,8 +698,26 @@ export default function FoodFight() {
 
       // aim: the dotted line (wind not included), and the angle and power by your basket
       const aimer = local ? shooter : me, ab = fortBox(w, aimer), ax = vx(FORT_X[aimer]);
+      const pill = (s: number, px: number, py: number, strong: boolean) => {   // angle and power above a basket, from a board pull
+        const b = fortBox(w, s), x = vx(FORT_X[s]), ux = s === 0 ? -px : px;
+        const deg = Math.round((Math.atan2(py, ux) * 180) / Math.PI), pw = Math.round((Math.hypot(px, py) / MAX_PULL) * 100);
+        ctx.fillStyle = "#fff"; rr(x - 46, b.t - 108, 92, 24, 12); ctx.fill();
+        ctx.strokeStyle = strong ? "#3f7fd6" : "#e8505b"; ctx.lineWidth = 2; ctx.stroke();
+        text(`${deg}°  ${pw}%`, x, b.t - 91, 15, "#101b2e", 800);
+      };
+      const sling = (s: number, px: number, py: number, f: number) => {      // the food pulled back over a basket, on two bands
+        const b = fortBox(w, s), x = vx(FORT_X[s]), fx = x + (viewer === 1 ? -px : px) * 0.4, fy = b.t - 8 + py * 0.4, sz = FOODS[f].r * 2.4;
+        ctx.strokeStyle = "#6b3b1f"; ctx.lineWidth = 2.5; ctx.beginPath(); ctx.moveTo(x - 13, b.t - 4); ctx.lineTo(fx, fy); ctx.lineTo(x + 13, b.t - 4); ctx.stroke();
+        if (imgs[f].complete) ctx.drawImage(imgs[f], fx - sz / 2, fy - sz / 2, sz, sz);
+      };
+      // the other side aiming (live friend, or the computer): their food in the sling and the pill, never the dotted line
+      if (!local && seen.on && shooter !== me && (phase === "aim" || phase === "think")) {
+        sling(shooter, seen.x, seen.y, seen.f);
+        if (Math.hypot(seen.tx, seen.ty) >= MIN_PULL && (phase !== "think" || wait < THINK_MS * 0.45)) pill(shooter, seen.x, seen.y, false);   // the computer's pill once it settles
+      }
       if (drag && canAim()) {
         const p = clampPull(drag.px, drag.py), pw = Math.round((Math.hypot(p.x, p.y) / MAX_PULL) * 100), f = FOODS[food];
+        sling(aimer, viewer === 1 ? -p.x : p.x, p.y, food);
         if (Math.hypot(p.x, p.y) >= MIN_PULL) {
           const bpx = viewer === 1 ? -p.x : p.x, [pr] = makeProjs(w, aimer, bpx, p.y, food);
           const vxx = pr.vx; let x = pr.x, y = pr.y, vy = pr.vy, len = 0, i = 0;
@@ -694,7 +769,8 @@ export default function FoodFight() {
         text(String(ws), x1 + dir * 16, 39, 13, "#3f7fd6", 800);
       }
       if (started && phase !== "over" && phase !== "between") {
-        const whose = cpu ? (shooter === 0 ? "Your Turn" : "Computer's Turn") : live ? (shooter === me ? "Your Turn" : `${pnames[shooter]}'s Turn`) : `${pnames[shooter]}'s Turn`;
+        const aiming = !local && shooter !== me && seen.on && Math.hypot(seen.tx, seen.ty) >= MIN_PULL && (phase === "aim" || phase === "think");
+        const whose = aiming ? `${pnames[shooter]} Is Aiming...` : cpu ? (shooter === 0 ? "Your Turn" : "Computer's Turn") : live ? (shooter === me ? "Your Turn" : `${pnames[shooter]}'s Turn`) : `${pnames[shooter]}'s Turn`;
         const left = Math.max(0, Math.ceil(turnLeft / 1000));
         text(live && phase === "aim" ? `${whose} · ${left}s` : whose, W / 2, 66, 15, shooter === me || local ? "#101b2e" : "#5a6b85", 800);
         if (live && phase === "aim") {
@@ -856,7 +932,17 @@ export default function FoodFight() {
           </Card>
         )}
 
-        {rui && (
+        {rui?.s === "lobby" && (
+          <ReadyCard me={nameRef.current === "Guest" ? "You" : nameRef.current} friend={room.friendName === "Guest" ? "Your Friend" : room.friendName}
+            ready={[room.ready.me, room.ready.them]} onReady={room.markReady} onLeave={toCpu} steps={[
+              "Pick a food at the bottom left, then drag back on the lower half and let go to throw.",
+              "The dots show your aim. Wind pushes light food more.",
+              "Hit their basket to knock its health down. First to zero loses.",
+              "You get 30 seconds a turn. The host throws first.",
+            ]} />
+        )}
+
+        {rui && rui.s !== "lobby" && (
           <Card>
             {rui.s === "waiting" && (<>
               <div className="text-sm font-semibold text-[#5a6b85]">Your Room Code</div>

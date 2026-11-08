@@ -10,6 +10,8 @@
 //  - Same Phone: two names, pass the phone between turns behind a "no peeking" card. No scoreboard.
 //  - Play A Friend: a 4-letter room over Supabase Realtime (channel "fridge-raid:ABCD", presence for who's in).
 //    Each phone keeps its own fridge private: the shooter sends {r, c}, the defender answers hit / found / game over.
+//    Before the first game both see a Get Ready card; "I'm Ready" goes out at once (a "meta" message) and stays in presence,
+//    and the host starts only when both are ready. Rematches skip the card.
 // The computer's balance and the Today seed were checked with a headless sim of the rules block below.
 /* eslint-disable react-hooks/refs, react-hooks/purity, react-hooks/immutability, react-hooks/set-state-in-effect --
    Turn-based, so the match lives in one mutable object (g.current) that handlers, timers and Realtime callbacks all
@@ -17,7 +19,7 @@
 import { useEffect, useReducer, useRef, useState, type ReactNode } from "react";
 import type { RealtimeChannel } from "@supabase/supabase-js";
 import { sb } from "@/components/creators/api";
-import { type Mode, type Toast, GameScreen, GameHeader, BoardArea, PrizeLogo, GameOver, PauseButton, PausedCard, HelpModal, ModesHelp, ShellPopups,
+import { type Mode, type Toast, GameScreen, GameHeader, BoardArea, PrizeLogo, GameOver, PauseButton, PausedCard, ReadyCard, HelpModal, ModesHelp, ShellPopups,
   useGameShell, dailySeed, dailyNumber, torontoDate, mulberry32, readBest, saveBest, foodPng, emoji } from "./kit";
 
 const GAME = "fridge-raid";
@@ -138,7 +140,7 @@ const SKILL_TODAY = 0.55, SKILL_FREE = 0.45, SKILL_STEP = 0.1;   // Free Play: r
 
 type Opp = "cpu" | "phone" | "live";
 type Side = 0 | 1;
-type Phase = "idle" | "names" | "pass" | "place" | "play" | "roundWon" | "over" | "doneToday";
+type Phase = "idle" | "gate" | "names" | "pass" | "place" | "play" | "roundWon" | "over" | "doneToday";   // gate: the live Get Ready card
 type Game = {
   layout: [Placed[], Placed[] | null];       // [me or player 1, the other side]; null = a friend's phone keeps it
   inc: [Int8Array, Int8Array];               // shots each side has taken from (0 none, 1 ice, 2 bite)
@@ -160,7 +162,8 @@ type Final = { score: number; won: boolean; shots: number; hits: number; streak:
 // live play
 const CODE_LETTERS = "BCDFGHJKMNPQRSTVWXZ";   // no vowels (no accidental words), no I, L or O
 const TURN_MS = 45000, GRACE_MS = 5000, RESEND_MS = 3000;
-type Meta = { id: string; name: string; at: number; round: number; ready: boolean; seq: number };   // seq: newer wins
+type Meta = { id: string; name: string; at: number; round: number; ready: boolean; seq: number;   // seq: newer wins; ready: snacks hidden
+  ok: boolean; stage: "gate" | "game" };   // ok: tapped I'm Ready on the Get Ready card; stage: the host has started the first game
 type Room = { status: "idle" | "connecting" | "waiting" | "paired" | "full" | "error"; code?: string; opp?: Meta | null; host?: boolean };
 type Msg =
   | { t: "shot"; round: number; turn: number; i: number }
@@ -219,6 +222,7 @@ export default function FridgeRaid() {
   const meRef = useRef<Meta | null>(null);
   const pairedWith = useRef<string | null>(null);
   const [myReady, setMyReady] = useState(false);
+  const [myOk, setMyOk] = useState(false);                 // tapped I'm Ready on the Get Ready card
   const readyRef = useRef(false);
   const awaiting = useRef<{ turn: number; i: number; sent: number } | null>(null);
   const heard = useRef<Meta | null>(null);                 // the friend's newest seat info from a "meta" message
@@ -441,14 +445,19 @@ export default function FridgeRaid() {
 
   // ── live ───────────────────────────────────────────────────────────────
   const send = (m: Msg) => { chRef.current?.send({ type: "broadcast", event: "m", payload: m }); };
+  // seat info goes out at once as a broadcast; presence gets one update per burst (two tracks in a row can make the
+  // friend's phone briefly lose this seat altogether, which reads as "they left")
+  const trackSoon = useRef<ReturnType<typeof setTimeout> | null>(null);
   const setMeta = (p: Partial<Meta>) => {
-    if (!meRef.current) return; meRef.current = { ...meRef.current, ...p, seq: meRef.current.seq + 1 }; chRef.current?.track(meRef.current);
+    if (!meRef.current) return; meRef.current = { ...meRef.current, ...p, seq: meRef.current.seq + 1 };
     send({ t: "meta", round: meRef.current.round, meta: meRef.current });
+    if (!trackSoon.current) trackSoon.current = setTimeout(() => { trackSoon.current = null; if (meRef.current) chRef.current?.track(meRef.current); }, 250);
   };
   const joinRoom = (code: string) => {
     if (chRef.current) sb().removeChannel(chRef.current);
     pairedWith.current = null; heard.current = null;
-    const me: Meta = { id: Math.random().toString(36).slice(2, 10), name: storedName(), at: Date.now(), round: 1, ready: false, seq: 0 };
+    const me: Meta = { id: Math.random().toString(36).slice(2, 10), name: storedName(), at: Date.now(), round: 1, ready: false, seq: 0, ok: false, stage: "gate" };
+    setMyOk(false);
     meRef.current = me; setRoom({ status: "connecting", code });
     const ch = sb().channel(`${GAME}:${code}`, { config: { broadcast: { self: false }, presence: { key: me.id } } });
     chRef.current = ch;
@@ -486,13 +495,28 @@ export default function FridgeRaid() {
     setRound(r); setMeta({ round: r, ready: false }); setFact(null); setSwap(false); setSel(null);
     go("place"); setMsg(r === 1 ? "Hide Your Snacks, Then Tap Ready." : "Rematch! Move Your Snacks If You Like."); bump();
   };
-  // a friend arrived (or a new one after the last one left): start fresh at round 1
+  // a friend arrived (or a new one after the last one left): both see the Get Ready card, then a fresh round 1
   const oppId = room.status === "paired" ? room.opp?.id ?? null : null;
   useEffect(() => {
     if (opp !== "live" || !oppId || pairedWith.current === oppId) return;
-    pairedWith.current = oppId; startLiveRound(1);
+    pairedWith.current = oppId; setMyOk(false); setMeta({ ok: false, stage: "gate", round: 1, ready: false });
+    setFact(null); go("gate"); setMsg("Get Ready"); bump();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [oppId, opp]);
+  // the friend left: nobody is ready any more (so a new friend starts at the Get Ready card too)
+  useEffect(() => {
+    if (opp === "live" && room.status === "waiting" && meRef.current && (meRef.current.ok || meRef.current.stage === "game")) { setMyOk(false); setMeta({ ok: false, stage: "gate" }); }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [opp, room.status]);
+  // both ready: the host starts the first game; the guest follows when it sees the host has started (and still has both ready)
+  const oppOk = !!room.opp?.ok, oppStage = room.opp?.stage;
+  useEffect(() => {
+    if (opp !== "live" || phase !== "gate" || room.status !== "paired" || !myOk || !oppOk) return;
+    if (room.host) { setMeta({ stage: "game" }); startLiveRound(1); }
+    else if (oppStage === "game") startLiveRound(1);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [opp, phase, room.status, room.host, myOk, oppOk, oppStage]);
+  const markOk = () => { if (myOk) return; setMyOk(true); setMeta({ ok: true }); };
   const firstShooter = (r: number): Side => ((r % 2 === 1) === !!room.host ? 0 : 1);   // host first, then take turns going first
   const startLivePlay = () => {
     if (phaseRef.current !== "place" || !readyRef.current) return;
@@ -690,6 +714,14 @@ export default function FridgeRaid() {
 
   const overlay = (): ReactNode => {
     const live = liveCard(); if (live) return live;
+    if (opp === "live" && phase === "gate" && room.status === "paired") return (
+      <ReadyCard me={myName === "Guest" ? "You" : myName} friend={nameOf(1)} ready={[myOk, oppOk]} onReady={markOk}
+        onLeave={() => { leaveRoom(); setJoinInput(""); go("idle"); }} steps={[
+          "First, hide your five snacks in your fridge.",
+          "Then take turns tapping a shelf in their fridge. A bite means a hit, ice means nothing's there.",
+          "Find all their snacks before they find yours. You get 45 seconds a turn.",
+        ]} />
+    );
     if (opp === "cpu" && phase === "over" && final) {
       const headline = final.won ? `You Raided The Fridge In ${final.shots} Shots! 🎉`
         : mode === "daily" ? "The Computer Found Your Snacks First" : round > 1 ? `Round ${round}: The Computer Found Your Snacks First` : "The Computer Found Your Snacks First";
