@@ -131,10 +131,10 @@ export function BoardArea({ wrapRef, size, children }: { wrapRef: React.RefObjec
   );
 }
 
-/** Food facts slide in under the board, never over it; they go away on their own after 5s, or with the ×. */
-export function FactStrip({ toast, onDismiss, width, idle }: { toast: Toast | null; onDismiss: () => void; width: number; idle: ReactNode }) {
+/** Food facts slide in under the board, never over it; they go away on their own after 5s (unless sticky), or with the ×. */
+export function FactStrip({ toast, onDismiss, width, idle, sticky = false }: { toast: Toast | null; onDismiss: () => void; width: number; idle: ReactNode; sticky?: boolean }) {
   const dismiss = useRef(onDismiss); dismiss.current = onDismiss;   // games re-render often; keep the 5s timer steady
-  useEffect(() => { if (!toast) return; const t = setTimeout(() => dismiss.current(), 5000); return () => clearTimeout(t); }, [toast]);
+  useEffect(() => { if (!toast || sticky) return; const t = setTimeout(() => dismiss.current(), 5000); return () => clearTimeout(t); }, [toast, sticky]);
   return (
     <div className="pointer-events-none absolute inset-x-0 flex justify-center px-3" style={{ bottom: "max(env(safe-area-inset-bottom), 10px)" }}>
       <div className="pointer-events-auto w-full max-w-[440px]" style={{ maxWidth: width || undefined }}>

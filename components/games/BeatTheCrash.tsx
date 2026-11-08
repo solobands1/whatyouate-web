@@ -1,10 +1,13 @@
 "use client";
 
 // Beat The Crash: keep your energy steady from 7am to 10pm. Foods fall; drag left and right to eat them. Real food
-// releases energy slowly; sugary foods give a quick lift, then a crash a few seconds later. Energy drains all day,
-// and faster in the afternoon slump (2 to 4pm). Points build while energy sits in the green, faster on a streak of
-// real food; eating when already full, or a sugar high, breaks the streak. Balance was checked with simulated
-// players: eating everything scores below eating smart, and doing nothing crashes before lunch. "Today" gives everyone the same falling foods (seeded) and
+// releases energy slowly; sugar gives a quick lift, then a crash a few seconds later that costs one of 3 hearts.
+// Two clear ways to lose: run out of hearts (too much sugar) or let energy hit zero (fall asleep). Energy drains
+// faster in the afternoon slump (2 to 4pm). Points build while energy sits in the green, faster on a streak of
+// real food; eating when already full, or a sugar high, breaks the streak. No facts pop up mid-game (too
+// distracting): the game-over strip explains what ended your day. Balance was checked with simulated players:
+// eating everything dies by mid-morning, doing nothing falls asleep before lunch, a careful player makes it to
+// 10pm about half the time. "Today" gives everyone the same falling foods (seeded) and
 // ends at 10pm; Free Play keeps going day after day, faster each time. Everything around the board comes from ./kit.
 import { useCallback, useEffect, useRef, useState } from "react";
 import { type Mode, type Toast, GameScreen, GameHeader, BoardArea, FactStrip, GameOver, HelpModal, ModesHelp, ShellPopups,
@@ -13,7 +16,7 @@ import { type Mode, type Toast, GameScreen, GameHeader, BoardArea, FactStrip, Ga
 const GAME = "beat-the-crash";
 const LAUNCH = "2026-11-08";   // Today's Challenge #1
 
-type Kind = "steady" | "sugar" | "water" | "coffee";
+type Kind = "steady" | "sugar" | "water";
 type Food = { name: string; code: string; kind: Kind; facts: string[] };
 const FOODS: Food[] = [
   { name: "Oatmeal", code: "1f963", kind: "steady", facts: ["Oats have a fibre called beta-glucan that slows digestion, so their energy comes in gradually.", "Steel-cut and rolled oats digest slower than instant oats.", "A cup of cooked oatmeal has about 4 grams of fibre."] },
@@ -34,15 +37,15 @@ const FOODS: Food[] = [
   { name: "Cupcake", code: "1f9c1", kind: "sugar", facts: ["A lot of a cupcake's sugar is in the frosting.", "Refined flour and sugar together digest fast. That's why sweets give a quick lift, then a slump."] },
   { name: "Lollipop", code: "1f36d", kind: "sugar", facts: ["A lollipop is basically pure sugar on a stick.", "Sucking on candy slowly keeps sugar on your teeth longer, which is harder on them."] },
   { name: "Water", code: "1f4a7", kind: "water", facts: ["Even mild dehydration can make you feel tired and foggy.", "Water has no calories, but being short on it can still drain your energy.", "Coffee and tea count toward your daily water too."] },
-  { name: "Coffee", code: "2615", kind: "coffee", facts: ["Coffee doesn't give you energy. It blocks the chemical that makes you feel sleepy.", "Caffeine takes about 30 to 60 minutes to kick in fully.", "Caffeine can stay in your system for 5 hours or more, so an afternoon coffee can affect your sleep."] },
 ];
 const OF_KIND = (k: Kind) => FOODS.flatMap((f, i) => (f.kind === k ? [i] : []));
-const BY_KIND: Record<Kind, number[]> = { steady: OF_KIND("steady"), sugar: OF_KIND("sugar"), water: OF_KIND("water"), coffee: OF_KIND("coffee") };
-const KIND_TITLE: Record<Kind, string> = { steady: "steady energy", sugar: "quick spike, then a crash", water: "slows the drain", coffee: "a boost, then a dip" };
+const BY_KIND: Record<Kind, number[]> = { steady: OF_KIND("steady"), sugar: OF_KIND("sugar"), water: OF_KIND("water") };
 const FACES = { asleep: "1f634", low: "1f971", steady: "1f60a", high: "1f92a" };
 
 const W = 400, H = 600, HUD = 64;          // logical board; the top HUD strip shows the clock and energy bar
-const PLAYER_Y = H - 58, PR = 30, FR = 24; // player and food radius
+const PLAYER_Y = H - 112, PR = 30, FR = 26; // player and food radius
+const GRIP_Y = H - 42;                      // the grip bar you drag along, below the face
+const HEARTS = 3, SUGAR = 0.28;            // sugar's share of the food (eased in over the first hours of day 1)
 const START = 7, END = 22, HOUR_MS = 5000; // the day runs 7am to 10pm, five seconds an hour
 type Zone = "crash" | "low" | "steady" | "wired" | "high";
 const zoneOf = (e: number): Zone => (e < 20 ? "crash" : e < 40 ? "low" : e <= 80 ? "steady" : e < 92 ? "wired" : "high");
@@ -61,7 +64,7 @@ function sky(h: number) {
   return [mix(a0, a1, t), mix(b0, b1, t)];
 }
 
-type Result = { kind: "done" | "crashed"; at: string; day: number; squares: string };
+type Result = { kind: "done" | "asleep" | "sugar"; at: string; day: number; squares: string };
 type Hud = { score: number; zone: Zone; mult: number };
 
 export default function BeatTheCrash() {
@@ -90,14 +93,14 @@ export default function BeatTheCrash() {
     const imgs = loadImages(FOODS.map(f => f.code)), faces = loadImages(Object.values(FACES));
     const rnd = mulberry32(mode === "daily" ? dailySeed(0x3c7a5) : Math.floor(Math.random() * 1e9));
 
-    let energy = 62, gameMs = 0, total = 0, streak = 0, eaten = 0, day = 1, hydratedUntil = -1, nextSpawn = 700;
+    let energy = 62, gameMs = 0, total = 0, streak = 0, eaten = 0, day = 1, hydratedUntil = -1, nextSpawn = 700, hearts = HEARTS, lastSugar = -1;
     let px = W / 2, target = W / 2, keyDir = 0, started = false, ended = false, raf = 0, last = performance.now(), lastHud = 0, realStart = 0, slumpShown = false;
     const foods: { x: number; y: number; i: number; vy: number; spin: number }[] = [];
     const flows: { perMs: number; left: number }[] = [];               // energy arriving (or leaving) over time
-    const crashes: { at: number; amount: number; sugar: boolean }[] = [];
+    const crashes: { at: number; amount: number; food: number }[] = [];
     const floats: { x: number; y: number; text: string; color: string; age: number; big?: boolean }[] = [];
     let hours = Array.from({ length: END - START }, () => ({ steady: 0, ok: 0, bad: 0 }));
-    const seen = new Set<number>();
+    const ate = new Map<number, number>();            // food -> times eaten, for the end-of-day fact
     setStarted(false); setOver(false); setResult(null); setToast(null); setHud({ score: 0, zone: "steady", mult: 1 }); resetScores();
 
     const progress = () => Math.min(1, gameMs / HOUR_MS / (END - START));
@@ -107,29 +110,36 @@ export default function BeatTheCrash() {
 
     const spawn = () => {                              // three draws per food, in order, so "Today" is the same for everyone
       const p = progress(), r = rnd();
-      const kind: Kind = r < 0.5 ? "steady" : r < 0.84 ? "sugar" : r < 0.92 ? "water" : "coffee";
+      const su = day > 1 ? SUGAR : SUGAR * Math.min(1, 0.55 + p * 1.8);
+      const kind: Kind = r < 0.9 - su ? "steady" : r < 0.9 ? "sugar" : "water";
       const list = BY_KIND[kind], i = list[Math.floor(rnd() * list.length)];
-      foods.push({ i, x: FR + 8 + rnd() * (W - 2 * FR - 16), y: HUD - FR, vy: (150 + 80 * p) * (1 + 0.15 * (day - 1)), spin: 0 });
-      nextSpawn += (900 - 330 * p) / (1 + 0.12 * (day - 1));
+      foods.push({ i, x: FR + 8 + rnd() * (W - 2 * FR - 16), y: HUD - FR, vy: (130 + 50 * p) * (1 + 0.15 * (day - 1)), spin: 0 });
+      nextSpawn += (1100 - 330 * p) / (1 + 0.12 * (day - 1));
     };
 
     const eat = (i: number) => {
-      const f = FOODS[i]; eaten++;
+      const f = FOODS[i]; eaten++; ate.set(i, (ate.get(i) ?? 0) + 1);
       if (f.kind === "steady") {
-        flows.push({ perMs: 18 / 3000, left: 3000 });
+        flows.push({ perMs: 20 / 3000, left: 3000 });
         if (energy >= 85) { if (streak >= 3) float("Too full! Streak lost", "#e09a00"); else float("Too full!", "#e09a00"); streak = 0; }   // overeating doesn't pay
         else { streak++; const pts = Math.round(5 * mult()); total += pts; float(`+${pts}`, "#2eaa6e"); }
       }
-      else if (f.kind === "sugar") { energy += 24; crashes.push({ at: gameMs + 2500, amount: 32, sugar: true }); if (streak >= 3) float("Streak lost", "#b54bd1"); else float("Sugar rush!", "#b54bd1"); streak = 0; }
-      else if (f.kind === "water") { energy += 5; hydratedUntil = gameMs + 5000; total += 10; float("Hydrated!", "#3f7fd6"); }
-      else { energy += 15; crashes.push({ at: gameMs + 4000, amount: 8, sugar: false }); total += 5; float("Caffeine!", "#8a5a2b"); }
-      if (!seen.has(i)) { seen.add(i); setToast({ title: `${f.name}: ${KIND_TITLE[f.kind]}`, body: f.facts[Math.floor(Math.random() * f.facts.length)], img: f.code }); }
+      else if (f.kind === "sugar") { energy += 24; crashes.push({ at: gameMs + 2500, amount: 28, food: i }); float("Sugar rush! Crash coming", "#b54bd1"); streak = 0; }
+      else { energy += 5; hydratedUntil = gameMs + 5000; total += 10; float("Hydrated!", "#3f7fd6"); }
     };
 
     const squares = () => hours.map(h => { const all = h.steady + h.ok + h.bad; return all < 1 ? "⬜" : h.steady >= all * 0.6 ? "🟩" : h.bad > all * 0.3 ? "🟥" : "🟨"; }).join("");
+    const pick = (f: Food) => f.facts[Math.floor(Math.random() * f.facts.length)];
     const finish = (kind: Result["kind"]) => {
       ended = true;
-      if (kind === "done") { const bonus = 300 + Math.round(energy * 3); total += bonus; float(`Made it! +${bonus}`, "#2eaa6e", W / 2, H / 2, true); }
+      if (kind === "done") { const bonus = 300 + Math.round(energy * 3) + 200 * hearts; total += bonus; float(`Made it! +${bonus}`, "#2eaa6e", W / 2, H / 2, true); }
+      // one fact, after the game, about what decided it
+      if (kind === "sugar" && lastSugar >= 0) setToast({ title: `Why you crashed: ${FOODS[lastSugar].name}`, body: pick(FOODS[lastSugar]), img: FOODS[lastSugar].code });
+      else if (kind === "asleep") setToast({ title: "Why you crashed: running on empty", body: "Meals with protein and fibre digest slowly, so their energy lasts for hours instead of minutes.", img: "1f634" });
+      else {
+        const top = [...ate.entries()].filter(([i]) => FOODS[i].kind === "steady").sort((a, b) => b[1] - a[1])[0];
+        if (top) setToast({ title: `Your top food: ${FOODS[top[0]].name}`, body: pick(FOODS[top[0]]), img: FOODS[top[0]].code });
+      }
       const sc = Math.floor(total);
       setHud({ score: sc, zone: zoneOf(energy), mult: mult() });
       setResult({ kind, at: clock(Math.min(hourNow(), END)), day, squares: squares() }); setOver(true);
@@ -139,8 +149,11 @@ export default function BeatTheCrash() {
 
     const start = () => { if (started || ended) return; started = true; realStart = performance.now(); last = realStart; setStarted(true); };
     startRef.current = start;
-    const onPoint = (e: PointerEvent) => { target = Math.max(PR, Math.min(W - PR, toLocal(e.clientX))); };
-    const onDown = (e: PointerEvent) => { onPoint(e); if (!pausedRef.current) start(); };
+    // relative drag: the face moves as far as your finger does, from wherever you put it down
+    let dragFrom: { x: number; px: number } | null = null;
+    const onDown = (e: PointerEvent) => { dragFrom = { x: toLocal(e.clientX), px: target }; if (!pausedRef.current) start(); };
+    const onPoint = (e: PointerEvent) => { if (dragFrom) target = Math.max(PR, Math.min(W - PR, dragFrom.px + (toLocal(e.clientX) - dragFrom.x) * 1.15)); };
+    const onUp = () => { dragFrom = null; };
     const onKey = (e: KeyboardEvent) => {
       if (e.key === "ArrowLeft") keyDir = -1; else if (e.key === "ArrowRight") keyDir = 1;
       else if ((e.key === " " || e.key === "Enter") && !pausedRef.current) start(); else return;
@@ -148,17 +161,20 @@ export default function BeatTheCrash() {
     };
     const onKeyUp = (e: KeyboardEvent) => { if ((e.key === "ArrowLeft" && keyDir < 0) || (e.key === "ArrowRight" && keyDir > 0)) keyDir = 0; };
     wrap.addEventListener("pointermove", onPoint); wrap.addEventListener("pointerdown", onDown);
+    window.addEventListener("pointerup", onUp); window.addEventListener("pointercancel", onUp);
     window.addEventListener("keydown", onKey); window.addEventListener("keyup", onKeyUp);
 
     const loop = (t: number) => {
-      const dt = Math.min(50, t - last); last = t;
+      const dt = Math.max(0, Math.min(50, t - last)); last = t;   // frame times can land just before start()
       if (started && !ended && !pausedRef.current) {
         gameMs += dt;
         while (gameMs >= nextSpawn) spawn();
         for (let k = flows.length - 1; k >= 0; k--) { const f = flows[k], use = Math.min(dt, f.left); energy += f.perMs * use; f.left -= use; if (f.left <= 0) flows.splice(k, 1); }
         for (let k = crashes.length - 1; k >= 0; k--) if (gameMs >= crashes[k].at) {
-          const c = crashes[k]; flows.push({ perMs: -c.amount / 800, left: 800 }); float(c.sugar ? "Sugar crash!" : "Caffeine dip", "#e8505b"); crashes.splice(k, 1);
+          const c = crashes[k]; flows.push({ perMs: -c.amount / 800, left: 800 }); crashes.splice(k, 1);
+          hearts--; lastSugar = c.food; float(hearts > 0 ? "💔 Sugar crash!" : "💔 Out of hearts", "#e8505b");
         }
+        if (hearts <= 0) { finish("sugar"); }
         const h = hourNow(), p = progress(), slump = h >= 14 && h < 16;
         if (slump && !slumpShown) { slumpShown = true; float("😩 The 3pm slump!", "#e8505b", W / 2, HUD + 60, true); }
         const drain = (4.2 + 1.6 * p) * (slump ? 1.9 : 1) * (1 + 0.12 * (day - 1)) * (gameMs < hydratedUntil ? 0.55 : 1);
@@ -176,10 +192,15 @@ export default function BeatTheCrash() {
           if (Math.abs(f.x - px) < PR + FR - 6 && Math.abs(f.y - PLAYER_Y) < PR + FR - 8) { foods.splice(k, 1); eat(f.i); }
           else if (f.y > H + FR) foods.splice(k, 1);
         }
-        if (energy <= 0) finish("crashed");
+        if (ended) { /* out of hearts */ }
+        else if (energy <= 0) finish("asleep");
         else if (hourNow() >= END) {
           if (mode === "daily") finish("done");
-          else { day++; gameMs = 0; nextSpawn = 700; slumpShown = false; total += 300; hours = hours.map(() => ({ steady: 0, ok: 0, bad: 0 })); float(`Day ${day}! +300`, "#2eaa6e", W / 2, H / 2, true); }
+          else {
+            day++; gameMs = 0; nextSpawn = 700; slumpShown = false; total += 300; hours = hours.map(() => ({ steady: 0, ok: 0, bad: 0 }));
+            const back = hearts < HEARTS; hearts = Math.min(HEARTS, hearts + 1);   // a good night's sleep: one heart back
+            float(`Day ${day}! +300${back ? " ❤️" : ""}`, "#2eaa6e", W / 2, H / 2, true);
+          }
         }
         if (t - lastHud > 100) { lastHud = t; setHud({ score: Math.floor(total), zone: zoneOf(energy), mult: mult() }); }
       }
@@ -208,8 +229,10 @@ export default function BeatTheCrash() {
       ctx.fillStyle = "#101b2e"; ctx.font = "700 20px system-ui, -apple-system, sans-serif"; ctx.textAlign = "left"; ctx.textBaseline = "alphabetic";
       ctx.fillText(clock(h), 16, 27);
       const slump = h >= 14 && h < 16;
-      ctx.font = "600 13px system-ui, -apple-system, sans-serif"; ctx.textAlign = "right"; ctx.fillStyle = slump ? "#e8505b" : "#5a6b85";
-      ctx.fillText(slump ? "😩 Afternoon slump" : mode === "daily" ? "Make it to 10pm" : `Day ${day}`, W - 16, 25);
+      ctx.font = "600 13px system-ui, -apple-system, sans-serif"; ctx.textAlign = "center"; ctx.fillStyle = slump ? "#e8505b" : "#5a6b85";
+      ctx.fillText(slump ? "😩 Slump" : mode === "daily" ? "" : `Day ${day}`, W / 2 + 10, 25);
+      ctx.font = "18px system-ui, -apple-system, sans-serif"; ctx.textAlign = "right";
+      ctx.fillText(Array.from({ length: HEARTS }, (_, k) => (k < hearts ? "❤️" : "🤍")).join(""), W - 14, 27);
       const bx = 16, bw = W - 32, by = 38, bh = 14;
       for (const [a, b, c] of BAR) { ctx.fillStyle = c; ctx.fillRect(bx + (a / 100) * bw, by, ((b - a) / 100) * bw, bh); }
       ctx.strokeStyle = "rgba(16,27,46,0.12)"; ctx.lineWidth = 1; ctx.beginPath(); ctx.roundRect(bx, by, bw, bh, 7); ctx.stroke();
@@ -222,6 +245,17 @@ export default function BeatTheCrash() {
       ctx.fillStyle = "#fff"; ctx.strokeStyle = ZONE_COLOR[z]; ctx.lineWidth = 4;
       ctx.beginPath(); ctx.arc(px + jx, PLAYER_Y, PR, 0, Math.PI * 2); ctx.fill(); ctx.stroke();
       const fs = PR * 1.55; if (face.complete) ctx.drawImage(face, px + jx - fs / 2, PLAYER_Y - fs / 2, fs, fs);
+      const next = crashes.reduce<number | null>((m, c) => (m === null || c.at < m ? c.at : m), null);
+      if (next !== null) {                               // a sugar crash is coming: a red ring runs out around the face
+        const left = Math.max(0, Math.min(1, (next - gameMs) / 2500));
+        ctx.strokeStyle = "#e8505b"; ctx.lineWidth = 5; ctx.beginPath();
+        ctx.arc(px + jx, PLAYER_Y, PR + 7, -Math.PI / 2, -Math.PI / 2 + left * Math.PI * 2); ctx.stroke();
+      }
+      ctx.fillStyle = "rgba(16,27,46,0.08)"; ctx.beginPath(); ctx.roundRect(14, GRIP_Y - 9, W - 28, 18, 9); ctx.fill();
+      ctx.fillStyle = "#fff"; ctx.strokeStyle = "rgba(63,127,214,0.55)"; ctx.lineWidth = 2;
+      ctx.beginPath(); ctx.roundRect(px - 34, GRIP_Y - 15, 68, 30, 15); ctx.fill(); ctx.stroke();
+      ctx.fillStyle = "rgba(63,127,214,0.6)";
+      for (const dx of [-8, 0, 8]) { ctx.beginPath(); ctx.arc(px + dx, GRIP_Y, 2.5, 0, Math.PI * 2); ctx.fill(); }
 
       ctx.textAlign = "center";
       for (const f of floats) {
@@ -237,21 +271,22 @@ export default function BeatTheCrash() {
     return () => {
       cancelAnimationFrame(raf); stop();
       wrap.removeEventListener("pointermove", onPoint); wrap.removeEventListener("pointerdown", onDown);
+      window.removeEventListener("pointerup", onUp); window.removeEventListener("pointercancel", onUp);
       window.removeEventListener("keydown", onKey); window.removeEventListener("keyup", onKeyUp);
     };
   }, [mode, run, bestKey]);
 
   const n = dailyNumber(LAUNCH);
-  const headline = !result ? "" : result.kind === "done" ? "You made it to 10pm! 🌙"
-    : mode === "daily" ? `You crashed at ${result.at} 😴` : `Day ${result.day}: crashed at ${result.at} 😴`;
+  const why = !result ? "" : result.kind === "sugar" ? `Sugar crashed you at ${result.at} 💔` : `You fell asleep at ${result.at} 😴`;
+  const headline = !result ? "" : result.kind === "done" ? "You made it to 10pm! 🌙" : mode === "daily" ? why : `Day ${result.day}: ${why}`;
   const share = () => {
     if (!result) return;
     // Wordle-style: one square per hour of the day, green when you stayed steady
     const label = mode === "daily" ? `Beat The Crash #${n} (Today's Challenge)` : "Beat The Crash (Free Play)";
     const p = shell.scores.posted;
     const rank = p?.rank ? `\n🏆 #${p.rank} of ${p.total} ${mode === "daily" ? "today" : "this week"}` : "";
-    const how = result.kind === "done" ? "Made it to 10pm 🌙" : mode === "daily" ? `Crashed at ${result.at} 😴` : `Day ${result.day}, crashed at ${result.at} 😴`;
-    shell.share(`${label}\n${hud.score.toLocaleString()} pts · ${how}${rank}\n${result.squares}\nCan you beat it? whatyouate.app/games/beat-the-crash`);
+    const how = result.kind === "done" ? "Made it to 10pm 🌙" : result.kind === "sugar" ? `Sugar crash at ${result.at} 💔` : `Fell asleep at ${result.at} 😴`;
+    shell.share(`${label}\n${hud.score.toLocaleString()} pts · ${mode === "daily" ? "" : `Day ${result.day} · `}${how}${rank}\n${result.squares}\nCan you beat it? whatyouate.app/games/beat-the-crash`);
   };
 
   const Legend = ({ codes, label }: { codes: string[]; label: string }) => (
@@ -280,7 +315,7 @@ export default function BeatTheCrash() {
           <button onClick={() => startRef.current()} className="absolute inset-0 flex items-center justify-center rounded-[22px] bg-[#101b2e]/25">
             <span className="rounded-3xl bg-white px-6 py-4 text-center shadow-2xl">
               <span className="block text-lg font-bold">Tap to start</span>
-              <span className="mt-1 block text-sm text-[#5a6b85]">Drag left and right to eat</span>
+              <span className="mt-1 block text-sm text-[#5a6b85]">Drag the bar at the bottom to move</span>
             </span>
           </button>
         )}
@@ -290,10 +325,10 @@ export default function BeatTheCrash() {
           onBoard={() => shell.setBoardOpen(true)} onJoin={() => shell.setJoinOpen(true)} onAgain={() => setRun(r => r + 1)} onShare={share} />}
       </BoardArea>
 
-      <FactStrip toast={toast} onDismiss={clearToast} width={board.w} idle={
+      <FactStrip toast={toast} onDismiss={clearToast} width={board.w} sticky idle={
         <div className="flex items-center gap-3">
           <Legend codes={["1f963", "1f95a"]} label="Steady" />
-          <Legend codes={["1f369", "1f964"]} label="Spike + crash" />
+          <Legend codes={["1f369", "1f964"]} label="Costs a ❤️" />
           <Legend codes={["1f4a7"]} label="Slows drain" />
         </div>} />
 
@@ -301,13 +336,13 @@ export default function BeatTheCrash() {
 
       {shell.help.open && (
         <HelpModal onClose={shell.help.close} steps={[
-          "Drag left and right to eat the falling food.",
-          "Keep your energy in the green. That's where points build, faster on a streak of real food.",
-          "Sugar gives a quick boost, then a crash. Eating when you're already full breaks your streak.",
-          "Energy drains faster in the 3pm slump. Hit zero and you fall asleep.",
+          "Drag the bar at the bottom to move. Catch food to eat it.",
+          "Real food keeps your energy up. Keep it in the green for the most points, and don't eat when you're full.",
+          "Sugar gives a quick boost, then a crash that costs a ❤️. Lose all three and your day is over.",
+          "Don't let your energy hit zero, and watch out for the 3pm slump.",
         ]}>
           <div className="mt-3 space-y-1 rounded-2xl bg-[#f0f6fe] p-2.5 text-xs font-semibold text-[#5a6b85]">
-            {([["steady", "Steady energy"], ["sugar", "Quick spike, then a crash"]] as [Kind, string][]).map(([k, label]) => (
+            {([["steady", "Steady energy"], ["sugar", "Boost, then a crash (costs a ❤️)"]] as [Kind, string][]).map(([k, label]) => (
               <div key={k} className="flex flex-wrap items-center gap-1">
                 {/* eslint-disable-next-line @next/next/no-img-element */}
                 {BY_KIND[k].map(i => <img key={i} src={foodPng(FOODS[i].code)} alt={FOODS[i].name} className="h-[18px] w-[18px]" />)}
@@ -316,9 +351,7 @@ export default function BeatTheCrash() {
             ))}
             <div className="flex items-center gap-1">
               {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img src={foodPng("1f4a7")} alt="Water" className="h-[18px] w-[18px]" /><span className="ml-1 mr-3">Slows the drain</span>
-              {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img src={foodPng("2615")} alt="Coffee" className="h-[18px] w-[18px]" /><span className="ml-1">Boost, then a dip</span>
+              <img src={foodPng("1f4a7")} alt="Water" className="h-[18px] w-[18px]" /><span className="ml-1">Water slows the drain</span>
             </div>
           </div>
           <ModesHelp today="everyone gets the same foods today. Make it to 10pm." free="the days keep coming, and each one is faster." />

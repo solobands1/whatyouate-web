@@ -109,7 +109,7 @@ export default function SnackMerge() {
 
     let last = performance.now();
     const loop = (t: number) => {
-      const dt = Math.min(32, t - last); last = t;
+      const dt = Math.max(0, Math.min(32, t - last)); last = t;
       if (!ended) Matter.Engine.update(engine, dt);
       // lose: a settled food stays above the line for 1.5s
       const settledAbove = engine.world.bodies.some(b => level.has(b.id) && t - (born.get(b.id) || 0) > 1200 && b.position.y - FOODS[level.get(b.id)!].r < TOP);
