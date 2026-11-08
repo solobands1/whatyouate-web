@@ -18,4 +18,12 @@ export const GAMES: Game[] = [
     tint: "#e3effe",
     daily: true,
   },
+  {
+    slug: "beat-the-crash",
+    name: "Beat The Crash",
+    tagline: "Eat your way to 10pm without crashing. Real food keeps you steady. Sugar doesn't. Survive the 3pm slump.",
+    foods: ["1f963", "1f60a", "1f369", "1f634"],
+    tint: "#fff1dc",
+    daily: true,
+  },
 ];

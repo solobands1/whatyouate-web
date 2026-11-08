@@ -12,6 +12,7 @@ export default function sitemap(): MetadataRoute.Sitemap {
     { url: `${BASE}/about`, changeFrequency: "monthly", priority: 0.7 },
     { url: `${BASE}/games`, changeFrequency: "weekly", priority: 0.8 },
     { url: `${BASE}/games/snack-merge`, changeFrequency: "weekly", priority: 0.7 },
+    { url: `${BASE}/games/beat-the-crash`, changeFrequency: "weekly", priority: 0.7 },
     { url: `${BASE}/creators`, changeFrequency: "monthly", priority: 0.8 },
     { url: `${BASE}/creators/example`, changeFrequency: "monthly", priority: 0.5 },
     { url: `${BASE}/creators/join`, changeFrequency: "yearly", priority: 0.5 },

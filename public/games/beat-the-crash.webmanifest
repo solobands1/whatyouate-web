@@ -1,0 +1,11 @@
+{
+  "name": "Beat The Crash by WhatYouAte",
+  "short_name": "Beat The Crash",
+  "start_url": "/games/beat-the-crash",
+  "scope": "/games",
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#e3effe",
+  "theme_color": "#e3effe",
+  "icons": [{ "src": "/icon-512.png", "sizes": "512x512", "type": "image/png" }]
+}
