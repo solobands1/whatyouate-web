@@ -69,13 +69,6 @@ export const GAMES: Game[] = [
     multiplayer: true,
   },
   {
-    slug: "food-rally",
-    name: "Food Rally",
-    tagline: "Race a food car round the kitchen. Hot sauce for speed, syrup slows you down. Take on the computer or a friend.",
-    daily: true,
-    multiplayer: true,
-  },
-  {
     slug: "kitchen-golf",
     name: "Kitchen Golf",
     tagline: "Putt a meatball round the kitchen. Bank off cutting boards, miss the sink, time the mixer. Fewest strokes wins.",

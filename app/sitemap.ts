@@ -20,7 +20,6 @@ export default function sitemap(): MetadataRoute.Sitemap {
     { url: `${BASE}/games/sugar-showdown`, changeFrequency: "weekly", priority: 0.7 },
     { url: `${BASE}/games/fridge-raid`, changeFrequency: "weekly", priority: 0.7 },
     { url: `${BASE}/games/pea-tanks`, changeFrequency: "weekly", priority: 0.7 },
-    { url: `${BASE}/games/food-rally`, changeFrequency: "weekly", priority: 0.7 },
     { url: `${BASE}/games/kitchen-golf`, changeFrequency: "weekly", priority: 0.7 },
     { url: `${BASE}/creators`, changeFrequency: "monthly", priority: 0.8 },
     { url: `${BASE}/creators/example`, changeFrequency: "monthly", priority: 0.5 },
