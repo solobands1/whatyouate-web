@@ -14,24 +14,27 @@ export type Job = {
   light: Light;
   twist: Twist;
   star3: string;            // the third star's goal
+  tip?: string;             // how the twist works, shown on the intro card
   cash: number;             // pay for finishing (stars add more)
+  deckBonus?: number;       // extra half-width on this job's cut (a borrowed deck), metres
+  trim?: number;            // grass this close to a fence, wall or trunk (metres) is already trimmed by the boys
 };
 
 export const JOBS: Job[] = [
   { id: 0, title: "Before The Bonfire", intro: ["Friends are coming over for a fire tonight.", "Get the yard round the house mowed before the sun goes down."],
-    goal: "Mow round the house and the fire pit", zones: ["frontHouse"], pace: 7.5, limit: 190, par: 140, light: "dusk", twist: "bonfire", star3: "No Big Bumps", cash: 40 },
+    goal: "Mow round the house and the fire pit", zones: ["frontHouse"], pace: 7.5, limit: 190, par: 140, light: "dusk", twist: "bonfire", star3: "No Big Bumps", cash: 40, tip: "A big bump is hitting a fence, wall or tree at speed. Ease off near them." },
   { id: 1, title: "Storm's Rolling In", intro: ["Dark clouds over the field. Rain's on the way.", "Puddles from last night will slow you down."],
-    goal: "Mow the top of the big field before the rain", zones: ["northField"], pace: 8.5, limit: 175, par: 125, light: "storm", twist: "storm", star3: "Stay Out Of The Puddles", cash: 50 },
+    goal: "Mow the top of the big field before the rain", zones: ["northField"], pace: 8.5, limit: 200, par: 145, light: "storm", twist: "storm", star3: "Stay Out Of The Puddles", cash: 50, tip: "Puddles slow you down. Steer round them: the grass under the water doesn't count. Under 4 seconds in puddles earns the star." },
   { id: 2, title: "Horseshoe Tournament", intro: ["The neighbours are coming for horseshoes.", "Mow the pits and the walk to the barn first, before the guests arrive."],
-    goal: "Mow from the horseshoe pits to the barn", zones: ["barnSide"], pace: 7.5, limit: 160, par: 118, light: "day", twist: "guests", star3: "Pits And Path Done In Time", cash: 60 },
+    goal: "Mow from the horseshoe pits to the barn", zones: ["barnSide"], pace: 7.5, limit: 160, par: 118, light: "day", twist: "guests", star3: "Pits And Path Done In Time", cash: 60, tip: "The yellow patches are the pits and the path. Mow them first: the guests arrive just past halfway." },
   { id: 3, title: "Apple Season", intro: ["The apple trees are dropping fruit.", "Ease off over the apples and the deck scoops them up. Rush over them and they squish!"],
-    goal: "Mow the orchard and pick up apples", zones: ["orchard"], pace: 6.5, limit: 130, par: 95, light: "day", twist: "apples", star3: "Pick Up 10 Apples", cash: 60 },
+    goal: "Mow the orchard and pick up apples", zones: ["orchard"], pace: 6.5, limit: 130, par: 95, light: "day", twist: "apples", star3: "Pick Up 10 Apples", cash: 60, tip: "Drive slowly over an apple (push the stick halfway) to pick it up." },
   { id: 4, title: "Sunday Stripes", intro: ["Sunday morning. Time to show off.", "Long, straight, side-by-side stripes score best."],
-    goal: "Mow neat stripes in the field", zones: ["stripes"], pace: 6.5, limit: 95, par: 66, light: "morning", twist: "stripes", star3: "Stripe Score 75%", cash: 70 },
+    goal: "Mow neat stripes in the field", zones: ["stripes"], pace: 6.5, limit: 95, par: 66, light: "morning", twist: "stripes", star3: "Stripe Score 75%", cash: 70, tip: "Stripe Score is the grass you cut driving straight. Turning and going back over cut grass bring it down. Mow a lap round the edge first, then turn on the cut border." },
   { id: 5, title: "The Cat's Day Out", intro: ["The cat wants to be outside all day.", "She'll keep wandering into the yard. Steer round her!"],
-    goal: "Mow the east lawn", zones: ["eastLawn"], pace: 8, limit: 240, par: 180, light: "day", twist: "cat", star3: "No Cat Stops", cash: 70 },
-  { id: 6, title: "The Whole Property", intro: ["The big one. Every blade on the property.", "Then the whole gang meets at the fire pit."],
-    goal: "Mow the whole lawn", zones: null, pace: 9.5, limit: 600, par: 470, light: "golden", twist: "finale", star3: "No Cat Stops", cash: 120 },
+    goal: "Mow the east lawn", zones: ["eastLawn"], pace: 8, limit: 240, par: 180, light: "day", twist: "cat", star3: "No Cat Stops", cash: 70, tip: "Pat stops if the cat is close in front of him. Give her room and steer wide." },
+  { id: 6, title: "The Whole Property", intro: ["The big one. Every blade on the property.", "The boys trimmed round the trees and fences this morning, and Pat borrowed the wide deck. Then the whole gang meets at the fire pit."],
+    goal: "Mow the whole lawn", zones: null, pace: 9.5, limit: 450, par: 360, light: "golden", twist: "finale", star3: "No Cat Stops", cash: 120, deckBonus: 0.5, trim: 1.5, tip: "The borrowed deck cuts a 5 m strip. Long runs end to end are quickest." },
 ];
 export const FREE_JOB: Job = { id: -1, title: "Free Mow", intro: ["The whole lawn, no clock."], goal: "Mow the whole lawn", zones: null, pace: 9.5, light: "day", twist: "free", star3: "", cash: 25 };
 

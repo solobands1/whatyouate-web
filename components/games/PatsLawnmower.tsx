@@ -12,6 +12,7 @@ import { useNoScroll } from "./kit";
 import { startEngine, type Hud, type Mode } from "./lawn/engine";
 import { JOBS, FREE_JOB, PAINTS, loadSave, writeSave, newSave, shopItems, unlockedUpTo, payFor, type Save, type Outcome, type Job } from "./lawn/jobs";
 import { Sound } from "./lawn/sound";
+import { startHero } from "./lawn/hero";
 
 type Screen = "title" | "jobs" | "shop" | "intro" | "play" | "result";
 type Session = { mode: Mode; job: Job; n: number };
@@ -27,6 +28,7 @@ const CSS = `
 @keyframes plBurst { 0% { transform: scale(.4); opacity: .9 } 100% { transform: scale(2.2); opacity: 0 } }
 @keyframes plFloat { 0%, 100% { transform: translateY(0) } 50% { transform: translateY(-5px) } }
 @keyframes plFade { 0% { opacity: 0 } 100% { opacity: 1 } }
+@keyframes plPulse { 0%, 100% { transform: scale(1) } 50% { transform: scale(1.06) } }
 .pl-btn { transition: transform .08s ease, box-shadow .08s ease; }
 .pl-btn:active { transform: translateY(3px); box-shadow: 0 1px 0 rgba(0,0,0,.18) !important; }
 `;
@@ -110,7 +112,8 @@ export default function PatsLawnmower() {
   useEffect(() => {
     setHud(null);
     const s = saveRef.current;
-    return startEngine(canvasRef.current!, wrapRef.current!, { mode: session.mode, job: session.job, up: s.up, sound: SOUND!, debug: isDebug(), showStrip: session.mode !== "attract" }, {
+    if (session.mode === "attract") return startHero(canvasRef.current!, wrapRef.current!, () => PAINTS[saveRef.current.up.paint] ?? PAINTS.orange, isDebug());
+    return startEngine(canvasRef.current!, wrapRef.current!, { mode: session.mode, job: session.job, up: s.up, sound: SOUND!, debug: isDebug(), showStrip: true }, {
       paused: () => pausedRef.current,
       onHud: h => setHud(h),
       onStart: () => setScreen(sc => (sc === "intro" ? "play" : sc)),
@@ -190,18 +193,17 @@ export default function PatsLawnmower() {
           {/* ── title ── */}
           {screen === "title" && (
             <div className="absolute inset-0 flex flex-col" style={{ paddingTop: "max(env(safe-area-inset-top), 12px)", paddingBottom: "max(env(safe-area-inset-bottom), 14px)" }}>
-              <div className="pointer-events-none absolute inset-x-0 top-0 h-56 bg-gradient-to-b from-[#f4fae9] via-[#f4fae9]/80 to-transparent" />
-              <div className="pointer-events-none absolute inset-x-0 bottom-0 h-72 bg-gradient-to-t from-[#e6f2d6] via-[#e6f2d6]/85 to-transparent" />
+              <div className="pointer-events-none absolute inset-x-0 bottom-0 h-44 bg-gradient-to-t from-[#eef6e3] via-[#eef6e3]/70 to-transparent" />
               <div className="relative mx-auto flex w-full max-w-[440px] items-center justify-between px-4">
                 <div className="flex items-center gap-2"><span className="inline-flex items-center gap-1 rounded-full bg-white/90 px-2.5 py-1 font-extrabold tabular-nums text-[#7a5a00] shadow-sm"><Star on size={16} />{totalStars} / {JOBS.length * 3}</span><Cash n={save.cash} className="shadow-sm" /></div>
                 <IconBtn label={save.muted ? "Sound On" : "Sound Off"} onClick={toggleMute}><SoundIcon muted={save.muted} /></IconBtn>
               </div>
-              <div className="relative mx-auto mt-3 w-full max-w-[440px] px-5 text-center" style={{ animation: "plUp .6s ease-out both" }}>
-                <div className="text-[13px] font-extrabold uppercase tracking-[0.2em] text-[#5a8a3a]">Pat&apos;s Big Weekend</div>
-                <h1 className="mt-1 text-[46px] font-black leading-[0.95] tracking-tight text-[#2a5a18] [@media(max-height:700px)]:text-[40px]" style={{ textShadow: "0 3px 0 #fff, 0 6px 14px rgba(40,80,20,.25)" }}>Pat&apos;s<br />Lawnmower</h1>
+              <div data-hero-top className="relative mx-auto mt-2.5 w-[calc(100%-32px)] max-w-[400px] rounded-[26px] bg-[#fffdf6]/92 px-4 pb-3 pt-2.5 text-center shadow-[0_10px_28px_rgba(30,60,15,.22)] ring-1 ring-black/5 backdrop-blur-[2px]" style={{ animation: "plUp .6s ease-out both" }}>
+                <div className="text-[12px] font-extrabold uppercase tracking-[0.22em] text-[#5a8a3a]">Pat&apos;s Big Weekend</div>
+                <h1 className="mt-0.5 whitespace-nowrap text-[clamp(30px,9.4vw,40px)] font-black leading-none tracking-tight text-[#24461a]">Pat&apos;s Lawnmower</h1>
               </div>
               <div className="flex-1" />
-              <div className="relative mx-auto w-full max-w-[400px] space-y-2.5 px-6" style={{ animation: "plUp .6s ease-out .15s both" }}>
+              <div data-hero-bottom className="relative mx-auto w-full max-w-[400px] space-y-2.5 px-6" style={{ animation: "plUp .6s ease-out .15s both" }}>
                 <Btn onClick={() => { sfx(); setScreen("jobs"); }}>{totalStars ? "Continue The Weekend" : "Start The Weekend"}</Btn>
                 <div className="grid grid-cols-2 gap-2.5">
                   <Btn small color="#f26b1d" onClick={() => startJob(FREE_JOB)}>Free Mow</Btn>
@@ -274,24 +276,25 @@ export default function PatsLawnmower() {
           {/* ── job intro ── */}
           {screen === "intro" && !howTo && (
             <div className="absolute inset-0 z-10 flex items-center justify-center rounded-[18px] bg-[#183010]/40 p-3" style={{ animation: "plFade .2s both" }}>
-              <Card className="w-full max-w-[360px]">
+              <Card className="max-h-full w-full max-w-[360px] overflow-y-auto">
                 <div className="flex items-center justify-between">
                   <span className="rounded-full bg-[#f26b1d] px-3 py-1 text-[12px] font-extrabold uppercase tracking-wider text-white">{job.id >= 0 ? `Job ${job.id + 1}` : "Free Mow"}</span>
                   {job.id >= 0 && <span className="flex gap-0.5">{[0, 1, 2].map(s => <Star key={s} on={save.stars[job.id] > s} size={18} />)}</span>}
                 </div>
-                <div className="mt-2 text-[26px] font-black leading-tight tracking-tight">{job.title}</div>
-                <div className="mt-1.5 space-y-1 text-[15px] leading-snug text-[#3f4f35]">{job.intro.map((l, i) => <p key={i}>{l}</p>)}</div>
-                <div className="mt-3 rounded-2xl bg-[#eef6e3] px-3 py-2.5 text-[14px]">
+                <div className="mt-2 text-[26px] font-black leading-tight tracking-tight [@media(max-height:700px)]:mt-1.5 [@media(max-height:700px)]:text-[22px]">{job.title}</div>
+                <div className="mt-1.5 space-y-1 text-[15px] leading-snug text-[#3f4f35] [@media(max-height:700px)]:mt-1 [@media(max-height:700px)]:text-[13.5px]">{job.intro.map((l, i) => <p key={i}>{l}</p>)}</div>
+                <div className="mt-3 rounded-2xl bg-[#eef6e3] px-3 py-2.5 text-[14px] [@media(max-height:700px)]:mt-2 [@media(max-height:700px)]:py-2 [@media(max-height:700px)]:text-[13px]">
                   <div className="flex items-center justify-between font-extrabold"><span>{job.goal}</span>{hud?.limit ? <span className="tabular-nums text-[#b4561a]">{fmt(hud.limit)}</span> : null}</div>
                   {job.id >= 0 && hud?.limit ? (
-                    <ul className="mt-2 space-y-1 text-[13px] text-[#3f4f35]">
+                    <ul className="mt-2 space-y-1 text-[13px] text-[#3f4f35] [@media(max-height:700px)]:mt-1 [@media(max-height:700px)]:space-y-0.5 [@media(max-height:700px)]:text-[12.5px]">
                       <li className="flex items-center gap-2"><Star on size={15} /> Finish before the clock runs out</li>
                       <li className="flex items-center gap-2"><Star on size={15} /> Finish in {fmt(hud.par)} or less</li>
                       <li className="flex items-center gap-2"><Star on size={15} /> {job.star3}</li>
                     </ul>
                   ) : <div className="mt-1 text-[13px] text-[#3f4f35]">No clock. Best time: {save.free.secs !== null ? fmt(save.free.secs) : "none yet"}.</div>}
                 </div>
-                <div className="mt-4 grid grid-cols-[1fr_2fr] gap-2.5">
+                {job.tip && <div className="mt-2 flex gap-2 rounded-2xl bg-[#fff6d6] px-3 py-2 text-[12.5px] leading-snug text-[#5c4a12] [@media(max-height:700px)]:py-1.5 [@media(max-height:700px)]:text-[12px]"><span className="mt-px flex h-4 w-4 shrink-0 items-center justify-center rounded-full bg-[#f2b81d] text-[10px] font-black text-white">!</span><span>{job.tip}</span></div>}
+                <div className="mt-4 grid grid-cols-[1fr_2fr] gap-2.5 [@media(max-height:700px)]:mt-3">
                   <Btn small color="#9aa58f" onClick={goTitle}>Menu</Btn>
                   <Btn small onClick={letsGo}>Let&apos;s Go</Btn>
                 </div>
@@ -317,11 +320,11 @@ export default function PatsLawnmower() {
             </div>
           )}
 
-          {/* ── finish button near the end ── */}
+          {/* ── finish button near the end: in the control strip, beside the stick, never over the lawn ── */}
           {screen === "play" && hud?.canFinish && !held && (
-            <div className="pointer-events-none absolute inset-x-0 flex justify-center" style={{ bottom: 124 + 52 }}>
-              <button onClick={() => finishRef.current?.()} className="pl-btn pointer-events-auto rounded-full px-6 py-2.5 text-[15px] font-extrabold text-white" style={{ background: GREEN, boxShadow: "0 4px 0 rgba(0,0,0,.2)" }}>Finish Mowing</button>
-            </div>
+            <button onClick={() => finishRef.current?.()} aria-label="Finish Mowing" className="pl-btn absolute right-2.5 flex items-center gap-1.5 rounded-full py-2.5 pl-3 pr-4 text-[14px] font-extrabold text-white" style={{ bottom: 38, background: GREEN, boxShadow: "0 4px 0 rgba(0,0,0,.2)", animation: "plPulse 1.4s ease-in-out infinite" }}>
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3.2" strokeLinecap="round" strokeLinejoin="round"><path d="M5 12.5l4.5 4.5L19 7.5" /></svg>Finish
+            </button>
           )}
 
           {/* ── pause ── */}
@@ -351,7 +354,7 @@ export default function PatsLawnmower() {
                         const labels = ["Finished", `Under ${fmt(result.o.par)}`, job.star3];
                         return (
                           <div key={i} className="flex flex-col items-center">
-                            <Star on={result.o.stars[i]} size={i === 1 ? 54 : 44} delay={0.25 + i * 0.35} pop />
+                            <span className="flex h-[56px] items-end"><Star on={result.o.stars[i]} size={i === 1 ? 54 : 44} delay={0.25 + i * 0.35} pop /></span>
                             <div className={`mt-1 text-[11.5px] font-bold leading-tight ${result.o.stars[i] ? "text-[#3f4f35]" : "text-[#9aa58f]"}`}>{labels[i]}</div>
                           </div>
                         );

@@ -32,7 +32,7 @@ export function buildWorld(map: LawnMap) {
     }
     clearance[k] = clear;
     if (clear >= BODY_R) free[k] = 1;
-    if (clear >= CAT_CLEAR) catFree[k] = 1;
+    if (clear >= CAT_CLEAR && !map.roads.some(l => lineDist(l.pts, x, y) < l.width / 2 + 1)) catFree[k] = 1;   // she never goes near the road
     if (clear > 0 && map.lawn.some(p => pip(p, x, y)) && !map.driveway.some(p => pip(p, x, y)) && !map.pads.some(p => pip(p.poly, x, y))
       && !map.lanes.some(l => lineDist(l.pts, x, y) < l.width / 2) && !map.roads.some(l => lineDist(l.pts, x, y) < l.width / 2)) lawn[k] = 1;
   }

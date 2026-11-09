@@ -1,10 +1,11 @@
 // The running game for Pat's Lawnmower: input, the tractor, mowing, the cat, each job's twist, the camera, lighting and
-// weather, and the debug hooks the browser tests use (only with ?debug=1). One engine runs per screen: the title screen
-// runs it in "attract" mode (the tractor mows on its own behind the menu), a job or Free Mow in "job" / "free" mode.
+// weather, and the debug hooks the browser tests use (only with ?debug=1). One engine runs per job or Free Mow ("job" /
+// "free" mode); the title screen draws its own picture (./hero). "attract" mode (the tractor mowing by itself on the
+// whole lawn) is still here for tests and the autopilot.
 import { LAWN_MAP, toMetres, type Pt } from "../lawnMap";
 import { buildWorld, pushOut, CELL, BODY_R, NEED_R } from "./world";
 import { clamp, wrapA, smooth, pip, polyClosest, mulberry32 } from "./geo";
-import { makeGrass, makeGround, drawTree, drawBuilding, drawMower, drawCat, drawPerson, drawFire, drawApple, drawPuddle, stripeCol, oldStripeCol, pathPoly, OBL, type CatPose } from "./art";
+import { makeGrass, makeGround, drawTree, bakeBuilding, drawMower, drawCat, drawPerson, drawFire, drawApple, drawPuddle, stripeCol, oldStripeCol, pathPoly, OBL, type CatPose } from "./art";
 import { DECKS, GEARS, PAINTS, type Job, type Upgrades, type Outcome } from "./jobs";
 import type { Sound } from "./sound";
 
@@ -28,9 +29,11 @@ const ACC = 6, DEC = 10, VREV = 2.2;
 const DEAD = 0.22;                    // joystick dead zone (fraction of its throw)
 const rmin = (v: number) => 0.85 + 0.2 * Math.abs(v);   // tightest turn (radius) at a speed: about 1 m when slow
 const CAT_R = 0.5, MEOW_D = 3.2, STOP_T = 2, PENALTY = 3;
+const STRAIGHT_OM = 0.4;             // turning slower than this (radians a second, smoothed) counts as driving straight
 const APPLE_V = 3.3;                  // no faster than this over apples, or they squish
-const DONE_AT = 0.99;                 // a job counts as done at 99% (the last few blades are never worth chasing)
-const VIEW_M = 16;                    // metres across the map's short side
+const DONE_AT = 0.985;                // a job counts as done at 98.5% (the last few blades are never worth chasing)
+const NEAR_DONE = 0.97;               // from here the last patches pulse, an arrow points to the nearest and Finish Mowing shows
+const VIEW_M = 13;                    // metres across the map's short side (close enough to see Pat and the cat clearly)
 export const STRIP = 124;             // the joystick strip under the map
 const STICK_R = 40;
 const SHIRTS = ["#d9534f", "#4e8ad6", "#f0ad4e", "#6aa84f", "#9b6bd6", "#e07b9b", "#3fb3a8"], HAIRS = ["#3b2a20", "#c99a5b", "#1f1a17", "#7a4a2a", "#e3d3a8", "#5b3a29"], SKINS = ["#f1c7a3", "#d9a37c", "#a8714f", "#f5d0b3"];
@@ -44,9 +47,37 @@ type Puddle = { x: number; y: number; rx: number; ry: number; rot: number };
 export function startEngine(canvas: HTMLCanvasElement, wrap: HTMLElement, cfg: Config, hooks: Hooks) {
   const map = toMetres(LAWN_MAP), w = buildWorld(map), job = cfg.job, mode = cfg.mode, snd = cfg.sound;
   const rnd = mulberry32((Math.random() * 1e9) | 0);
-  const deckHalf = DECKS[cfg.up.deck] ?? DECKS[0], vmax = GEARS[cfg.up.gear] ?? GEARS[0], paint = PAINTS[cfg.up.paint] ?? PAINTS.orange;
+  const deckHalf = Math.min(3.3, (DECKS[cfg.up.deck] ?? DECKS[0]) + (job.deckBonus ?? 0)), vmax = GEARS[cfg.up.gear] ?? GEARS[0], paint = PAINTS[cfg.up.paint] ?? PAINTS.orange;
   const zone = (names: string[] | null) => (names ? names.map(n => map.zones[n]).filter(Boolean) : null);
   const jobNeed = w.maskIn(w.need, zone(job.zones));
+  // the storm job's puddles: standing water, so the grass under it doesn't count; set clear of fences and walls so
+  // there's always room to drive round them. `wet` is a little wider: the autopilot keeps the tractor out of it.
+  // where a job starts: the edge of its own piece of lawn nearest the house, facing into it
+  let startK = -1, faceX = 0, faceY = 0;
+  if (job.zones && mode === "job") {
+    let bd = Infinity, zn = 0;
+    for (let k = 0; k < w.N; k++) if (jobNeed[k]) { faceX += w.cellX(k); faceY += w.cellY(k); zn++; }
+    faceX /= zn || 1; faceY /= zn || 1;
+    for (let k = 0; k < w.N; k++) if (jobNeed[k] && w.reach[k] && w.clearance[k] > 2.2) { const d = Math.hypot(w.cellX(k) - map.start.x, w.cellY(k) - map.start.y); if (d < bd) { bd = d; startK = k; } }
+  }
+  const puddles: Puddle[] = [], water = new Uint8Array(w.N), wet = new Uint8Array(w.N);
+  if (job.twist === "storm") {
+    const spots: number[] = []; for (let k = 0; k < w.N; k++) if (jobNeed[k] && w.reach[k] && w.clearance[k] > 3.6) spots.push(k);
+    for (let t = 0; t < 800 && puddles.length < 7 && spots.length; t++) {
+      const k = spots[Math.floor(rnd() * spots.length)], px = w.cellX(k), py = w.cellY(k), rx = 1.6 + rnd() * 1.4, ry = 1.0 + rnd() * 0.8;
+      if (w.clearance[k] < rx + 2.1 || puddles.some(p => Math.hypot(p.x - px, p.y - py) < 9) || (startK >= 0 && Math.hypot(w.cellX(startK) - px, w.cellY(startK) - py) < 9)) continue;
+      puddles.push({ x: px, y: py, rx, ry, rot: rnd() * Math.PI });
+    }
+    const inside = (p: Puddle, qx: number, qy: number, pad: number) => { const dx = qx - p.x, dy = qy - p.y, c = Math.cos(-p.rot), s2 = Math.sin(-p.rot), lx = dx * c - dy * s2, ly = dx * s2 + dy * c; return (lx * lx) / ((p.rx + pad) ** 2) + (ly * ly) / ((p.ry + pad) ** 2) < 1; };
+    for (let k = 0; k < w.N; k++) for (const p of puddles) {
+      const qx = w.cellX(k), qy = w.cellY(k);
+      if (inside(p, qx, qy, 0.6)) wet[k] = 1;
+      if (inside(p, qx, qy, 0.3)) { water[k] = 1; jobNeed[k] = 0; }
+    }
+  }
+  // the finale: the boys have trimmed the fiddly bits round the trees, fences and walls, so Pat mows the open grass
+  let trimmedN = 0;
+  if (job.trim) for (let k = 0; k < w.N; k++) if (jobNeed[k] && w.clearance[k] < job.trim) { jobNeed[k] = 0; trimmedN++; }
   let needCount = 0; for (let k = 0; k < w.N; k++) needCount += jobNeed[k];
   const areaM2 = needCount * CELL * CELL;
   let limit = mode === "job" ? job.limit ?? Math.round(areaM2 / job.pace / 5) * 5 + 20 : 0, par = job.par ?? Math.round(limit * 0.72);
@@ -56,6 +87,8 @@ export function startEngine(canvas: HTMLCanvasElement, wrap: HTMLElement, cfg: C
   const lightCv = document.createElement("canvas"), lc = lightCv.getContext("2d")!;
   const treeBlobs = map.trees.map((t, i) => { const r = mulberry32(100 + i), out: number[][] = []; for (let k = 0; k < 7; k++) { const a = (k / 7) * Math.PI * 2 + r(), d = 0.45 + r() * 0.2; out.push([Math.cos(a) * d, Math.sin(a) * d, 0.42 + r() * 0.12, r()]); } return out; });
   const treeAlpha = map.trees.map(() => 0.95), roofAlpha = map.buildings.map(() => 1);
+  const canopy = document.createElement("canvas"), cc = canopy.getContext("2d")!;   // the tree layer
+  const baked = map.buildings.map(b => bakeBuilding(b, b.kind === "house" || b.kind === "deck" ? map.door : null, 72));   // each building drawn once, then just copied every frame
   // grass speckle pinned to the ground
   const noise = document.createElement("canvas"); noise.width = noise.height = 96;
   { const nc = noise.getContext("2d")!, img = nc.createImageData(96, 96); for (let k = 0; k < 96 * 96; k++) { const v = Math.random(); img.data[k * 4] = img.data[k * 4 + 1] = img.data[k * 4 + 2] = v < 0.5 ? 0 : 255; img.data[k * 4 + 3] = Math.random() < 0.5 ? 0 : 16; } nc.putImageData(img, 0, 0); }
@@ -73,13 +106,14 @@ export function startEngine(canvas: HTMLCanvasElement, wrap: HTMLElement, cfg: C
       g.setTransform(1, 0, 0, 1, 0, 0); g.drawImage(tmp, 0, 0); g.restore();
     }
     for (let k = 0; k < w.N; k++) if (w.lawn[k] && !jobNeed[k]) {
-      cut[k] = 1; const x = w.cellX(k), y = w.cellY(k);
-      if (!zp || zp.some(z => pip(z, x, y))) { g.fillStyle = oldStripeCol(x); g.fillRect(x - CELL * 0.52, y - CELL * 0.52, CELL * 1.04, CELL * 1.04); }   // spots too tight to mow count as trimmed
+      cut[k] = 1; if (water[k]) continue; const x = w.cellX(k), y = w.cellY(k);
+      if (!zp || zp.some(z => pip(z, x, y))) { g.fillStyle = oldStripeCol(x); g.beginPath(); g.arc(x, y, CELL * 0.62, 0, 7); g.fill(); }   // spots too tight to mow count as trimmed (soft round dabs, not squares)
     }
   }
+  for (const pd of puddles) { const g = grass.c; g.save(); g.translate(pd.x, pd.y); g.rotate(pd.rot); g.fillStyle = "rgb(96,136,72)"; g.beginPath(); g.ellipse(0, 0, pd.rx + 0.4, pd.ry + 0.4, 0, 0, 7); g.fill(); g.fillStyle = "rgb(84,120,66)"; g.beginPath(); g.ellipse(0, 0, pd.rx + 0.2, pd.ry + 0.2, 0, 0, 7); g.fill(); g.restore(); }
   const mm = document.createElement("canvas"); mm.width = w.NX; mm.height = w.NY;
   const mmc = mm.getContext("2d")!, mmImg = mmc.createImageData(w.NX, w.NY);
-  const paintCell = (k: number) => { const o = k * 4; if (!w.lawn[k]) { mmImg.data[o + 3] = 0; return; } const todo = jobNeed[k] && !cut[k]; mmImg.data[o] = todo ? 52 : 168; mmImg.data[o + 1] = todo ? 104 : 212; mmImg.data[o + 2] = todo ? 34 : 112; mmImg.data[o + 3] = 255; };
+  const paintCell = (k: number) => { const o = k * 4; if (!w.lawn[k]) { mmImg.data[o + 3] = 0; return; } if (water[k]) { mmImg.data[o] = 96; mmImg.data[o + 1] = 150; mmImg.data[o + 2] = 190; mmImg.data[o + 3] = 255; return; } const todo = jobNeed[k] && !cut[k]; mmImg.data[o] = todo ? 52 : 168; mmImg.data[o + 1] = todo ? 104 : 212; mmImg.data[o + 2] = todo ? 34 : 112; mmImg.data[o + 3] = 255; };
   for (let k = 0; k < w.N; k++) paintCell(k);
   mmc.putImageData(mmImg, 0, 0);
   let mmDirty = false;
@@ -87,17 +121,11 @@ export function startEngine(canvas: HTMLCanvasElement, wrap: HTMLElement, cfg: C
   // ── state ──
   let phase: Phase = mode === "attract" ? "play" : "ready";
   let x = map.start.x, y = map.start.y, h = ((map.start.heading - 90) * Math.PI) / 180, v = 0, om = 0, steer = 0, odo = 0;
-  if (job.zones && mode === "job") {   // jobs start at the edge of their own piece of lawn, facing into it
-    let best = -1, bd = Infinity, zx = 0, zy = 0, zn = 0;
-    for (let k = 0; k < w.N; k++) if (jobNeed[k]) { zx += w.cellX(k); zy += w.cellY(k); zn++; }
-    zx /= zn || 1; zy /= zn || 1;
-    for (let k = 0; k < w.N; k++) if (jobNeed[k] && w.reach[k] && w.clearance[k] > 2.2) { const d = Math.hypot(w.cellX(k) - map.start.x, w.cellY(k) - map.start.y); if (d < bd) { bd = d; best = k; } }
-    if (best >= 0) { x = w.cellX(best); y = w.cellY(best); h = Math.atan2(zy - y, zx - x); }
-  }
+  if (startK >= 0) { x = w.cellX(startK); y = w.cellY(startK); h = Math.atan2(faceY - y, faceX - x); }   // jobs start at the edge of their own lawn
   { const p = pushOut(w, x, y, BODY_R, null); x = p.x; y = p.y; }
   let uturn = 0, revT = 0, revSide = 0, stuckN = 0, blockedT = 0, backHoldT = 0, stopT = 0, shake = 0, bumpCool = 0;
   let simT = 0, penalty = 0, meows = 0, bumps = 0, cutCount = 0, drove = 0, frame = 0, sceneT = 0, success = false, ended = false;
-  let freshAll = 0, freshStraight = 0, wetT = 0;
+  let freshAll = 0, freshStraight = 0, wetT = 0, omS = 0;   // omS: the turn rate, smoothed (gentle steering still counts as straight)
   const floats: Float[] = [], parts: Part[] = [];
   let toast = { text: "", t: 0 }, banner = { text: "", sub: "", t: 0 };
   const say = (text: string) => { toast = { text, t: 3 }; };
@@ -118,16 +146,7 @@ export function startEngine(canvas: HTMLCanvasElement, wrap: HTMLElement, cfg: C
   // twists
   const priorityMask = job.twist === "guests" ? w.maskIn(jobNeed, zone(["priorityPits", "priorityPath"])) : null;
   let priorityTotal = 0, priorityCut = 0; if (priorityMask) for (let k = 0; k < w.N; k++) priorityTotal += priorityMask[k];
-  const puddles: Puddle[] = [], apples: Apple[] = [];
-  const needCells: number[] = []; for (let k = 0; k < w.N; k++) if (jobNeed[k] && w.reach[k]) needCells.push(k);
-  if (job.twist === "storm") {
-    for (let t = 0; t < 400 && puddles.length < 7; t++) {
-      const k = needCells[Math.floor(rnd() * needCells.length)]; if (k === undefined) break;
-      const px = w.cellX(k), py = w.cellY(k);
-      if (puddles.some(p => Math.hypot(p.x - px, p.y - py) < 9)) continue;
-      puddles.push({ x: px, y: py, rx: 1.6 + rnd() * 1.4, ry: 1.0 + rnd() * 0.8, rot: rnd() * Math.PI });
-    }
-  }
+  const apples: Apple[] = [];
   if (job.twist === "apples") {
     const trees = map.trees.filter(t => t.kind === "fruit");
     for (let t = 0; t < 2000 && apples.length < 12; t++) {
@@ -142,7 +161,7 @@ export function startEngine(canvas: HTMLCanvasElement, wrap: HTMLElement, cfg: C
   // the cat
   const catCfg = job.twist === "cat" ? { first: 3, gap: [3, 6], out: [26, 40], walk: 1.25 } : { first: 8, gap: [30, 60], out: [18, 30], walk: 0.9 };
   const cat: Cat = { st: "in", x: map.door.x, y: map.door.y, h: Math.PI / 2, act: "idle", actT: 0, tx: 0, ty: 0, outT: 0, next: mode === "attract" ? 4 : catCfg.first + rnd() * 6, fleeT: 0, cool: 0, phase: rnd() * 6 };
-  let bubbleT = 0, catSeen = false;
+  let bubbleT = 0, catSeen = false, nearTold = false;
 
   // input
   type Stick = { id: number; bx: number; by: number; kx: number; ky: number };
@@ -215,7 +234,7 @@ export function startEngine(canvas: HTMLCanvasElement, wrap: HTMLElement, cfg: C
           }
         }
         const i = k % w.NX, j = (k - i) / w.NX;
-        for (const n of [i > 0 ? k - 1 : -1, i < w.NX - 1 ? k + 1 : -1, j > 0 ? k - w.NX : -1, j < w.NY - 1 ? k + w.NX : -1]) if (n >= 0 && w.reach[n] && prev[n] === -2) { prev[n] = k; dist[n] = dist[k] + 1; q.push(n); }
+        for (const n of [i > 0 ? k - 1 : -1, i < w.NX - 1 ? k + 1 : -1, j > 0 ? k - w.NX : -1, j < w.NY - 1 ? k + w.NX : -1]) if (n >= 0 && w.reach[n] && (!wet[n] || wet[k]) && prev[n] === -2) { prev[n] = k; dist[n] = dist[k] + 1; q.push(n); }
       }
       if (best >= 0) { const p: number[] = []; for (let c = best; c >= 0; c = prev[c]) p.push(c); path = p.reverse(); goalK = best; if (bestU !== goal) { goal = bestU; goalT = 0; } return; }
       if (appleCells.size) { apples.forEach(a => { if (a.st === 0) a.st = 2; }); return; }
@@ -225,42 +244,55 @@ export function startEngine(canvas: HTMLCanvasElement, wrap: HTMLElement, cfg: C
   // at each end; then it tidies up whatever's left, nearest first
   type Seg = { ax: number; ay: number; bx: number; by: number; x: number };
   const segs: Seg[] = []; let segI = 0, segMode: "to" | "on" = "to", segT = 0, toPath: number[] = [], toAt = 0, toPlanT = 0;
-  function buildSegs(mask: Uint8Array) {
-    const out: Seg[] = []; let x0 = Infinity, x1 = -Infinity;
-    for (let k = 0; k < w.N; k++) if (mask[k]) { x0 = Math.min(x0, w.cellX(k)); x1 = Math.max(x1, w.cellX(k)); }
-    if (!isFinite(x0)) return out;
-    const spacing = deckHalf * 1.8, drivable = (k: number) => w.reach[k] && w.clearance[k] >= BODY_R + 0.2;
+  /** Stripes a deck-width apart running along `ang` (north-south by default), end to end; `trim` metres off each end. */
+  function buildSegs(mask: Uint8Array, ang = Math.PI / 2, trim = 1.2) {
+    const out: Seg[] = [], ux = Math.cos(ang), uy = Math.sin(ang), nx = -uy, ny = ux;
+    let u0 = Infinity, u1 = -Infinity, v0 = Infinity, v1 = -Infinity;
+    for (let k = 0; k < w.N; k++) if (mask[k]) { const cx = w.cellX(k), cy = w.cellY(k), u = cx * ux + cy * uy, vv = cx * nx + cy * ny; u0 = Math.min(u0, u); u1 = Math.max(u1, u); v0 = Math.min(v0, vv); v1 = Math.max(v1, vv); }
+    if (!isFinite(u0)) return out;
+    const spacing = deckHalf * 1.8, drivable = (px: number, py: number) => { if (px < 0 || py < 0 || px >= w.W || py >= w.H) return false; const k = w.cellOf(px, py); return w.reach[k] && w.clearance[k] >= BODY_R + 0.2; };
     let lane = 0;
-    for (let lx = x0 + deckHalf * 0.85; lx <= x1 + deckHalf * 0.5; lx += spacing, lane++) {
-      const ci = clamp(Math.floor(lx / CELL), 0, w.NX - 1), span = Math.ceil(deckHalf / CELL), runs: Seg[] = [];
-      let runStart = -1;
-      for (let j = 0; j <= w.NY; j++) {
+    for (let lv = v0 + deckHalf * 0.85; lv <= v1 + deckHalf * 0.5; lv += spacing, lane++) {
+      const runs: Seg[] = []; let rs: number | null = null;
+      for (let u = u0 - 1; u <= u1 + 1 + CELL; u += CELL) {
+        const px = ux * u + nx * lv, py = uy * u + ny * lv;
         let ok = false;
-        if (j < w.NY && drivable(j * w.NX + ci)) for (let d = -span; d <= span && !ok; d++) { const ii = ci + d; if (ii >= 0 && ii < w.NX && mask[j * w.NX + ii]) ok = true; }
-        if (ok && runStart < 0) runStart = j;
-        if (!ok && runStart >= 0) { const a0 = runStart + 2, b0 = j - 3; if (b0 - a0 >= 2) runs.push({ ax: w.cellX(ci), ay: (a0 + 0.5) * CELL, bx: w.cellX(ci), by: (b0 + 0.5) * CELL, x: lx }); runStart = -1; }
+        if (u <= u1 + 1 && drivable(px, py)) for (let d = -deckHalf; d <= deckHalf && !ok; d += CELL) { const qx = px + nx * d, qy = py + ny * d; if (qx >= 0 && qy >= 0 && qx < w.W && qy < w.H && mask[w.cellOf(qx, qy)]) ok = true; }
+        if (ok && rs === null) rs = u;
+        if (!ok && rs !== null) { let a = rs + trim, b = u - trim - 0.4; const dry = (q: number) => !wet[w.cellOf(ux * q + nx * lv, uy * q + ny * lv)]; while (a < b && !dry(a)) a += CELL; while (b > a && !dry(b)) b -= CELL; if (b - a >= 1) runs.push({ ax: ux * a + nx * lv, ay: uy * a + ny * lv, bx: ux * b + nx * lv, by: uy * b + ny * lv, x: lv }); rs = null; }
       }
       if (lane % 2) runs.reverse().forEach(r => out.push({ ax: r.bx, ay: r.by, bx: r.ax, by: r.ay, x: r.x }));
       else runs.forEach(r => out.push(r));
     }
     return out;
   }
+  /** A lap round the inside of a 4-sided zone, `inset` metres in from its edge, starting at the corner nearest the tractor. */
+  function lapSegs(poly: Pt[], inset: number) {
+    const n = poly.length, [cx, cy] = [poly.reduce((a, q) => a + q[0], 0) / n, poly.reduce((a, q) => a + q[1], 0) / n];
+    const lines = poly.map((a, i) => { const b = poly[(i + 1) % n], dx = b[0] - a[0], dy = b[1] - a[1], L = Math.hypot(dx, dy); let nx2 = -dy / L, ny2 = dx / L; if ((cx - a[0]) * nx2 + (cy - a[1]) * ny2 < 0) { nx2 = -nx2; ny2 = -ny2; } return { px: a[0] + nx2 * inset, py: a[1] + ny2 * inset, dx: dx / L, dy: dy / L }; });
+    const corners: Pt[] = lines.map((l2, i) => { const l1 = lines[(i + n - 1) % n], den = l1.dx * l2.dy - l1.dy * l2.dx; if (Math.abs(den) < 1e-6) return [l2.px, l2.py] as Pt; const t = ((l2.px - l1.px) * l2.dy - (l2.py - l1.py) * l2.dx) / den; return [l1.px + l1.dx * t, l1.py + l1.dy * t] as Pt; });
+    let s0 = 0, bd = Infinity; corners.forEach((q, i) => { const d = Math.hypot(q[0] - x, q[1] - y); if (d < bd) { bd = d; s0 = i; } });
+    const out: Seg[] = []; for (let i = 0; i < n; i++) { const a = corners[(s0 + i) % n], b = corners[(s0 + i + 1) % n]; out.push({ ax: a[0], ay: a[1], bx: b[0], by: b[1], x: 0 }); }
+    return out;
+  }
+  /** The direction of a zone's longest side (stripes look best along it). */
+  const longAng = (poly: Pt[]) => { let best = 0, ang = Math.PI / 2; poly.forEach((a, i) => { const b = poly[(i + 1) % poly.length], L = Math.hypot(b[0] - a[0], b[1] - a[1]); if (L > best) { best = L; ang = Math.atan2(b[1] - a[1], b[0] - a[0]); } }); return ang; };
   function pathTo(target: number) {
     const from = startCellNear(); if (from < 0 || target < 0) return [];
     const prev = new Int32Array(w.N).fill(-2), q = [from]; prev[from] = -1;
     for (let qi = 0; qi < q.length; qi++) {
       const k = q[qi]; if (k === target) break;
       const i = k % w.NX, j = (k - i) / w.NX;
-      for (const n of [i > 0 ? k - 1 : -1, i < w.NX - 1 ? k + 1 : -1, j > 0 ? k - w.NX : -1, j < w.NY - 1 ? k + w.NX : -1]) if (n >= 0 && w.reach[n] && prev[n] === -2) { prev[n] = k; q.push(n); }
+      for (const n of [i > 0 ? k - 1 : -1, i < w.NX - 1 ? k + 1 : -1, j > 0 ? k - w.NX : -1, j < w.NY - 1 ? k + w.NX : -1]) if (n >= 0 && w.reach[n] && (!wet[n] || wet[k]) && prev[n] === -2) { prev[n] = k; q.push(n); }
     }
     if (prev[target] === -2) return [];
     const p: number[] = []; for (let c = target; c >= 0; c = prev[c]) p.push(c); return p.reverse();
   }
-  const segLeft = (sg: Seg) => { let n = 0, t = 0; const L = Math.hypot(sg.bx - sg.ax, sg.by - sg.ay); for (let d = 0; d <= L; d += CELL * 2) { const px = sg.ax + ((sg.bx - sg.ax) * d) / (L || 1), py = sg.ay + ((sg.by - sg.ay) * d) / (L || 1); for (let o = -deckHalf; o <= deckHalf; o += CELL) { const k = w.cellOf(px + o, py); if (jobNeed[k]) { t++; if (!cut[k]) n++; } } } return t ? n / t : 0; };
+  const segLeft = (sg: Seg) => { let n = 0, t = 0; const L = Math.hypot(sg.bx - sg.ax, sg.by - sg.ay) || 1, nx = -(sg.by - sg.ay) / L, ny = (sg.bx - sg.ax) / L; for (let d = 0; d <= L; d += CELL * 2) { const px = sg.ax + ((sg.bx - sg.ax) * d) / L, py = sg.ay + ((sg.by - sg.ay) * d) / L; for (let o = -deckHalf; o <= deckHalf; o += CELL) { const k = w.cellOf(px + nx * o, py + ny * o); if (jobNeed[k]) { t++; if (!cut[k]) n++; } } } return t ? n / t : 0; };
   let lastIn: [number, number] = [0, 0];
   let segsBuilt = false, lastCut = -1, idleT = 0;
   /** Follows a grid path: aims a little way ahead, closer in where things are tight. */
-  const sightOk = (bx: number, by: number) => { const L = Math.hypot(bx - x, by - y), n = Math.ceil(L / 0.3); for (let q = 1; q <= n; q++) { const k = w.cellOf(x + ((bx - x) * q) / n, y + ((by - y) * q) / n); if (!w.reach[k] || w.clearance[k] < BODY_R + 0.12) return false; } return true; };
+  const sightOk = (bx: number, by: number) => { const L = Math.hypot(bx - x, by - y), n = Math.ceil(L / 0.3); for (let q = 1; q <= n; q++) { const k = w.cellOf(x + ((bx - x) * q) / n, y + ((by - y) * q) / n); if (!w.reach[k] || wet[k] || w.clearance[k] < BODY_R + 0.12) return false; } return true; };
   function followPath(p: number[], at: number): [number, number, number] {
     while (at < p.length - 1 && Math.hypot(w.cellX(p[at]) - x, w.cellY(p[at]) - y) < 1.0) at++;
     // aim at the farthest point on the path that's in plain sight (up to 12 m), so the tractor drives straight lines
@@ -297,7 +329,13 @@ export function startEngine(canvas: HTMLCanvasElement, wrap: HTMLElement, cfg: C
       if (planT <= 0 || pathAt >= path.length) { plan(); planT = 0.3; }
       if (path.length) { const [sx2, sy2, at] = followPath(path, pathAt); pathAt = at; if (appleGoal >= 0 && pathAt >= path.length - 2) { const a = apples[appleGoal]; return aimAt(a.x, a.y); } return [sx2, sy2]; }
     }
-    if (!segsBuilt) { segsBuilt = true; if (priorityMask) segs.push(...buildSegs(priorityMask)); segs.push(...buildSegs(jobNeed)); }
+    if (!segsBuilt) {
+      segsBuilt = true; if (priorityMask) segs.push(...buildSegs(priorityMask));
+      const sz = job.twist === "stripes" ? map.zones.stripes : null;
+      // the stripes job, the way a careful person does it: a lap round the edge, then long stripes that turn on the cut border
+      if (sz) { segs.push(...lapSegs(sz, deckHalf * 0.85)); segs.push(...buildSegs(jobNeed, longAng(sz), deckHalf * 1.35)); }
+      else segs.push(...buildSegs(jobNeed));
+    }
     while (segI < segs.length && segLeft(segs[segI]) < 0.08) { segI++; segMode = "to"; toPath = []; }
     if (segI < segs.length) {
       const sg = segs[segI]; segT += dt;
@@ -314,7 +352,18 @@ export function startEngine(canvas: HTMLCanvasElement, wrap: HTMLElement, cfg: C
       const L = Math.hypot(sg.bx - sg.ax, sg.by - sg.ay) || 1, ux = (sg.bx - sg.ax) / L, uy = (sg.by - sg.ay) / L;
       const along = (x - sg.ax) * ux + (y - sg.ay) * uy;
       if (along > L - 0.6) { segI++; segT = 0; segMode = "to"; toPath = []; return [ux, uy]; }
-      const ahead = Math.max(4, Math.abs(v) * 0.9), tx = sg.ax + ux * Math.min(L + 2, along + ahead), ty = sg.ay + uy * Math.min(L + 2, along + ahead), dx = tx - x, dy = ty - y, d = Math.hypot(dx, dy) || 1;
+      const ahead = Math.max(4, Math.abs(v) * 0.9), ta = Math.min(L + 2, along + ahead);
+      let tx = sg.ax + ux * ta, ty = sg.ay + uy * ta;
+      // a puddle on the line: swing wide round it and come back to the stripe after
+      for (const pd of puddles) {
+        const ca = Math.cos(pd.rot), sa = Math.sin(pd.rot), nn = -uy * ca + ux * sa, nm = uy * sa + ux * ca, R = Math.hypot(pd.rx * nn, pd.ry * nm) + BODY_R + 0.45, pa = (pd.x - sg.ax) * ux + (pd.y - sg.ay) * uy, lat = -(pd.x - sg.ax) * uy + (pd.y - sg.ay) * ux;
+        if (Math.abs(lat) >= R || pa < along - R * 0.7 || pa > along + ahead + R + 3) continue;
+        // follow a copy of the stripe shifted sideways past the puddle (started early so the tractor is beside it in time)
+        const off = Math.abs(lat + R) < Math.abs(lat - R) ? lat + R : lat - R, side = (o: number) => { const qx = sg.ax + ux * pa - uy * o, qy = sg.ay + uy * pa + ux * o; return w.reach[w.cellOf(qx, qy)] && w.clearance[w.cellOf(qx, qy)] > BODY_R + 0.2; };
+        const o = side(off) ? off : off === lat + R ? lat - R : lat + R, aimA = along + Math.max(3, ahead * 0.8);
+        tx = sg.ax + ux * aimA - uy * o; ty = sg.ay + uy * aimA + ux * o; break;
+      }
+      const dx = tx - x, dy = ty - y, d = Math.hypot(dx, dy) || 1;
       return [dx / d, dy / d];
     }
     // tidy up: nearest grass first; if nothing gets cut for a while, give up on that patch
@@ -324,7 +373,7 @@ export function startEngine(canvas: HTMLCanvasElement, wrap: HTMLElement, cfg: C
     if (planT <= 0 || pathAt >= path.length) { plan(); planT = 0.3; }
     if (!path.length) return [0, 0];
     const [sx2, sy2, at] = followPath(path, pathAt); pathAt = at;
-    if (pathAt >= path.length - 3 && goal >= 0 && goalK >= 0) {
+    if (pathAt >= path.length - 3 && goal >= 0 && goalK >= 0 && sightOk(w.cellX(goalK), w.cellY(goalK))) {
       // drive right over the spot the planner picked (from there the deck reaches the grass); if that didn't cut it, move on
       const tx = w.cellX(goalK), ty = w.cellY(goalK);
       const dd = Math.hypot(tx - x, ty - y);
@@ -405,7 +454,7 @@ export function startEngine(canvas: HTMLCanvasElement, wrap: HTMLElement, cfg: C
     }
     if (moving || fresh) { const g = grass.c; g.save(); g.translate(x, y); g.rotate(h); g.fillStyle = stripeCol(h); g.fillRect(-DECK_LON * 0.75, -deckHalf + 0.04, DECK_LON * 1.5, deckHalf * 2 - 0.08); g.restore(); }
     if (fresh) {
-      freshAll += fresh; if (Math.abs(om) < 0.14) freshStraight += fresh;
+      freshAll += fresh; if (omS < STRAIGHT_OM) freshStraight += fresh;
       if (parts.length < 160) for (let n = 0; n < Math.min(3, fresh); n++) {
         if (cfg.up.bagger) { const a = h + Math.PI + (rnd() - 0.5) * 0.6; parts.push({ x: x + Math.cos(h + Math.PI / 2) * 0.7, y: y + Math.sin(h + Math.PI / 2) * 0.7, vx: Math.cos(a) * 3, vy: Math.sin(a) * 3, life: 0.3, c: rnd() < 0.5 ? "#7fbf4f" : "#4f8f2f", s: 0.1 }); }
         else { const sp = 3 + rnd() * 3, a = h + Math.PI / 2 + (rnd() - 0.5) * 0.7; parts.push({ x: x + Math.cos(h + Math.PI / 2) * deckHalf + Math.cos(h) * (rnd() - 0.5) * 0.5, y: y + Math.sin(h + Math.PI / 2) * deckHalf + Math.sin(h) * (rnd() - 0.5) * 0.5, vx: Math.cos(a) * sp, vy: Math.sin(a) * sp, life: 0.35 + rnd() * 0.3, c: rnd() < 0.5 ? "#8fcf5f" : "#4f8f2f", s: 0.12 }); }
@@ -435,7 +484,7 @@ export function startEngine(canvas: HTMLCanvasElement, wrap: HTMLElement, cfg: C
       banner = { text: job.twist === "bonfire" ? "Too Dark To Mow" : job.twist === "storm" ? "Rained Out" : "Out Of Time", sub: "", t: 0 };
     }
   }
-  hooks.finishRef.current = () => { if (phase === "play" && pct() >= 0.975) endRun(true); };
+  hooks.finishRef.current = () => { if (phase === "play" && pct() >= NEAR_DONE) endRun(true); };
 
   function readStick(): [number, number] {
     if (auto) return autoInput(STEP);
@@ -452,8 +501,8 @@ export function startEngine(canvas: HTMLCanvasElement, wrap: HTMLElement, cfg: C
       if (!w.reach[k] && !w.lawn[k]) { if (side < 0) L -= 0.3; else Rr -= 0.3; continue; }
       if (jobNeed[k] && !cut[k]) { if (side < 0) L++; else Rr++; }
     }
-    // never swing into a wall: a side without room for the turn loses
-    const uR = Math.max(rmin(4), deckHalf * 0.92), room = (side: number) => { let worst = 9; for (const a of [0.6, 1.2, 1.8, 2.4]) { const px = x + uR * (Math.sin(a) * c - side * (1 - Math.cos(a)) * s), py = y + uR * (Math.sin(a) * s + side * (1 - Math.cos(a)) * c); worst = Math.min(worst, w.clearance[w.cellOf(px, py)]); } return worst; };
+    // never swing into a wall (or a puddle): a side without room for the turn loses
+    const uR = Math.max(rmin(4), deckHalf * 0.92), room = (side: number) => { let worst = 9; for (const a of [0.6, 1.2, 1.8, 2.4]) { const px = x + uR * (Math.sin(a) * c - side * (1 - Math.cos(a)) * s), py = y + uR * (Math.sin(a) * s + side * (1 - Math.cos(a)) * c); const kk = w.cellOf(px, py); worst = Math.min(worst, water[kk] ? 0 : wet[kk] ? BODY_R + 0.05 : w.clearance[kk]); } return worst; };
     const rl = room(-1), rr2 = room(1);
     if (prefer && (prefer < 0 ? rl : rr2) >= BODY_R + 0.1) return prefer;   // the side the player asked for, if there's room
     if (rl < BODY_R + 0.1 && rr2 >= BODY_R + 0.1) return 1;
@@ -495,7 +544,7 @@ export function startEngine(canvas: HTMLCanvasElement, wrap: HTMLElement, cfg: C
     // yaw follows the request smoothly, never tighter than the turning circle allows at this speed (it can't spin on the spot)
     const omMax = Math.abs(v) / rmin(v);
     om += clamp(clamp(omT, -omMax, omMax) - om, -9 * dt, 9 * dt); om = clamp(om, -omMax, omMax);
-    h = wrapA(h + om * dt);
+    h = wrapA(h + om * dt); omS += (Math.abs(om) - omS) * Math.min(1, dt * 5);
     const steerT = Math.abs(v) > 0.3 ? clamp(Math.atan((1.3 * om) / v), -0.7, 0.7) : (raw > DEAD ? clamp(wrapA(Math.atan2(ay, ax) - h), -0.7, 0.7) : 0);
     steer += (steerT - steer) * Math.min(1, dt * 12);
     const ox = x, oy = y, dirX = Math.cos(h), dirY = Math.sin(h);
@@ -540,6 +589,7 @@ export function startEngine(canvas: HTMLCanvasElement, wrap: HTMLElement, cfg: C
         if (!guestsIn && simT >= limit * 0.55) { guestsIn = true; say("The Guests Are Here!"); if (pits.length === 2) addPeople([[pits[0].x - 0.9, pits[0].y - 1.7, Math.PI / 2, "throw"], [pits[1].x + 0.9, pits[1].y + 1.7, -Math.PI / 2, "throw"], [pits[0].x + 2.2, pits[0].y + 0.6, Math.PI, "stand"]]); }
       }
       if (job.twist === "storm") { const u = simT / limit; if (u > 0.82) rainAmt = Math.max(rainAmt, (u - 0.82) / 0.18 * 0.45); }
+      if (!nearTold && pct() >= NEAR_DONE && mode !== "attract") { nearTold = true; say("Nearly Done! Follow The Arrow"); }
       if (cutCount >= needCount * DONE_AT) endRun(true);
       else if (limit && simT >= limit) endRun(false);
     }
@@ -565,7 +615,7 @@ export function startEngine(canvas: HTMLCanvasElement, wrap: HTMLElement, cfg: C
   function text(t: string, tx: number, ty: number, size: number, color: string, weight = 700, align: CanvasTextAlign = "center") { ctx.font = `${weight} ${size}px ${FONT}`; ctx.fillStyle = color; ctx.textAlign = align; ctx.textBaseline = "middle"; ctx.fillText(t, tx, ty); }
   function pill(t: string, cx: number, cy: number, size: number, fg: string, bg: string, padX = 14, hgt = 30) {
     ctx.font = `800 ${size}px ${FONT}`; const tw = ctx.measureText(t).width + padX * 2;
-    ctx.save(); ctx.fillStyle = bg; ctx.shadowColor = "rgba(0,0,0,0.2)"; ctx.shadowBlur = 10; ctx.shadowOffsetY = 2; rr(ctx, cx - tw / 2, cy - hgt / 2, tw, hgt, hgt / 2); ctx.fill(); ctx.restore();
+    ctx.save(); ctx.fillStyle = bg; if (ctx.globalAlpha > 0.98) { ctx.shadowColor = "rgba(0,0,0,0.2)"; ctx.shadowBlur = 10; ctx.shadowOffsetY = 2; } rr(ctx, cx - tw / 2, cy - hgt / 2, tw, hgt, hgt / 2); ctx.fill(); ctx.restore();   // (Safari ignores globalAlpha on a fill with a shadow, so a fading pill gets none)
     text(t, cx, cy + 0.5, size, fg, 800); return tw;
   }
   /** The yard and everything on it, in world units (the caller sets the camera transform). */
@@ -601,11 +651,11 @@ export function startEngine(canvas: HTMLCanvasElement, wrap: HTMLElement, cfg: C
       c.setLineDash([]);
     }
     // missed spots, once nearly done
-    if (phase === "play" && p >= 0.97 && mode !== "attract") {
+    if (phase === "play" && p >= NEAR_DONE && mode !== "attract") {
       if (frame - missedAt > 20) { missed = []; for (let q = 0; q < w.N; q++) if (jobNeed[q] && !cut[q]) missed.push(q); missedAt = frame; }
       const pulse = 0.5 + 0.5 * Math.sin(time * 5);
-      c.fillStyle = `rgba(255,216,80,${(0.3 + 0.35 * pulse).toFixed(3)})`;
-      for (const q of missed) { c.beginPath(); c.arc(w.cellX(q), w.cellY(q), CELL * 0.75, 0, 7); c.fill(); }
+      c.fillStyle = `rgba(255,216,80,${(0.35 + 0.35 * pulse).toFixed(3)})`;
+      c.beginPath(); for (const q of missed) { c.moveTo(w.cellX(q) + CELL * (0.8 + 0.25 * pulse), w.cellY(q)); c.arc(w.cellX(q), w.cellY(q), CELL * (0.8 + 0.25 * pulse), 0, 7); } c.fill();
     }
     for (const a of apples) if (a.st === 0) drawApple(c, a.x, a.y, time, true); else if (a.st === 2) { c.fillStyle = "rgba(170,40,30,0.55)"; c.beginPath(); c.ellipse(a.x, a.y, 0.22, 0.14, 0.4, 0, 7); c.fill(); }
     for (const q of parts) { c.globalAlpha = Math.min(1, q.life * 3); c.fillStyle = q.c; c.fillRect(q.x - q.s / 2, q.y - q.s / 2, q.s, q.s); }
@@ -618,24 +668,40 @@ export function startEngine(canvas: HTMLCanvasElement, wrap: HTMLElement, cfg: C
       c.strokeStyle = "#6d7176"; c.lineWidth = 0.06; c.beginPath(); c.arc(hx, hy, 0.13, time * 8, time * 8 + 4.4); c.stroke();
     }
     const catOnDeck = cat.st !== "in" && deck && pip(deck.poly.map(q => [q[0], q[1] - deck.height * OBL] as Pt), cat.x, cat.y);
-    if (cat.st !== "in" && !catOnDeck) drawCat(c, cat, time);
     drawMower(c, x, y, h, steer, odo, time, phase === "play", deckHalf, paint, cfg.up.bagger, cfg.up.lights && (job.light === "dusk" || job.light === "storm"));
+    if (cat.st !== "in" && !catOnDeck) drawCat(c, cat, time);   // over the tractor, so she's never lost under the wide deck
     if (firePit) drawFire(c, firePit.x, firePit.y, firePit.r ?? 0.8, time, fireAmt);
-    // trees and buildings over the top, see-through where the tractor or cat is underneath
-    map.trees.forEach((t, i) => {
-      if (t.kind === "well") return;
-      const near = Math.hypot(t.x - x, t.y - y) < t.r + Math.max(BODY_R, deckHalf) + 0.4 || (cat.st !== "in" && Math.hypot(t.x - cat.x, t.y - cat.y) < t.r + 0.4);
-      treeAlpha[i] += ((near ? 0.25 : 0.96) - treeAlpha[i]) * Math.min(1, dt * 8);
-      drawTree(c, t, treeBlobs[i], treeAlpha[i], time * (job.twist === "storm" ? 2.2 : 1));
-    });
+    // trees over the top, on their own layer with a soft window cut round Pat and the cat when they're underneath
+    {
+      const cv = c.canvas; if (canopy.width !== cv.width || canopy.height !== cv.height) { canopy.width = cv.width; canopy.height = cv.height; }
+      cc.setTransform(1, 0, 0, 1, 0, 0); cc.clearRect(0, 0, canopy.width, canopy.height); cc.setTransform(c.getTransform());
+      map.trees.forEach((t, i) => {
+        if (t.kind === "well") return;
+        const near = Math.hypot(t.x - x, t.y - y) < t.r + Math.max(BODY_R, deckHalf) + 0.4 || (cat.st !== "in" && Math.hypot(t.x - cat.x, t.y - cat.y) < t.r + 0.4);
+        treeAlpha[i] += ((near ? 0.8 : 0.96) - treeAlpha[i]) * Math.min(1, dt * 8);
+        drawTree(cc, t, treeBlobs[i], treeAlpha[i], time * (job.twist === "storm" ? 2.2 : 1));
+      });
+      cc.globalCompositeOperation = "destination-out";
+      const hole = (hx: number, hy: number, r: number) => { const g = cc.createRadialGradient(hx, hy, 0, hx, hy, r); g.addColorStop(0, "rgba(0,0,0,0.85)"); g.addColorStop(0.55, "rgba(0,0,0,0.7)"); g.addColorStop(1, "rgba(0,0,0,0)"); cc.fillStyle = g; cc.beginPath(); cc.arc(hx, hy, r, 0, 7); cc.fill(); };
+      hole(x, y, Math.max(2.6, deckHalf + 1.0));
+      if (cat.st !== "in") hole(cat.x, cat.y, 1.4);
+      cc.globalCompositeOperation = "source-over";
+      c.save(); c.setTransform(1, 0, 0, 1, 0, 0); c.drawImage(canopy, 0, 0); c.restore();
+    }
     map.buildings.forEach((b, i) => {
       const dz = b.height * OBL, roof = b.poly.map(q => [q[0], q[1] - dz] as Pt);
       const behind = pip(roof, x, y) && !pip(b.poly, x, y) && polyClosest(b.poly, x, y).d > 0.2;
       const catBehind = cat.st !== "in" && !catOnDeck && pip(roof, cat.x, cat.y);
       roofAlpha[i] += ((behind || catBehind ? 0.45 : 1) - roofAlpha[i]) * Math.min(1, dt * 8);
-      drawBuilding(c, b, roofAlpha[i], b.kind === "house" ? map.door : null);
+      const im = baked[i]; c.globalAlpha = roofAlpha[i]; c.drawImage(im.cv, im.x, im.y, im.w, im.h); c.globalAlpha = 1;
     });
     if (catOnDeck) drawCat(c, cat, time);
+    // behind a roof: show the tractor and the cat through it, a little faded
+    const covered = (px: number, py: number) => map.buildings.some((b, i) => roofAlpha[i] < 0.95 && pip(b.poly.map(q => [q[0], q[1] - b.height * OBL] as Pt), px, py));
+    c.save(); c.globalAlpha = 0.55;
+    if (cat.st !== "in" && !catOnDeck && covered(cat.x, cat.y)) drawCat(c, cat, time, 2.0, false);
+    if (covered(x, y)) drawMower(c, x, y, h, steer, odo, time, phase === "play", deckHalf, paint, cfg.up.bagger, false);
+    c.restore();
     // cloud shadows drifting over the yard before the storm
     for (const cl of clouds) { const g = c.createRadialGradient(cl.x, cl.y, 0, cl.x, cl.y, cl.r); g.addColorStop(0, "rgba(20,30,40,0.22)"); g.addColorStop(1, "rgba(20,30,40,0)"); c.fillStyle = g; c.beginPath(); c.arc(cl.x, cl.y, cl.r, 0, 7); c.fill(); }
   }
@@ -710,7 +776,7 @@ export function startEngine(canvas: HTMLCanvasElement, wrap: HTMLElement, cfg: C
     // bubbles and floating words
     if (bubbleT > 0 && cat.st !== "in" && mode !== "attract") {
       const bx = sx(cat.x), by = sy(cat.y) - 32, a = Math.min(1, bubbleT * 3), pop = 1 + Math.max(0, (bubbleT - 1.8) * 1.5);
-      ctx.save(); ctx.globalAlpha = a; ctx.translate(bx, by); ctx.scale(pop, pop); ctx.fillStyle = "#fff"; ctx.shadowColor = "rgba(0,0,0,0.25)"; ctx.shadowBlur = 8;
+      ctx.save(); ctx.globalAlpha = a; ctx.translate(bx, by); ctx.scale(pop, pop); ctx.fillStyle = "#fff"; if (a > 0.98) { ctx.shadowColor = "rgba(0,0,0,0.25)"; ctx.shadowBlur = 8; }
       rr(ctx, -32, -14, 64, 26, 13); ctx.fill(); ctx.beginPath(); ctx.moveTo(-6, 10); ctx.lineTo(0, 20); ctx.lineTo(6, 10); ctx.fill();
       ctx.shadowBlur = 0; ctx.restore(); ctx.save(); ctx.globalAlpha = a; text("Meow!", bx, by - 1, 14, "#2b3441", 800); ctx.restore();
       const px = sx(x), py = sy(y) - 30; ctx.save(); ctx.globalAlpha = a; ctx.fillStyle = "#fff"; rr(ctx, px - 11, py - 11, 22, 22, 11); ctx.fill(); text("!", px, py, 15, "#d0402f", 900); ctx.restore();
@@ -718,19 +784,27 @@ export function startEngine(canvas: HTMLCanvasElement, wrap: HTMLElement, cfg: C
     if (cat.st !== "in" && cat.act === "nap" && bubbleT <= 0) for (let q = 0; q < 3; q++) { const ph = (time * 0.6 + q / 3) % 1; ctx.save(); ctx.globalAlpha = Math.sin(ph * Math.PI) * 0.9; text("z", sx(cat.x) + 10 + ph * 10, sy(cat.y) - 12 - ph * 18, 10 + ph * 5, "#ffffff", 800); ctx.restore(); }
     for (const f of floats) { const u = 1 - f.t / 1.4; ctx.save(); ctx.globalAlpha = Math.min(1, f.t * 2); ctx.lineWidth = 3; ctx.strokeStyle = "rgba(30,40,20,0.55)"; ctx.font = `800 14px ${FONT}`; ctx.textAlign = "center"; ctx.strokeText(f.text, sx(f.x), sy(f.y) - u * 26); text(f.text, sx(f.x), sy(f.y) - u * 26, 14, f.color, 800); ctx.restore(); }
     // arrow to the nearest missed spot when it's off screen
-    if (phase === "play" && pct() >= 0.97 && missed.length && mode !== "attract") {
+    if (phase === "play" && pct() >= NEAR_DONE && missed.length && mode !== "attract") {
       let best = -1, bd = Infinity; for (const q of missed) { const d = Math.hypot(w.cellX(q) - x, w.cellY(q) - y); if (d < bd) { bd = d; best = q; } }
       const qx = sx(w.cellX(best)), qy = sy(w.cellY(best));
+      const bob = Math.sin(time * 6) * 3;
       if (qx < 8 || qx > CW - 8 || qy < 8 || qy > MH - 8) {
-        const a = Math.atan2(qy - sy(y), qx - sx(x)), ex = clamp(qx, 22, CW - 22), ey = clamp(qy, 22, MH - 22);
-        ctx.save(); ctx.translate(ex, ey); ctx.rotate(a); ctx.fillStyle = "#ffd646"; ctx.strokeStyle = "rgba(60,50,0,0.5)"; ctx.lineWidth = 1.5;
-        ctx.beginPath(); ctx.moveTo(12, 0); ctx.lineTo(-8, -9); ctx.lineTo(-3, 0); ctx.lineTo(-8, 9); ctx.closePath(); ctx.fill(); ctx.stroke(); ctx.restore();
+        // off screen: an arrow on the edge pointing at it, with how far
+        const a = Math.atan2(qy - sy(y), qx - sx(x)), ex = clamp(qx, 26, CW - 26), ey = clamp(qy, 26, MH - 26);
+        ctx.save(); ctx.translate(ex - Math.cos(a) * bob, ey - Math.sin(a) * bob); ctx.rotate(a); ctx.fillStyle = "#ffd646"; ctx.strokeStyle = "rgba(60,50,0,0.6)"; ctx.lineWidth = 2; ctx.shadowColor = "rgba(0,0,0,0.25)"; ctx.shadowBlur = 6;
+        ctx.beginPath(); ctx.moveTo(15, 0); ctx.lineTo(-10, -12); ctx.lineTo(-4, 0); ctx.lineTo(-10, 12); ctx.closePath(); ctx.fill(); ctx.shadowBlur = 0; ctx.stroke(); ctx.restore();
+        const lx = clamp(ex - Math.cos(a) * 30, 24, CW - 24), ly = clamp(ey - Math.sin(a) * 26, 18, MH - 18);
+        pill(`${Math.round(bd)} m`, lx, ly, 11, "#5c4a12", "rgba(255,246,214,0.95)", 8, 20);
+      } else if (bd > 3) {
+        // on screen but not right here: a bouncing marker over it
+        ctx.save(); ctx.translate(qx, qy - 16 + bob); ctx.fillStyle = "#ffd646"; ctx.strokeStyle = "rgba(60,50,0,0.6)"; ctx.lineWidth = 2; ctx.shadowColor = "rgba(0,0,0,0.25)"; ctx.shadowBlur = 6;
+        ctx.beginPath(); ctx.moveTo(0, 10); ctx.lineTo(-10, -4); ctx.lineTo(-4, -4); ctx.lineTo(-4, -12); ctx.lineTo(4, -12); ctx.lineTo(4, -4); ctx.lineTo(10, -4); ctx.closePath(); ctx.fill(); ctx.shadowBlur = 0; ctx.stroke(); ctx.restore();
       }
     }
     // minimap
     if (mode !== "attract" && phase !== "scene" && phase !== "over") {
       if (mmDirty && frame % 4 === 0) { mmc.putImageData(mmImg, 0, 0); mmDirty = false; }
-      const mw = Math.min(88, CW * 0.25), mh = (mw * w.H) / w.W, mx = CW - mw - 8, my = 8, ms = mw / w.W;
+      const mw = Math.min(104, CW * 0.28), mh = (mw * w.H) / w.W, mx = CW - mw - 9, my = 9, ms = mw / w.W;
       ctx.save(); ctx.fillStyle = "rgba(255,255,255,0.88)"; ctx.shadowColor = "rgba(0,0,0,0.18)"; ctx.shadowBlur = 8; rr(ctx, mx - 3, my - 3, mw + 6, mh + 6, 9); ctx.fill(); ctx.shadowBlur = 0;
       rr(ctx, mx, my, mw, mh, 6); ctx.clip(); ctx.fillStyle = "#a9b874"; ctx.fillRect(mx, my, mw, mh);
       ctx.imageSmoothingEnabled = false; ctx.drawImage(mm, mx, my, mw, mh); ctx.imageSmoothingEnabled = true;
@@ -746,11 +820,11 @@ export function startEngine(canvas: HTMLCanvasElement, wrap: HTMLElement, cfg: C
       ctx.restore();
     }
     if (toast.t > 0) { ctx.save(); ctx.globalAlpha = Math.min(1, toast.t * 2, (3 - toast.t) * 5); ctx.font = `800 13px ${FONT}`; const tw = ctx.measureText(toast.text).width + 28; ctx.translate(10 + tw / 2, 26); const pop = Math.max(1, 1.12 - (3 - toast.t) * 0.6); ctx.scale(pop, pop); ctx.translate(-(10 + tw / 2), -26); pill(toast.text, 10 + tw / 2, 26, 13, "#3d4654", "rgba(255,255,255,0.96)"); ctx.restore(); }
-    if (phase === "ready" && mode !== "attract" && cfg.showStrip) { const b = 0.75 + 0.25 * Math.sin(time * 4); ctx.save(); ctx.globalAlpha = b; pill("Push The Stick To Start", CW / 2, MH - 30, 13, "#2f5a1f", "rgba(255,255,255,0.95)", 16, 32); ctx.restore(); }
+    if (phase === "ready" && mode !== "attract" && cfg.showStrip) { const b = 1 + 0.035 * Math.sin(time * 4); ctx.save(); ctx.translate(CW / 2, MH - 30); ctx.scale(b, b); pill("Push The Stick To Start", 0, 0, 13, "#2f5a1f", "rgba(255,255,255,0.97)", 16, 32); ctx.restore(); }
     if (stopT > 0 && phase === "play" && mode !== "attract") pill("Pat Stopped For The Cat", CW / 2, MH - 30, 13, "#b03a2e", "rgba(255,255,255,0.95)", 16, 32);
     if (phase === "scene" && banner.text) {
       const t = banner.t, s = t < 0.35 ? 0.5 + (t / 0.35) * 0.62 : 1.12 - Math.min(0.12, (t - 0.35) * 0.6);
-      ctx.save(); ctx.translate(CW / 2, MH * 0.2); ctx.scale(s, s); ctx.globalAlpha = Math.min(1, t * 4);
+      ctx.save(); ctx.translate(CW / 2, Math.max(44, MH * 0.1)); ctx.scale(s, s); ctx.globalAlpha = Math.min(1, t * 4);
       pill(banner.text, 0, 0, 22, success ? "#2f6d1c" : "#a3352a", "rgba(255,255,255,0.97)", 22, 50); ctx.restore();
     }
     ctx.restore();
@@ -791,7 +865,7 @@ export function startEngine(canvas: HTMLCanvasElement, wrap: HTMLElement, cfg: C
       else if (job.twist === "storm") meter = { label: "Puddle Time", value: `${wetT.toFixed(1)}s`, frac: clamp(wetT / 4, 0, 1), good: wetT < 4 };
       else if (job.twist === "cat" || job.twist === "finale") meter = { label: "Cat Stops", value: String(meows), frac: 0, good: meows === 0 };
       else if (job.twist === "bonfire") meter = { label: "Big Bumps", value: String(bumps), frac: 0, good: bumps === 0 };
-      hooks.onHud({ pct: pct(), time: simT + penalty, limit, par, meter, canFinish: phase === "play" && pct() >= 0.975, phase });
+      hooks.onHud({ pct: (phase === "scene" || phase === "over") && success ? 1 : pct(), time: simT + penalty, limit, par, meter, canFinish: phase === "play" && pct() >= NEAR_DONE, phase });
     }
   };
   raf = requestAnimationFrame(loop);
@@ -799,7 +873,7 @@ export function startEngine(canvas: HTMLCanvasElement, wrap: HTMLElement, cfg: C
   if (cfg.debug) {
     (window as unknown as { __lm: unknown }).__lm = {
       state: () => ({ mode, job: job.id, phase, stickIn: lastIn, blockedT, toLen: toPath.length, goal, goalK, pct: pct(), cut: cutCount, need: needCount, areaM2, limit, par, x, y, h, v, om, uturn, revT, stopT, meows, bumps, simT, penalty, drove, wetT,
-        apples: applesGot(), applesLeft: apples.filter(a => a.st === 0).length, priority: priorityTotal ? priorityCut / priorityTotal : null, quality: stripeScore(),
+        apples: applesGot(), applesLeft: apples.filter(a => a.st === 0).length, priority: priorityTotal ? priorityCut / priorityTotal : null, quality: stripeScore(), straight: freshAll ? freshStraight / freshAll : 1, trimmedN, eff: clamp(areaM2 * pct() / Math.max(1, drove * deckHalf * 2) / 0.8, 0, 1),
         cat: { st: cat.st, x: cat.x, y: cat.y, act: cat.act, next: cat.next }, size: [CW, CH, MH], scrollH: document.documentElement.scrollHeight, PX, deckHalf, vmax }),
       hold: (hx: number, hy: number) => { testIn = [hx, hy]; },
       release: () => { testIn = null; },

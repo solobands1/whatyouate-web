@@ -16,10 +16,11 @@
 //   roads      paved roads as polylines with a width, drawn with gravel shoulders and a dashed centre line (drive on).
 //   buildings  footprint polygons, height (metres at map scale; only for the look: taller shows more wall), colours.
 //              A 4-point rectangle at any angle gets a gable roof along its long side; `wings` (4-point rectangles) give
-//              an odd-shaped building one gable per wing; `flat: true` draws a flat roof (porch roofs, decks).
-//              kind "deck" draws boards; kind "barn" draws the roof inset so the red walls show all round.
+//              an odd-shaped building one gable per wing; `flat: true` draws a low lean-to roof (metal).
+//              kind "deck" draws boards; kind "porch" a low shingled porch roof; barns and sheds get metal roofs.
 //              `frontGable` [left eave corner, right eave corner, point where it meets the main roof] adds a cross gable
-//              (the house's steep front gable). Buildings are drawn in list order (later ones on top).
+//              (the house's steep front gable). `chimney` is where the chimney stands on the roof.
+//              Buildings are drawn in list order (later ones on top).
 //   trees      circles: x, y, r = canopy radius. "leafy" and "fruit" trees can be driven under (only the trunk blocks);
 //              "spruce" blocks most of its canopy; "well" is a solid round thing (cistern cap, big rock). Fruit trees
 //              drop a few apples on the grass.
@@ -35,7 +36,7 @@
 // Anything not covered by a shape is rough grass: drivable, nothing to mow. The map's outer rectangle is a wall.
 
 export type Pt = [number, number];
-export type Building = { kind: "house" | "barn" | "shed" | "garage" | "deck" | "other"; poly: Pt[]; height: number; wall: string; roof: string; trim?: string; wings?: Pt[][]; flat?: boolean; frontGable?: Pt[] };
+export type Building = { kind: "house" | "barn" | "shed" | "garage" | "deck" | "porch" | "other"; poly: Pt[]; height: number; wall: string; roof: string; trim?: string; wings?: Pt[][]; flat?: boolean; frontGable?: Pt[]; chimney?: Pt };
 export type Tree = { x: number; y: number; r: number; kind?: "leafy" | "spruce" | "fruit" | "well" };
 export type Bed = { poly: Pt[]; veg?: boolean };
 export type Pad = { poly: Pt[]; kind: "concrete" | "dirt" };
@@ -98,13 +99,13 @@ export const LAWN_MAP: LawnMap = {
   roads: [{ pts: [[-20, 154], [1320, -162]], width: 100 }],
   buildings: [
     // the farmhouse: two storeys, dark brown roof with the steep front gable, a porch along the front, a rear ell and the deck
-    { kind: "other", poly: [[922, 117], [1008, 117], [1008, 136], [922, 136]], height: 2.2, wall: "#ece3cc", roof: "#5a4a40", trim: "#ffffff", flat: true },   // the front porch roof
-    { kind: "house", poly: [[920, 135], [1010, 135], [1010, 205], [1005, 205], [1005, 250], [940, 250], [940, 205], [920, 205]], height: 5.4, wall: "#ece3cc", roof: "#54433a", trim: "#ffffff",
+    { kind: "porch", poly: [[922, 100], [1008, 100], [1008, 136], [922, 136]], height: 2.6, wall: "#ece3cc", roof: "#5b463b", trim: "#ffffff" },   // the front porch roof
+    { kind: "house", poly: [[920, 135], [1010, 135], [1010, 205], [1005, 205], [1005, 250], [940, 250], [940, 205], [920, 205]], height: 5.4, wall: "#ece3cc", roof: "#5b463b", trim: "#ffffff",
       wings: [[[940, 205], [1005, 205], [1005, 250], [940, 250]], [[920, 135], [1010, 135], [1010, 205], [920, 205]]],
-      frontGable: [[948, 135], [984, 135], [966, 170]] },
+      frontGable: [[948, 135], [984, 135], [966, 170]], chimney: [931, 174] },
     { kind: "deck", poly: [[945, 250], [1030, 250], [1030, 305], [945, 305]], height: 0.6, wall: "#b89a72", roof: "#cdb48e", flat: true },
     // the red barn at the back (grey metal roof), with its dark lean-to, and the little shed set at an angle
-    { kind: "barn", poly: [[1045, 752], [1167, 734], [1177, 837], [1060, 847]], height: 6, wall: "#b3302a", roof: "#a5aaaf", trim: "#ffffff" },
+    { kind: "barn", poly: [[1045, 752], [1167, 734], [1177, 837], [1060, 847]], height: 7, wall: "#b3302a", roof: "#a5aaaf", trim: "#ffffff" },
     { kind: "other", poly: [[1084, 839], [1120, 836], [1122, 860], [1086, 862]], height: 2.7, wall: "#b3302a", roof: "#6d7075", trim: "#ffffff", flat: true },
     { kind: "shed", poly: centredRect(1203, 706, 22, 30, 65), height: 2.2, wall: "#c9b9a0", roof: "#8c8f93", trim: "#ffffff" },
   ],
@@ -173,7 +174,7 @@ export function toMetres(m: LawnMap): LawnMap {
     unit: 1, origin: [0, 0], size: [m.size[0] * k, m.size[1] * k], lawn: m.lawn.map(L), driveway: m.driveway.map(L),
     pads: m.pads.map(p => ({ ...p, poly: L(p.poly) })),
     lanes: m.lanes.map(l => ({ ...l, pts: L(l.pts), width: l.width * k })), roads: m.roads.map(l => ({ ...l, pts: L(l.pts), width: l.width * k })),
-    buildings: m.buildings.map(b => ({ ...b, poly: L(b.poly), wings: b.wings?.map(L), frontGable: b.frontGable && L(b.frontGable) })),
+    buildings: m.buildings.map(b => ({ ...b, poly: L(b.poly), wings: b.wings?.map(L), frontGable: b.frontGable && L(b.frontGable), chimney: b.chimney && P(b.chimney) })),
     trees: m.trees.map(t => ({ ...t, ...pt(t.x, t.y), r: t.r * k })),
     beds: m.beds.map(b => ({ ...b, poly: L(b.poly) })), fences: m.fences.map(L),
     props: m.props.map(p => ({ ...p, ...pt(p.x, p.y), r: p.r !== undefined ? p.r * k : undefined, w: p.w !== undefined ? p.w * k : undefined, h: p.h !== undefined ? p.h * k : undefined })),

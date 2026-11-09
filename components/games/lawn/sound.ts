@@ -1,6 +1,7 @@
 // Little sounds for Pat's Lawnmower, made with the Web Audio API (no audio files). Off until the player turns them on.
 
 type Ctx = AudioContext;
+const VOL = 0.6;   // the overall level: gentle
 
 export class Sound {
   private ctx: Ctx | null = null;
@@ -16,12 +17,12 @@ export class Sound {
       const AC = window.AudioContext || (window as unknown as { webkitAudioContext: typeof AudioContext }).webkitAudioContext;
       if (!AC) return;
       this.ctx = new AC();
-      this.master = this.ctx.createGain(); this.master.gain.value = this.muted ? 0 : 0.8; this.master.connect(this.ctx.destination);
+      this.master = this.ctx.createGain(); this.master.gain.value = this.muted ? 0 : VOL; this.master.connect(this.ctx.destination);
     } catch { this.ctx = null; }
   }
   setMuted(m: boolean) {
     this.muted = m;
-    if (this.ctx && this.master) this.master.gain.setTargetAtTime(m ? 0 : 0.8, this.ctx.currentTime, 0.05);
+    if (this.ctx && this.master) this.master.gain.setTargetAtTime(m ? 0 : VOL, this.ctx.currentTime, 0.05);
   }
   private now() { return this.ctx ? this.ctx.currentTime : 0; }
   private tone(freq: number, dur: number, type: OscillatorType, vol: number, at = 0, slideTo?: number) {
@@ -51,7 +52,7 @@ export class Sound {
     const t = c.currentTime, s = Math.max(0, Math.min(1, speed));
     this.eng.a.frequency.setTargetAtTime(46 + 34 * s, t, 0.08); this.eng.b.frequency.setTargetAtTime(92 + 60 * s, t, 0.08);
     this.eng.f.frequency.setTargetAtTime(380 + 500 * s, t, 0.1);
-    this.eng.g.gain.setTargetAtTime(on && !this.muted ? 0.035 + 0.03 * s : 0, t, 0.12);
+    this.eng.g.gain.setTargetAtTime(on && !this.muted ? 0.028 + 0.024 * s : 0, t, 0.12);
   }
   /** Steady rain, louder with `amount` (0..1). */
   rainLevel(amount: number) {
@@ -64,11 +65,11 @@ export class Sound {
       src.connect(f); f.connect(g); g.connect(m); src.start();
       this.rain = { src, g };
     }
-    if (this.rain) this.rain.g.gain.setTargetAtTime(this.muted ? 0 : amount * 0.12, c.currentTime, 0.3);
+    if (this.rain) this.rain.g.gain.setTargetAtTime(this.muted ? 0 : amount * 0.09, c.currentTime, 0.3);
   }
   meow() { this.tone(620, 0.18, "triangle", 0.18, 0, 900); this.tone(900, 0.32, "triangle", 0.16, 0.16, 520); this.tone(1240, 0.3, "sine", 0.05, 0.16, 700); }
-  bump() { this.noise(0.16, 0.5, "lowpass", 260); this.tone(110, 0.18, "sine", 0.35, 0, 50); }
-  squish() { this.noise(0.12, 0.4, "bandpass", 900); this.tone(300, 0.1, "square", 0.08, 0, 120); }
+  bump() { this.noise(0.16, 0.3, "lowpass", 260); this.tone(110, 0.18, "sine", 0.22, 0, 50); }
+  squish() { this.noise(0.12, 0.25, "bandpass", 900); this.tone(300, 0.1, "square", 0.08, 0, 120); }
   pop() { this.tone(660, 0.09, "sine", 0.2, 0, 990); this.tone(990, 0.1, "sine", 0.12, 0.06, 1320); }
   coin() { this.tone(1320, 0.08, "square", 0.06); this.tone(1760, 0.14, "square", 0.06, 0.07); }
   star(i: number) { this.tone(660 * Math.pow(1.26, i), 0.22, "triangle", 0.18); this.tone(1320 * Math.pow(1.26, i), 0.18, "sine", 0.06, 0.03); }
@@ -76,6 +77,6 @@ export class Sound {
   fail() { this.tone(392, 0.25, "triangle", 0.15); this.tone(311, 0.4, "triangle", 0.15, 0.2); }
   click() { this.tone(880, 0.05, "sine", 0.08); }
   clank() { this.tone(1800, 0.25, "square", 0.04); this.tone(2400, 0.2, "sine", 0.05, 0.01); this.noise(0.05, 0.2, "highpass", 3000); }
-  thunder() { this.noise(1.6, 0.6, "lowpass", 140); this.noise(0.9, 0.3, "lowpass", 300, 0.15); }
+  thunder() { this.noise(1.6, 0.36, "lowpass", 140); this.noise(0.9, 0.18, "lowpass", 300, 0.15); }
   stop() { if (this.eng) this.eng.g.gain.setTargetAtTime(0, this.now(), 0.05); this.rainLevel(0); }
 }
