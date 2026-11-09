@@ -17,7 +17,6 @@ export default function sitemap(): MetadataRoute.Sitemap {
     { url: `${BASE}/games/berry-dash`, changeFrequency: "weekly", priority: 0.7 },
     { url: `${BASE}/games/food-fling`, changeFrequency: "weekly", priority: 0.7 },
     { url: `${BASE}/games/food-fight`, changeFrequency: "weekly", priority: 0.7 },
-    { url: `${BASE}/games/sugar-showdown`, changeFrequency: "weekly", priority: 0.7 },
     { url: `${BASE}/games/fridge-raid`, changeFrequency: "weekly", priority: 0.7 },
     { url: `${BASE}/games/pea-tanks`, changeFrequency: "weekly", priority: 0.7 },
     { url: `${BASE}/games/kitchen-golf`, changeFrequency: "weekly", priority: 0.7 },

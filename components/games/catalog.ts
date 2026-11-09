@@ -48,13 +48,6 @@ export const GAMES: Game[] = [
     multiplayer: true,
   },
   {
-    slug: "sugar-showdown",
-    name: "Sugar Showdown",
-    tagline: "Two foods, one question: which has more sugar? Ten quick rounds. Play solo or race a friend.",
-    daily: true,
-    multiplayer: true,
-  },
-  {
     slug: "fridge-raid",
     name: "Fridge Raid",
     tagline: "Hide five snacks in your fridge, then hunt for theirs. Take on the computer or a friend.",

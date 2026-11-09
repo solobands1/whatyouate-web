@@ -2,6 +2,7 @@
   "rewrites": [{ "source": "/c/:code", "destination": "/c" }],
   "redirects": [
     { "source": "/games/melon-bowling", "destination": "/games", "permanent": true },
-    { "source": "/games/food-rally", "destination": "/games", "permanent": true }
+    { "source": "/games/food-rally", "destination": "/games", "permanent": true },
+    { "source": "/games/sugar-showdown", "destination": "/games", "permanent": true }
   ]
 }
