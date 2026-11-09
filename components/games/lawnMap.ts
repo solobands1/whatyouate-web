@@ -4,9 +4,8 @@
 // traced in the pixels of the summer satellite screenshot (1282 x 958, about 0.108 m per pixel), so one unit is one
 // pixel of that image. The yard runs a little past the image (the road above the house, the south fence below it), so
 // the map covers x 0..1300 and y -130..1180: `origin` is the top-left corner of the map and `size` its width and height.
-// `unit` is metres per unit. At true scale (0.108) the lawn is about 12,000 square metres, far too long to mow in a
-// game, so `unit` is set lower (the whole yard shrinks around the mower, keeping its proportions) and the mower is
-// drawn about 1.4 times life size; together a full mow takes about 3 to 4 minutes. Raise `unit` for a bigger yard.
+// `unit` is metres per unit. True scale is about 0.108; `unit` is a little lower (0.075) so the whole property mows in
+// a few minutes with the tractor at life size and a wide wing deck. Lower it for a quicker mow, raise it for more room.
 //
 // Shapes (all in units):
 //   lawn       polygons that need mowing (several allowed). Anything inside them that is also a building, bed, tree trunk,
@@ -32,6 +31,7 @@
 //   noGo       polygons the mower can't enter, drawn by kind: a tilled field, a pond, woods (a dense tree row), a road.
 //   door       a point just outside the house door: where the cat comes out and goes back in.
 //   start      where the mower starts, heading in degrees (0 = up/north, 90 = right/east, 180 = down/south).
+//   zones      named areas the story jobs use (which part of the yard a job mows, highlighted priority spots).
 // Anything not covered by a shape is rough grass: drivable, nothing to mow. The map's outer rectangle is a wall.
 
 export type Pt = [number, number];
@@ -61,6 +61,7 @@ export type LawnMap = {
   noGo: NoGo[];
   door: { x: number; y: number };
   start: { x: number; y: number; heading: number };
+  zones: Record<string, Pt[]>;
 };
 
 /** A rectangle as a polygon, optionally turned `deg` degrees clockwise about its centre. */
@@ -73,7 +74,7 @@ export function centredRect(x: number, y: number, w: number, h: number, deg = 0)
 
 // The family yard, traced from the summer satellite screenshot (with the spring imagery for the fence lines).
 export const LAWN_MAP: LawnMap = {
-  unit: 0.05,
+  unit: 0.075,
   origin: [0, -130],
   size: [1300, 1310],
   lawn: [
@@ -87,25 +88,25 @@ export const LAWN_MAP: LawnMap = {
   driveway: [[[1015, 90], [1136, 86], [1140, 154], [1015, 158]]],   // the gravel turnaround beside the house
   pads: [
     { kind: "dirt", poly: [[980, 415], [1036, 418], [1035, 495], [982, 493]] },        // bare ground round the fire pit
-    { kind: "concrete", poly: [[1118, 728], [1152, 726], [1154, 756], [1120, 758]] },  // in front of the barn doors
+    { kind: "concrete", poly: [[1118, 706], [1152, 704], [1154, 734], [1120, 736]] },  // in front of the barn doors
   ],
   lanes: [
     { kind: "gravel", pts: [[1105, -95], [1108, 20], [1104, 96]], width: 46 },   // the driveway in from the road
     { kind: "gravel", pts: [[1100, 140], [1160, 190], [1222, 250], [1250, 330], [1252, 500], [1252, 700], [1247, 902]], width: 38 },   // the lane down the east side
-    { kind: "gravel", pts: [[1250, 745], [1190, 746], [1150, 744]], width: 28 },  // the spur to the barn
+    { kind: "gravel", pts: [[1250, 722], [1190, 723], [1150, 721]], width: 28 },  // the spur to the barn
   ],
   roads: [{ pts: [[-20, 154], [1320, -162]], width: 100 }],
   buildings: [
     // the farmhouse: two storeys, dark brown roof with the steep front gable, a porch along the front, a rear ell and the deck
-    { kind: "other", poly: [[922, 117], [1008, 117], [1008, 136], [922, 136]], height: 1.5, wall: "#ece3cc", roof: "#5a4a40", trim: "#ffffff", flat: true },   // the front porch roof
-    { kind: "house", poly: [[920, 135], [1010, 135], [1010, 205], [1005, 205], [1005, 250], [940, 250], [940, 205], [920, 205]], height: 3.6, wall: "#ece3cc", roof: "#54433a", trim: "#ffffff",
+    { kind: "other", poly: [[922, 117], [1008, 117], [1008, 136], [922, 136]], height: 2.2, wall: "#ece3cc", roof: "#5a4a40", trim: "#ffffff", flat: true },   // the front porch roof
+    { kind: "house", poly: [[920, 135], [1010, 135], [1010, 205], [1005, 205], [1005, 250], [940, 250], [940, 205], [920, 205]], height: 5.4, wall: "#ece3cc", roof: "#54433a", trim: "#ffffff",
       wings: [[[940, 205], [1005, 205], [1005, 250], [940, 250]], [[920, 135], [1010, 135], [1010, 205], [920, 205]]],
       frontGable: [[948, 135], [984, 135], [966, 170]] },
-    { kind: "deck", poly: [[945, 250], [1030, 250], [1030, 305], [945, 305]], height: 0.4, wall: "#b89a72", roof: "#cdb48e", flat: true },
+    { kind: "deck", poly: [[945, 250], [1030, 250], [1030, 305], [945, 305]], height: 0.6, wall: "#b89a72", roof: "#cdb48e", flat: true },
     // the red barn at the back (grey metal roof), with its dark lean-to, and the little shed set at an angle
-    { kind: "barn", poly: [[1045, 775], [1167, 757], [1177, 860], [1060, 870]], height: 4, wall: "#b3302a", roof: "#a5aaaf", trim: "#ffffff" },
-    { kind: "other", poly: [[1082, 862], [1122, 858], [1124, 888], [1084, 891]], height: 1.8, wall: "#b3302a", roof: "#6d7075", trim: "#ffffff", flat: true },
-    { kind: "shed", poly: centredRect(1203, 706, 22, 30, 65), height: 1.5, wall: "#c9b9a0", roof: "#8c8f93", trim: "#ffffff" },
+    { kind: "barn", poly: [[1045, 752], [1167, 734], [1177, 837], [1060, 847]], height: 6, wall: "#b3302a", roof: "#a5aaaf", trim: "#ffffff" },
+    { kind: "other", poly: [[1084, 839], [1120, 836], [1122, 860], [1086, 862]], height: 2.7, wall: "#b3302a", roof: "#6d7075", trim: "#ffffff", flat: true },
+    { kind: "shed", poly: centredRect(1203, 706, 22, 30, 65), height: 2.2, wall: "#c9b9a0", roof: "#8c8f93", trim: "#ffffff" },
   ],
   trees: [
     // west of the house
@@ -119,7 +120,7 @@ export const LAWN_MAP: LawnMap = {
     { x: 950, y: 565, r: 46 }, { x: 994, y: 612, r: 44 }, { x: 944, y: 632, r: 34 }, { x: 1010, y: 548, r: 28 },
     { x: 1108, y: 408, r: 14, kind: "spruce" }, { x: 1095, y: 490, r: 32 }, { x: 1086, y: 620, r: 18, kind: "spruce" },
     // the two apple trees in front of the barn
-    { x: 1013, y: 718, r: 26, kind: "fruit" }, { x: 1083, y: 708, r: 27, kind: "fruit" },
+    { x: 1006, y: 672, r: 26, kind: "fruit" }, { x: 1078, y: 660, r: 27, kind: "fruit" },
     // small trees along the inner fence
     { x: 682, y: 366, r: 15 }, { x: 760, y: 355, r: 14 }, { x: 850, y: 340, r: 16 }, { x: 905, y: 360, r: 34 },
   ],
@@ -137,7 +138,7 @@ export const LAWN_MAP: LawnMap = {
   props: [
     { kind: "firepit", x: 1008, y: 456, r: 14 },
     { kind: "chair", x: 990, y: 430, w: 13, h: 15, heading: 140 }, { kind: "chair", x: 1028, y: 435, w: 13, h: 15, heading: 220 },
-    { kind: "horseshoe", x: 1180, y: 476, w: 14, h: 20, heading: 0 }, { kind: "horseshoe", x: 1180, y: 524, w: 14, h: 20, heading: 0 },
+    { kind: "horseshoe", x: 1176, y: 470, w: 13, h: 20, heading: 0 }, { kind: "horseshoe", x: 1176, y: 531, w: 13, h: 20, heading: 0 },
     { kind: "box", x: 788, y: 198, w: 26, h: 20, heading: 30 },
   ],
   vehicles: [],
@@ -151,6 +152,17 @@ export const LAWN_MAP: LawnMap = {
   ],
   door: { x: 990, y: 313 },   // the steps off the back deck
   start: { x: 1080, y: 122, heading: 225 },
+  zones: {
+    // the job areas follow the fences, so each job is one open piece of lawn
+    frontHouse: [[870, -95], [1240, -95], [1240, 520], [902, 520], [855, 334], [880, 300], [880, 120]],                  // the front yard, round the house and the fire pit
+    northField: [[13, 318], [445, 237], [480, 435], [765, 359], [855, 334], [892, 470], [600, 560], [0, 650]],            // the top of the big field
+    barnSide: [[886, 400], [1240, 400], [1240, 960], [1003, 960], [967, 760], [905, 525], [887, 455]],                   // from the horseshoe pits down to the barn
+    orchard: [[925, 590], [1240, 590], [1240, 960], [1003, 960], [967, 760], [933, 620]],                                // the apple trees and round the barn
+    stripes: [[300, 660], [840, 560], [895, 780], [350, 900]],                                                           // a big open piece of the field for neat stripes
+    eastLawn: [[870, -95], [1240, -95], [1240, 960], [1003, 960], [967, 760], [905, 525], [887, 455], [855, 334], [880, 300], [880, 120]],   // everything east of the big field
+    priorityPits: [[1265, 500], [1240, 440], [1180, 415], [1120, 440], [1095, 500], [1120, 560], [1180, 585], [1240, 560]],   // round the horseshoe pits
+    priorityPath: [[1000, 470], [1060, 450], [1160, 700], [1100, 720]],                                                  // the walk from the fire pit to the barn
+  },
 };
 
 /** The map in metres with its origin at (0, 0) (unit becomes 1). */
@@ -168,6 +180,7 @@ export function toMetres(m: LawnMap): LawnMap {
     vehicles: m.vehicles.map(v => ({ ...v, ...pt(v.x, v.y), len: v.len * k, wid: v.wid * k })),
     noGo: m.noGo.map(n => ({ ...n, poly: L(n.poly) })),
     door: pt(m.door.x, m.door.y), start: { ...m.start, ...pt(m.start.x, m.start.y) },
+    zones: Object.fromEntries(Object.entries(m.zones).map(([k, z]) => [k, L(z)])),
   };
 }
 
