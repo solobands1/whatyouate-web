@@ -396,12 +396,16 @@ export function ShellPopups({ shell, game, todayNote }: { shell: Shell; game: st
 // code for 30 days of Pro. The server (supabase/games_prize.sql) holds the switch, the daily cap (3) and the
 // one-prize-per-person rule; the logo only shows while it's on and prizes are left today.
 const PRIZE_DAY_KEY = "wya-prize-chance", PRIZE_WON_KEY = "wya-prize-won";
+// The prize isn't installed yet (supabase/games_prize.sql). Until it is, game pages don't ask the database about it at
+// all; flip this to true at launch (after the SQL is run and codes are loaded).
+const PRIZE_LIVE = false;
 type PrizeStep = "caught" | "claiming" | "won" | "gone" | "tried" | "error";
 function usePrize() {
   const [armed, setArmed] = useState(false);          // the logo may show this session
   const [step, setStep] = useState<PrizeStep | null>(null);
   const [code, setCode] = useState<string | null>(null);
   useEffect(() => {
+    if (!PRIZE_LIVE) return;
     try { if (localStorage.getItem(PRIZE_WON_KEY) || localStorage.getItem(PRIZE_DAY_KEY) === torontoDate()) return; } catch { return; }
     sb().rpc("game_prize_status").then(({ data }) => { if (data?.on && data.left > 0) setArmed(true); });
   }, []);
