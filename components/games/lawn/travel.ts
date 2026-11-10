@@ -220,7 +220,7 @@ export function startTravel(canvas: HTMLCanvasElement, wrap: HTMLElement, o: { d
   let W = 300, H = 600, dpr = 1, raf = 0, t0 = 0, last = 0, done = false, sNow = 0, stayT = 0;
   const resize = () => { W = wrap.clientWidth; H = wrap.clientHeight; dpr = window.devicePixelRatio || 1; canvas.style.width = `${W}px`; canvas.style.height = `${H}px`; canvas.width = Math.round(W * dpr); canvas.height = Math.round(H * dpr); };
   resize(); const ro = new ResizeObserver(resize); ro.observe(wrap);
-  let camX = 0, camY = 0, camInit = false;
+  let camX = 0, camY = 0, camInit = false, axle: Pt | null = null;   // (axle: the trailer's wheels, towed behind the hitch)
   const smooth = (q: number) => { const k = Math.max(0, Math.min(1, q)); return k * k * (3 - 2 * k); };
 
   function frame(now: number) {
@@ -229,9 +229,15 @@ export function startTravel(canvas: HTMLCanvasElement, wrap: HTMLElement, o: { d
     const t = (now - t0) / 1000, dt = Math.min(0.05, (now - last) / 1000); last = now;
     if (t > WAIT && sNow < L) sNow = Math.min(L, sNow + vmax * shape(sNow) * dt);
     const s = out ? sNow : L - sNow;
-    // the truck's front, its heading, the hitch, the trailer's heading (the trailer follows the road round corners)
+    // the truck's front and heading; the hitch on its back bumper. The trailer is towed like a real one: its tongue is
+    // pinned to the hitch and its wheels follow on behind at the tongue's length, so it swings wide of nothing and can
+    // never come loose on a corner
     const tl = RIG.truckLen, front = laneAt(s, dirSign), back = laneAt(s - dirSign * tl, dirSign), a1 = Math.atan2(front[1] - back[1], front[0] - back[0]);
-    const tail = laneAt(s - dirSign * RIG.bedEnd, dirSign), a2 = Math.atan2(back[1] - tail[1], back[0] - tail[0]);
+    const tip = tl - 0.2, tow = 8.9 - tip, hitch: Pt = [front[0] - Math.cos(a1) * tip, front[1] - Math.sin(a1) * tip];
+    if (!axle) axle = [hitch[0] - Math.cos(a1) * tow, hitch[1] - Math.sin(a1) * tow];
+    else { const dx = hitch[0] - axle[0], dy = hitch[1] - axle[1], d = Math.hypot(dx, dy) || 1; axle = [hitch[0] - (dx / d) * tow, hitch[1] - (dy / d) * tow]; }
+    const a2 = Math.atan2(hitch[1] - axle[1], hitch[0] - axle[0]);
+    const r2: Rig = { x: hitch[0] + Math.cos(a2) * tip, y: hitch[1] + Math.sin(a2) * tip, a: a2 };
     // the camera: up close (about 24 m across, like the first drive), just ahead of the truck, gliding; it leans
     // toward the farm and the hall when the truck is near them
     const S = Math.min(W / 24, H / 30), lead = 3.5;
@@ -239,7 +245,7 @@ export function startTravel(canvas: HTMLCanvasElement, wrap: HTMLElement, o: { d
     { const wE = smooth(1 - Math.hypot(front[0] - E[0], front[1] - E[1]) / 26) * 0.5; tx += (E[0] - 1 - tx) * wE; ty += (E[1] + 14 - ty) * wE; }
     { const wF = smooth(1 - Math.hypot(front[0] - V[0][0], front[1] - V[0][1]) / 22) * 0.35; tx += (V[0][0] - 7 - tx) * wF; ty += (V[1][1] + 10 - ty) * wF; }
     { // never lose any of the rig off the screen or under the captions at the top
-      const ends = [front, laneAt(s - dirSign * RIG.rampEnd, dirSign)], xs = ends.map(p => p[0]), ys = ends.map(p => p[1]);
+      const ends = [front, rigPt(r2, RIG.rampEnd, 0)], xs = ends.map(p => p[0]), ys = ends.map(p => p[1]);
       tx = Math.min(Math.max(tx, Math.max(...xs) - W / S / 2 + 1.5), Math.min(...xs) + W / S / 2 - 1.5);
       ty = Math.min(Math.max(ty, Math.max(...ys) - (H * 0.45 - 30) / S), Math.min(...ys) + (H * 0.55 - 100) / S);
     }
@@ -343,7 +349,7 @@ export function startTravel(canvas: HTMLCanvasElement, wrap: HTMLElement, o: { d
     // ── the truck and trailer, the tractor strapped on, the turn signal blinking before each turn ──
     const next = evs.map(e => ({ s: out ? e.at : L - e.at, turn: out ? e.turn : -e.turn })).filter(e => e.turn && e.s > sNow - 6 && e.s - sNow < 34)[0];
     const blink = next && Math.floor(t * 2.6) % 2 === 0 ? next.turn : 0;
-    const r1: Rig = { x: front[0], y: front[1], a: a1 }, r2: Rig = { x: back[0] + Math.cos(a2) * tl, y: back[1] + Math.sin(a2) * tl, a: a2 };
+    const r1: Rig = { x: front[0], y: front[1], a: a1 };
     drawRig(c, r1, { ramps: false, only: "truck", signal: blink });
     drawRig(c, r2, { ramps: false, only: "trailer" }); const [px2, py2] = rigPt(r2, RIG.park, 0); drawMower(c, px2, py2, a2, 0, 0, t, false, 0.62, o.paint, false, false); drawStraps(c, r2, 1);
     c.restore();
