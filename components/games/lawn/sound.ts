@@ -181,7 +181,25 @@ export class Sound {
     }
     if (this.rain) this.rain.g.gain.setTargetAtTime(this.muted ? 0 : amount * 0.09, c.currentTime, 0.3);
   }
-  meow() { this.tone(620, 0.18, "triangle", 0.18, 0, 900); this.tone(900, 0.32, "triangle", 0.16, 0.16, 520); this.tone(1240, 0.3, "sine", 0.05, 0.16, 700); }
+  /** A small cat meow: a buzzy voice through two moving vowel filters ("m-ee-ow"), pitch up then down, a bit different each time. */
+  meow() {
+    const c = this.ctx, m = this.master; if (!c || !m || this.muted) return;
+    const t = this.now(), k = 0.9 + Math.random() * 0.25, dur = 0.42 + Math.random() * 0.1;
+    const o = c.createOscillator(), vib = c.createOscillator(), vibG = c.createGain(), g = c.createGain(), out = c.createGain();
+    o.type = "sawtooth";
+    o.frequency.setValueAtTime(520 * k, t); o.frequency.linearRampToValueAtTime(760 * k, t + dur * 0.3); o.frequency.exponentialRampToValueAtTime(430 * k, t + dur);
+    vib.frequency.value = 7; vibG.gain.value = 9; vib.connect(vibG); vibG.connect(o.frequency);
+    const formant = (f0: number, f1: number, f2: number, q: number, vol: number) => {
+      const f = c.createBiquadFilter(), fg = c.createGain(); f.type = "bandpass"; f.Q.value = q; fg.gain.value = vol;
+      f.frequency.setValueAtTime(f0, t); f.frequency.linearRampToValueAtTime(f1, t + dur * 0.35); f.frequency.linearRampToValueAtTime(f2, t + dur);
+      o.connect(f); f.connect(fg); fg.connect(g);
+    };
+    formant(380 * k, 450 * k, 780 * k, 6, 1);        // first vowel band: closed "m", then opening to "ow"
+    formant(1300 * k, 2500 * k, 1150 * k, 9, 0.7);   // second: up for "ee", down for "ow"
+    g.gain.setValueAtTime(0.0001, t); g.gain.exponentialRampToValueAtTime(1, t + 0.05); g.gain.setValueAtTime(1, t + dur * 0.6); g.gain.exponentialRampToValueAtTime(0.0001, t + dur);
+    out.gain.value = 0.55; g.connect(out); out.connect(m);
+    o.start(t); vib.start(t); o.stop(t + dur + 0.05); vib.stop(t + dur + 0.05);
+  }
   bump() { this.noise(0.16, 0.3, "lowpass", 260); this.tone(110, 0.18, "sine", 0.22, 0, 50); }
   squish() { this.noise(0.12, 0.25, "bandpass", 900); this.tone(300, 0.1, "square", 0.08, 0, 120); }
   pop() { this.tone(660, 0.09, "sine", 0.2, 0, 990); this.tone(990, 0.1, "sine", 0.12, 0.06, 1320); }
