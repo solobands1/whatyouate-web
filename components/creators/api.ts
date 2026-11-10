@@ -341,3 +341,78 @@ export const outreachDecideBlock = (block: number, decision: "approve" | "skip")
 export const outreachUpdateHook = (id: string, hook: string) => rpc("owner_outreach_update_hook", { p_id: id, p_hook: hook });
 export const outreachSettings = (live: boolean | null, paused: boolean | null) => rpc("owner_outreach_settings", { p_live: live, p_paused: paused });
 export const outreachCommented = (id: string, done: boolean) => rpc("owner_outreach_commented", { p_id: id, p_done: done });
+
+// ---- App usage (owner only; see owner_usage.sql in the app repo) --------------------------------
+export type UsageStatus = "not_started" | "free_window" | "free_ended" | "trial" | "subscribed" | "cancelled_active" | "expired" | "billing_issue";
+export type UsageFlag = "never_onboarded" | "no_meal_day3" | "still_logging_day7" | "trial_ending" | "paying_quiet" | "paywall_no_trial";
+export type UsageSummary = {
+  generatedAt: string;
+  totalUsers: number;
+  signupsToday: number;
+  signups7d: number;
+  signups30d: number;
+  activeToday: number;
+  active7d: number;
+  active30d: number;
+  mealsToday: number;
+  meals7d: number;
+  byStatus: Partial<Record<UsageStatus, number>>;
+  /** Staff and test accounts, left out of every number. */
+  internal: number;
+  /** Accounts made on the creator website that never opened the app. */
+  siteOnly: number;
+};
+export type UsageStage = {
+  n: number;
+  key: string;
+  label: string;
+  /** People at this step or further. */
+  reached: number;
+  /** People who actually did this step, in any order. */
+  didIt: number;
+  lost: number;
+  keptPct: number | null;
+  ofStartPct: number | null;
+};
+export type UsageFunnel = { days: number | null; cohort: number; recent: number; stages: UsageStage[]; biggestDrop: number | null };
+export type UsageDay = { day: string; signups: number; active: number; meals: number; reflections: number };
+export type UsageUser = {
+  id: string;
+  name: string;
+  email: string;
+  signedUpAt: string;
+  daysSinceSignup: number;
+  stage: number;
+  status: UsageStatus;
+  productId: string | null;
+  periodType: string | null;
+  expiresAt: string | null;
+  willRenew: boolean | null;
+  onboarded: boolean;
+  walkthroughDone: boolean;
+  logsToday: number;
+  logs7d: number;
+  mealsToday: number;
+  totalMeals: number;
+  firstMealAt: string | null;
+  lastMealAt: string | null;
+  lastActivityAt: string | null;
+  reflections: number;
+  reflectedToday: boolean;
+  activeDays: number;
+  coreAt: string | null;
+  freeEndsAt: string | null;
+  pushEnabled: boolean;
+  platform: string | null;
+  /** The creator code they signed up with, if any. */
+  code: string | null;
+  internal: boolean;
+  flags: UsageFlag[];
+};
+export type OwnerUsage = {
+  summary: UsageSummary;
+  funnels: Record<"7" | "30" | "90" | "all", UsageFunnel>;
+  daily: UsageDay[];
+  users: UsageUser[];
+};
+export const ownerUsage = (days = 30) => rpc<OwnerUsage>("owner_usage", { p_days: days });

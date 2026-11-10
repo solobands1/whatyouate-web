@@ -224,6 +224,9 @@ export default function Owner() {
           >
             {exporting ? "Preparing…" : "Download Excel"}
           </button>
+          <a href="/creators/owner/usage" className="text-[14px] font-semibold" style={{ color: "#2F6FC4" }}>
+            Users
+          </a>
           <a href="/creators/owner/outreach" className="text-[14px] font-semibold" style={{ color: "#2F6FC4" }}>
             Outreach
           </a>
