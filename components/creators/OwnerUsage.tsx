@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { Card } from "./Shell";
-import { ownerUsage, sb, type OwnerUsage as Usage, type UsageFlag, type UsageFunnel, type UsageStatus, type UsageUser, type UsageDay } from "./api";
+import { ownerUsage, sb, syncSubscriptions, type OwnerUsage as Usage, type UsageFlag, type UsageFunnel, type UsageStatus, type UsageUser, type UsageDay } from "./api";
 import { BODY, INK } from "../site";
 
 // The owner's app usage page (/creators/owner/usage): how many people use the app, how far each one has got, when they
@@ -154,6 +154,7 @@ export default function OwnerUsage() {
           </div>
           <div className="flex items-center gap-4">
             <span className="text-[12.5px]" style={{ color: FAINT }}>Updated {new Date(s.generatedAt).toLocaleTimeString("en-CA", { hour: "numeric", minute: "2-digit" })}</span>
+            <SyncButton onDone={load} />
             <button type="button" onClick={() => load()} className="text-[14px] font-semibold" style={{ color: BLUE }}>Refresh</button>
           </div>
         </div>
@@ -165,6 +166,34 @@ export default function OwnerUsage() {
       </div>
       <UserTable users={data.users} />
     </div>
+  );
+}
+
+// ---- Sync from RevenueCat ----------------------------------------------------------------
+// The RevenueCat webhook saves trials and payments as they happen; this catches up on everyone at once.
+
+function SyncButton({ onDone }: { onDone: () => Promise<void> }) {
+  const [busy, setBusy] = useState(false);
+  const [note, setNote] = useState<string | null>(null);
+  const run = async () => {
+    setBusy(true);
+    setNote(null);
+    const r = await syncSubscriptions();
+    if (r.ok) {
+      const c = r.counts ?? {};
+      const parts = (["subscribed", "trial", "cancelled_active", "billing_issue", "expired"] as const).filter((k) => c[k]).map((k) => `${c[k]} ${STATUS[k].label.toLowerCase()}`);
+      setNote(`Checked ${r.checked ?? 0}${parts.length ? `: ${parts.join(", ")}` : ", no subscriptions yet"}${r.failed ? ` (${r.failed} couldn't be checked)` : ""}`);
+      await onDone();
+    } else setNote(r.error ?? "Sync didn't work. Try again in a moment.");
+    setBusy(false);
+  };
+  return (
+    <span className="flex items-center gap-3">
+      {note && <span className="text-[12.5px]" style={{ color: BODY }}>{note}</span>}
+      <button type="button" onClick={run} disabled={busy} className="text-[14px] font-semibold disabled:opacity-50" style={{ color: BLUE }}>
+        {busy ? "Syncing…" : "Sync From RevenueCat"}
+      </button>
+    </span>
   );
 }
 

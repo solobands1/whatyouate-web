@@ -255,6 +255,17 @@ export async function sendPayoutEmail(payoutId: string) {
   return !!res?.ok;
 }
 
+/** Owner's usage page: asks the app server to check every user against RevenueCat and save who's on a trial or paying. */
+export async function syncSubscriptions(): Promise<{ ok: boolean; checked?: number; counts?: Record<string, number>; failed?: number; error?: string }> {
+  const { data } = await sb().auth.getSession();
+  const res = await fetch("https://whatyouate.vercel.app/api/creators/sync-subscriptions", {
+    method: "POST",
+    headers: { Authorization: `Bearer ${data.session?.access_token ?? ""}`, "Content-Type": "application/json" },
+  }).catch(() => null);
+  if (!res) return { ok: false, error: "Couldn't reach the server." };
+  return res.json().catch(() => ({ ok: false, error: `Server said ${res.status}.` }));
+}
+
 export type ProfileFields = {
   name: string;
   instagram: string;
