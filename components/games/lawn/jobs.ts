@@ -45,7 +45,7 @@ export const JOBS: Job[] = [
   { id: 7, chapter: "Chapter 2: The Away Game", title: "Load The Trailer", intro: ["The community centre needs its ball diamonds mowed before tonight's game.", "Pat's truck and trailer are in the driveway. Drive up the ramps and park in the box."],
     goal: "Park the tractor on the trailer", zones: null, pace: 1, limit: 60, par: 25, light: "morning", twist: "trailer", star3: "No Bumps", cash: 50, tip: "The deck folds up for the trip. Line up straight behind the ramps, creep up and stop inside the yellow box. Touching the ramp sides or the truck costs the star." },
   { id: 8, map: "community", title: "Malahide Community Place", intro: ["The ball game starts this evening, and the ball club has trimmed along the fences.", "Mow both outfields and the grass round the hall and the playground. The dirt, the paths and the parking don't need it."],
-    goal: "Mow the outfields and round the hall", zones: ["outfieldE", "outfieldW", "hallLawn"], pace: 8, limit: 330, par: 260, light: "day", twist: "away", star2: "No Big Bumps", star3: "Outfield Stripes 60%", stripeZones: ["outfieldW", "outfieldE"], stripeGoal: 0.6, trim: 1.3, cash: 130, tip: "Go in through the gates in the fences. Two kids are playing catch: Pat waits if they're close. Long straight runs in the outfields make the best stripes." },
+    goal: "Mow the outfields and round the hall", zones: ["outfieldE", "outfieldW", "hallLawn"], pace: 8, limit: 330, par: 290, light: "day", twist: "away", star2: "No Big Bumps", star3: "Outfield Stripes 60%", stripeZones: ["outfieldW", "outfieldE"], stripeGoal: 0.6, trim: 1.3, cash: 130, tip: "Go in through the gates in the fences. Two kids are playing catch: Pat waits if they're close. Long straight runs in the outfields make the best stripes." },
   { id: 9, title: "Back Home", intro: ["Home again, just as the sun goes down.", "The tractor's off the trailer. Drive it down to the barn and park it inside for the night."],
     goal: "Park the tractor in the barn", zones: null, pace: 1, limit: 75, par: 40, light: "golden", twist: "unload", star3: "No Bumps", cash: 60, tip: "The barn doors face the house, by the little concrete pad. Ease in through the doors and stop inside the yellow box." },
 ];
@@ -54,6 +54,7 @@ export const FREE_JOB: Job = { id: -1, title: "Free Mow", intro: ["The whole law
 export type Upgrades = { deck: number; gear: number; lights: boolean; bagger: boolean; paint: string };
 export const DECKS = [1.7, 2.1, 2.5];        // half the cut width, metres (a 3.4 m wing deck to start)
 export const GEARS = [6.5, 7.4, 8.3];        // top speed, metres a second
+export const DECK_NAMES = ["Standard", "Wide", "Widest"], GEAR_NAMES = ["Standard", "Fast", "Fastest"];
 export const PAINTS: Record<string, { name: string; body: string; hood: string; trim: string; cost: number }> = {
   orange: { name: "Classic Orange", body: "#f26b1d", hood: "#f47c20", trim: "#b04e12", cost: 0 },
   red: { name: "Cherry Red", body: "#d8322a", hood: "#e8443a", trim: "#8e1f19", cost: 40 },
@@ -72,17 +73,22 @@ export function shopItems(s: Save): ShopItem[] {
   return items;
 }
 
-export type Save = { v: 1; cash: number; stars: number[]; best: (number | null)[]; up: Upgrades; paints: string[]; free: { secs: number | null; score: number }; muted: boolean; tutorial: boolean };
+/** What's picked for the next job, from what's owned (`up` is what's owned, plus the paint in use). */
+export type Loadout = { deck: number; gear: number; lights: boolean; bagger: boolean };
+export type Save = { v: 1; cash: number; stars: number[]; best: (number | null)[]; up: Upgrades; sel: Loadout; paints: string[]; free: { secs: number | null; score: number }; muted: boolean; tutorial: boolean; assist: boolean };
 const KEY = "pats-lawnmower-save";
-export const newSave = (): Save => ({ v: 1, cash: 0, stars: JOBS.map(() => 0), best: JOBS.map(() => null), up: { deck: 0, gear: 0, lights: false, bagger: false, paint: "orange" }, paints: ["orange"], free: { secs: null, score: 0 }, muted: true, tutorial: false });
+export const newSave = (): Save => ({ v: 1, cash: 0, stars: JOBS.map(() => 0), best: JOBS.map(() => null), up: { deck: 0, gear: 0, lights: false, bagger: false, paint: "orange" }, sel: { deck: 0, gear: 0, lights: false, bagger: false }, paints: ["orange"], free: { secs: null, score: 0 }, muted: true, tutorial: false, assist: true });
 export function loadSave(): Save {
   try {
     const v = JSON.parse(localStorage.getItem(KEY) || "null");
-    if (v && v.v === 1) { const d = newSave(); return { ...d, ...v, up: { ...d.up, ...v.up }, free: { ...d.free, ...v.free }, stars: JOBS.map((_, i) => v.stars?.[i] ?? 0), best: JOBS.map((_, i) => v.best?.[i] ?? null) }; }
+    if (v && v.v === 1) { const d = newSave(), up = { ...d.up, ...v.up }; return { ...d, ...v, up, sel: { deck: up.deck, gear: up.gear, lights: up.lights, bagger: up.bagger, ...v.sel }, free: { ...d.free, ...v.free }, stars: JOBS.map((_, i) => v.stars?.[i] ?? 0), best: JOBS.map((_, i) => v.best?.[i] ?? null) }; }
   } catch {}
   return newSave();
 }
 export function writeSave(s: Save) { try { localStorage.setItem(KEY, JSON.stringify(s)); } catch {} }
+/** The loadout a job actually uses: what's picked, never more than what's owned. */
+export const loadout = (s: Save): Upgrades => ({ deck: Math.min(s.sel.deck, s.up.deck), gear: Math.min(s.sel.gear, s.up.gear), lights: s.up.lights && s.sel.lights, bagger: s.up.bagger && s.sel.bagger, paint: s.up.paint });
+export const loadoutLabel = (u: Upgrades) => `${(DECKS[u.deck] * 2).toFixed(1)} m Deck · ${GEAR_NAMES[u.gear]} Gear${u.bagger ? " · Bagger" : ""}`;
 /** Jobs unlock in order: the next one opens once the one before has at least one star. */
 export const unlockedUpTo = (s: Save) => { let n = 0; while (n < JOBS.length - 1 && s.stars[n] > 0) n++; return n; };
 
@@ -97,6 +103,6 @@ export function payFor(job: Job, o: Outcome, s: Save) {
   const base = had > 0 ? Math.round(job.cash / 2) : job.cash;
   const starBonus = Math.max(0, got - had) * 15;
   const extra = job.twist === "apples" ? o.apples * 2 : 0;
-  const sub = base + starBonus + extra, bagger = s.up.bagger ? Math.round(sub * 0.25) : 0;
+  const sub = base + starBonus + extra, bagger = loadout(s).bagger ? Math.round(sub * 0.25) : 0;
   return { base, starBonus, extra, bagger, total: sub + bagger };
 }

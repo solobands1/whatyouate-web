@@ -21,6 +21,7 @@ export type Hooks = {
   onStart: () => void;
   onEnd: (o: Outcome) => void;
   finishRef: { current: (() => void) | null };
+  assist?: () => boolean;   // Straight Assist (a setting): hold the stick steady and the heading locks for straight stripes
   zoomRef?: { current: ((dir: number) => void) | null };
 };
 export type Config = { mode: Mode; job: Job; up: Upgrades; sound: Sound; debug: boolean; showStrip: boolean };
@@ -28,8 +29,11 @@ export type Config = { mode: Mode; job: Job; up: Upgrades; sound: Sound; debug: 
 const STEP = 1 / 60;
 const FONT = "system-ui, -apple-system, sans-serif";
 const DECK_LON = 0.9;                 // half the deck's length front to back (grid)
-const ACC = 6, DEC = 10, VREV = 2.2;
-const DEAD = 0.22;                    // joystick dead zone (fraction of its throw)
+const ACC = 6, DEC = 10, DEC_SOFT = 3.5, VREV = 2.2;   // DEC_SOFT: letting go of the stick at speed, the tractor coasts to a stop
+const DEAD = 0.12;                    // joystick dead zone (fraction of its throw)
+const CURVE = 1.5;                    // past the dead zone the push eases in: gentle pushes crawl, a full push is full speed
+const SNAP = (2.5 * Math.PI) / 180;   // within this of the heading asked for, the tractor locks dead straight
+const LOCK_OFF = (10 * Math.PI) / 180; // Straight Assist lets go when the stick moves this far
 const rmin = (v: number) => 0.85 + 0.2 * Math.abs(v);   // tightest turn (radius) at a speed: about 1 m when slow
 const CAT_R = 0.5, MEOW_D = 3.2, STOP_T = 2, PENALTY = 3;
 const STRAIGHT_OM = 0.4;             // turning slower than this (radians a second, smoothed) counts as driving straight
@@ -38,7 +42,7 @@ const DONE_AT = 0.985;                // a job counts as done at 98.5% (the last
 const NEAR_DONE = 0.97;               // from here the last patches pulse, an arrow points to the nearest and Finish Mowing shows
 const VIEW_M = 13;                    // metres across the map's short side (close enough to see Pat and the cat clearly)
 export const STRIP = 124;             // the joystick strip under the map
-const STICK_R = 40;
+const STICK_R = 40, KNOB_R = 21;   // the push range and the knob (the two together just fit the strip's height)
 const SHIRTS = ["#d9534f", "#4e8ad6", "#f0ad4e", "#6aa84f", "#9b6bd6", "#e07b9b", "#3fb3a8"], HAIRS = ["#3b2a20", "#c99a5b", "#1f1a17", "#7a4a2a", "#e3d3a8", "#5b3a29"], SKINS = ["#f1c7a3", "#d9a37c", "#a8714f", "#f5d0b3"];
 
 type Cat = CatPose & { st: "in" | "out" | "home" | "flee"; actT: number; tx: number; ty: number; outT: number; next: number; fleeT: number; cool: number };
@@ -202,7 +206,8 @@ export function startEngine(canvas: HTMLCanvasElement, wrap: HTMLElement, cfg: C
 
   // input
   type Stick = { id: number; bx: number; by: number; kx: number; ky: number };
-  let stick: Stick | null = null;
+  let stick: Stick | null = null, released: { bx: number; by: number; kx: number; ky: number; t: number } | null = null;   // (the knob springs back after a release)
+  let thS = 0, thHeld = false, lock: number | null = null, lockCand = 0, lockT = 0, thAsk: number | null = null;   // the heading asked for, smoothed; Straight Assist's lock
   const keys: Record<string, boolean> = {};
   let testIn: [number, number] | null = null, auto = mode === "attract", speedK = 1;
   // layout
@@ -214,7 +219,7 @@ export function startEngine(canvas: HTMLCanvasElement, wrap: HTMLElement, cfg: C
   };
   resize();
   const ro = new ResizeObserver(resize); ro.observe(wrap); window.addEventListener("resize", resize);
-  const stickRest = () => ({ x: CW / 2, y: MH + 8 + (STRIP - 8) / 2 - 6 });
+  const stickRest = () => ({ x: CW / 2, y: MH + 9 + STICK_R + KNOB_R });
   const local = (e: PointerEvent) => { const r = canvas.getBoundingClientRect(); return { x: e.clientX - r.left, y: e.clientY - r.top }; };
   // zoom: pinch on the map or the +/- buttons; from 0.8x to 1.6x of the normal view, remembered in this browser
   const ZOOM_KEY = "pats-lawnmower-zoom";
@@ -227,7 +232,11 @@ export function startEngine(canvas: HTMLCanvasElement, wrap: HTMLElement, cfg: C
   const onMove = (e: PointerEvent) => {
     if (fingers.has(e.pointerId)) { fingers.set(e.pointerId, local(e)); if (fingers.size === 2 && pinch) setZoom((pinch.z * pinch.d) / fingerGap()); return; }
     if (!stick || stick.id !== e.pointerId) return;
-    const p = local(e), dx = p.x - stick.bx, dy = p.y - stick.by, d = Math.hypot(dx, dy);
+    const p = local(e); let dx = p.x - stick.bx, dy = p.y - stick.by, d = Math.hypot(dx, dy);
+    if (d > STICK_R) {   // dragged past the edge: the base follows the thumb, so the stick never runs out
+      const over = d - STICK_R; stick.bx = clamp(stick.bx + (dx / d) * over, STICK_R, CW - STICK_R); stick.by = clamp(stick.by + (dy / d) * over, Math.min(MH + 9 + STICK_R + KNOB_R, CH - STICK_R - KNOB_R + 1), Math.max(MH + 9 + STICK_R + KNOB_R, CH - STICK_R - KNOB_R + 1));
+      dx = p.x - stick.bx; dy = p.y - stick.by; d = Math.hypot(dx, dy);
+    }
     stick.kx = d > STICK_R ? (dx / d) * STICK_R : dx; stick.ky = d > STICK_R ? (dy / d) * STICK_R : dy;
   };
   const onDown = (e: PointerEvent) => {
@@ -241,10 +250,10 @@ export function startEngine(canvas: HTMLCanvasElement, wrap: HTMLElement, cfg: C
     }
     if (p.y < MH + 4 || stick) return;
     try { canvas.setPointerCapture(e.pointerId); } catch {}
-    stick = { id: e.pointerId, bx: clamp(p.x, STICK_R, CW - STICK_R), by: clamp(p.y, MH + 8 + STICK_R, CH - STICK_R), kx: 0, ky: 0 };
+    stick = { id: e.pointerId, bx: clamp(p.x, STICK_R, CW - STICK_R), by: clamp(p.y, Math.min(MH + 9 + STICK_R + KNOB_R, CH - STICK_R - KNOB_R + 1), Math.max(MH + 9 + STICK_R + KNOB_R, CH - STICK_R - KNOB_R + 1)), kx: 0, ky: 0 };   // right under the thumb, kept inside the strip
     onMove(e); e.preventDefault();
   };
-  const onUp = (e: PointerEvent) => { if (fingers.delete(e.pointerId) && fingers.size < 2) pinch = null; if (stick?.id === e.pointerId) stick = null; };
+  const onUp = (e: PointerEvent) => { if (fingers.delete(e.pointerId) && fingers.size < 2) pinch = null; if (stick?.id === e.pointerId) { released = { bx: stick.bx, by: stick.by, kx: stick.kx, ky: stick.ky, t: performance.now() / 1000 }; stick = null; } };
   const KEYS: Record<string, string> = { KeyW: "u", ArrowUp: "u", KeyS: "d", ArrowDown: "d", KeyA: "l", ArrowLeft: "l", KeyD: "r", ArrowRight: "r" };
   const onKey = (e: KeyboardEvent) => { const k = KEYS[e.code]; if (!k || !cfg.showStrip) return; e.preventDefault(); keys[k] = e.type === "keydown"; };
   canvas.addEventListener("pointerdown", onDown); canvas.addEventListener("pointermove", onMove);
@@ -365,7 +374,7 @@ export function startEngine(canvas: HTMLCanvasElement, wrap: HTMLElement, cfg: C
     // the wanted speed (0..1) becomes a push past the dead zone, like a thumb would
     let want = Math.min(1, m0) * clamp(w.clearance[w.cellOf(x, y)] / 3.0, 0.3, 1);   // easy does it near things (slow enough that a touch isn't a big bump)
     if (apples.some(ap => ap.st === 0 && Math.hypot(ap.x - x, ap.y - y) < deckHalf + 4)) want = Math.min(want, (APPLE_V * 0.8) / vmax);
-    const push = DEAD + 0.02 + (1 - DEAD - 0.02) * want;
+    const push = DEAD + 0.02 + (1 - DEAD - 0.02) * Math.pow(want, 1 / CURVE);
     return [(ax2 / m0) * push, (ay2 / m0) * push];
   }
   /** Aims at a spot; one right beside the tractor is inside its turning circle, so drive on a little first and come round. */
@@ -598,7 +607,7 @@ export function startEngine(canvas: HTMLCanvasElement, wrap: HTMLElement, cfg: C
       if (jobNeed[k] && !cut[k]) { if (side < 0) L++; else Rr++; }
     }
     // never swing into a wall (or a puddle): a side without room for the turn loses
-    const uR = Math.max(rmin(4), deckHalf * 0.92), room = (side: number) => { let worst = 9; for (const a of [0.6, 1.2, 1.8, 2.4]) { const px = x + uR * (Math.sin(a) * c - side * (1 - Math.cos(a)) * s), py = y + uR * (Math.sin(a) * s + side * (1 - Math.cos(a)) * c); const kk = w.cellOf(px, py); worst = Math.min(worst, water[kk] ? 0 : wet[kk] ? BODY_R + 0.05 : w.clearance[kk]); } return worst; };
+    const uR = Math.max(rmin(3), deckHalf * 0.88), room = (side: number) => { let worst = 9; for (const a of [0.6, 1.2, 1.8, 2.4]) { const px = x + uR * (Math.sin(a) * c - side * (1 - Math.cos(a)) * s), py = y + uR * (Math.sin(a) * s + side * (1 - Math.cos(a)) * c); const kk = w.cellOf(px, py); worst = Math.min(worst, water[kk] ? 0 : wet[kk] ? BODY_R + 0.05 : w.clearance[kk]); } return worst; };
     const rl = room(-1), rr2 = room(1);
     if (prefer && (prefer < 0 ? rl : rr2) >= BODY_R + 0.1) return prefer;   // the side the player asked for, if there's room
     if (rl < BODY_R + 0.1 && rr2 >= BODY_R + 0.1) return 1;
@@ -607,6 +616,8 @@ export function startEngine(canvas: HTMLCanvasElement, wrap: HTMLElement, cfg: C
     return Rr >= L ? 1 : -1;   // +1 turns clockwise (to the tractor's right)
   }
 
+  /** A little haptic tick (Android; harmless where phones don't support it). */
+  const buzz = () => { try { if (mode !== "attract" && !auto) navigator.vibrate?.(14); } catch {} };
   /** The tractor as two circles front and back (it has to fit on a trailer), pushed out of walls and the rig. */
   function collidePark(px: number, py: number) {
     let hit = false, nx = 0, ny = 0;
@@ -631,31 +642,42 @@ export function startEngine(canvas: HTMLCanvasElement, wrap: HTMLElement, cfg: C
       revT -= dt; target = -VREV; omT = -revSide * (Math.abs(v) / rmin(v));
       if (revT <= 0) { revSide = 0; }
     } else if (!halt && raw > DEAD) {
-      const mag = (raw - DEAD) / (1 - DEAD), th = Math.atan2(ay, ax), diff = wrapA(th - h);
-      if (!uturn && Math.abs(diff) > 2.25) uturn = uturnSide(Math.abs(Math.abs(diff) - Math.PI) < 0.45 ? 0 : Math.sign(diff));
+      // the heading asked for, smoothed so a wobbly thumb doesn't wobble the tractor; Straight Assist locks it when steady
+      const thRaw = Math.atan2(ay, ax);
+      if (!thHeld) { thS = thRaw; thHeld = true; lockCand = thRaw; lockT = 0; } else thS = wrapA(thS + wrapA(thRaw - thS) * Math.min(1, dt * 7));
+      if (hooks.assist?.() ?? true) {
+        if (lock === null) { if (Math.abs(wrapA(thRaw - lockCand)) < 0.11) { lockT += dt; if (lockT > 0.3) lock = thS; } else { lockCand = thRaw; lockT = 0; } }
+        else if (Math.abs(wrapA(thRaw - lock)) > LOCK_OFF) { lock = null; lockCand = thRaw; lockT = 0; }
+      } else lock = null;
+      const mag = Math.pow((raw - DEAD) / (1 - DEAD), CURVE), th = lock ?? thS, diff = wrapA(th - h);
+      thAsk = th;
+      const diffRaw = wrapA(thRaw - h);   // (a U-turn starts on the raw stick, without waiting for the smoothing)
+      if (!uturn && Math.abs(diffRaw) > 2.25) { uturn = uturnSide(Math.abs(Math.abs(diffRaw) - Math.PI) < 0.45 ? 0 : Math.sign(diffRaw)); thS = thRaw; lock = null; }
       if (uturn && Math.abs(diff) < 0.5) uturn = 0;
       if (uturn) {
         // pointing behind: a tight forward U-turn that comes back alongside the last strip
-        const uR = Math.max(rmin(4), deckHalf * 0.92);
-        target = Math.min(vmax, 4) * Math.max(0.65, mag); omT = uturn * (Math.max(0.5, v) / uR);
+        const uR = Math.max(rmin(v), deckHalf * 0.88);   // as tight as the speed allows, so the new pass lands just inside the last
+        target = Math.min(vmax, 3.6) * Math.max(0.65, mag); omT = uturn * (Math.max(0.5, v) / uR);
       } else {
         target = vmax * mag * Math.max(0.3, Math.pow(Math.cos(Math.min(Math.abs(diff), 1.35)), 1.4));
         omT = clamp(diff * 2.6, -3.2, 3.2);
       }
       // stopped against something with the stick pulled back for a moment: back up a little
       if (v < 0.3 && blockedT > 0.3 && Math.abs(diff) > 2.25) { backHoldT += dt; if (backHoldT > 0.6) { revT = 0.9; revSide = Math.sign(diff) || 1; backHoldT = 0; uturn = 0; } } else backHoldT = 0;
-    } else { uturn = 0; backHoldT = 0; }
+    } else { uturn = 0; backHoldT = 0; thHeld = false; lock = null; thAsk = null; }
     const inPuddle = puddles.some(p => { const dx = x - p.x, dy = y - p.y, c = Math.cos(-p.rot), s = Math.sin(-p.rot), lx = dx * c - dy * s, ly = dx * s + dy * c; return (lx * lx) / (p.rx * p.rx) + (ly * ly) / (p.ry * p.ry) < 1; });
     if (inPuddle && phase === "play") { target = Math.sign(target) * Math.min(Math.abs(target), vmax * 0.42); if (Math.abs(v) > 0.5) { wetT += dt; if (rnd() < 0.5) parts.push({ x: x + (rnd() - 0.5), y: y + (rnd() - 0.5), vx: (rnd() - 0.5) * 3, vy: (rnd() - 0.5) * 3, life: 0.45, c: "rgba(210,230,245,0.9)", s: 0.12 }); } }
     // loading and unloading: creep near the trailer and the barn, and ride up the ramps
     const rl = rig && park ? rigLocal(rig, x, y) : null;
     if ((rl && rl.s > RIG.bedStart - 0.5 && rl.s < RIG.rampEnd + 3.5 && Math.abs(rl.l) < 2.6) || (barnBox && Math.hypot(x - barnBox.x, y - barnBox.y) < 6.5)) target = Math.sign(target) * Math.min(Math.abs(target), 2.2);
     elev = rl && Math.abs(rl.l) < RIG.rampHalf + 0.15 && rl.s > RIG.bedStart && rl.s < RIG.rampEnd ? clamp((RIG.rampEnd - rl.s) / (RIG.rampEnd - RIG.bedEnd), 0, 1) : 0;
-    v += clamp(target - v, -DEC * dt, ACC * dt);
+    const dec = uturn ? 16 : raw > DEAD || halt || Math.abs(v) < 1.5 ? DEC : DEC_SOFT;   // (brake into a U-turn so it stays tight)
+    v += clamp(target - v, -dec * dt, ACC * dt);
     // yaw follows the request smoothly, never tighter than the turning circle allows at this speed (it can't spin on the spot)
     const omMax = Math.abs(v) / rmin(v);
     om += clamp(clamp(omT, -omMax, omMax) - om, -9 * dt, 9 * dt); om = clamp(om, -omMax, omMax);
     h = wrapA(h + om * dt); omS += (Math.abs(om) - omS) * Math.min(1, dt * 5);
+    if (thAsk !== null && !uturn && revT <= 0 && Math.abs(v) > 0.2 && Math.abs(wrapA(thAsk - h)) < SNAP) { h = thAsk; om *= 0.5; }   // close enough: dead straight, for neat stripes
     const steerT = Math.abs(v) > 0.3 ? clamp(Math.atan((1.3 * om) / v), -0.7, 0.7) : (raw > DEAD ? clamp(wrapA(Math.atan2(ay, ax) - h), -0.7, 0.7) : 0);
     steer += (steerT - steer) * Math.min(1, dt * 12);
     const ox = x, oy = y, dirX = Math.cos(h), dirY = Math.sin(h);
@@ -663,10 +685,10 @@ export function startEngine(canvas: HTMLCanvasElement, wrap: HTMLElement, cfg: C
     if (p.hit) {
       const into = -(dirX * p.nx + dirY * p.ny) * v;
       if (park) {   // loading up: any real touch on the trailer, the ramps, the truck or the barn counts
-        if (into > 0.35) { v *= 0.3; if (bumpCool <= 0 && phase === "play") { bumps++; bumpCool = 0.8; shake = 0.15; snd.bump(); floatAt("Bump!", x, y - 1.4, "#ffd2cc"); } }
+        if (into > 0.35) { v *= 0.3; if (bumpCool <= 0 && phase === "play") { buzz(); bumps++; bumpCool = 0.8; shake = 0.15; snd.bump(); floatAt("Bump!", x, y - 1.4, "#ffd2cc"); } }
       } else if (into > 1.4) {
         v *= 0.35;
-        if (bumpCool <= 0) { shake = 0.22; if (phase === "play" && into > 2.5) bumps++; bumpCool = 0.5; snd.bump(); for (let n = 0; n < 7; n++) parts.push({ x: p.x - p.nx * BODY_R, y: p.y - p.ny * BODY_R, vx: (rnd() - 0.5) * 2 + p.nx, vy: (rnd() - 0.5) * 2 + p.ny, life: 0.45, c: "rgba(190,175,150,0.85)", s: 0.14 }); }
+        if (bumpCool <= 0) { buzz(); shake = 0.22; if (phase === "play" && into > 2.5) bumps++; bumpCool = 0.5; snd.bump(); for (let n = 0; n < 7; n++) parts.push({ x: p.x - p.nx * BODY_R, y: p.y - p.ny * BODY_R, vx: (rnd() - 0.5) * 2 + p.nx, vy: (rnd() - 0.5) * 2 + p.ny, life: 0.45, c: "rgba(190,175,150,0.85)", s: 0.14 }); }
       }
     }
     x = p.x; y = p.y;
@@ -808,6 +830,12 @@ export function startEngine(canvas: HTMLCanvasElement, wrap: HTMLElement, cfg: C
     drawMower(c, x, y, h, steer, odo, time, phase === "play" || (park && phase === "ready"), deckShow, paint, cfg.up.bagger, cfg.up.lights && (job.light === "dusk" || job.light === "storm"));
     c.restore();
     if (job.twist === "trailer" && rig) drawStraps(c, rig, strapK);
+    if (thAsk !== null && !auto && (phase === "play" || phase === "ready")) {   // where Pat's trying to go: a faint arrow just ahead
+      const d0 = Math.max(2.6, deckShow * 0.6 + 1.8), ax2 = x + Math.cos(thAsk) * d0, ay2 = y + Math.sin(thAsk) * d0;
+      if (lock !== null) { c.save(); c.strokeStyle = "rgba(255,255,255,0.45)"; c.lineWidth = 0.12; c.setLineDash([0.5, 0.5]); c.beginPath(); c.moveTo(ax2 + Math.cos(thAsk) * 0.9, ay2 + Math.sin(thAsk) * 0.9); c.lineTo(x + Math.cos(thAsk) * 14, y + Math.sin(thAsk) * 14); c.stroke(); c.restore(); }
+      c.save(); c.translate(ax2, ay2); c.rotate(thAsk); c.globalAlpha = 0.6; c.fillStyle = "#ffffff"; c.strokeStyle = "rgba(30,50,20,0.45)"; c.lineWidth = 0.06;
+      c.beginPath(); c.moveTo(0.75, 0); c.lineTo(-0.3, -0.55); c.lineTo(-0.05, 0); c.lineTo(-0.3, 0.55); c.closePath(); c.fill(); c.stroke(); c.restore();
+    }
     if (cat.st !== "in" && !catOnDeck) drawCat(c, cat, time);   // over the tractor, so she's never lost under the wide deck
     if (firePit) drawFire(c, firePit.x, firePit.y, firePit.r ?? 0.8, time, fireAmt);
     // trees over the top, on their own layer with a soft window cut round Pat and the cat when they're underneath
@@ -989,17 +1017,32 @@ export function startEngine(canvas: HTMLCanvasElement, wrap: HTMLElement, cfg: C
       pill(banner.text, 0, 0, 22, success ? "#2f6d1c" : "#a3352a", "rgba(255,255,255,0.97)", 22, 50); ctx.restore();
     }
     ctx.restore();
-    // the joystick strip
+    // the joystick strip: the base sits where the thumb lands, the knob shows the push and points the way; let go and
+    // it springs back home
     if (cfg.showStrip) {
       ctx.fillStyle = "rgba(255,255,255,0.42)"; rr(ctx, 0, MH + 8, CW, CH - MH - 8, 18); ctx.fill();
-      const rest = stickRest(), bx = stick ? stick.bx : rest.x, by = stick ? stick.by : rest.y, kx = stick ? stick.kx : 0, ky = stick ? stick.ky : 0;
-      ctx.save(); ctx.fillStyle = "rgba(255,255,255,0.7)"; ctx.shadowColor = "rgba(0,0,0,0.08)"; ctx.shadowBlur = 6; ctx.beginPath(); ctx.arc(bx, by, STICK_R, 0, 7); ctx.fill(); ctx.restore();
-      ctx.strokeStyle = "rgba(61,122,38,0.3)"; ctx.lineWidth = 2; ctx.beginPath(); ctx.arc(bx, by, STICK_R, 0, 7); ctx.stroke();
-      ctx.strokeStyle = "rgba(61,122,38,0.18)"; ctx.beginPath(); ctx.arc(bx, by, STICK_R * DEAD, 0, 7); ctx.stroke();
-      ctx.save(); ctx.fillStyle = stick ? paint.trim : paint.body; ctx.shadowColor = "rgba(0,0,0,0.25)"; ctx.shadowBlur = 6; ctx.shadowOffsetY = 2; ctx.beginPath(); ctx.arc(bx + kx, by + ky, STICK_R * 0.46, 0, 7); ctx.fill(); ctx.restore();
-      ctx.fillStyle = "rgba(255,255,255,0.35)"; ctx.beginPath(); ctx.arc(bx + kx - 4, by + ky - 5, STICK_R * 0.18, 0, 7); ctx.fill();
-      if (!stick) { ctx.fillStyle = "rgba(255,255,255,0.95)"; for (let q = 0; q < 4; q++) { const an = (q * Math.PI) / 2; ctx.beginPath(); ctx.moveTo(rest.x + Math.cos(an) * STICK_R * 0.84, rest.y + Math.sin(an) * STICK_R * 0.84); ctx.lineTo(rest.x + Math.cos(an + 0.24) * STICK_R * 0.66, rest.y + Math.sin(an + 0.24) * STICK_R * 0.66); ctx.lineTo(rest.x + Math.cos(an - 0.24) * STICK_R * 0.66, rest.y + Math.sin(an - 0.24) * STICK_R * 0.66); ctx.fill(); } }
-      text(stick ? "" : "Push Where You Want To Go", rest.x, CH - 10, 11, "#5a6b4f", 700);
+      const rest = stickRest(); let bx = rest.x, by = rest.y, kx = 0, ky = 0;
+      if (stick) { bx = stick.bx; by = stick.by; kx = stick.kx; ky = stick.ky; }
+      else if (released) {
+        const u = clamp((time - released.t) / 0.28, 0, 1), e = 1 - Math.pow(1 - u, 3), spring = (1 - e) * Math.cos(u * Math.PI * 0.9);
+        bx = released.bx + (rest.x - released.bx) * e; by = released.by + (rest.y - released.by) * e; kx = released.kx * spring; ky = released.ky * spring;
+        if (u >= 1) released = null;
+      }
+      const kd = Math.hypot(kx, ky), on = kd > STICK_R * DEAD;
+      ctx.save(); ctx.fillStyle = "rgba(255,255,255,0.78)"; ctx.shadowColor = "rgba(0,0,0,0.1)"; ctx.shadowBlur = 8; ctx.beginPath(); ctx.arc(bx, by, STICK_R, 0, 7); ctx.fill(); ctx.restore();
+      ctx.strokeStyle = "rgba(61,122,38,0.32)"; ctx.lineWidth = 2; ctx.beginPath(); ctx.arc(bx, by, STICK_R, 0, 7); ctx.stroke();   // the push range
+      if (on) { ctx.strokeStyle = "rgba(61,122,38,0.55)"; ctx.lineWidth = 4; ctx.lineCap = "round"; const an = Math.atan2(ky, kx), sp = 0.55 * Math.min(1, kd / STICK_R) + 0.15; ctx.beginPath(); ctx.arc(bx, by, STICK_R - 1, an - sp, an + sp); ctx.stroke(); }   // how hard it's pushed, on the rim
+      ctx.strokeStyle = "rgba(61,122,38,0.16)"; ctx.lineWidth = 1.5; ctx.beginPath(); ctx.arc(bx, by, STICK_R * DEAD, 0, 7); ctx.stroke();
+      const KR = KNOB_R, qx = bx + kx, qy = by + ky;
+      ctx.save(); ctx.shadowColor = "rgba(0,0,0,0.28)"; ctx.shadowBlur = 10; ctx.shadowOffsetY = 3;
+      const g = ctx.createRadialGradient(qx - KR * 0.35, qy - KR * 0.4, KR * 0.1, qx, qy, KR); g.addColorStop(0, paint.hood); g.addColorStop(1, stick ? paint.trim : paint.body);
+      ctx.fillStyle = g; ctx.beginPath(); ctx.arc(qx, qy, KR, 0, 7); ctx.fill(); ctx.restore();
+      ctx.strokeStyle = "rgba(0,0,0,0.18)"; ctx.lineWidth = 1.5; ctx.beginPath(); ctx.arc(qx, qy, KR, 0, 7); ctx.stroke();
+      ctx.fillStyle = "rgba(255,255,255,0.32)"; ctx.beginPath(); ctx.ellipse(qx - KR * 0.25, qy - KR * 0.35, KR * 0.45, KR * 0.28, -0.4, 0, 7); ctx.fill();
+      if (on) { const an = Math.atan2(ky, kx); ctx.save(); ctx.translate(qx, qy); ctx.rotate(an); ctx.fillStyle = "rgba(255,255,255,0.95)"; ctx.beginPath(); ctx.moveTo(KR * 0.62, 0); ctx.lineTo(KR * 0.08, -KR * 0.36); ctx.lineTo(KR * 0.2, 0); ctx.lineTo(KR * 0.08, KR * 0.36); ctx.closePath(); ctx.fill(); ctx.restore(); }   // the wedge points the way
+      if (!stick && !released) { ctx.fillStyle = "rgba(255,255,255,0.95)"; for (let q = 0; q < 4; q++) { const an = (q * Math.PI) / 2; ctx.beginPath(); ctx.moveTo(rest.x + Math.cos(an) * STICK_R * 0.86, rest.y + Math.sin(an) * STICK_R * 0.86); ctx.lineTo(rest.x + Math.cos(an + 0.22) * STICK_R * 0.7, rest.y + Math.sin(an + 0.22) * STICK_R * 0.7); ctx.lineTo(rest.x + Math.cos(an - 0.22) * STICK_R * 0.7, rest.y + Math.sin(an - 0.22) * STICK_R * 0.7); ctx.fill(); } }
+      if (!stick) text("Push Where You Want To Go", rest.x, CH - 9, 11, "#5a6b4f", 700);
+      else if (lock !== null) { ctx.save(); ctx.font = `800 11px ${FONT}`; const tw = ctx.measureText("Straight Assist").width + 26, lx = (stick.bx > CW / 2 ? 12 : CW - 12 - tw), ly = MH + 18; ctx.fillStyle = "rgba(61,122,38,0.14)"; rr(ctx, lx, ly, tw, 20, 10); ctx.fill(); ctx.strokeStyle = "#3d7a26"; ctx.lineWidth = 1.6; ctx.beginPath(); ctx.moveTo(lx + 8, ly + 14); ctx.lineTo(lx + 8, ly + 6); ctx.moveTo(lx + 5.5, ly + 8.5); ctx.lineTo(lx + 8, ly + 6); ctx.lineTo(lx + 10.5, ly + 8.5); ctx.stroke(); ctx.restore(); text("Straight Assist", lx + 16, ly + 10.5, 11, "#3d7a26", 800, "left"); }   // (in the corner away from the thumb)
     }
   }
 
@@ -1045,7 +1088,7 @@ export function startEngine(canvas: HTMLCanvasElement, wrap: HTMLElement, cfg: C
     (window as unknown as { __lm: unknown }).__lm = {
       state: () => ({ mode, job: job.id, phase, stickIn: lastIn, blockedT, toLen: toPath.length, goal, goalK, pct: pct(), cut: cutCount, need: needCount, areaM2, limit, par, x, y, h, v, om, uturn, revT, stopT, meows, bumps, simT, penalty, drove, wetT,
         apples: applesGot(), applesLeft: apples.filter(a => a.st === 0).length, priority: priorityTotal ? priorityCut / priorityTotal : null, quality: stripeScore(), straight: freshAll ? freshStraight / freshAll : 1, trimmedN, eff: clamp(areaM2 * pct() / Math.max(1, drove * deckHalf * 2) / 0.8, 0, 1),
-        cat: { st: cat.st, x: cat.x, y: cat.y, act: cat.act, next: cat.next }, size: [CW, CH, MH], zoom: zoomK, elev, inBox, parkT, waits, box: parkSpot, rig, kids: kids.map(kd => [kd.x, kd.y]), scrollH: document.documentElement.scrollHeight, PX, deckHalf, vmax }),
+        cat: { st: cat.st, x: cat.x, y: cat.y, act: cat.act, next: cat.next }, size: [CW, CH, MH], zoom: zoomK, lock, thAsk, stickBase: stick ? [stick.bx, stick.by] : null, elev, inBox, parkT, waits, box: parkSpot, rig, kids: kids.map(kd => [kd.x, kd.y]), scrollH: document.documentElement.scrollHeight, PX, deckHalf, vmax }),
       hold: (hx: number, hy: number) => { testIn = [hx, hy]; },
       release: () => { testIn = null; },
       auto: (on: boolean) => { auto = on; },

@@ -44,12 +44,13 @@ export function rigShapes(r: Rig, onboard: boolean): Shape[] {
 function shade(c: CanvasRenderingContext2D, pts: Pt[], fill: string, line = INK, lw = 0.05) { pathPoly(c, pts); c.fillStyle = fill; c.fill(); c.strokeStyle = line; c.lineWidth = lw; c.stroke(); }
 
 /** The truck and trailer. `ramps` down for loading, up for the road; `box` shows where to park. */
-export function drawRig(c: CanvasRenderingContext2D, r: Rig, o: { ramps: boolean; box?: number; color?: string } = { ramps: true }) {
-  const body = o.color ?? "#2f557f";
+export function drawRig(c: CanvasRenderingContext2D, r: Rig, o: { ramps: boolean; box?: number; color?: string; only?: "truck" | "trailer"; signal?: number } = { ramps: true }) {
+  const body = o.color ?? "#2f557f", truck = o.only !== "trailer", trailer = o.only !== "truck";
   c.save(); c.lineJoin = "round";
   // soft shadow down and to the right
-  c.fillStyle = "rgba(20,40,10,0.2)"; pathPoly(c, quad(r, -0.2, RIG.truckLen + 0.1, -RIG.truckHalf - 0.1, RIG.truckHalf + 0.1).map(p => [p[0] + 0.35, p[1] + 0.4] as Pt)); c.fill();
-  pathPoly(c, quad(r, RIG.bedStart, RIG.bedEnd, -RIG.bedHalf - 0.35, RIG.bedHalf + 0.35).map(p => [p[0] + 0.3, p[1] + 0.35] as Pt)); c.fill();
+  c.fillStyle = "rgba(20,40,10,0.2)"; if (truck) { pathPoly(c, quad(r, -0.2, RIG.truckLen + 0.1, -RIG.truckHalf - 0.1, RIG.truckHalf + 0.1).map(p => [p[0] + 0.35, p[1] + 0.4] as Pt)); c.fill(); }
+  if (trailer) { pathPoly(c, quad(r, RIG.bedStart, RIG.bedEnd, -RIG.bedHalf - 0.35, RIG.bedHalf + 0.35).map(p => [p[0] + 0.3, p[1] + 0.35] as Pt)); c.fill(); }
+  if (trailer) {
   // ── the trailer ──
   c.strokeStyle = "#4b5056"; c.lineWidth = 0.12; c.lineCap = "round"; c.beginPath();
   const t0 = rigPt(r, RIG.truckLen - 0.2, 0), t1 = rigPt(r, RIG.bedStart, -0.7), t2 = rigPt(r, RIG.bedStart, 0.7);
@@ -78,6 +79,8 @@ export function drawRig(c: CanvasRenderingContext2D, r: Rig, o: { ramps: boolean
       for (let s = RIG.bedEnd + 0.15; s < RIG.rampEnd; s += 0.22) { const f = (s - RIG.bedEnd) / (RIG.rampEnd - RIG.bedEnd), lo = 0.3 + 0.06 * f, hi = RIG.bedHalf + (RIG.rampHalf - RIG.bedHalf) * f; const a = rigPt(r, s, side * lo), b = rigPt(r, s, side * (hi - 0.03)); c.beginPath(); c.moveTo(a[0], a[1]); c.lineTo(b[0], b[1]); c.stroke(); }
     } else shade(c, quad(r, RIG.bedEnd - 0.1, RIG.bedEnd + 0.12, side * 0.3, side * (RIG.bedHalf - 0.05)), "#b9c0c7");
   }
+  }
+  if (truck) {
   // ── the pickup ──
   for (const s of [1.05, 4.3]) for (const side of [-1, 1]) shade(c, quad(r, s - 0.4, s + 0.4, side * (RIG.truckHalf - 0.12), side * (RIG.truckHalf + 0.06)), "#1b1c1e", "rgba(0,0,0,0.6)", 0.02);
   const bodyQ = quad(r, 0, RIG.truckLen, -RIG.truckHalf, RIG.truckHalf);
@@ -98,6 +101,10 @@ export function drawRig(c: CanvasRenderingContext2D, r: Rig, o: { ramps: boolean
     shade(c, quad(r, 1.75, 1.95, side * RIG.truckHalf, side * (RIG.truckHalf + 0.18)), "#1f2328", INK, 0.02);   // mirrors
     shade(c, quad(r, 0.02, 0.18, side * 0.55, side * 0.88), "#fff6d2", INK, 0.02);   // headlights
     shade(c, quad(r, RIG.truckLen - 0.12, RIG.truckLen - 0.02, side * 0.62, side * 0.9), "#d13b33", INK, 0.02);   // tail lights
+  }
+  if (o.signal) for (const s of [0.1, RIG.truckLen - 0.07]) {   // the turn signal, blinking amber at the front and back corners
+    const [qx, qy] = rigPt(r, s, o.signal * 0.95); c.fillStyle = "rgba(255,180,40,0.35)"; c.beginPath(); c.arc(qx, qy, 0.55, 0, 7); c.fill(); c.fillStyle = "#ffb52e"; c.beginPath(); c.arc(qx, qy, 0.2, 0, 7); c.fill();
+  }
   }
   c.restore();
 }

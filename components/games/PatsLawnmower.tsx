@@ -10,7 +10,7 @@
 import { useEffect, useRef, useState, type ReactNode } from "react";
 import { useNoScroll } from "./kit";
 import { startEngine, type Hud, type Mode } from "./lawn/engine";
-import { JOBS, FREE_JOB, PAINTS, isPark, loadSave, writeSave, newSave, shopItems, unlockedUpTo, payFor, type Save, type Outcome, type Job } from "./lawn/jobs";
+import { JOBS, FREE_JOB, PAINTS, DECKS, DECK_NAMES, GEAR_NAMES, isPark, loadout, loadoutLabel, loadSave, writeSave, newSave, shopItems, unlockedUpTo, payFor, type Save, type Outcome, type Job } from "./lawn/jobs";
 import { Sound, renderEngineClip, toWav } from "./lawn/sound";
 import { startHero } from "./lawn/hero";
 import { startTravel } from "./lawn/travel";
@@ -88,6 +88,29 @@ function ShopIcon({ id }: { id: string }) {
   return <svg viewBox="0 0 32 32" width="30" height="30"><path d="M16 4c5 7 8 11 8 15a8 8 0 0 1-16 0c0-4 3-8 8-15z" fill={p?.body ?? c} stroke="rgba(0,0,0,.2)" strokeWidth="1.5" /><circle cx="13" cy="19" r="2" fill="#fff" opacity=".5" /></svg>;
 }
 
+/** Pick from what's been bought: deck, gear, headlights, bagger, paint. Locked choices show what the shop sells. */
+function Equipment({ save, set }: { save: Save; set: (fn: (s: Save) => Save) => void }) {
+  const u = loadout(save);
+  const row = (label: string, children: ReactNode) => (<div className="flex items-center gap-2 py-1.5"><span className="w-[74px] shrink-0 text-[12.5px] font-extrabold text-[#3f4f35]">{label}</span><span className="flex min-w-0 flex-1 flex-wrap gap-1.5">{children}</span></div>);
+  const opt = (key: string | number, on: boolean, locked: boolean, onClick: () => void, children: ReactNode) => (
+    <button key={key} disabled={locked} onClick={() => { SOUND?.unlock(); SOUND?.click(); onClick(); }} aria-pressed={on}
+      className={`pl-btn rounded-full px-2.5 py-1.5 text-[12.5px] font-extrabold leading-none ${on ? "bg-[#3d8a26] text-white shadow-[0_2px_0_rgba(0,0,0,.18)]" : locked ? "bg-[#eceee8] text-[#a7af9f]" : "bg-[#e3eed7] text-[#2f5a1f]"}`}>
+      {locked && <svg className="mr-1 inline -translate-y-px" width="9" height="10" viewBox="0 0 16 18" fill="currentColor"><rect x="1" y="8" width="14" height="10" rx="2.5" /><path d="M4 8V5.5a4 4 0 0 1 8 0V8" fill="none" stroke="currentColor" strokeWidth="2.4" /></svg>}{children}
+    </button>);
+  return (<div>
+    {row("Deck", DECKS.map((d, i) => opt(i, u.deck === i, i > save.up.deck, () => set(s => ({ ...s, sel: { ...s.sel, deck: i } })), <>{DECK_NAMES[i]} {(d * 2).toFixed(1)} m</>)))}
+    {row("Gear", GEAR_NAMES.map((g, i) => opt(i, u.gear === i, i > save.up.gear, () => set(s => ({ ...s, sel: { ...s.sel, gear: i } })), <>{g}</>)))}
+    {row("Headlights", [false, true].map(v => opt(String(v), u.lights === v, v && !save.up.lights, () => set(s => ({ ...s, sel: { ...s.sel, lights: v } })), <>{v ? "On" : "Off"}</>)))}
+    {row("Bagger", [false, true].map(v => opt(String(v), u.bagger === v, v && !save.up.bagger, () => set(s => ({ ...s, sel: { ...s.sel, bagger: v } })), <>{v ? "On" : "Off"}</>)))}
+    {row("Paint", Object.entries(PAINTS).map(([k, p]) => { const owned = save.paints.includes(k); return (
+      <button key={k} disabled={!owned} aria-label={p.name} aria-pressed={u.paint === k} onClick={() => { SOUND?.click(); set(s => ({ ...s, up: { ...s.up, paint: k } })); }}
+        className="pl-btn relative flex h-7 w-7 items-center justify-center rounded-full" style={{ background: owned ? p.body : "#e3e6df", boxShadow: `inset 0 -3px 0 rgba(0,0,0,.18)${u.paint === k ? ", 0 0 0 2px #fffdf6, 0 0 0 4.5px #3d8a26" : ""}` }}>
+        {!owned && <svg width="10" height="11" viewBox="0 0 16 18" fill={p.body}><rect x="1" y="8" width="14" height="10" rx="2.5" /><path d="M4 8V5.5a4 4 0 0 1 8 0V8" fill="none" stroke={p.body} strokeWidth="2.4" /></svg>}
+        {u.paint === k && <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="4" strokeLinecap="round" strokeLinejoin="round"><path d="M5 12.5l4.5 4.5L19 7.5" /></svg>}
+      </button>); }))}
+  </div>);
+}
+
 export default function PatsLawnmower() {
   useNoScroll();
   const canvasRef = useRef<HTMLCanvasElement>(null), wrapRef = useRef<HTMLDivElement>(null);
@@ -97,10 +120,11 @@ export default function PatsLawnmower() {
   const [hud, setHud] = useState<Hud | null>(null);
   const [held, setHeld] = useState(false);
   const [howTo, setHowTo] = useState(false);
+  const [gearOpen, setGearOpen] = useState(false), gearAtOpen = useRef("");
   const [result, setResult] = useState<{ o: Outcome; pay: ReturnType<typeof payFor>; newBest: boolean; prevStars: number } | null>(null);
   const pausedRef = useRef(false);
   const finishRef = useRef<(() => void) | null>(null), zoomRef = useRef<((dir: number) => void) | null>(null);
-  const paused = screen === "intro" || held || howTo;
+  const paused = screen === "intro" || held || howTo || gearOpen;
   useEffect(() => { pausedRef.current = paused; }, [paused]);
   useEffect(() => { const s = loadSave(); setSave(s); SOUND?.setMuted(s.muted); }, []);
   useEffect(() => {   // tests only: render a few seconds of the engine sound to a WAV file
@@ -122,7 +146,7 @@ export default function PatsLawnmower() {
       const job = session.job;
       return startTravel(canvasRef.current!, wrapRef.current!, { dir: job.twist === "unload" ? "home" : "out", paint: PAINTS[s.up.paint] ?? PAINTS.orange, debug: isDebug(), onDone: () => { setSession(ss => ({ mode: "job", job, n: ss.n + 1 })); setScreen("intro"); if (!saveRef.current.tutorial) setHowTo(true); } });
     }
-    return startEngine(canvasRef.current!, wrapRef.current!, { mode: session.mode, job: session.job, up: s.up, sound: SOUND!, debug: isDebug(), showStrip: true }, {
+    return startEngine(canvasRef.current!, wrapRef.current!, { mode: session.mode, job: session.job, up: loadout(s), sound: SOUND!, debug: isDebug(), showStrip: true }, {
       paused: () => pausedRef.current,
       onHud: h => setHud(h),
       onStart: () => setScreen(sc => (sc === "intro" ? "play" : sc)),
@@ -139,6 +163,7 @@ export default function PatsLawnmower() {
       },
       finishRef,
       zoomRef,
+      assist: () => saveRef.current.assist !== false,
     });
   }, [session]);
 
@@ -154,14 +179,14 @@ export default function PatsLawnmower() {
   const buy = (id: string) => {
     SOUND?.unlock();
     const item = shopItems(save).find(i => i.id === id); if (!item) return;
-    if (id.startsWith("paint-") && item.owned) { update(s => ({ ...s, up: { ...s.up, paint: id.slice(6) } })); SOUND?.click(); return; }
+
     if (item.owned || save.cash < item.cost) return;
     SOUND?.coin();
     update(s => {
-      const up = { ...s.up }, paints = [...s.paints];
-      if (id === "deck") up.deck++; else if (id === "gear") up.gear++; else if (id === "lights") up.lights = true; else if (id === "bagger") up.bagger = true;
+      const up = { ...s.up }, paints = [...s.paints], sel = { ...s.sel };   // a new buy goes straight on (it can be switched off in Equipment)
+      if (id === "deck") sel.deck = ++up.deck; else if (id === "gear") sel.gear = ++up.gear; else if (id === "lights") up.lights = sel.lights = true; else if (id === "bagger") up.bagger = sel.bagger = true;
       else if (id.startsWith("paint-")) { paints.push(id.slice(6)); up.paint = id.slice(6); }
-      return { ...s, cash: s.cash - item.cost, up, paints };
+      return { ...s, cash: s.cash - item.cost, up, sel, paints };
     });
   };
 
@@ -183,7 +208,7 @@ export default function PatsLawnmower() {
                 : <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><path d="M15 5l-7 7 7 7" /></svg>}
             </IconBtn>
             <div className="min-w-0 flex-1 leading-tight">
-              <div className="text-[10px] font-bold uppercase tracking-wider text-[#5a7a45]">{job.id >= 0 ? `Job ${job.id + 1} Of ${JOBS.length}` : "Free Mow"}</div>
+              <div className="text-[10px] font-bold uppercase tracking-wider text-[#5a7a45]">{job.id >= 0 ? `Job ${job.id + 1} Of ${JOBS.length}` : "Free Mow"}{isPark(job) ? "" : ` · ${((DECKS[loadout(save).deck] + (job.deckBonus ?? 0)) * 2).toFixed(1)} m Deck`}</div>
               <div className="truncate text-[17px] font-extrabold tracking-tight">{job.title}</div>
             </div>
             <IconBtn label={save.muted ? "Sound On" : "Sound Off"} onClick={toggleMute}><SoundIcon muted={save.muted} /></IconBtn>
@@ -263,6 +288,11 @@ export default function PatsLawnmower() {
                 <Cash n={save.cash} />
               </div>
               <div className="mx-auto mt-3 w-full max-w-[440px] flex-1 space-y-2.5 overflow-y-auto px-4 pb-2">
+                <div className="rounded-[22px] bg-[#fffdf6] px-3 py-2.5 shadow-[0_4px_0_rgba(0,0,0,.15)]" style={{ animation: "plUp .28s ease-out both" }}>
+                  <div className="flex items-baseline justify-between"><span className="text-[15.5px] font-extrabold">Equipment</span><span className="text-[11.5px] font-bold text-[#5a8a3a]">Pick what Pat takes out</span></div>
+                  <Equipment save={save} set={update} />
+                </div>
+                <div className="px-1 pt-1 text-[13px] font-extrabold uppercase tracking-[0.14em] text-white/90 drop-shadow">For Sale</div>
                 {shopItems(save).map((it, i) => {
                   const paint = it.id.startsWith("paint-"), equipped = paint && save.up.paint === it.id.slice(6), afford = save.cash >= it.cost;
                   return (
@@ -274,13 +304,12 @@ export default function PatsLawnmower() {
                         <span className="block text-[12.5px] leading-snug text-[#5a6b4f]">{it.blurb}</span>
                       </span>
                       <span className="w-[84px] shrink-0">
-                        {it.owned ? (paint ? <Btn small color={equipped ? "#9aa58f" : GREEN} disabled={equipped} onClick={() => buy(it.id)}>{equipped ? "On" : "Use"}</Btn> : <span className="block rounded-2xl bg-[#e3eed7] py-2.5 text-center text-[14px] font-extrabold text-[#3d7a26]">Owned</span>)
+                        {it.owned ? (paint && equipped ? <span className="block rounded-2xl bg-[#3d8a26] py-2.5 text-center text-[14px] font-extrabold text-white">On</span> : <span className="block rounded-2xl bg-[#e3eed7] py-2.5 text-center text-[14px] font-extrabold text-[#3d7a26]">Owned</span>)
                           : <Btn small color={afford ? "#f2a01d" : "#c5b9a0"} disabled={!afford} onClick={() => buy(it.id)}>${it.cost}</Btn>}
                       </span>
                     </div>
                   );
                 })}
-                {save.up.paint !== "orange" && <button onClick={() => update(s => ({ ...s, up: { ...s.up, paint: "orange" } }))} className="w-full py-2 text-center text-sm font-bold text-white underline drop-shadow">Back To Classic Orange</button>}
                 <p className="px-2 pt-1 text-center text-[12.5px] font-semibold text-white/90 drop-shadow">Earn cash by finishing jobs. Replays pay half, plus extra for new stars.</p>
               </div>
             </div>
@@ -306,11 +335,27 @@ export default function PatsLawnmower() {
                     </ul>
                   ) : <div className="mt-1 text-[13px] text-[#3f4f35]">No clock. Best time: {save.free.secs !== null ? fmt(save.free.secs) : "none yet"}.</div>}
                 </div>
+                <div className="mt-2 flex items-center gap-2 rounded-2xl bg-[#f1f4ec] px-3 py-1.5">
+                  <span className="min-w-0 flex-1 truncate text-[12.5px] font-bold text-[#3f4f35]">{loadoutLabel(loadout(save))}</span>
+                  <button onClick={() => { sfx(); gearAtOpen.current = JSON.stringify(loadout(save)); setGearOpen(true); }} className="pl-btn shrink-0 rounded-full bg-[#2f7fa8] px-3 py-1 text-[12.5px] font-extrabold text-white shadow-[0_2px_0_rgba(0,0,0,.15)]">Equipment</button>
+                </div>
                 {job.tip && <div className="mt-2 flex gap-2 rounded-2xl bg-[#fff6d6] px-3 py-2 text-[12.5px] leading-snug text-[#5c4a12] [@media(max-height:700px)]:py-1.5 [@media(max-height:700px)]:text-[12px]"><span className="mt-px flex h-4 w-4 shrink-0 items-center justify-center rounded-full bg-[#f2b81d] text-[10px] font-black text-white">!</span><span>{job.tip}</span></div>}
                 <div className="mt-4 grid grid-cols-[1fr_2fr] gap-2.5 [@media(max-height:700px)]:mt-3">
                   <Btn small color="#9aa58f" onClick={goTitle}>Menu</Btn>
                   <Btn small onClick={letsGo}>Let&apos;s Go</Btn>
                 </div>
+              </Card>
+            </div>
+          )}
+
+          {/* ── equipment, from a job's card: changing it restarts the job's setup with the new loadout ── */}
+          {gearOpen && (
+            <div className="absolute inset-0 z-30 flex items-center justify-center rounded-[18px] bg-[#183010]/45 p-3" style={{ animation: "plFade .15s both" }}>
+              <Card className="w-full max-w-[360px]">
+                <div className="text-center text-[22px] font-black">Equipment</div>
+                <div className="mt-2"><Equipment save={save} set={update} /></div>
+                {job.deckBonus ? <p className="mt-1 text-[12px] text-[#5a6b4f]">This job adds the borrowed wide deck on top.</p> : null}
+                <div className="mt-3"><Btn onClick={() => { sfx(); setGearOpen(false); if (JSON.stringify(loadout(saveRef.current)) !== gearAtOpen.current) setSession(ss => ({ ...ss, n: ss.n + 1 })); }}>Done</Btn></div>
               </Card>
             </div>
           )}
@@ -322,7 +367,7 @@ export default function PatsLawnmower() {
                 <div className="text-center text-[24px] font-black">How To Drive</div>
                 <ol className="mt-3 space-y-2.5 text-[15px] leading-snug">
                   {["Put your thumb in the strip under the lawn and push the way you want to go. Pat drives that way.",
-                    "Point back the way you came and Pat makes a tight U-turn, right alongside the last stripe.",
+                    "Point back the way you came and Pat makes a tight U-turn, right alongside the last stripe. Hold the stick steady and Straight Assist keeps the line dead straight (it's in the pause menu).",
                     "Watch for the grey cat. Pat always stops for her, and that costs a few seconds."].map((s, i) => (
                     <li key={i} className="flex gap-3"><span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-[#f26b1d] text-sm font-black text-white">{i + 1}</span><span>{s}</span></li>
                   ))}
@@ -330,13 +375,6 @@ export default function PatsLawnmower() {
                 <p className="mt-3 text-center text-[12.5px] text-[#5a6b4f]">Pinch the map, or tap + and −, to zoom. On a computer, the arrow keys or WASD work too.</p>
                 <div className="mt-4"><Btn onClick={() => { sfx(); setHowTo(false); update(s => ({ ...s, tutorial: true })); }}>Got It</Btn></div>
               </Card>
-            </div>
-          )}
-
-          {/* ── on the road: a skip button ── */}
-          {screen === "travel" && (
-            <div className="absolute inset-x-0 flex justify-center" style={{ bottom: "max(env(safe-area-inset-bottom), 22px)" }}>
-              <button onClick={() => { sfx(); setSession(ss => ({ mode: "job", job: ss.job, n: ss.n + 1 })); setScreen("intro"); if (!saveRef.current.tutorial) setHowTo(true); }} className="pl-btn rounded-full bg-white/92 px-6 py-2.5 text-[15px] font-extrabold text-[#2f5a1f] shadow-[0_4px_0_rgba(0,0,0,.15)]">Skip</button>
             </div>
           )}
 
@@ -365,6 +403,10 @@ export default function PatsLawnmower() {
                 <div className="text-[24px] font-black">Paused</div>
                 <div className="mt-4 space-y-2.5">
                   <Btn onClick={() => { sfx(); setHeld(false); }}>Resume</Btn>
+                  <button onClick={() => { sfx(); update(s => ({ ...s, assist: !s.assist })); }} aria-pressed={save.assist} className="pl-btn flex w-full items-center justify-between rounded-2xl bg-[#eef6e3] px-4 py-2.5 text-left">
+                    <span><span className="block text-[14.5px] font-extrabold">Straight Assist</span><span className="block text-[11.5px] text-[#5a6b4f]">Hold the stick steady for dead-straight stripes</span></span>
+                    <span className={`relative h-6 w-11 shrink-0 rounded-full transition-colors ${save.assist ? "bg-[#3d8a26]" : "bg-[#c5cbbd]"}`}><span className={`absolute top-0.5 h-5 w-5 rounded-full bg-white shadow transition-all ${save.assist ? "left-[22px]" : "left-0.5"}`} /></span>
+                  </button>
                   <Btn small color="#f26b1d" onClick={() => startJob(job)}>Restart</Btn>
                   <Btn small color="#9aa58f" onClick={goTitle}>Quit To Menu</Btn>
                 </div>
@@ -397,6 +439,7 @@ export default function PatsLawnmower() {
                     <div className="rounded-2xl bg-[#eef6e3] px-3 py-2"><div className="text-[10.5px] font-bold uppercase tracking-wide text-[#5a6b4f]">{job.twist === "apples" ? "Apples" : job.twist === "stripes" ? "Stripe Score" : job.twist === "away" ? "Outfield Stripes" : job.twist === "storm" ? "Puddle Time" : job.twist === "bonfire" ? "Big Bumps" : isPark(job) ? "Bumps" : job.twist === "guests" ? "Pits & Path" : "Cat Stops"}</div>
                       <div className="text-[18px] font-extrabold tabular-nums">{job.twist === "apples" ? `${result.o.apples} / ${result.o.applesTotal}` : job.twist === "stripes" || job.twist === "away" ? `${Math.round(result.o.quality * 100)}%` : job.twist === "storm" ? `${result.o.wet.toFixed(1)}s` : job.twist === "bonfire" || isPark(job) ? result.o.bumps : job.twist === "guests" ? (result.o.priorityOk ? "Ready" : "Late") : result.o.meows}</div></div>
                   </div>
+                  <div className="mt-2 text-[11.5px] font-bold text-[#7d8873]">{loadoutLabel(loadout(save))}</div>
                   {job.id === JOBS.length - 1 && <div className="mt-3 rounded-2xl bg-[#eef6e3] px-3 py-2 text-[14px] font-bold text-[#2f6d1c]" style={{ animation: "plUp .4s ease-out 1.2s both" }}>You finished Pat&apos;s Big Weekend with {totalStars} of {JOBS.length * 3} stars!</div>}
                   <div className="mt-3 flex items-center justify-center gap-2 rounded-2xl bg-[#fff6d6] px-3 py-2.5" style={{ animation: "plUp .4s ease-out 1.3s both" }}>
                     <span className="text-[13px] font-bold text-[#7a5a00]">Pay</span>
