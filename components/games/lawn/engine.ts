@@ -820,11 +820,6 @@ export function startEngine(canvas: HTMLCanvasElement, wrap: HTMLElement, cfg: C
     drawMower(c, x, y, h, steer, odo, time, phase === "play" || (park && phase === "ready"), deckShow, paint, cfg.up.bagger, cfg.up.lights && (job.light === "dusk" || job.light === "storm"));
     c.restore();
     if (job.twist === "trailer" && rig) drawStraps(c, rig, strapK);
-    if (thAsk !== null && !auto && (phase === "play" || phase === "ready")) {   // where Pat's trying to go: a faint arrow just ahead
-      const d0 = Math.max(2.6, deckShow * 0.6 + 1.8), ax2 = x + Math.cos(thAsk) * d0, ay2 = y + Math.sin(thAsk) * d0;
-      c.save(); c.translate(ax2, ay2); c.rotate(thAsk); c.globalAlpha = 0.6; c.fillStyle = "#ffffff"; c.strokeStyle = "rgba(30,50,20,0.45)"; c.lineWidth = 0.06;
-      c.beginPath(); c.moveTo(0.75, 0); c.lineTo(-0.3, -0.55); c.lineTo(-0.05, 0); c.lineTo(-0.3, 0.55); c.closePath(); c.fill(); c.stroke(); c.restore();
-    }
     if (cat.st !== "in" && !catOnDeck) drawCat(c, cat, time);   // over the tractor, so she's never lost under the wide deck
     if (firePit) drawFire(c, firePit.x, firePit.y, firePit.r ?? 0.8, time, fireAmt);
     // trees over the top, on their own layer with a soft window cut round Pat and the cat when they're underneath
