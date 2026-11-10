@@ -1,10 +1,9 @@
 "use client";
 
-import Link from "next/link";
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import Logo from "../Logo";
-import { Card } from "./Shell";
+import { BackToOwner, Card } from "./Shell";
 import { ownerReport, sb, type OwnerReport as Report } from "./api";
 import { PAYOUT_LABEL, longDate, money } from "./shared";
 import { BODY, INK } from "../site";
@@ -138,12 +137,7 @@ export default function OwnerReport() {
     <div className="-mt-6 sm:-mt-10 print:mt-0">
       {/* Tools, left out of the printout */}
       <div className="mb-4 flex flex-wrap items-center justify-between gap-3 print:hidden">
-        <Link href="/creators/owner" className="inline-flex items-center gap-1.5 text-[14px] font-semibold transition hover:opacity-70" style={{ color: BODY }}>
-          <svg viewBox="0 0 16 16" className="h-3.5 w-3.5" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-            <path d="M10 12L6 8l4-4" />
-          </svg>
-          Back To Owner
-        </Link>
+        <BackToOwner />
         <div className="flex flex-wrap items-center gap-4">
           <select
             value={period ?? "all"}

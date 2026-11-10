@@ -15,12 +15,14 @@ export const CREATOR_EMAIL = "contact@whatyouate.app";
 export default function Shell({ children, narrow = false, wide = false, full = false, signedIn = false }: { children: React.ReactNode; narrow?: boolean; wide?: boolean; full?: boolean; signedIn?: boolean }) {
   return (
     <div className="min-h-screen overflow-x-clip">
-      <header className="absolute inset-x-0 top-0 z-30 print:hidden">
+      {/* The header floats over the page, so its empty strip lets taps through to links underneath (like a page's back
+          link); only the logo and the menu catch them. */}
+      <header className="pointer-events-none absolute inset-x-0 top-0 z-30 print:hidden">
         <div className="mx-auto flex max-w-[68rem] items-center justify-between px-6 py-6">
-          <Link href={signedIn ? "/creators/dashboard" : "/"}>
+          <Link href={signedIn ? "/creators/dashboard" : "/"} className="pointer-events-auto">
             <Logo priority />
           </Link>
-          {signedIn ? <CreatorMenu /> : <Menu />}
+          <div className="pointer-events-auto">{signedIn ? <CreatorMenu /> : <Menu />}</div>
         </div>
       </header>
 
@@ -59,6 +61,18 @@ export default function Shell({ children, narrow = false, wide = false, full = f
         </div>
       </footer>
     </div>
+  );
+}
+
+/** The back link at the top of each owner page: a comfortable tap target, the same on every page. */
+export function BackToOwner() {
+  return (
+    <Link href="/creators/owner" className="-mx-2 -my-2 inline-flex items-center gap-1.5 rounded-lg px-2 py-2 text-[14px] font-semibold transition hover:opacity-70" style={{ color: BODY }}>
+      <svg viewBox="0 0 16 16" className="h-3.5 w-3.5" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+        <path d="M10 12L6 8l4-4" />
+      </svg>
+      Back To Owner
+    </Link>
   );
 }
 

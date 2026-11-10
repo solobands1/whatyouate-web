@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
-import { Card } from "./Shell";
+import { BackToOwner, Card } from "./Shell";
 import { ownerUsage, sb, syncSubscriptions, type OwnerUsage as Usage, type UsageFlag, type UsageFunnel, type UsageStatus, type UsageUser, type UsageDay } from "./api";
 import { BODY, INK } from "../site";
 
@@ -126,7 +126,7 @@ export default function OwnerUsage() {
     }[state];
     return (
       <div className="-mt-6 sm:-mt-10 mx-auto max-w-[44rem]">
-        <a href="/creators/owner" className="text-[14px] font-semibold" style={{ color: BLUE }}>‹ Owner</a>
+        <BackToOwner />
         <Card className="mt-3 px-7 py-9 text-center">
           <h1 className="text-[22px] font-bold tracking-[-0.03em]" style={{ color: INK }}>{copy[0]}</h1>
           <p className="mt-3 text-[15.5px] leading-[1.6]" style={{ color: BODY }}>{copy[1]}</p>
@@ -144,7 +144,7 @@ export default function OwnerUsage() {
   return (
     <div className="-mt-6 sm:-mt-10">
       <div className="mx-auto max-w-[65rem]">
-        <a href="/creators/owner" className="text-[14px] font-semibold" style={{ color: BLUE }}>‹ Owner</a>
+        <BackToOwner />
         <div className="mt-2 flex flex-wrap items-end justify-between gap-3">
           <div>
             <h1 className="text-[clamp(28px,4.4vw,40px)] font-bold leading-[1.1] tracking-[-0.04em]">Users</h1>

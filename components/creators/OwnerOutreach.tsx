@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
-import { Card } from "./Shell";
+import { BackToOwner, Card } from "./Shell";
 import {
   errorText,
   outreachCommented,
@@ -137,9 +137,7 @@ export default function OwnerOutreach() {
   return (
     <div className="-mt-6 sm:-mt-10">
       <div className="mx-auto max-w-[65rem]">
-        <a href="/creators/owner" className="text-[14px] font-semibold" style={{ color: BLUE }}>
-          ‹ Owner
-        </a>
+        <BackToOwner />
         <div className="mt-2 flex flex-wrap items-end justify-between gap-3">
           <div>
             <h1 className="text-[clamp(28px,4.4vw,40px)] font-bold leading-[1.1] tracking-[-0.04em]">Outreach</h1>
