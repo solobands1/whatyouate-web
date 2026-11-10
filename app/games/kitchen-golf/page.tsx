@@ -6,7 +6,7 @@ import KitchenGolf from "@/components/games/KitchenGolf";
 // The hub page has it, and the game-over card has its own "Get WhatYouAte" button.
 export const metadata: Metadata = {
   title: "Kitchen Golf | WhatYouAte",
-  description: "A free food game. Putt a meatball round kitchen mini golf holes: the sink, spatula ramps, a spinning mixer. Play the computer or a friend.",
+  description: "A free food game. Mini putt with a meatball round a real kitchen: the counter, the sink, the fridge, the stove, under the table. Play the computer or a friend.",
   alternates: { canonical: "/games/kitchen-golf" },
   manifest: "/games/kitchen-golf.webmanifest",
   appleWebApp: { capable: true, title: "Kitchen Golf", statusBarStyle: "default" },

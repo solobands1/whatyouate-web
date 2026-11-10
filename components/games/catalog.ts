@@ -64,7 +64,7 @@ export const GAMES: Game[] = [
   {
     slug: "kitchen-golf",
     name: "Kitchen Golf",
-    tagline: "Putt a meatball round the kitchen. Bank off cutting boards, miss the sink, time the mixer. Fewest strokes wins.",
+    tagline: "Mini putt with a meatball round a real kitchen: the counter, the sink, the fridge, the stove, under the table. Fewest strokes wins.",
     daily: true,
     multiplayer: true,
   },

@@ -1,335 +1,39 @@
 "use client";
 
-// Kitchen Golf: mini golf round the kitchen, with a meatball. Nine holes a round from a bank of 18: placemats, cutting
-// boards, bowls, a syrup spill, butter, spatula ramps, the sink, a spinning stand mixer and a rolling pin. Drag back
-// anywhere on the board (relative drag, so your finger never covers the ball), watch the short dotted line and the
-// power meter, and let go to putt. Fewest strokes over 9 holes wins; 6 strokes a hole at most, then you pick up and
-// take a 7. The sink sends you back where you putted from, with a stroke added.
+// Kitchen Golf: mini putt round a real kitchen, with a meatball. A round is a 9-hole tour from a bank of 12: on the
+// counter, at the table, in the fridge, in the sink, on the floor, on the stove, at the island, in the cupboard, and
+// harder takes on a few of them (behind the toaster with a paper towel tube, the crisper drawers, a rolling pin run,
+// under the table past the sleeping dog). Drag back anywhere on the board (relative drag, so your finger never covers
+// the ball), watch the short dotted line and the power meter, and let go to putt. Fewest strokes over 9 holes wins;
+// 6 strokes a hole at most, then you pick up and take a 7. Water (the dog's bowl) sends you back with a stroke added.
 // Both balls play the same hole and take turns (they don't hit each other); whoever has holed out waits for the other.
 // "Today" is 9 holes against the computer, the same holes and computer for everyone; points per hole for strokes
 // under 7, under par, holes in one and beating the computer. Free Play keeps going round after round while you
 // beat (or tie) a computer that gets a little sharper.
 // "Play A Friend" is a live match over a Supabase Realtime channel (no tables): whoever putts runs the roll and then
 // sends where it stopped, so the two screens can't drift. Minimise or lose signal and the other phone shows
-// "Stepped Away" for 60 seconds; the snapshot exchange on return catches you up. "Same Phone" is pass and play.
-// The block between SIM BEGIN and SIM END is pure (no React, no DOM) and only uses + - * / and sqrt (even the
-// mixer's angles come from a table built with them), which give the same answer in every browser; the balance check
-// runs that exact code in Node.
-// No facts mid-game; one fact on the game-over card. Everything around the board comes from ./kit.
+// "Stepped Away" for 60 seconds; a snapshot exchange on return catches you up. "Same Phone" is pass and play.
+// Rules, holes, physics and the computer are in ./golf/sim (pure, the same answer in every browser); the drawings in
+// ./golf/art; sounds in ./golf/sound (off until turned on). No facts mid-game; one on the game-over card.
 import { useEffect, useRef, useState, type ReactNode } from "react";
 import type { RealtimeChannel } from "@supabase/supabase-js";
 import { sb } from "@/components/creators/api";
 import { appStoreLink } from "@/components/site";
 import { type Mode, type Toast, GameScreen, GameHeader, BoardArea, PrizeLogo, GameOver, PauseButton, PausedCard, ReadyCard, HelpModal, ModesHelp, ShellPopups,
   useGameShell, fitCanvas, loadImages, dailySeed, dailyNumber, torontoDate, mulberry32, readBest, saveBest } from "./kit";
+import { type Course, type Roll, type Brain, W, BALL_R, MAX_PULL, MIN_PULL, MAX_STROKES, PICKUP, ROUND_HOLES, STEP, HOLES,
+  compile, pickHoles, startRoll, stepRoll, tubePos, partsAt, aiPlan, sharpFor, holePoints, segDist2, WIN_BONUS, TIE_BONUS } from "./golf/sim";
+import { FOOD_IMGS, paintHole, drawLive, drawFlag, drawMeatball, rollQuat, quatIdentity } from "./golf/art";
+import { Sound } from "./golf/sound";
 
 const GAME = "kitchen-golf";
 const LAUNCH = "2026-11-08";   // Today's Challenge #1
+const SOUND = typeof window !== "undefined" ? new Sound() : null;
 
-// ── SIM BEGIN ──────────────────────────────────────────────────────────────
-const W = 400, H = 600, SUB = 4;                     // logical board; physics at 60 steps a second, 4 sub-steps each
-const BALL_R = 7, CUP_R = 11, VMAX = 11, MAX_PULL = 110, MIN_PULL = 8;
-const ROLL_K = 0.99, ROLL_C = 0.018;                 // rolling: each step, speed = speed * K - C
-const SYRUP_K = 0.9, SYRUP_C = 0.06, BUTTER_K = 0.996, BUTTER_C = 0.006;
-const WALL_E = 0.78, BUMP_E = 0.85, MOVER_E = 0.9;   // bounciness
-const CUP_PULL = 0.3, CUP_CATCH = 2.8;               // the cup tugs a passing ball in; slower than CATCH and it drops
-const MIXER_W = 5, PIN_R = 9;
-const MAX_STROKES = 6, PICKUP = 7, ROUND_HOLES = 9, MAX_STEPS = 1500;
-const PI = 3.141592653589793;
-
-// cos and sin every half degree, from Taylor series (only + - * /), so every browser builds the same table
-const TRIG: number[][] = [];
-for (let i = 0; i < 720; i++) {
-  let a = (i * PI) / 360; if (a > PI) a -= 2 * PI;
-  let s = 0, c = 0, ts = a, tc = 1;
-  for (let k = 0; k < 30; k++) { s += ts; c += tc; ts = (-ts * a * a) / ((2 * k + 2) * (2 * k + 3)); tc = (-tc * a * a) / ((2 * k + 1) * (2 * k + 2)); }
-  TRIG.push([c, s]);
-}
-
-type Pt = [number, number];
-type Rect = [number, number, number, number];                                  // x0, y0, x1, y1
-type Zone = { k: "syrup"; c: [number, number, number] } | { k: "butter"; r: Rect } | { k: "sink"; r: Rect } | { k: "ramp"; r: Rect; ax: number; ay: number };
-type Bump = { x: number; y: number; r: number; k: "bowl" | "jar" | "cup"; f?: string };
-type Block = { k: "board" | "shelf"; p: Pt[] };
-type Mover = { k: "mixer"; x: number; y: number; len: number; spd: number; ph: number }      // spd: half degrees a step
-  | { k: "pin"; x0: number; y0: number; x1: number; y1: number; half: number; per: number; ph: number };   // slides x0,y0 <-> x1,y1 every per steps
-type HoleDef = { name: string; par: number; tier: 0 | 1 | 2; tee: Pt; cup: Pt; out: Pt[]; blocks?: Block[]; bumps?: Bump[]; zones?: Zone[]; movers?: Mover[] };
-type Course = { id: number; mirror: boolean; name: string; par: number; tee: Pt; cup: Pt; out: Pt[]; blocks: Block[]; bumps: Bump[]; zones: Zone[]; movers: Mover[]; segs: number[][] };
-
-const rect = (x0: number, y0: number, x1: number, y1: number): Pt[] => [[x0, y0], [x1, y0], [x1, y1], [x0, y1]];
-const HOLES: HoleDef[] = [
-  // tier 0: the first three holes of every round
-  { name: "Placemat", par: 2, tier: 0, tee: [200, 520], cup: [200, 150], out: rect(110, 90, 290, 570) },
-  { name: "Fruit Bowl", par: 2, tier: 0, tee: [200, 520], cup: [200, 150], out: rect(90, 90, 310, 570), bumps: [{ x: 200, y: 330, r: 34, k: "bowl", f: "1f34e" }] },
-  { name: "Corner Counter", par: 3, tier: 0, tee: [120, 520], cup: [290, 145], out: [[60, 80], [340, 80], [340, 210], [180, 210], [180, 575], [60, 575]] },
-  { name: "Syrup Spill", par: 2, tier: 0, tee: [200, 520], cup: [200, 150], out: rect(100, 90, 300, 570), zones: [{ k: "syrup", c: [200, 225, 42] }] },
-  { name: "The Funnel", par: 2, tier: 0, tee: [200, 535], cup: [200, 150], out: [[60, 80], [340, 80], [340, 300], [230, 470], [230, 575], [170, 575], [170, 470], [60, 300]] },
-  // tier 1: holes 4 to 6
-  { name: "Cutting Board", par: 3, tier: 1, tee: [200, 525], cup: [200, 140], out: rect(60, 80, 340, 575), blocks: [{ k: "board", p: rect(110, 280, 290, 350) }] },
-  { name: "Spatula Ramp", par: 3, tier: 1, tee: [200, 525], cup: [200, 150], out: rect(100, 80, 300, 575), zones: [{ k: "ramp", r: [100, 250, 300, 370], ax: 0, ay: 0.07 }] },
-  { name: "Kitchen Sink", par: 3, tier: 1, tee: [200, 525], cup: [200, 140], out: rect(50, 80, 350, 575), zones: [{ k: "sink", r: [125, 240, 275, 400] }] },
-  { name: "Bowl Pinball", par: 3, tier: 1, tee: [200, 530], cup: [200, 140], out: rect(60, 80, 340, 575),
-    bumps: [{ x: 130, y: 250, r: 26, k: "bowl", f: "1f34a" }, { x: 270, y: 250, r: 26, k: "bowl", f: "1f345" }, { x: 200, y: 340, r: 26, k: "bowl", f: "1f95a" },
-      { x: 130, y: 430, r: 20, k: "jar" }, { x: 270, y: 430, r: 20, k: "jar" }] },
-  { name: "Butter Slide", par: 3, tier: 1, tee: [280, 520], cup: [105, 145], out: [[60, 80], [340, 80], [340, 575], [220, 575], [220, 210], [60, 210]],
-    zones: [{ k: "butter", r: [150, 92, 330, 198] }] },
-  { name: "Spice Rack", par: 3, tier: 1, tee: [110, 525], cup: [110, 140], out: rect(60, 80, 340, 575),
-    blocks: [{ k: "shelf", p: rect(60, 250, 230, 280) }, { k: "shelf", p: rect(170, 400, 340, 430) }] },
-  // tier 2: holes 7 to 9
-  { name: "Rolling Pin", par: 3, tier: 2, tee: [200, 525], cup: [200, 140], out: rect(70, 80, 330, 575), movers: [{ k: "pin", x0: 145, y0: 320, x1: 255, y1: 320, half: 70, per: 240, ph: 0 }] },
-  { name: "Stand Mixer", par: 3, tier: 2, tee: [200, 525], cup: [200, 140], out: rect(80, 80, 320, 575), movers: [{ k: "mixer", x: 200, y: 330, len: 92, spd: 3, ph: 0 }] },
-  { name: "Egg Cups", par: 3, tier: 2, tee: [200, 530], cup: [200, 220], out: rect(50, 80, 350, 575),
-    bumps: [[258, 220], [241, 261], [200, 278], [159, 261], [142, 220], [159, 179], [241, 179]].map(([x, y]) => ({ x, y, r: 16, k: "cup" as const })) },
-  { name: "Dish Rack", par: 3, tier: 2, tee: [110, 525], cup: [290, 140], out: rect(60, 80, 340, 575), zones: [{ k: "sink", r: [60, 280, 160, 400] }, { k: "sink", r: [240, 280, 340, 400] }] },
-  { name: "Pantry Shelves", par: 4, tier: 2, tee: [290, 525], cup: [290, 145], out: rect(60, 80, 340, 575),
-    blocks: [{ k: "shelf", p: rect(140, 230, 340, 260) }, { k: "shelf", p: rect(60, 380, 260, 410) }], zones: [{ k: "syrup", c: [200, 320, 34] }] },
-  { name: "Twin Mixers", par: 4, tier: 2, tee: [200, 535], cup: [200, 130], out: rect(70, 80, 330, 575),
-    movers: [{ k: "mixer", x: 200, y: 420, len: 80, spd: 3, ph: 0 }, { k: "mixer", x: 200, y: 240, len: 80, spd: -3, ph: 90 }] },
-  { name: "Ramp And Pin", par: 4, tier: 2, tee: [200, 530], cup: [200, 135], out: rect(80, 80, 320, 575),
-    zones: [{ k: "ramp", r: [80, 380, 320, 470], ax: 0, ay: 0.06 }], movers: [{ k: "pin", x0: 150, y0: 250, x1: 250, y1: 250, half: 60, per: 200, ph: 50 }] },
-];
-
-function polySegs(p: Pt[]) { return p.map((a, i) => { const b = p[(i + 1) % p.length]; return [a[0], a[1], b[0], b[1]]; }); }
-/** A hole ready to play, mirrored left to right if `mirror` (so 18 holes give 36 layouts). */
-function compile(id: number, mirror: boolean): Course {
-  const h = HOLES[id], mx = (x: number) => (mirror ? W - x : x), mp = (p: Pt): Pt => [mx(p[0]), p[1]];
-  const mr = (r: Rect): Rect => (mirror ? [W - r[2], r[1], W - r[0], r[3]] : r);
-  const out = h.out.map(mp), blocks = (h.blocks ?? []).map(b => ({ k: b.k, p: b.p.map(mp) }));
-  const zones: Zone[] = (h.zones ?? []).map(z => z.k === "syrup" ? { k: "syrup", c: [mx(z.c[0]), z.c[1], z.c[2]] } : z.k === "ramp" ? { k: "ramp", r: mr(z.r), ax: mirror ? -z.ax : z.ax, ay: z.ay } : { k: z.k, r: mr(z.r) } as Zone);
-  const movers: Mover[] = (h.movers ?? []).map(m => m.k === "mixer" ? { ...m, x: mx(m.x), spd: mirror ? -m.spd : m.spd, ph: mirror ? (720 + 360 - m.ph) % 720 : m.ph }
-    : { ...m, x0: mx(m.x0), x1: mx(m.x1) });
-  const segs = [...polySegs(out), ...blocks.flatMap(b => polySegs(b.p))];
-  return { id, mirror, name: h.name, par: h.par, tee: mp(h.tee), cup: mp(h.cup), out, blocks, bumps: (h.bumps ?? []).map(b => ({ ...b, x: mx(b.x) })), zones, movers, segs };
-}
-/** A round's 9 holes: 3 easy ones, 3 middling, 3 hard, each set shuffled by the seed, some mirrored. */
-function pickHoles(seed: number): { id: number; mirror: boolean }[] {
-  const rnd = mulberry32(seed), out: { id: number; mirror: boolean }[] = [];
-  for (const tier of [0, 1, 2]) {
-    const ids = HOLES.map((h, i) => (h.tier === tier ? i : -1)).filter(i => i >= 0);
-    for (let i = ids.length - 1; i > 0; i--) { const j = Math.floor(rnd() * (i + 1)); const t = ids[i]; ids[i] = ids[j]; ids[j] = t; }
-    for (let k = 0; k < 3; k++) out.push({ id: ids[k], mirror: rnd() < 0.5 });
-  }
-  return out;
-}
-const inRect = (r: Rect, x: number, y: number) => x >= r[0] && x <= r[2] && y >= r[1] && y <= r[3];
-
-type Ball = { x: number; y: number; vx: number; vy: number };
-/** Pushes the ball out of a line segment (thickened to `rad`) and bounces it, relative to the segment's own velocity. */
-function hitSeg(b: Ball, ax: number, ay: number, bx: number, by: number, rad: number, svx: number, svy: number, e: number) {
-  const ex = bx - ax, ey = by - ay, l2 = ex * ex + ey * ey;
-  let t = l2 > 0 ? ((b.x - ax) * ex + (b.y - ay) * ey) / l2 : 0; t = t < 0 ? 0 : t > 1 ? 1 : t;
-  const cx = ax + ex * t, cy = ay + ey * t, dx = b.x - cx, dy = b.y - cy, d2 = dx * dx + dy * dy;
-  if (d2 >= rad * rad || d2 < 1e-9) return false;
-  const d = Math.sqrt(d2), nx = dx / d, ny = dy / d;
-  b.x = cx + nx * rad; b.y = cy + ny * rad;
-  const vn = (b.vx - svx) * nx + (b.vy - svy) * ny;
-  if (vn < 0) { b.vx -= (1 + e) * vn * nx; b.vy -= (1 + e) * vn * ny; }
-  return true;
-}
-function hitCircle(b: Ball, x: number, y: number, rad: number, e: number) {
-  const dx = b.x - x, dy = b.y - y, d2 = dx * dx + dy * dy;
-  if (d2 >= rad * rad || d2 < 1e-9) return false;
-  const d = Math.sqrt(d2), nx = dx / d, ny = dy / d;
-  b.x = x + nx * rad; b.y = y + ny * rad;
-  const vn = b.vx * nx + b.vy * ny;
-  if (vn < 0) { b.vx -= (1 + e) * vn * nx; b.vy -= (1 + e) * vn * ny; }
-  return true;
-}
-/** Where each moving part is at a given step of the hole clock: a segment, how thick, and how fast it's moving. */
-type Part = { ax: number; ay: number; bx: number; by: number; rad: number; spin: number; px: number; py: number; vx: number; vy: number };
-function partsAt(c: Course, clock: number): Part[] {
-  return c.movers.map(m => {
-    if (m.k === "mixer") {
-      const i = (((m.ph + clock * m.spd) % 720) + 720) % 720, co = TRIG[i][0], si = TRIG[i][1];
-      return { ax: m.x - m.len * co, ay: m.y - m.len * si, bx: m.x + m.len * co, by: m.y + m.len * si, rad: BALL_R + MIXER_W, spin: (m.spd * PI) / 360, px: m.x, py: m.y, vx: 0, vy: 0 };
-    }
-    const half = m.per / 2, u = (((clock + m.ph) % m.per) + m.per) % m.per, f = u < half ? u / half : 2 - u / half, dir = u < half ? 1 : -1;
-    const dx = m.x1 - m.x0, dy = m.y1 - m.y0, l = Math.sqrt(dx * dx + dy * dy), ux = dx / l, uy = dy / l, cx = m.x0 + dx * f, cy = m.y0 + dy * f;
-    return { ax: cx - ux * m.half, ay: cy - uy * m.half, bx: cx + ux * m.half, by: cy + uy * m.half, rad: BALL_R + PIN_R, spin: 0, px: cx, py: cy, vx: (dir * dx) / half, vy: (dir * dy) / half };
-  });
-}
-
-/** One putt in progress. done: 0 rolling, 1 stopped, 2 in the cup, 3 in the sink. */
-type Roll = Ball & { clock: number; steps: number; slow: number; done: 0 | 1 | 2 | 3; sx: number; sy: number; dist: number };
-function startRoll(x: number, y: number, px: number, py: number, clock: number): Roll {
-  const l = Math.sqrt(px * px + py * py), k = l > MAX_PULL ? MAX_PULL / l : 1;
-  return { x, y, vx: ((-px * k) / MAX_PULL) * VMAX, vy: ((-py * k) / MAX_PULL) * VMAX, clock, steps: 0, slow: 0, done: 0, sx: x, sy: y, dist: 0 };
-}
-function stepRoll(c: Course, b: Roll): number {
-  if (b.done) return b.done;
-  let k = ROLL_K, cc = ROLL_C, ramp = false;
-  for (const z of c.zones) {
-    if (z.k === "syrup") { const dx = b.x - z.c[0], dy = b.y - z.c[1]; if (dx * dx + dy * dy < z.c[2] * z.c[2]) { k = SYRUP_K; cc = SYRUP_C; } }
-    else if (inRect(z.r, b.x, b.y)) {
-      if (z.k === "sink") { b.vx = 0; b.vy = 0; b.done = 3; return 3; }
-      if (z.k === "butter") { k = BUTTER_K; cc = BUTTER_C; }
-      else { b.vx += z.ax; b.vy += z.ay; ramp = true; }
-    }
-  }
-  let sp = Math.sqrt(b.vx * b.vx + b.vy * b.vy);
-  const qx = b.x - c.cup[0], qy = b.y - c.cup[1], q2 = qx * qx + qy * qy;
-  if (q2 < CUP_R * CUP_R) {
-    if (sp < CUP_CATCH) { b.x = c.cup[0]; b.y = c.cup[1]; b.vx = 0; b.vy = 0; b.done = 2; return 2; }
-    const q = Math.sqrt(q2); if (q > 0.01) { b.vx -= (qx / q) * CUP_PULL; b.vy -= (qy / q) * CUP_PULL; }
-    sp = Math.sqrt(b.vx * b.vx + b.vy * b.vy);
-  }
-  const ns = sp * k - cc;
-  if (ns <= 0) { b.vx = 0; b.vy = 0; } else { b.vx = (b.vx * ns) / sp; b.vy = (b.vy * ns) / sp; }
-  const parts = c.movers.length ? partsAt(c, b.clock) : [];
-  const x0 = b.x, y0 = b.y;
-  for (let s = 0; s < SUB; s++) {
-    b.x += b.vx / SUB; b.y += b.vy / SUB;
-    for (const p of parts) {
-      const ex = p.bx - p.ax, ey = p.by - p.ay, l2 = ex * ex + ey * ey;
-      let t = ((b.x - p.ax) * ex + (b.y - p.ay) * ey) / l2; t = t < 0 ? 0 : t > 1 ? 1 : t;
-      const hx = p.ax + ex * t, hy = p.ay + ey * t;   // the part's velocity where it meets the ball
-      hitSeg(b, p.ax, p.ay, p.bx, p.by, p.rad, p.vx - p.spin * (hy - p.py), p.vy + p.spin * (hx - p.px), MOVER_E);
-    }
-    for (const g of c.segs) hitSeg(b, g[0], g[1], g[2], g[3], BALL_R, 0, 0, WALL_E);
-    for (const u of c.bumps) hitCircle(b, u.x, u.y, u.r + BALL_R, BUMP_E);
-  }
-  const mx = b.x - x0, my = b.y - y0; b.dist += Math.sqrt(mx * mx + my * my);
-  b.clock++; b.steps++;
-  sp = Math.sqrt(b.vx * b.vx + b.vy * b.vy);
-  if (sp < 0.05) { b.slow++; if (!ramp || b.slow > 30) { b.vx = 0; b.vy = 0; b.done = 1; } } else b.slow = 0;
-  if (b.steps >= MAX_STEPS && !b.done) { b.vx = 0; b.vy = 0; b.done = 1; }
-  if (b.done === 1) rest(c, b);
-  return b.done;
-}
-/** A ball can't stop where a moving part sweeps: it's set down just outside, then nudged off any wall. */
-function rest(c: Course, b: Ball) {
-  for (const m of c.movers) {
-    if (m.k === "mixer") {
-      const R = m.len + MIXER_W + BALL_R + 2, dx = b.x - m.x, dy = b.y - m.y, d2 = dx * dx + dy * dy;
-      if (d2 < R * R) { const d = Math.sqrt(d2); if (d < 0.01) { b.x = m.x; b.y = m.y + R; } else { b.x = m.x + (dx / d) * R; b.y = m.y + (dy / d) * R; } }
-    } else {
-      const dx = m.x1 - m.x0, dy = m.y1 - m.y0, l = Math.sqrt(dx * dx + dy * dy), ux = dx / l, uy = dy / l, nx = -uy, ny = ux;
-      const along = (b.x - m.x0) * ux + (b.y - m.y0) * uy, side = (b.x - m.x0) * nx + (b.y - m.y0) * ny, R = PIN_R + BALL_R + 2;
-      if (along > -m.half - BALL_R && along < l + m.half + BALL_R && side > -R && side < R) { const to = side < 0 ? -R : R; b.x += nx * (to - side); b.y += ny * (to - side); }
-    }
-  }
-  const t = { x: b.x, y: b.y, vx: 0, vy: 0 };
-  for (let k = 0; k < 3; k++) { for (const g of c.segs) hitSeg(t, g[0], g[1], g[2], g[3], BALL_R + 0.5, 0, 0, 0); for (const u of c.bumps) hitCircle(t, u.x, u.y, u.r + BALL_R + 0.5, 0); }
-  b.x = Math.round(t.x * 100) / 100; b.y = Math.round(t.y * 100) / 100;
-}
-/** A whole putt at once (the computer thinking, and catching up): where it ends and how. */
-function simPutt(c: Course, x: number, y: number, px: number, py: number, clock: number) {
-  const b = startRoll(x, y, px, py, clock);
-  while (!b.done) stepRoll(c, b);
-  return b;
-}
-
-// ── the computer ──
-// It reads the hole as a grid of distances to the cup (walking round walls, bowls and the sink; syrup counts double),
-// tries hundreds of putts in its head, keeps the one that ends closest (or in the cup), then misses on purpose by a
-// random amount that shrinks a little each hole and each round. Never perfect.
-const CELL = 8, GW = W / CELL, GH = H / CELL;
-function inPoly(p: Pt[], x: number, y: number) {
-  let on = false;
-  for (let i = 0, j = p.length - 1; i < p.length; j = i++) {
-    const [xi, yi] = p[i], [xj, yj] = p[j];
-    if ((yi > y) !== (yj > y) && x < ((xj - xi) * (y - yi)) / (yj - yi) + xi) on = !on;
-  }
-  return on;
-}
-function segDist2(x: number, y: number, g: number[]) {
-  const ex = g[2] - g[0], ey = g[3] - g[1], l2 = ex * ex + ey * ey;
-  let t = l2 > 0 ? ((x - g[0]) * ex + (y - g[1]) * ey) / l2 : 0; t = t < 0 ? 0 : t > 1 ? 1 : t;
-  const dx = x - g[0] - ex * t, dy = y - g[1] - ey * t; return dx * dx + dy * dy;
-}
-const fields = new Map<string, Float64Array>();
-function fieldFor(c: Course) {
-  const key = `${c.id}${c.mirror ? "m" : ""}`, have = fields.get(key);
-  if (have) return have;
-  const cost = new Float64Array(GW * GH), dist = new Float64Array(GW * GH).fill(Infinity);
-  for (let j = 0; j < GH; j++) for (let i = 0; i < GW; i++) {
-    const x = i * CELL + CELL / 2, y = j * CELL + CELL / 2;
-    let ok = inPoly(c.out, x, y) && !c.blocks.some(b => inPoly(b.p, x, y)) && c.segs.every(g => segDist2(x, y, g) > (BALL_R - 2) * (BALL_R - 2))
-      && c.bumps.every(u => (x - u.x) * (x - u.x) + (y - u.y) * (y - u.y) > (u.r + BALL_R - 2) * (u.r + BALL_R - 2));
-    let k = 1;
-    for (const z of c.zones) {
-      if (z.k === "sink" && inRect(z.r, x, y)) ok = false;
-      if (z.k === "syrup" && (x - z.c[0]) * (x - z.c[0]) + (y - z.c[1]) * (y - z.c[1]) < z.c[2] * z.c[2]) k = 2;
-    }
-    cost[j * GW + i] = ok ? k : 0;
-  }
-  const ci = Math.floor(c.cup[0] / CELL), cj = Math.floor(c.cup[1] / CELL), heap: number[][] = [];
-  const push = (d: number, n: number) => { heap.push([d, n]); let i = heap.length - 1; while (i > 0) { const p = (i - 1) >> 1; if (heap[p][0] <= heap[i][0]) break; [heap[p], heap[i]] = [heap[i], heap[p]]; i = p; } };
-  const pop = () => { const top = heap[0], last = heap.pop()!; if (heap.length) { heap[0] = last; let i = 0; for (;;) { const l = 2 * i + 1, r = l + 1; let m = i; if (l < heap.length && heap[l][0] < heap[m][0]) m = l; if (r < heap.length && heap[r][0] < heap[m][0]) m = r; if (m === i) break; [heap[m], heap[i]] = [heap[i], heap[m]]; i = m; } } return top; };
-  dist[cj * GW + ci] = 0; push(0, cj * GW + ci);
-  while (heap.length) {
-    const [d, n] = pop(); if (d > dist[n]) continue;
-    const i = n % GW, j = (n - i) / GW;
-    for (let dj = -1; dj <= 1; dj++) for (let di = -1; di <= 1; di++) {
-      if (!di && !dj) continue;
-      const a = i + di, b2 = j + dj; if (a < 0 || b2 < 0 || a >= GW || b2 >= GH) continue;
-      const m = b2 * GW + a; if (!cost[m]) continue;
-      const nd = d + (di && dj ? 1.4142 : 1) * CELL * cost[m];
-      if (nd < dist[m]) { dist[m] = nd; push(nd, m); }
-    }
-  }
-  fields.set(key, dist);
-  return dist;
-}
-function distAt(f: Float64Array, x: number, y: number) {
-  const i = Math.max(0, Math.min(GW - 1, Math.floor(x / CELL))), j = Math.max(0, Math.min(GH - 1, Math.floor(y / CELL)));
-  let best = f[j * GW + i];
-  if (best === Infinity) for (let dj = -2; dj <= 2; dj++) for (let di = -2; di <= 2; di++) { const a = i + di, b = j + dj; if (a >= 0 && b >= 0 && a < GW && b < GH) best = Math.min(best, f[b * GW + a] + CELL * 1.5); }
-  return best === Infinity ? 999 : best;
-}
-type Brain = { rnd: () => number; sharp: number; k: number };
-const POWERS = [0.1, 0.15, 0.2, 0.26, 0.32, 0.39, 0.46, 0.54, 0.62, 0.71, 0.8, 0.9, 1];
-function pullFor(ai: number, pow: number) {
-  const [co, si] = TRIG[((ai % 720) + 720) % 720];
-  return { px: Math.round(-co * pow * MAX_PULL * 100) / 100, py: Math.round(-si * pow * MAX_PULL * 100) / 100 };
-}
-function judge(c: Course, f: Float64Array, x: number, y: number, ai: number, pow: number, clock: number) {
-  const { px, py } = pullFor(ai, pow), b = simPutt(c, x, y, px, py, clock);
-  return b.done === 2 ? -100 + pow : b.done === 3 ? distAt(f, x, y) + 60 : distAt(f, b.x, b.y);
-}
-/** Plans a putt a bit at a time (it yields so a phone can keep drawing). `noisy` false gives its best guess, no misses. */
-function* aiPlan(c: Course, x: number, y: number, clock: number, b: Brain | null): Generator<void, { px: number; py: number }> {
-  const f = fieldFor(c), found: number[][] = [];
-  let n = 0;
-  for (let ai = 0; ai < 720; ai += 10) for (const pw of POWERS) { found.push([judge(c, f, x, y, ai, pw, clock), ai, pw]); if (++n % 40 === 0) yield; }
-  found.sort((p, q) => p[0] - q[0]);
-  const tried = found.slice(0, 4);
-  for (const [, ai0, pw0] of found.slice(0, 4)) for (const da of [-4, -2, 2, 4]) for (const dp of [-0.06, -0.03, 0, 0.03, 0.06]) {
-    const pw = Math.max(0.08, Math.min(1, pw0 + dp));
-    tried.push([judge(c, f, x, y, ai0 + da, pw, clock), ai0 + da, pw]);
-    if (++n % 40 === 0) yield;
-  }
-  // a putt that only works when it's perfect isn't a good plan: score the best few by how they do a little off
-  tried.sort((p, q) => p[0] - q[0]);
-  let best = tried[0], bestAvg = Infinity;
-  for (const [s0, ai0, pw0] of tried.slice(0, 8)) {
-    let tot = s0;
-    for (const da of [-6, 0, 6]) for (const dp of [-0.08, 0, 0.08]) if (da || dp) tot += judge(c, f, x, y, ai0 + da, Math.max(0.08, Math.min(1, pw0 * (1 + dp))), clock);
-    if (tot / 9 < bestAvg) { bestAvg = tot / 9; best = [s0, ai0, pw0]; }
-    yield;
-  }
-  let ai = best[1], pw = best[2];
-  if (b) {
-    const noise = () => (b.rnd() + b.rnd() + b.rnd() - 1.5) * 2;   // roughly a bell curve, without trig
-    const spread = b.sharp * Math.max(0.6, 1 - 0.03 * b.k);
-    ai = Math.round(ai + noise() * 15 * spread); pw = Math.max(0.08, Math.min(1, pw * (1 + noise() * 0.28 * spread)));
-    b.k++;
-  }
-  return pullFor(ai, pw);
-}
-function sharpFor(mode: "daily" | "endless", round: number) { return mode === "daily" ? 1 : Math.max(0.6, 1 - 0.07 * (round - 1)); }
-/** A hole's points for the player: 100 per stroke under 7, 100 per stroke under par, 200 more for a hole in one, 25 for beating the computer. */
-function holePoints(strokes: number, par: number, cpu: number) {
-  if (strokes >= PICKUP) return 0;
-  return (PICKUP - strokes) * 100 + Math.max(0, par - strokes) * 100 + (strokes === 1 ? 200 : 0) + (strokes < cpu ? 25 : 0);
-}
-const WIN_BONUS = 500, TIE_BONUS = 200;
-// ── SIM END ────────────────────────────────────────────────────────────────
-
-const GAIN = 1, TURN_MS = 30000, THINK_MS = 1000, THINK_STEPS = 60, SETTLE_MS = 650, HOLE_MS = 2600, STEP = 1000 / 60;
+const VW = 400, VH = 600;                                // the board on screen; holes are 400 wide and can be taller (the camera pans)
+const GAIN = 1, TURN_MS = 30000, THINK_MS = 1000, THINK_STEPS = 60, SETTLE_MS = 650, HOLE_MS = 3200, INTRO_MS = 1900;
 const TOP = 58;                                          // the band at the top of the board: hole, par, strokes, whose turn
 const FONT = "system-ui, -apple-system, sans-serif";
-const FOOD_CODES = ["1f34e", "1f34a", "1f345", "1f95a"];
 const FACTS: Toast[] = [
   { title: "Kitchen Fact", body: "It takes about 40 litres of maple sap to make 1 litre of maple syrup.", img: "1f95e" },
   { title: "Kitchen Fact", body: "Butter sold in Canada and the US has to be at least 80% milk fat.", img: "1f35e" },
@@ -345,6 +49,7 @@ function scoreName(s: number, par: number) {
   const d = s - par;
   return d <= -2 ? "Eagle!" : d === -1 ? "Birdie!" : d === 0 ? "Par" : d === 1 ? "Bogey" : d === 2 ? "Double Bogey" : `${d} Over`;
 }
+const BLUE = "#3f7fd6", RED = "#e8505b";
 
 type St = { hole: number; balls: number[][]; strokes: number[]; done: boolean[]; cards: number[][]; lead: number; shooter: number; n: number; clock: number };
 const clone = (s: St): St => JSON.parse(JSON.stringify(s));
@@ -354,7 +59,7 @@ type Msg =
   | { t: "ready"; id: string; ready: boolean }                             // I tapped I'm Ready on the Get Ready card
   | { t: "start"; m: number; seed: number; first: 0 | 1; names: string[]; ids: string[] }
   | { t: "putt"; m: number; n: number; x: number; y: number; px: number; py: number; c: number }   // the putter let go: ball, pull and hole clock
-  | { t: "done"; m: number; n: number; x: number; y: number; r: number; c: number }             // where it stopped (r: 1 stopped, 2 holed, 3 sink)
+  | { t: "done"; m: number; n: number; x: number; y: number; r: number; c: number }             // where it stopped (r: 1 stopped, 2 holed, 3 water)
   | { t: "pass"; m: number; n: number }                                    // the putter's 30 seconds ran out: a stroke, the ball stays
   | { t: "aim"; m: number; n: number; px: number; py: number }             // the putter's pull while dragging (whole numbers, about 6 a second)
   | { t: "aimEnd"; m: number; n: number }                                  // they let go without putting
@@ -368,10 +73,12 @@ type GameMsg = Extract<Msg, { n: number }>;
 type LivePlay = { kind: "live"; code: string; m: number; seed: number; me: 0 | 1; first: 0 | 1; names: string[] };
 type LocalPlay = { kind: "local"; m: number; seed: number; first: 0 | 1; names: string[] };
 type Play = { kind: "cpu" } | LivePlay | LocalPlay;
-type Phase = "aim" | "think" | "roll" | "await" | "settle" | "pass" | "holeEnd" | "between" | "over";
-type Result = { kind: "won" | "lost" | "tie"; you: number; cpu: number; par: number; card: number[]; pars: number[]; rounds: number };
+type Phase = "intro" | "aim" | "think" | "roll" | "await" | "settle" | "pass" | "holeEnd" | "between" | "over";
+type Result = { kind: "won" | "lost" | "tie"; you: number; cpu: number; par: number; card: number[]; cpuCard: number[]; pars: number[]; rounds: number };
 type Hud = { score: number; hole: number; round: number; tot: number[] };
-type HoleCard = { hole: number; name: string; par: number; rows: { name: string; strokes: number }[]; pts: number | null };
+type Row = { name: string; card: number[]; color: string };
+type HoleCard = { hole: number; name: string; par: number; results: { name: string; strokes: number; color: string }[]; pts: number | null; pars: number[]; rows: Row[] };
+type Intro = { n: number; name: string; par: number };
 type RoundCard = { round: number; won: boolean; tie: boolean; points: number; you: number; cpu: number };
 type MatchEnd = { winner: number; tot: number[]; cards: number[][]; pars: number[] };
 
@@ -620,6 +327,7 @@ function useRoom(nameRef: { current: string }, handlers: { current: RoomHandlers
   };
 }
 
+
 // ── the game ───────────────────────────────────────────────────────────────
 export default function KitchenGolf() {
   const canvasRef = useRef<HTMLCanvasElement>(null);
@@ -632,6 +340,7 @@ export default function KitchenGolf() {
   const [result, setResult] = useState<Result | null>(null);
   const [roundCard, setRoundCard] = useState<RoundCard | null>(null);
   const [holeCard, setHoleCard] = useState<HoleCard | null>(null);
+  const [intro, setIntro] = useState<Intro | null>(null);
   const [matchEnd, setMatchEnd] = useState<MatchEnd | null>(null);   // live and same-phone matches; winner -1 is a tie
   const [passTo, setPassTo] = useState<string | null>(null);
   const [wins, setWins] = useState([0, 0]);
@@ -642,6 +351,10 @@ export default function KitchenGolf() {
   const [menu, setMenu] = useState<null | "friend" | "local">(null);
   const [code, setCode] = useState("");
   const [names, setNames] = useState(["", ""]);
+  const [tour, setTour] = useState<string[]>([]);              // today's holes, for the start card
+  const [muted, setMuted] = useState(true);
+  useEffect(() => { setMuted(SOUND?.muted ?? true); }, []);
+  const toggleSound = () => { const m = !muted; SOUND?.setMuted(m); setMuted(m); if (!m) setTimeout(() => SOUND?.click(), 60); };
   const shell = useGameShell(GAME, mode);
   const { reset: resetScores } = shell.scores;
   const pausedRef = useRef(false); pausedRef.current = shell.paused;
@@ -695,15 +408,25 @@ export default function KitchenGolf() {
   const playKey = play.kind === "cpu" ? "cpu" : play.kind === "live" ? `live-${play.code}-${play.m}` : `local-${play.m}`;
   useEffect(() => {
     const canvas = canvasRef.current!, wrap = wrapRef.current!;
-    const { ctx, stop } = fitCanvas(canvas, wrap, W, H, setBoard, 0);   // no fact strip: the board gets the room
-    const imgList = loadImages(FOOD_CODES), imgs: Record<string, HTMLImageElement> = {};
-    FOOD_CODES.forEach((c, i) => { imgs[c] = imgList[i]; });
+    let scale = 1;
+    const { ctx, stop } = fitCanvas(canvas, wrap, VW, VH, s => { setBoard(s); scale = s.w / VW; }, 0);   // no fact strip: the board gets the room
+    const imgList = loadImages(FOOD_IMGS), imgs: Record<string, HTMLImageElement> = {};
+    FOOD_IMGS.forEach((c, i) => { imgs[c] = imgList[i]; });
+    const paints = new Map<string, ReturnType<typeof paintHole>>();
+    imgList.forEach(im => im.addEventListener("load", () => paints.clear()));   // redraw the holes once the food pictures arrive
+    const paint = (c: Course) => {
+      const px = Math.min(3, Math.max(1, scale * (window.devicePixelRatio || 1))), key = `${c.id}${c.mirror ? "m" : ""}@${px.toFixed(2)}`;
+      let p = paints.get(key);
+      if (!p) { if (paints.size > 2) paints.clear(); p = paintHole(c, px, imgs); paints.set(key, p); }
+      return p;
+    };
     const P = playRef.current, cpu = P.kind === "cpu", live = P.kind === "live", local = P.kind === "local";
     const me = P.kind === "live" ? P.me : 0, other = 1 - me;
     const pnames = P.kind === "cpu" ? ["You", "Computer"] : P.kind === "live" ? P.names.map((v, i) => (i !== me && v === "Guest" ? "Friend" : v)) : P.names;   // an unnamed friend is "Friend", not "Guest"
     const seed = P.kind === "cpu" ? (mode === "daily" ? dailySeed(0x6017f) : Math.floor(Math.random() * 1e9)) : P.seed;
     const human = (i: number) => (cpu ? i === 0 : live ? i === me : true);
     const label = (i: number) => (cpu || live ? (i === me ? "You" : pnames[i]) : pnames[i]);
+    const colorOf = (i: number) => (cpu || live ? (i === me ? BLUE : RED) : i === 0 ? BLUE : RED);
     const mnum = P.kind === "live" ? P.m : 0;
     const brain: Brain = { rnd: mulberry32(seed ^ 0x5eed1), sharp: sharpFor(mode, 1), k: 0 };
     const roundSeed = (r: number) => (seed ^ Math.imul(r, 0x9e3779b1)) | 0;
@@ -711,30 +434,36 @@ export default function KitchenGolf() {
     const first = P.kind === "cpu" ? 0 : P.first;
     let course = compile(holes[0].id, holes[0].mirror);
     let st: St = { hole: 0, balls: [], strokes: [0, 0], done: [false, false], cards: [[], []], lead: first, shooter: first, n: 0, clock: 0 };
+    let needIntro = true, introHole = -1;   // each hole is introduced once
     function setupHole(i: number, lead: number) {
       course = compile(holes[i].id, holes[i].mirror);
       Object.assign(st, { hole: i, balls: [course.tee.slice(), course.tee.slice()], strokes: [0, 0], done: [false, false], lead, shooter: lead, clock: 0 });
+      needIntro = true;
     }
     setupHole(0, first);
+    if (cpu) setTour(holes.map(h => HOLES[h.id].name));
     let turnStart = clone(st), ended: number | null = null, counted = false;
 
     let phase: Phase = "aim", started = !cpu, wait = 0, turnLeft = TURN_MS, acc = 0, clockAcc = 0, pendingAge = 0, lastPass = -1;
     let total = 0, roundPts = 0, allStrokes = 0, realStart = performance.now(), raf = 0, last = performance.now();
     let roll: Roll | null = null, pending: Extract<GameMsg, { t: "done" }> | null = null;
     let plan: Generator<void, { px: number; py: number }> | null = null, planned: { px: number; py: number } | null = null, planClock = 0;
-    let shown: { course: Course; balls: number[][]; done: boolean[]; hole: number; strokes: number[] } | null = null;   // the hole just finished, under its score card
+    let shown: { course: Course; balls: number[][]; done: boolean[]; hole: number; strokes: number[] } | null = null;   // the hole just finished, under its scorecard
     let drag: { sx: number; sy: number; px: number; py: number; id: number } | null = null;
     const seen = { x: 0, y: 0, tx: 0, ty: 0, on: false };   // the other player's pull, as last heard (live) or planned (computer)
-    let aimSent = "", aimAt = 0;
+    let aimSent = "", aimAt = 0, bumpAt = 0, sizzleAt = 0;
     const firstPutt = [true, true];
     const floats: { x: number; y: number; text: string; color: string; age: number; big?: boolean }[] = [];
     const ripples: { x: number; y: number; age: number }[] = [];
-    let drop: { x: number; y: number; age: number } | null = null;
+    const confetti: { x: number; y: number; vx: number; vy: number; c: string; age: number; r: number }[] = [];
+    let drop: { x: number; y: number; age: number; who: number } | null = null;
     const trail: { x: number; y: number }[] = [];
+    // each meatball's turn (for drawing) and where it was last frame
+    const quats = [quatIdentity(), rollQuat(quatIdentity(), 3, 5)], lastAt: (number[] | null)[] = [null, null];
+    let camY = 0, view = { s: 1, tx: 0, ty: 0 };
     const pushHud = () => setHud({ score: total, hole: shown ? shown.hole : st.hole + 1, round, tot: [sum(st.cards[0]), sum(st.cards[1])] });
-    setOver(false); setResult(null); setRoundCard(null); setHoleCard(null); setToast(null); setPassTo(null); setStarted(!cpu); resetScores(); pushHud();
+    setOver(false); setResult(null); setRoundCard(null); setHoleCard(null); setIntro(null); setToast(null); setPassTo(null); setStarted(!cpu); resetScores(); pushHud();
 
-    const toView = (e: PointerEvent) => { const r = canvas.getBoundingClientRect(); return { x: ((e.clientX - r.left) / r.width) * W, y: ((e.clientY - r.top) / r.height) * H }; };
     const myTurn = () => phase === "aim" && ended === null && human(st.shooter) && (live ? st.shooter === me : true);
     const canAim = () => started && myTurn() && !(pausedRef.current && !live) && !(live && reconRef.current);
     const float = (x: number, y: number, text: string, color: string, big = false) => floats.push({ x, y, text, color, age: 0, big });
@@ -744,48 +473,64 @@ export default function KitchenGolf() {
       try { localStorage.setItem(LIVE_KEY, JSON.stringify({ code: P.code, play: P, snap: takeSnap(), t: Date.now() })); } catch {}
     }
     function snapNow() { turnStart = clone(st); persist(); }
+    const focusY = () => { const b = roll ? [roll.x, roll.y] : st.balls[st.shooter]; return roll ? b[1] : b[1] * 0.62 + course.cup[1] * 0.38; };
+    const camFor = (c: Course, fy: number) => Math.max(0, Math.min(Math.max(0, c.h - VH), fy - (TOP + (VH - TOP) / 2)));
 
-    // a new turn on screen: pass the phone, let the computer think, or wait for a putt
+    // a new turn on screen: show the hole first if it's new, pass the phone, let the computer think, or wait for a putt
     function beginTurn() {
       turnLeft = TURN_MS; drag = null; aimSent = ""; Object.assign(seen, { x: 0, y: 0, tx: 0, ty: 0, on: false });
       planned = null; plan = null;
       if (ended !== null) return;
+      if (needIntro) {
+        needIntro = false; introHole = st.hole; phase = "intro"; wait = INTRO_MS; camY = camFor(course, focusY());
+        setIntro({ n: st.hole + 1, name: course.name, par: course.par }); pushHud(); return;
+      }
       const s = st.shooter;
       if (local && s !== lastPass) { phase = "pass"; lastPass = s; setPassTo(pnames[s]); }
       else if (cpu && s === 1) { phase = "think"; wait = THINK_MS; planClock = st.clock + THINK_STEPS; plan = aiPlan(course, st.balls[1][0], st.balls[1][1], planClock, brain); seen.on = true; }
       else phase = "aim";
       pushHud();
     }
-    passRef.current = () => { if (phase !== "pass") return; phase = "aim"; setPassTo(null); };
+    passRef.current = () => { if (phase !== "pass") return; SOUND?.unlock(); phase = "aim"; setPassTo(null); };
 
     function fire(px: number, py: number, c: number) {
       const s = st.shooter, [x, y] = st.balls[s];
       st.clock = c; roll = startRoll(x, y, px, py, c); trail.length = 0; seen.on = false; drag = null;
       if (human(s)) firstPutt[s] = false;
       if (live && s === me) send({ t: "putt", m: mnum, n: st.n, x, y, px, py, c });
+      SOUND?.putt(Math.min(1, Math.hypot(px, py) / MAX_PULL));
       phase = "roll"; acc = 0; pending = null; pendingAge = 0;
     }
     function rollEnded() {
       const r = roll!;
-      if (r.done === 3) { ripples.push({ x: r.x, y: r.y, age: 0 }); }
-      if (r.done === 2) drop = { x: r.x, y: r.y, age: 0 };
+      if (r.done === 3) { ripples.push({ x: r.x, y: r.y, age: 0 }); SOUND?.splash(); }
+      if (r.done === 2) { drop = { x: r.x, y: r.y, age: 0, who: st.shooter }; SOUND?.cup(); }
       if (live && st.shooter !== me) { if (pending) applyDone(pending); else phase = "await"; return; }
       const res = { x: r.x, y: r.y, r: r.done, c: r.clock };
       if (live) send({ t: "done", m: mnum, n: st.n, ...res });
       applyResult(res);
     }
     function applyDone(msg: Extract<GameMsg, { t: "done" }>) {
-      if (msg.r === 2 && !drop && (!roll || roll.done !== 2)) drop = { x: course.cup[0], y: course.cup[1], age: 0 };
+      if (msg.r === 2 && !drop && (!roll || roll.done !== 2)) { drop = { x: course.cup[0], y: course.cup[1], age: 0, who: st.shooter }; SOUND?.cup(); }
       applyResult({ x: msg.x, y: msg.y, r: msg.r, c: msg.c });
     }
-    // a stroke counts: where the ball ended, the sink's extra stroke, picking up after 6
+    function celebrate(s: number, strokes: number, par: number) {
+      const [x, y] = course.cup, d = strokes - par;
+      float(x, y - 34, scoreName(strokes, par), strokes === 1 || d < 0 ? "#2eaa6e" : d === 0 ? BLUE : "#5a6b85", true);
+      if (strokes === 1 || d < 0) {
+        const cols = ["#e8505b", "#f2c230", "#3f7fd6", "#2eaa6e", "#f2994a", "#ffffff"], n = strokes === 1 ? 70 : 34;
+        for (let i = 0; i < n; i++) { const a = Math.random() * Math.PI * 2, v = 1.5 + Math.random() * (strokes === 1 ? 5 : 3.5); confetti.push({ x, y, vx: Math.cos(a) * v, vy: Math.sin(a) * v - 2.5, c: cols[i % cols.length], age: 0, r: 2 + Math.random() * 2.5 }); }
+        SOUND?.cheer(strokes === 1 || d <= -2);
+      } else if (d >= 2 && human(s)) SOUND?.meh();
+    }
+    // a stroke counts: where the ball ended, the water's extra stroke, picking up after 6
     function applyResult(res: { x: number; y: number; r: number; c: number }) {
       const s = st.shooter; roll = null; pending = null;
       const [bx, by] = st.balls[s];
-      if (res.r === 3) { st.strokes[s] += 2; float(bx, by - 26, "Splash! +1 Stroke", "#3f7fd6"); }
+      if (res.r === 3) { st.strokes[s] += 2; float(bx, by - 26, "Splash! +1 Stroke", BLUE); }
       else {
         st.strokes[s] += 1;
-        if (res.r === 2) { st.done[s] = true; st.balls[s] = course.cup.slice(); float(course.cup[0], course.cup[1] - 30, scoreName(st.strokes[s], course.par), "#2eaa6e", true); }
+        if (res.r === 2) { st.done[s] = true; st.balls[s] = course.cup.slice(); celebrate(s, st.strokes[s], course.par); }
         else st.balls[s] = [res.x, res.y];
       }
       if (!st.done[s] && st.strokes[s] >= MAX_STROKES) { st.done[s] = true; st.strokes[s] = PICKUP; float(st.balls[s][0], st.balls[s][1] - 26, "Picked Up", "#5a6b85"); }
@@ -798,25 +543,26 @@ export default function KitchenGolf() {
       if (st.strokes[s] >= MAX_STROKES) { st.done[s] = true; st.strokes[s] = PICKUP; }
       advance(s);
     }
+    const cardRows = (): Row[] => (cpu || live ? [me, other] : [0, 1]).map(i => ({ name: label(i), card: st.cards[i].slice(), color: colorOf(i) }));
     function advance(s: number) {
       st.n++;
       if (!(st.done[0] && st.done[1])) {
         st.shooter = st.done[1 - s] ? s : 1 - s;
         snapNow(); phase = "settle"; wait = SETTLE_MS; pushHud(); return;
       }
-      // the hole is over: the card shows it while the next hole is set up underneath
+      // the hole is over: the scorecard shows it while the next hole is set up underneath
       const sc = st.strokes.slice(), par = course.par;
       st.cards[0].push(sc[0]); st.cards[1].push(sc[1]);
       shown = { course, balls: st.balls.map(b => b.slice()), done: [true, true], hole: st.hole + 1, strokes: sc };
       let pts: number | null = null;
       if (cpu) { pts = holePoints(sc[0], par, sc[1]); total += pts; roundPts += pts; }
       const order = cpu || live ? [me, other] : [0, 1];
-      setHoleCard({ hole: st.hole + 1, name: course.name, par, rows: order.map(i => ({ name: label(i), strokes: sc[i] })), pts });
+      setHoleCard({ hole: st.hole + 1, name: course.name, par, results: order.map(i => ({ name: label(i), strokes: sc[i], color: colorOf(i) })), pts, pars: holes.map(h => HOLES[h.id].par), rows: cardRows() });
       if (st.hole < ROUND_HOLES - 1) setupHole(st.hole + 1, sc[0] < sc[1] ? 0 : sc[1] < sc[0] ? 1 : 1 - st.lead);   // lower score putts first; a tie swaps
       else if (!cpu) { const a = sum(st.cards[0]), b = sum(st.cards[1]); ended = a < b ? 0 : b < a ? 1 : -1; }
       snapNow(); phase = "holeEnd"; wait = HOLE_MS; pushHud();
     }
-    skipRef.current = () => { if (phase === "holeEnd" && !live) wait = 0; };
+    skipRef.current = () => { if ((phase === "holeEnd" || phase === "intro") && !live) wait = Math.min(wait, phase === "intro" ? 350 : 0); };
     function afterHoleCard() {
       setHoleCard(null); shown = null; pushHud();
       if (ended !== null) { finishMatch(); return; }
@@ -849,12 +595,12 @@ export default function KitchenGolf() {
       phase = "over";
       const pars = holes.map(h => HOLES[h.id].par);
       setToast(FACTS[Math.floor(Math.random() * FACTS.length)]);
-      setResult({ kind, you: sum(st.cards[0]), cpu: sum(st.cards[1]), par: sum(pars), card: st.cards[0].slice(), pars, rounds: round });
+      setResult({ kind, you: sum(st.cards[0]), cpu: sum(st.cards[1]), par: sum(pars), card: st.cards[0].slice(), cpuCard: st.cards[1].slice(), pars, rounds: round });
       pushHud(); setOver(true);
       if (total > readBest(bestKey)) { saveBest(bestKey, total); setBest(total); }
       shell.finishRef.current({ score: total, drops: allStrokes + sum(st.cards[0]), ms: performance.now() - realStart });
     }
-    startRef.current = () => { if (started) return; started = true; realStart = performance.now(); setStarted(true); };
+    startRef.current = () => { if (started) return; SOUND?.unlock(); started = true; realStart = performance.now(); setStarted(true); beginTurn(); };
 
     // ── live: messages from the friend, held until the game is ready for them; snapshots for catching up ──
     const mail: GameMsg[] = [];
@@ -877,10 +623,12 @@ export default function KitchenGolf() {
     function loadSnap(sn: Snap) {
       const s2 = sn.st as St;
       if (sn.end == null && ended === null && s2.n === st.n && st.shooter === me && phase === "roll") return;   // my putt is rolling: I finish it and send where it stopped
+      const prevHole = st.hole;
       st = clone(s2); course = compile(holes[st.hole].id, holes[st.hole].mirror);
-      roll = null; pending = null; drag = null; shown = null; drop = null; setHoleCard(null);
+      roll = null; pending = null; drag = null; shown = null; drop = null; setHoleCard(null); setIntro(null);
       for (let k = mail.length - 1; k >= 0; k--) if (mail[k].n < st.n) mail.splice(k, 1);
       turnStart = clone(st);
+      needIntro = st.hole !== introHole; void prevHole;
       if (sn.end != null) { ended = sn.end as number; finishMatch(); }
       else { ended = null; counted = false; setMatchEnd(null); beginTurn(); persist(); }
       pushHud();
@@ -900,14 +648,16 @@ export default function KitchenGolf() {
 
     // ── input: drag back anywhere on the board ──
     const onDown = (e: PointerEvent) => {
+      SOUND?.unlock();
       if (drag || !canAim()) return;
-      const p = toView(e);
-      drag = { sx: p.x, sy: p.y, px: 0, py: 0, id: e.pointerId };
+      const r = canvas.getBoundingClientRect(), x = ((e.clientX - r.left) / r.width) * VW, y = ((e.clientY - r.top) / r.height) * VH;
+      drag = { sx: x, sy: y, px: 0, py: 0, id: e.pointerId };
       try { canvas.setPointerCapture(e.pointerId); } catch {}
     };
     const onMove = (e: PointerEvent) => {
       if (!drag || e.pointerId !== drag.id) return;
-      const p = toView(e); let px = (p.x - drag.sx) * GAIN, py = (p.y - drag.sy) * GAIN;
+      const r = canvas.getBoundingClientRect(), x = ((e.clientX - r.left) / r.width) * VW, y = ((e.clientY - r.top) / r.height) * VH;
+      let px = (x - drag.sx) * GAIN, py = (y - drag.sy) * GAIN;
       const l = Math.hypot(px, py); if (l > MAX_PULL) { px = (px / l) * MAX_PULL; py = (py / l) * MAX_PULL; }
       drag.px = px; drag.py = py;
     };
@@ -927,14 +677,16 @@ export default function KitchenGolf() {
     }
     canvas.addEventListener("pointerdown", onDown); canvas.addEventListener("pointermove", onMove);
     canvas.addEventListener("pointerup", onUp); canvas.addEventListener("pointercancel", onCancel);
-    if (!loaded) beginTurn();
+    if (!loaded && !cpu) beginTurn();
+    camY = camFor(course, focusY());
 
     /* TEST-HOOK-START */ if (new URLSearchParams(window.location.search).has("debug")) (window as unknown as { __golf: unknown }).__golf = {
       room: () => roomRef.current.debug(),
       state: () => ({ phase, n: st.n, hole: st.hole, holeId: holes[st.hole].id, shooter: st.shooter, me, balls: st.balls, strokes: st.strokes, done: st.done, cards: st.cards, ended, total,
-        clock: st.clock, turnLeft, seen: seen.on ? [Math.round(seen.x), Math.round(seen.y)] : null, dragging: !!drag, holes: holes.map(h => h.id) }),
-      show: (id: number, mirror = false) => { holes[st.hole] = { id, mirror }; setupHole(st.hole, st.shooter); snapNow(); beginTurn(); },
+        clock: st.clock, turnLeft, seen: seen.on ? [Math.round(seen.x), Math.round(seen.y)] : null, dragging: !!drag, holes: holes.map(h => h.id), camY: Math.round(camY), roll: roll ? [Math.round(roll.x), Math.round(roll.y)] : null }),
+      show: (id: number, mirror = false) => { holes[st.hole] = { id, mirror }; setupHole(st.hole, st.shooter); needIntro = false; snapNow(); beginTurn(); camY = camFor(course, focusY()); },
       aim: () => { const s = st.shooter, g = aiPlan(course, st.balls[s][0], st.balls[s][1], st.clock + 30, null); let r; while (!(r = g.next()).done); return r.value; },
+      screen: (i: number) => { const b = roll && i === st.shooter ? [roll.x, roll.y] : st.balls[i]; return [(b[0] * view.s + view.tx) * scale, (b[1] * view.s + view.ty) * scale, BALL_R * view.s * scale]; },
     }; /* TEST-HOOK-END */
 
     const loop = (t: number) => {
@@ -947,14 +699,18 @@ export default function KitchenGolf() {
           acc += dt; let n = 0;
           while (acc >= STEP && n < 8 && roll && !roll.done) {
             acc -= STEP; n++; stepRoll(course, roll); st.clock = roll.clock;
-            if (roll.steps % 2 === 0) { trail.push({ x: roll.x, y: roll.y }); if (trail.length > 12) trail.shift(); }
+            if (roll.ev & 1 && t - bumpAt > 70) { SOUND?.bump(roll.hit); bumpAt = t; }
+            if (roll.ev & 2) SOUND?.tube();
+            if (roll.ev & 8 && t - sizzleAt > 500) { SOUND?.sizzle(); sizzleAt = t; }
+            if (!roll.tube && roll.steps % 2 === 0) { trail.push({ x: roll.x, y: roll.y }); if (trail.length > 12) trail.shift(); }
           }
           if (n >= 8) acc = 0;
           if (roll && roll.done) rollEnded();
           else if (pending && (pendingAge += dt) > 2500) applyDone(pending);   // way behind: catch up
         } else {
-          clockAcc += dt; while (clockAcc >= STEP) { clockAcc -= STEP; st.clock++; }   // the mixer and the rolling pin keep moving
-          if (phase === "think") {
+          clockAcc += dt; while (clockAcc >= STEP) { clockAcc -= STEP; st.clock++; }   // the mixer, rolling pin, doors and burners keep going
+          if (phase === "intro") { wait -= dt; if (wait <= 0) { setIntro(null); beginTurn(); } }
+          else if (phase === "think") {
             wait -= dt;
             if (plan) { const t0 = performance.now(); while (plan && performance.now() - t0 < 8) { const r = plan.next(); if (r.done) { planned = r.value; plan = null; } } }
             const tgt = planned ?? { px: 0, py: 0 }, k = planned ? Math.min(1, Math.max(0, 1.6 * (1 - wait / THINK_MS) - 0.3)) : 0, e = k * k * (3 - 2 * k);
@@ -970,10 +726,23 @@ export default function KitchenGolf() {
         }
         const ease = Math.min(1, dt / 110); seen.x += (seen.tx - seen.x) * ease; seen.y += (seen.ty - seen.y) * ease;
         for (let k = floats.length - 1; k >= 0; k--) { floats[k].age += dt; if (floats[k].age > (floats[k].big ? 2000 : 1300)) floats.splice(k, 1); }
-        for (let k = ripples.length - 1; k >= 0; k--) { ripples[k].age += dt; if (ripples[k].age > 700) ripples.splice(k, 1); }
-        if (drop) { drop.age += dt; if (drop.age > 400) drop = null; }
+        for (let k = ripples.length - 1; k >= 0; k--) { ripples[k].age += dt; if (ripples[k].age > 800) ripples.splice(k, 1); }
+        for (let k = confetti.length - 1; k >= 0; k--) { const p = confetti[k]; p.age += dt; p.x += p.vx * dt / 16; p.y += p.vy * dt / 16; p.vy += 0.12 * dt / 16; p.vx *= 0.985; if (p.age > 1600) confetti.splice(k, 1); }
+        if (drop) { drop.age += dt; if (drop.age > 420) drop = null; }
       }
-      draw(t);
+      // the camera: the whole hole while it's introduced, then following the play (only tall holes move)
+      const c = shown ? shown.course : course;
+      if (!shown) camY += (camFor(course, focusY()) - camY) * Math.min(1, dt / 260);
+      if (phase === "intro") { const k = Math.max(0, Math.min(1, (1 - wait / INTRO_MS - 0.35) / 0.6)), e = k * k * (3 - 2 * k); view = { s: 1, tx: 0, ty: -camY * e }; }   // from the cup down to the tee
+      else view = { s: 1, tx: 0, ty: -camY };
+      // each meatball turns by how far it moved since last frame
+      for (let i = 0; i < 2; i++) {
+        const b = roll && i === st.shooter && !shown ? (roll.tube ? null : [roll.x, roll.y]) : st.balls[i];
+        if (!b) continue;
+        const l = lastAt[i]; if (l) { const dx = b[0] - l[0], dy = b[1] - l[1]; if (Math.abs(dx) + Math.abs(dy) < 40) quats[i] = rollQuat(quats[i], dx, dy); }
+        lastAt[i] = [b[0], b[1]];
+      }
+      draw(t, c);
       raf = requestAnimationFrame(loop);
     };
 
@@ -982,221 +751,107 @@ export default function KitchenGolf() {
     const text = (s: string, x: number, y: number, size: number, color: string, weight = 700, align: CanvasTextAlign = "center") => {
       ctx.font = `${weight} ${size}px ${FONT}`; ctx.fillStyle = color; ctx.textAlign = align; ctx.fillText(s, x, y);
     };
-    const poly = (p: Pt[]) => { ctx.beginPath(); p.forEach(([x, y], i) => { if (i) ctx.lineTo(x, y); else ctx.moveTo(x, y); }); ctx.closePath(); };
-    const specks: number[][] = []; { const r = mulberry32(77); for (let i = 0; i < 90; i++) specks.push([r() * W, r() * H, 0.8 + r() * 1.6, r()]); }
-    const colorOf = (i: number) => (cpu || live ? (i === me ? "#3f7fd6" : "#e8505b") : i === 0 ? "#3f7fd6" : "#e8505b");
-    function drawCourse(c: Course, clock: number) {
-      // the counter
-      ctx.fillStyle = "#efe7dc"; ctx.fillRect(0, 0, W, H);
-      for (const [x, y, r, k] of specks) { ctx.fillStyle = k < 0.5 ? "rgba(140,110,80,0.18)" : "rgba(255,255,255,0.7)"; ctx.beginPath(); ctx.arc(x, y, r, 0, 7); ctx.fill(); }
-      // the mat, with a cutting-mat grid
-      ctx.save(); ctx.shadowColor = "rgba(60,40,20,0.22)"; ctx.shadowBlur = 14; ctx.shadowOffsetY = 6; poly(c.out); ctx.fillStyle = "#8fcf86"; ctx.fill(); ctx.restore();
-      ctx.save(); poly(c.out); ctx.clip();
-      ctx.strokeStyle = "rgba(255,255,255,0.22)"; ctx.lineWidth = 1; ctx.beginPath();
-      for (let x = 0; x <= W; x += 20) { ctx.moveTo(x, 0); ctx.lineTo(x, H); }
-      for (let y = 0; y <= H; y += 20) { ctx.moveTo(0, y); ctx.lineTo(W, y); }
-      ctx.stroke();
-      // zones
-      for (const z of c.zones) {
-        if (z.k === "syrup") {
-          const [x, y, r] = z.c;
-          ctx.fillStyle = "rgba(222,140,24,0.85)"; ctx.strokeStyle = "rgba(170,92,12,0.9)"; ctx.lineWidth = 2; ctx.beginPath();
-          for (let i = 0; i <= 24; i++) { const [co, si] = TRIG[(i * 30) % 720], rr2 = r * (1 + 0.07 * ((i * 7) % 3 - 1)); if (i) ctx.lineTo(x + co * rr2, y + si * rr2); else ctx.moveTo(x + co * rr2, y + si * rr2); }
-          ctx.fill(); ctx.stroke(); ctx.fillStyle = "rgba(255,236,190,0.7)"; ctx.beginPath(); ctx.ellipse(x - r * 0.35, y - r * 0.4, r * 0.28, r * 0.12, -0.5, 0, 7); ctx.fill();
-        } else if (z.k === "butter") {
-          const [x0, y0, x1, y1] = z.r; rr(x0, y0, x1 - x0, y1 - y0, 10); ctx.fillStyle = "#fbe9a6"; ctx.fill(); ctx.strokeStyle = "#efcf62"; ctx.lineWidth = 2; ctx.stroke();
-          ctx.strokeStyle = "rgba(255,255,255,0.75)"; ctx.lineWidth = 3; ctx.beginPath();
-          for (let x = x0 + 18; x < x1 - 10; x += 34) { ctx.moveTo(x, y0 + 14); ctx.lineTo(x + 14, y0 + 30); }
-          ctx.stroke();
-        } else if (z.k === "sink") {
-          const [x0, y0, x1, y1] = z.r; rr(x0 + 1, y0 + 1, x1 - x0 - 2, y1 - y0 - 2, 14); ctx.fillStyle = "#c7d0db"; ctx.fill(); ctx.strokeStyle = "#9aa6b8"; ctx.lineWidth = 3; ctx.stroke();
-          rr(x0 + 8, y0 + 8, x1 - x0 - 16, y1 - y0 - 16, 10); ctx.fillStyle = "#86bdf0"; ctx.fill();
-          const cx = (x0 + x1) / 2, cy = (y0 + y1) / 2;
-          ctx.fillStyle = "#6b7a90"; ctx.beginPath(); ctx.arc(cx, cy, 8, 0, 7); ctx.fill(); ctx.strokeStyle = "#c7d0db"; ctx.lineWidth = 1.5; ctx.beginPath(); ctx.moveTo(cx - 5, cy); ctx.lineTo(cx + 5, cy); ctx.moveTo(cx, cy - 5); ctx.lineTo(cx, cy + 5); ctx.stroke();
-          ctx.strokeStyle = "rgba(255,255,255,0.55)"; ctx.lineWidth = 2; const w2 = Math.sin(clock / 30) * 3;
-          for (const k of [0.3, 0.7]) { ctx.beginPath(); ctx.ellipse(cx + (k - 0.5) * (x1 - x0) * 0.5, y0 + (y1 - y0) * k, 14 + w2, 4, 0, 0, 7); ctx.stroke(); }
-        } else {
-          const [x0, y0, x1, y1] = z.r, g = ctx.createLinearGradient(x0, y0, x0 + (z.ax ? x1 - x0 : 0), y0 + (z.ay ? y1 - y0 : 0));
-          g.addColorStop(z.ay > 0 || z.ax > 0 ? 0 : 1, "#e9edf2"); g.addColorStop(z.ay > 0 || z.ax > 0 ? 1 : 0, "#a9b3c1");   // darker at the bottom of the slope
-          ctx.fillStyle = g; ctx.fillRect(x0, y0, x1 - x0, y1 - y0);
-          ctx.fillStyle = "rgba(90,107,133,0.35)";
-          for (let x = x0 + 26; x < x1 - 20; x += 30) { rr(x, y0 + 14, 8, y1 - y0 - 28, 4); ctx.fill(); }   // spatula slots
-          const dx = Math.sign(z.ax), dy = Math.sign(z.ay), cx = (x0 + x1) / 2, cy = (y0 + y1) / 2;
-          ctx.strokeStyle = "rgba(255,255,255,0.95)"; ctx.lineWidth = 4; ctx.lineCap = "round"; ctx.lineJoin = "round";
-          for (const o of [-24, 0, 24]) { const px = cx + dx * o, py = cy + dy * o; ctx.beginPath(); ctx.moveTo(px - dy * 14 - dx * 7, py - dx * 14 - dy * 7); ctx.lineTo(px + dx * 7, py + dy * 7); ctx.lineTo(px + dy * 14 - dx * 7, py + dx * 14 - dy * 7); ctx.stroke(); }
-        }
-      }
-      // the tee
-      rr(c.tee[0] - 16, c.tee[1] - 11, 32, 22, 6); ctx.fillStyle = "rgba(255,255,255,0.4)"; ctx.fill();
-      ctx.restore();
-      // the rails round the mat
-      poly(c.out); ctx.lineJoin = "round"; ctx.strokeStyle = "#b07a46"; ctx.lineWidth = 9; ctx.stroke(); ctx.strokeStyle = "#d9a56b"; ctx.lineWidth = 3; ctx.stroke();
-      // cutting boards and shelves
-      for (const b of c.blocks) {
-        ctx.save(); ctx.shadowColor = "rgba(60,40,20,0.25)"; ctx.shadowBlur = 8; ctx.shadowOffsetY = 4; poly(b.p); ctx.fillStyle = b.k === "board" ? "#ddb07a" : "#c98b52"; ctx.fill(); ctx.restore();
-        poly(b.p); ctx.strokeStyle = b.k === "board" ? "#a8733a" : "#94602f"; ctx.lineWidth = 2.5; ctx.stroke();
-        const xs = b.p.map(p => p[0]), ys = b.p.map(p => p[1]), x0 = Math.min(...xs), x1 = Math.max(...xs), y0 = Math.min(...ys), y1 = Math.max(...ys);
-        ctx.save(); poly(b.p); ctx.clip();
-        if (b.k === "board") {
-          ctx.strokeStyle = "rgba(150,95,45,0.35)"; ctx.lineWidth = 1.5; ctx.beginPath();
-          for (let y = y0 + 9; y < y1; y += 11) { ctx.moveTo(x0, y); ctx.bezierCurveTo(x0 + (x1 - x0) * 0.3, y - 3, x0 + (x1 - x0) * 0.6, y + 3, x1, y); }
-          ctx.stroke(); ctx.fillStyle = "#efe7dc"; ctx.beginPath(); ctx.arc(x1 - 16, (y0 + y1) / 2, 6, 0, 7); ctx.fill();
-        } else {
-          const cols = ["#e8505b", "#f2994a", "#2eaa6e", "#8e6bd6", "#e09a00"];
-          for (let x = x0 + 16, i = 0; x < x1 - 8; x += 26, i++) { ctx.fillStyle = "#fff"; ctx.beginPath(); ctx.arc(x, (y0 + y1) / 2, 9, 0, 7); ctx.fill(); ctx.fillStyle = cols[(i + Math.round(x0)) % 5]; ctx.beginPath(); ctx.arc(x, (y0 + y1) / 2, 6, 0, 7); ctx.fill(); }
-        }
-        ctx.restore();
-      }
-      // bowls, jars and egg cups
-      for (const u of c.bumps) {
-        ctx.fillStyle = "rgba(60,40,20,0.2)"; ctx.beginPath(); ctx.arc(u.x + 2, u.y + 5, u.r, 0, 7); ctx.fill();
-        if (u.k === "bowl") {
-          ctx.fillStyle = "#ffffff"; ctx.beginPath(); ctx.arc(u.x, u.y, u.r, 0, 7); ctx.fill(); ctx.strokeStyle = "#9dc0ef"; ctx.lineWidth = 3; ctx.stroke();
-          ctx.fillStyle = "#eef4fc"; ctx.beginPath(); ctx.arc(u.x, u.y, u.r * 0.72, 0, 7); ctx.fill();
-          if (u.f && imgs[u.f]?.complete) { const s = u.r * 1.15; ctx.drawImage(imgs[u.f], u.x - s / 2, u.y - s / 2, s, s); }
-        } else if (u.k === "jar") {
-          ctx.fillStyle = "#e8505b"; ctx.beginPath(); ctx.arc(u.x, u.y, u.r, 0, 7); ctx.fill();
-          ctx.fillStyle = "#f07a83"; ctx.beginPath(); ctx.arc(u.x, u.y, u.r * 0.78, 0, 7); ctx.fill();
-          ctx.fillStyle = "rgba(255,255,255,0.8)"; for (let i = 0; i < 6; i++) { const [co, si] = TRIG[i * 120]; ctx.beginPath(); ctx.arc(u.x + co * u.r * 0.45, u.y + si * u.r * 0.45, 2, 0, 7); ctx.fill(); }
-        } else {
-          ctx.fillStyle = "#3f7fd6"; ctx.beginPath(); ctx.arc(u.x, u.y, u.r, 0, 7); ctx.fill();
-          ctx.fillStyle = "#fffaf0"; ctx.beginPath(); ctx.ellipse(u.x, u.y, u.r * 0.7, u.r * 0.78, 0, 0, 7); ctx.fill();
-        }
-      }
-      // the cup and its cocktail-stick flag
-      const [qx, qy] = c.cup;
-      ctx.fillStyle = "#e9f6e6"; ctx.beginPath(); ctx.arc(qx, qy, CUP_R + 3, 0, 7); ctx.fill();
-      ctx.fillStyle = "#2b2f38"; ctx.beginPath(); ctx.arc(qx, qy, CUP_R, 0, 7); ctx.fill();
-      ctx.fillStyle = "#454b57"; ctx.beginPath(); ctx.arc(qx, qy + 2, CUP_R - 4, 0, 7); ctx.fill();
-      // moving parts
-      for (const m of c.movers) {
-        if (m.k === "mixer") {
-          ctx.strokeStyle = "rgba(90,107,133,0.25)"; ctx.setLineDash([5, 6]); ctx.lineWidth = 1.5; ctx.beginPath(); ctx.arc(m.x, m.y, m.len + MIXER_W, 0, 7); ctx.stroke(); ctx.setLineDash([]);
-        } else {
-          ctx.strokeStyle = "rgba(90,107,133,0.18)"; ctx.lineWidth = PIN_R * 2 + 4; ctx.lineCap = "round"; ctx.beginPath(); ctx.moveTo(m.x0 - m.half, m.y0); ctx.lineTo(m.x1 + m.half, m.y1); ctx.stroke();
-        }
-      }
-      for (const p of partsAt(c, clock)) {
-        if (p.spin) {
-          ctx.lineCap = "round"; ctx.strokeStyle = "#8a96a8"; ctx.lineWidth = MIXER_W * 2 + 2; ctx.beginPath(); ctx.moveTo(p.ax, p.ay); ctx.lineTo(p.bx, p.by); ctx.stroke();
-          ctx.strokeStyle = "#d3d9e2"; ctx.lineWidth = MIXER_W; ctx.beginPath(); ctx.moveTo(p.ax, p.ay); ctx.lineTo(p.bx, p.by); ctx.stroke();
-          for (const [ex, ey] of [[p.ax, p.ay], [p.bx, p.by]]) { ctx.strokeStyle = "#8a96a8"; ctx.lineWidth = 2.5; ctx.beginPath(); ctx.ellipse(ex, ey, 9, 9, 0, 0, 7); ctx.stroke(); }
-          ctx.fillStyle = "#5a6b85"; ctx.beginPath(); ctx.arc(p.px, p.py, 10, 0, 7); ctx.fill(); ctx.fillStyle = "#c7d0db"; ctx.beginPath(); ctx.arc(p.px, p.py, 4, 0, 7); ctx.fill();
-        } else {
-          ctx.save(); ctx.shadowColor = "rgba(60,40,20,0.3)"; ctx.shadowBlur = 6; ctx.shadowOffsetY = 4;
-          ctx.lineCap = "round"; ctx.strokeStyle = "#b07a46"; ctx.lineWidth = 8; ctx.beginPath(); ctx.moveTo(p.ax, p.ay); ctx.lineTo(p.bx, p.by); ctx.stroke(); ctx.restore();
-          const pl = Math.hypot(p.bx - p.ax, p.by - p.ay) || 1, hx = ((p.bx - p.ax) / pl) * 18, hy = ((p.by - p.ay) / pl) * 18;   // handles at both ends
-          ctx.strokeStyle = "#e6b980"; ctx.lineWidth = PIN_R * 2; ctx.beginPath(); ctx.moveTo(p.ax + hx, p.ay + hy); ctx.lineTo(p.bx - hx, p.by - hy); ctx.stroke();
-          ctx.strokeStyle = "rgba(255,255,255,0.45)"; ctx.lineWidth = 3; ctx.beginPath(); ctx.moveTo(p.ax + hx, p.ay + hy - 4); ctx.lineTo(p.bx - hx, p.by - hy - 4); ctx.stroke();
-        }
-      }
-    }
-    function drawFlag(c: Course, near: boolean) {
-      const [qx, qy] = c.cup; ctx.globalAlpha = near ? 0.35 : 1;
-      ctx.strokeStyle = "#c9a26b"; ctx.lineWidth = 2.5; ctx.lineCap = "round"; ctx.beginPath(); ctx.moveTo(qx, qy); ctx.lineTo(qx + 4, qy - 36); ctx.stroke();
-      ctx.fillStyle = "#e8505b"; ctx.beginPath(); ctx.moveTo(qx + 4, qy - 36); ctx.lineTo(qx + 22, qy - 31); ctx.lineTo(qx + 3.5, qy - 25); ctx.fill();
-      ctx.globalAlpha = 1;
-    }
-    function drawBall(x: number, y: number, i: number, alpha: number, spin = 0, scale = 1) {
-      ctx.globalAlpha = alpha * 0.35; ctx.fillStyle = "#3a2a1a"; ctx.beginPath(); ctx.ellipse(x + 1.5, y + 3, BALL_R * scale, BALL_R * 0.7 * scale, 0, 0, 7); ctx.fill();
-      ctx.globalAlpha = alpha;
-      ctx.strokeStyle = colorOf(i); ctx.lineWidth = 3; ctx.beginPath(); ctx.arc(x, y, (BALL_R + 2) * scale, 0, 7); ctx.stroke();
-      const g = ctx.createRadialGradient(x - 2.5 * scale, y - 2.5 * scale, 1, x, y, BALL_R * scale);
-      g.addColorStop(0, "#b8673f"); g.addColorStop(1, "#6e3720");
-      ctx.fillStyle = g; ctx.beginPath(); ctx.arc(x, y, BALL_R * scale, 0, 7); ctx.fill();
-      const a = Math.round((spin / BALL_R) * 115) % 720;   // flecks of herbs turn as it rolls
-      for (const [o, col] of [[0, "#4f8a3a"], [240, "#d7a07a"], [480, "#4f8a3a"]] as [number, string][]) {
-        const [co, si] = TRIG[(a + o + 720) % 720]; ctx.fillStyle = col; ctx.beginPath(); ctx.arc(x + co * 3.6 * scale, y + si * 2.6 * scale, 1.3 * scale, 0, 7); ctx.fill();
-      }
-      ctx.globalAlpha = 1;
-    }
     function drawPutter(x: number, y: number, px: number, py: number, alpha: number) {
       const l = Math.hypot(px, py); if (l < 2) return;
-      const dx = -px / l, dy = -py / l, pw = Math.min(1, l / MAX_PULL), back = BALL_R + 5 + 24 * pw, hx = x - dx * back, hy = y - dy * back;
+      const dx = -px / l, dy = -py / l, pw = Math.min(1, l / MAX_PULL), back = BALL_R + 6 + 26 * pw, hx = x - dx * back, hy = y - dy * back;
       ctx.globalAlpha = alpha; ctx.lineCap = "round";
-      ctx.strokeStyle = "#9aa6b8"; ctx.lineWidth = 2.5; ctx.beginPath(); ctx.moveTo(hx, hy); ctx.lineTo(hx - dx * 26 - dy * 12, hy - dy * 26 + dx * 12); ctx.stroke();
-      ctx.strokeStyle = "#5a6b85"; ctx.lineWidth = 6; ctx.beginPath(); ctx.moveTo(hx - dy * 9, hy + dx * 9); ctx.lineTo(hx + dy * 9, hy - dx * 9); ctx.stroke();
-      ctx.globalAlpha = 1;
+      ctx.shadowColor = "rgba(30,20,10,0.3)"; ctx.shadowBlur = 4; ctx.shadowOffsetX = 2; ctx.shadowOffsetY = 3;
+      ctx.strokeStyle = "#b9c1ca"; ctx.lineWidth = 3; ctx.beginPath(); ctx.moveTo(hx, hy); ctx.lineTo(hx - dx * 34 - dy * 14, hy - dy * 34 + dx * 14); ctx.stroke();
+      ctx.strokeStyle = "#2b2f35"; ctx.lineWidth = 3.5; ctx.beginPath(); ctx.moveTo(hx - dx * 26 - dy * 11, hy - dy * 26 + dx * 11); ctx.lineTo(hx - dx * 34 - dy * 14, hy - dy * 34 + dx * 14); ctx.stroke();
+      ctx.strokeStyle = "#4a5260"; ctx.lineWidth = 7; ctx.beginPath(); ctx.moveTo(hx - dy * 10, hy + dx * 10); ctx.lineTo(hx + dy * 10, hy - dx * 10); ctx.stroke();
+      ctx.shadowColor = "transparent"; ctx.shadowBlur = 0; ctx.shadowOffsetX = 0; ctx.shadowOffsetY = 0; ctx.globalAlpha = 1;
     }
     function aimDots(c: Course, x: number, y: number, px: number, py: number) {
       const l = Math.hypot(px, py); if (l < MIN_PULL) return;
-      const dx = -px / l, dy = -py / l, len = 26 + 84 * Math.min(1, l / MAX_PULL);
-      ctx.fillStyle = "#ffffff";
-      for (let s = BALL_R + 7; s < len; s += 8) {
+      const dx = -px / l, dy = -py / l, len = 30 + 92 * Math.min(1, l / MAX_PULL);
+      for (let s = BALL_R + 8; s < len; s += 9) {
         const qx = x + dx * s, qy = y + dy * s;
-        if (c.segs.some(g => segDist2(qx, qy, g) < 9) || c.bumps.some(u => (qx - u.x) * (qx - u.x) + (qy - u.y) * (qy - u.y) < u.r * u.r)) break;   // stops at the first wall
-        ctx.globalAlpha = Math.max(0.25, 1 - s / (len * 1.15)); ctx.beginPath(); ctx.arc(qx, qy, 2.8, 0, 7); ctx.fill();
-        ctx.strokeStyle = "rgba(16,27,46,0.35)"; ctx.lineWidth = 1; ctx.stroke();
+        if (c.segs.some(g => segDist2(qx, qy, g) < 12) || c.bumps.some(u => (qx - u.x) * (qx - u.x) + (qy - u.y) * (qy - u.y) < u.r * u.r)) break;   // stops at the first wall
+        ctx.globalAlpha = Math.max(0.25, 1 - s / (len * 1.15)); ctx.fillStyle = "#ffffff"; ctx.beginPath(); ctx.arc(qx, qy, 3.2, 0, 7); ctx.fill();
+        ctx.strokeStyle = "rgba(16,27,46,0.45)"; ctx.lineWidth = 1.2; ctx.stroke();
       }
       ctx.globalAlpha = 1;
     }
 
-    function draw(t: number) {
-      ctx.save(); ctx.clearRect(0, 0, W, H);
-      rr(0, 0, W, H, 22); ctx.clip();
-      const view = shown ?? { course, balls: st.balls, done: st.done, hole: st.hole + 1, strokes: st.strokes }, c = view.course;
-      drawCourse(c, roll ? roll.clock : st.clock);
-      for (const r of ripples) { const k = r.age / 700; ctx.strokeStyle = `rgba(255,255,255,${1 - k})`; ctx.lineWidth = 2.5; ctx.beginPath(); ctx.arc(r.x, r.y, 4 + k * 26, 0, 7); ctx.stroke(); }
-      const ballAt = (i: number) => (roll && i === st.shooter && !shown ? [roll.x, roll.y] : view.balls[i]);
-      const near = [0, 1].some(i => !view.done[i] && Math.hypot(ballAt(i)[0] - c.cup[0], ballAt(i)[1] - c.cup[1] + 20) < 30);
-      drawFlag(c, near);
-      if (drop) { const k = drop.age / 400; drawBall(c.cup[0] + (drop.x - c.cup[0]) * (1 - k), c.cup[1] + (drop.y - c.cup[1]) * (1 - k), st.shooter, 1 - k * 0.6, 0, 1 - k * 0.6); }
+    function draw(t: number, c: Course) {
+      ctx.save(); ctx.clearRect(0, 0, VW, VH);
+      rr(0, 0, VW, VH, 22); ctx.clip();
+      ctx.fillStyle = "#2b2f35"; ctx.fillRect(0, 0, VW, VH);
+      const view0 = view, viewB = shown ? { course: shown.course, balls: shown.balls, done: shown.done, hole: shown.hole, strokes: shown.strokes } : { course, balls: st.balls, done: st.done, hole: st.hole + 1, strokes: st.strokes };
+      const p = paint(c), clock = roll ? roll.clock : st.clock;
+      ctx.save(); ctx.translate(view0.tx, view0.ty); ctx.scale(view0.s, view0.s);
+      ctx.drawImage(p.under, 0, 0, W, c.h);
+      drawLive(ctx, c, partsAt(c, clock), clock, t);
+      for (const r of ripples) { const k = r.age / 800; ctx.strokeStyle = `rgba(255,255,255,${1 - k})`; ctx.lineWidth = 2.5; for (const f of [1, 0.6]) { ctx.beginPath(); ctx.arc(r.x, r.y, 4 + k * 30 * f, 0, 7); ctx.stroke(); } }
+      const ballAt = (i: number) => (roll && i === st.shooter && !shown ? [roll.x, roll.y] : viewB.balls[i]);
+      const near = [0, 1].some(i => !viewB.done[i] && Math.hypot(ballAt(i)[0] - c.cup[0], ballAt(i)[1] - c.cup[1] + 20) < 32);
+      if (drop) { const k = drop.age / 420; drawMeatball(ctx, c.cup[0] + (drop.x - c.cup[0]) * (1 - k), c.cup[1] + (drop.y - c.cup[1]) * (1 - k), BALL_R * (1 - k * 0.55), quats[drop.who], 1 - k * 0.5); }
       // the waiting ball first, faded; the one putting on top
       const active = shown ? -1 : st.shooter, order = active === 0 ? [1, 0] : [0, 1];
       for (const i of order) {
-        if (view.done[i] && !(roll && i === active)) continue;
+        if (viewB.done[i] && !(roll && i === active)) continue;
         if (roll && i === active && roll.done === 2) continue;
-        const [x, y] = ballAt(i), mine = i === active;
-        if (mine && roll) { ctx.fillStyle = "rgba(255,255,255,0.45)"; trail.forEach((q, j) => { ctx.globalAlpha = j / trail.length; ctx.beginPath(); ctx.arc(q.x, q.y, 2, 0, 7); ctx.fill(); }); ctx.globalAlpha = 1; }
-        drawBall(x, y, i, mine ? 1 : 0.5, mine && roll ? roll.dist : 0);
+        const mine = i === active;
+        if (mine && roll && roll.tube) {                                // inside the paper towel tube: a little bump moving along it
+          const [tx, ty] = tubePos(c, roll); ctx.fillStyle = "rgba(255,240,215,0.45)"; ctx.beginPath(); ctx.ellipse(tx, ty, 9, 9, 0, 0, 7); ctx.fill(); continue;
+        }
+        const [x, y] = ballAt(i);
+        if (mine && roll) { trail.forEach((q, j) => { ctx.globalAlpha = (j / trail.length) * 0.5; ctx.fillStyle = "rgba(255,255,255,0.8)"; ctx.beginPath(); ctx.arc(q.x, q.y, 2.2, 0, 7); ctx.fill(); }); ctx.globalAlpha = 1; }
+        drawMeatball(ctx, x, y, BALL_R, quats[i], mine || shown ? 1 : 0.55, colorOf(i));
       }
       // aiming: yours (dots, putter and power), or theirs (putter only, never the line)
-      if (!shown && phase !== "over") {
+      if (!shown && phase !== "over" && phase !== "intro") {
         const [bx, by] = st.balls[st.shooter];
         if (drag && canAim()) { drawPutter(bx, by, drag.px, drag.py, 1); aimDots(c, bx, by, drag.px, drag.py); }
-        else if (!local && seen.on && st.shooter !== me && (phase === "aim" || phase === "think")) drawPutter(bx, by, seen.x, seen.y, 0.85);
+        else if (!local && seen.on && st.shooter !== me && (phase === "aim" || phase === "think")) drawPutter(bx, by, seen.x, seen.y, 0.9);
       }
+      if (p.over) ctx.drawImage(p.over, 0, 0, W, c.h);
+      drawFlag(ctx, c, near, t);
+      for (const q of confetti) { ctx.globalAlpha = Math.max(0, 1 - q.age / 1600); ctx.fillStyle = q.c; ctx.save(); ctx.translate(q.x, q.y); ctx.rotate(q.age / 120 + q.r); ctx.fillRect(-q.r, -q.r * 0.5, q.r * 2, q.r); ctx.restore(); }
+      ctx.globalAlpha = 1;
       for (const f of floats) {
-        const life = f.big ? 2000 : 1300, a = 1 - f.age / life;
+        const life = f.big ? 2000 : 1300, a = 1 - f.age / life, pop = f.big ? Math.min(1, f.age / 160) : 1, sz = (f.big ? 26 : 16) * (0.6 + 0.4 * pop);
         ctx.globalAlpha = Math.max(0, Math.min(1, a * 1.6));
-        const fx = Math.max(70, Math.min(W - 70, f.x)), fy = Math.max(TOP + 30, f.y - (f.big ? 0 : f.age * 0.025));
-        ctx.font = `800 ${f.big ? 24 : 16}px ${FONT}`; const tw = ctx.measureText(f.text).width;
-        ctx.fillStyle = "rgba(255,255,255,0.85)"; rr(fx - tw / 2 - 8, fy - (f.big ? 22 : 16), tw + 16, f.big ? 30 : 22, 11); ctx.fill();
-        text(f.text, fx, fy, f.big ? 24 : 16, f.color, 800);
+        const fx = Math.max(80, Math.min(VW - 80, f.x)), fy = f.y - (f.big ? 0 : f.age * 0.025);
+        ctx.font = `800 ${sz}px ${FONT}`; const tw = ctx.measureText(f.text).width;
+        ctx.fillStyle = "rgba(255,255,255,0.92)"; rr(fx - tw / 2 - 10, fy - sz * 0.92, tw + 20, sz * 1.3, sz * 0.6); ctx.fill();
+        text(f.text, fx, fy, sz, f.color, 800);
       }
       ctx.globalAlpha = 1;
+      ctx.restore();
 
       // the band at the top: hole and par, each player's strokes, whose turn (or your power while you drag)
-      ctx.fillStyle = "rgba(255,255,255,0.9)"; ctx.fillRect(0, 0, W, TOP); ctx.fillStyle = "rgba(16,27,46,0.08)"; ctx.fillRect(0, TOP - 1, W, 1);
-      text(`Hole ${view.hole} · Par ${c.par}`, 14, 23, 15, "#101b2e", 800, "left");
-      text(c.name, W - 14, 23, 13, "#5a6b85", 600, "right");
-      const sides = cpu || live ? [me, other] : [0, 1], vs = view.strokes;
+      ctx.fillStyle = "rgba(255,255,255,0.93)"; ctx.fillRect(0, 0, VW, TOP); ctx.fillStyle = "rgba(16,27,46,0.08)"; ctx.fillRect(0, TOP - 1, VW, 1);
+      text(`Hole ${viewB.hole} · Par ${c.par}`, 14, 23, 15, "#101b2e", 800, "left");
+      text(c.name, VW - 14, 23, 13, "#5a6b85", 700, "right");
+      const sides = cpu || live ? [me, other] : [0, 1], vs = viewB.strokes;
       sides.forEach((i, k) => {
-        const x = k === 0 ? 14 : W - 14, nm = label(i).length > 9 ? label(i).slice(0, 8) + "." : label(i);
-        const s = view.done[i] ? (vs[i] >= PICKUP ? "Picked Up" : `${vs[i]} ✓`) : String(vs[i]);
+        const x = k === 0 ? 14 : VW - 14, nm = label(i).length > 9 ? label(i).slice(0, 8) + "." : label(i);
+        const s = viewB.done[i] ? (vs[i] >= PICKUP ? "Picked Up" : `${vs[i]} ✓`) : String(vs[i]);
         ctx.fillStyle = colorOf(i); ctx.beginPath(); ctx.arc(k === 0 ? x + 4 : x - 4, 41, 4, 0, 7); ctx.fill();
         text(`${nm} ${s}`, k === 0 ? x + 12 : x - 12, 46, 13, "#101b2e", 700, k === 0 ? "left" : "right");
       });
       if (drag && canAim()) {
-        const pw = Math.min(1, Math.hypot(drag.px, drag.py) / MAX_PULL), bw = 96, x0 = W / 2 - bw / 2;
+        const pw = Math.min(1, Math.hypot(drag.px, drag.py) / MAX_PULL), bw = 96, x0 = VW / 2 - bw / 2;
         ctx.fillStyle = "rgba(16,27,46,0.1)"; rr(x0, 37, bw, 10, 5); ctx.fill();
-        ctx.fillStyle = pw > 0.85 ? "#e8505b" : pw > 0.6 ? "#e09a00" : "#2eaa6e"; rr(x0, 37, Math.max(10, bw * pw), 10, 5); ctx.fill();
+        ctx.fillStyle = pw > 0.85 ? RED : pw > 0.6 ? "#e09a00" : "#2eaa6e"; rr(x0, 37, Math.max(10, bw * pw), 10, 5); ctx.fill();
         text(`${Math.round(pw * 100)}%`, x0 + bw + 6, 46, 12, "#101b2e", 800, "left");
-      } else if (started && !shown && phase !== "over" && phase !== "between") {
+      } else if (started && !shown && phase !== "over" && phase !== "between" && phase !== "intro") {
         const s = st.shooter, aiming = !local && s !== me && (phase === "think" || (seen.on && Math.hypot(seen.tx, seen.ty) >= MIN_PULL && phase === "aim"));
-        const whose = aiming ? `${cpu ? "Computer" : pnames[s].slice(0, 9)} Aiming...` : st.done[me] && !local && s !== me ? `Waiting For ${cpu ? "Computer" : pnames[s].slice(0, 9)}` : human(s) && !local ? "Your Turn" : `${(cpu ? "Computer" : pnames[s]).slice(0, 9)}'s Turn`;
+        const nm = (cpu ? "Computer" : pnames[s]).slice(0, 9);
+        const whose = aiming ? `${nm} Aiming...` : st.done[me] && !local && s !== me ? `Waiting For ${nm}` : human(s) && !local ? "Your Turn" : `${nm}'s Turn`;
         const left = Math.max(0, Math.ceil(turnLeft / 1000));
-        text(live && phase === "aim" ? `${whose} · ${left}s` : whose, W / 2, 46, 13, s === me || local ? "#3f7fd6" : "#5a6b85", 800);
-        if (live && phase === "aim") { ctx.fillStyle = left <= 5 ? "#e8505b" : "#3f7fd6"; rr(W / 2 - 50, 51, (100 * Math.max(0, turnLeft)) / TURN_MS, 3, 1.5); ctx.fill(); }
+        text(live && phase === "aim" ? `${whose} · ${left}s` : whose, VW / 2, 46, 13, s === me || local ? BLUE : "#5a6b85", 800);
+        if (live && phase === "aim") { ctx.fillStyle = left <= 5 ? RED : BLUE; rr(VW / 2 - 50, 51, (100 * Math.max(0, turnLeft)) / TURN_MS, 3, 1.5); ctx.fill(); }
       }
       // the first putt: show where to drag (away from the ball)
       if (myTurn() && started && !drag && firstPutt[local ? st.shooter : me] && st.hole === 0 && (!cpu || round === 1)) {
-        const by = st.balls[st.shooter][1], y0 = by > 430 ? by - 170 : Math.min(H - 90, by + 40);
-        ctx.globalAlpha = 0.65 + 0.25 * Math.sin(t / 300);
-        ctx.strokeStyle = "#fff"; ctx.setLineDash([8, 7]); ctx.lineWidth = 2; rr(W / 2 - 115, y0, 230, 70, 16); ctx.stroke(); ctx.setLineDash([]);
-        ctx.fillStyle = "rgba(16,27,46,0.35)"; rr(W / 2 - 113, y0 + 2, 226, 66, 15); ctx.fill();
-        text("Drag Back Anywhere", W / 2, y0 + 30, 16, "#fff", 800);
-        text("Then Let Go To Putt", W / 2, y0 + 52, 13, "#fff", 600);
+        const by = st.balls[st.shooter][1] * view.s + view.ty, y0 = by > 400 ? by - 175 : Math.min(VH - 90, by + 50);
+        ctx.globalAlpha = 0.7 + 0.25 * Math.sin(t / 300);
+        ctx.fillStyle = "rgba(16,27,46,0.45)"; rr(VW / 2 - 113, y0 + 2, 226, 66, 15); ctx.fill();
+        ctx.strokeStyle = "#fff"; ctx.setLineDash([8, 7]); ctx.lineWidth = 2; rr(VW / 2 - 115, y0, 230, 70, 16); ctx.stroke(); ctx.setLineDash([]);
+        text("Drag Back Anywhere", VW / 2, y0 + 30, 16, "#fff", 800);
+        text("Then Let Go To Putt", VW / 2, y0 + 52, 13, "#fff", 600);
         ctx.globalAlpha = 1;
       }
       ctx.restore();
@@ -1235,7 +890,7 @@ export default function KitchenGolf() {
   const joinRoom = () => { if (code.length === 4) { setWins([0, 0]); setMenu(null); room.join(code); } };
   const startLocal = () => {
     const nm = names.map((v, i) => v.trim().slice(0, 12) || `Player ${i + 1}`);
-    setWins([0, 0]); setMenu(null); setMatchEnd(null);
+    SOUND?.unlock(); setWins([0, 0]); setMenu(null); setMatchEnd(null);
     setPlay({ kind: "local", m: 1, seed: Math.floor(Math.random() * 1e9), first: 0, names: nm });
   };
   const localRematch = () => {
@@ -1250,6 +905,7 @@ export default function KitchenGolf() {
   // whose putt it is right now in a live match, for the Stepped Away card (we can keep putting on our own turn)
   const liveState = () => (engineRef.current?.snap()?.st as St | undefined);
   const theirTurn = isLive && (() => { const s2 = liveState(); return !s2 || s2.shooter !== me || matchEnd !== null; })();
+  const cardNames = (i: number) => (isLive ? (i === me ? "You" : friend) : pn[i]);
 
   return (
     <GameScreen>
@@ -1265,9 +921,10 @@ export default function KitchenGolf() {
           <div className="min-w-0"><div className="truncate text-[10px] uppercase tracking-wide text-[#5a6b85]">{isLive ? "You" : pn[0]}</div><div className="text-2xl font-bold leading-none tabular-nums">{hud.tot[isLive ? me : 0]}</div></div>
           <div className="rounded-full bg-white/80 px-2.5 py-0.5 text-xs font-bold text-[#3f7fd6]">{play.kind === "live" ? `Live · Room ${play.code}` : "Same Phone"}</div>
         </>)}
-        <div className="flex items-center gap-2">
-          {isCpu ? <div className="text-right"><div className="text-[10px] uppercase tracking-wide text-[#5a6b85]">Best</div><div className="text-lg font-semibold leading-none tabular-nums">{best.toLocaleString()}</div></div>
-            : <div className="min-w-0 text-right"><div className="max-w-[110px] truncate text-[10px] uppercase tracking-wide text-[#5a6b85]">{isLive ? friend : pn[1]}</div><div className="text-2xl font-bold leading-none tabular-nums">{hud.tot[isLive ? 1 - me : 1]}</div></div>}
+        <div className="flex items-center gap-1.5">
+          {isCpu ? <div className="mr-1 text-right"><div className="text-[10px] uppercase tracking-wide text-[#5a6b85]">Best</div><div className="text-lg font-semibold leading-none tabular-nums">{best.toLocaleString()}</div></div>
+            : <div className="mr-1 min-w-0 text-right"><div className="max-w-[96px] truncate text-[10px] uppercase tracking-wide text-[#5a6b85]">{isLive ? friend : pn[1]}</div><div className="text-2xl font-bold leading-none tabular-nums">{hud.tot[isLive ? 1 - me : 1]}</div></div>}
+          <button onClick={toggleSound} aria-label={muted ? "Sound On" : "Sound Off"} className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-white/70 text-[#3f7fd6]"><SoundIcon muted={muted} /></button>
           <PauseButton shell={shell} active={playing} />
         </div>
       </div>
@@ -1277,24 +934,44 @@ export default function KitchenGolf() {
         <PrizeLogo shell={shell} active={isCpu && started && !over && !roundCard && !shell.paused && !menu && !rui} />
         <PausedCard shell={shell} active={playing} />
 
+        {intro && !holeCard && (
+          <button onClick={() => skipRef.current()} className="kg-intro absolute inset-x-0 top-[22%] z-[6] mx-auto flex w-[80%] max-w-[300px] flex-col items-center rounded-3xl bg-white/95 px-4 py-4 text-center shadow-2xl">
+            <style>{`@keyframes kg-in { 0% { opacity: 0; transform: translateY(-14px) scale(0.94) } 14% { opacity: 1; transform: none } 62% { opacity: 1; transform: none } 85%, 100% { opacity: 0; transform: translateY(8px) scale(0.97) } } .kg-intro { animation: kg-in ${INTRO_MS}ms ease-out forwards }`}</style>
+            <span className="text-xs font-bold uppercase tracking-[0.18em] text-[#c8463c]">Hole {intro.n} Of 9</span>
+            <span className="mt-1 text-[26px] font-black leading-tight tracking-tight text-[#101b2e]">{intro.name}</span>
+            <span className="mt-1.5 rounded-full bg-[#e3effe] px-3 py-0.5 text-sm font-bold text-[#3f7fd6]">Par {intro.par}</span>
+          </button>
+        )}
+
         {holeCard && !matchEnd && (
-          <button onClick={() => skipRef.current()} className="absolute inset-x-0 top-[14%] z-[6] mx-auto flex w-[78%] max-w-[300px] flex-col items-center rounded-3xl bg-white/95 px-4 py-3 text-center shadow-2xl">
-            <span className="text-sm font-semibold text-[#5a6b85]">Hole {holeCard.hole} · {holeCard.name} · Par {holeCard.par}</span>
-            {holeCard.rows.map((r, i) => (
-              <span key={i} className="mt-1 flex w-full items-baseline justify-between text-base">
-                <span className="flex items-center gap-1.5 font-bold"><span className={`h-2.5 w-2.5 rounded-full ${i === 0 ? "bg-[#3f7fd6]" : "bg-[#e8505b]"}`} />{r.name}</span>
-                <span className="text-sm text-[#5a6b85]">{scoreName(r.strokes, holeCard.par)} · <b className="text-[#101b2e]">{r.strokes >= PICKUP ? 7 : r.strokes}</b></span>
-              </span>
-            ))}
-            {holeCard.pts !== null && <span className="mt-1 text-2xl font-bold tabular-nums text-[#2eaa6e]">+{holeCard.pts.toLocaleString()}</span>}
+          <button onClick={() => skipRef.current()} className="absolute inset-x-0 top-[9%] z-[6] mx-auto flex w-[90%] max-w-[330px] flex-col items-center rounded-3xl bg-white/96 px-3 pb-3 pt-2.5 text-center shadow-2xl">
+            <span className="text-sm font-semibold text-[#5a6b85]">Hole {holeCard.hole} · {holeCard.name}</span>
+            <span className="mt-1 flex w-full flex-col gap-1">
+              {holeCard.results.map((r, i) => (
+                <span key={i} className="flex w-full items-center justify-between px-1 text-[15px]">
+                  <span className="flex items-center gap-1.5 font-bold"><span className="h-2.5 w-2.5 rounded-full" style={{ background: r.color }} />{r.name}</span>
+                  <span className={`rounded-full px-2 py-0.5 text-[13px] font-bold ${r.strokes < holeCard.par || r.strokes === 1 ? "bg-[#dff5e8] text-[#1f8a52]" : r.strokes === holeCard.par ? "bg-[#e3effe] text-[#3f7fd6]" : "bg-[#f1f3f6] text-[#5a6b85]"}`}>{scoreName(r.strokes, holeCard.par)}</span>
+                </span>
+              ))}
+            </span>
+            <Scorecard pars={holeCard.pars} rows={holeCard.rows} cur={holeCard.hole - 1} />
+            {holeCard.pts !== null && <span className="mt-1.5 text-xl font-bold tabular-nums text-[#2eaa6e]">+{holeCard.pts.toLocaleString()} Points</span>}
           </button>
         )}
 
         {isCpu && !started && !over && !menu && !rui && !offer && (
           <Card>
-            <div className="text-lg font-bold">{mode === "daily" ? `Today's Challenge #${n}` : "Free Play"}</div>
-            <p className="mt-1 text-sm text-[#5a6b85]">{mode === "daily" ? "9 holes against the computer. Fewest strokes wins." : "Beat the computer round after round."}</p>
-            <button onClick={() => startRef.current()} className="mt-4 w-full rounded-full bg-[#3f7fd6] py-3 font-semibold text-white">Play The Computer</button>
+            <div className="flex items-center justify-center gap-2.5">
+              <MeatballIcon size={46} />
+              <div className="text-left"><div className="text-2xl font-black leading-none tracking-tight">Kitchen Golf</div><div className="mt-1 text-xs font-bold uppercase tracking-wide text-[#c8463c]">{mode === "daily" ? `Today's Challenge #${n}` : "Free Play"}</div></div>
+            </div>
+            <p className="mt-2.5 text-sm text-[#5a6b85]">{mode === "daily" ? "A 9-hole tour of the kitchen against the computer. Fewest strokes wins." : "Beat the computer round after round. New holes every round."}</p>
+            {mode === "daily" && tour.length > 0 && (
+              <div className="mt-2 flex flex-wrap justify-center gap-1">
+                {tour.map((t, i) => <span key={i} className="rounded-full bg-[#f3efe6] px-2 py-0.5 text-[11px] font-semibold text-[#6b5a3e]">{i + 1}. {t}</span>)}
+              </div>
+            )}
+            <button onClick={() => startRef.current()} className="mt-3 w-full rounded-full bg-[#3f7fd6] py-3 font-semibold text-white">Play The Computer</button>
             <div className="mt-2 flex gap-2">
               <button onClick={() => setMenu("friend")} className="flex-1 rounded-full bg-[#e3effe] py-3 text-sm font-semibold text-[#3f7fd6]">Play A Friend</button>
               <button onClick={() => setMenu("local")} className="flex-1 rounded-full bg-[#e3effe] py-3 text-sm font-semibold text-[#3f7fd6]">Same Phone</button>
@@ -1361,10 +1038,10 @@ export default function KitchenGolf() {
 
         {rui?.s === "lobby" && (
           <ReadyCard me={nameRef.current === "Guest" ? "You" : nameRef.current} friend={room.friendName === "Guest" ? "Your Friend" : room.friendName}
-            ready={[room.ready.me, room.ready.them]} onReady={room.markReady} onLeave={toCpu} steps={[
+            ready={[room.ready.me, room.ready.them]} onReady={() => { SOUND?.unlock(); room.markReady(); }} onLeave={toCpu} steps={[
               "Drag back anywhere on the board and let go to putt. The dots show the way.",
-              "Pull further for more power. Walls bounce, syrup slows you down, butter speeds you up.",
-              "You take turns. The sink costs a stroke. After 6 strokes you pick up and take a 7.",
+              "Pull further for more power. Walls bounce, rugs and suds slow you, ice is slippery.",
+              "You take turns. Water costs a stroke. After 6 strokes you pick up and take a 7.",
               "30 seconds a putt. Fewest strokes over 9 holes wins.",
             ]} />
         )}
@@ -1399,7 +1076,7 @@ export default function KitchenGolf() {
           </Card>
         )}
 
-        {isLocal && passTo && !matchEnd && !shell.held && (
+        {isLocal && passTo && !matchEnd && !shell.held && !intro && !holeCard && (
           <button onClick={() => passRef.current()} className="absolute inset-0 z-10 flex items-center justify-center rounded-[22px] bg-[#101b2e]/45 p-6">
             <span className="w-full max-w-[260px] rounded-3xl bg-white px-6 py-5 text-center shadow-2xl">
               <span className="block text-sm font-semibold text-[#5a6b85]">Pass To {passTo}</span>
@@ -1415,7 +1092,7 @@ export default function KitchenGolf() {
             <div className="mt-1 text-2xl font-bold">
               {matchEnd.winner < 0 ? "It's A Tie" : isLive ? (matchEnd.winner === me ? "You Won! 🎉" : `${friend} Won`) : `${pn[matchEnd.winner]} Wins! 🎉`}
             </div>
-            <ScoreGrid pars={matchEnd.pars} rows={(isLive ? [me, 1 - me] : [0, 1]).map(i => ({ name: isLive ? (i === me ? "You" : friend) : pn[i], card: matchEnd.cards[i], total: matchEnd.tot[i] }))} />
+            <Scorecard pars={matchEnd.pars} rows={(isLive ? [me, 1 - me] : [0, 1]).map(i => ({ name: cardNames(i), card: matchEnd.cards[i], color: (isLive ? i === me : i === 0) ? BLUE : RED }))} />
             {(wins[0] + wins[1] > 1) && <div className="mt-1 text-xs text-[#5a6b85]">{isLive ? `Matches: You ${wins[me]} · ${friend} ${wins[1 - me]}` : `Matches: ${pn[0]} ${wins[0]} · ${pn[1]} ${wins[1]}`}</div>}
             {isLive && room.again.them && !room.again.me && <div className="mt-2 text-sm font-semibold text-[#2eaa6e]">{friend} Wants A Rematch!</div>}
             <button onClick={isLive ? room.rematch : localRematch} disabled={isLive && room.again.me} className="mt-3 w-full rounded-full bg-[#3f7fd6] py-3 font-semibold text-white disabled:opacity-70">
@@ -1440,8 +1117,8 @@ export default function KitchenGolf() {
           pitch="Good putting takes practice. So do good habits. WhatYouAte helps with the second one."
           extra={<>
             <div className="mt-2 text-sm font-semibold text-[#5a6b85]">{result.you} Strokes · {toPar(result.you, result.par)}</div>
-            <div className="text-sm tracking-tight">{result.card.map((s, i) => versus(s, result.pars[i])).join("")}</div>
-            <button onClick={() => setMenu("friend")} className="mt-1 text-sm font-semibold text-[#3f7fd6]">Play A Friend Instead →</button>
+            <div className="[@media(max-height:760px)]:hidden"><Scorecard pars={result.pars} rows={[{ name: "You", card: result.card, color: BLUE }]} compact /></div>
+            <button onClick={() => setMenu("friend")} className="mt-1.5 text-sm font-semibold text-[#3f7fd6]">Play A Friend Instead →</button>
           </>}
           onBoard={() => shell.setBoardOpen(true)} onJoin={() => shell.setJoinOpen(true)} onAgain={() => setRun(r => r + 1)} onShare={share} />}
       </BoardArea>
@@ -1451,8 +1128,8 @@ export default function KitchenGolf() {
       {shell.help.open && (
         <HelpModal onClose={shell.help.close} steps={[
           "Drag back anywhere on the board and let go to putt. The dots show which way the meatball goes.",
-          "Pull further for more power. Walls bounce, syrup slows you, butter is slippery, ramps roll you back.",
-          "The sink sends you back with a stroke added. Time your putt past the mixer and the rolling pin.",
+          "Pull further for more power. Walls bounce, rugs and suds slow you, ice is slippery, ramps roll you back.",
+          "Time your putt past the mixer, the rolling pin and the cupboard doors. Stay off hot burners and out of the dog's water.",
           "Fewest strokes over 9 holes wins. After 6 strokes you pick up and take a 7.",
         ]}>
           <ModesHelp today="the same 9 holes and computer for everyone. Fewer strokes, holes in one and beating the computer score more." free="new holes every round against a computer that gets a little sharper. Win or tie to keep going." />
@@ -1463,24 +1140,53 @@ export default function KitchenGolf() {
   );
 }
 
-function ScoreGrid({ pars, rows }: { pars: number[]; rows: { name: string; card: number[]; total: number }[] }) {
+/** A paper mini-putt scorecard: holes across the top, par, then a row per player; birdies circled, holes in one gold. */
+function Scorecard({ pars, rows, cur, compact }: { pars: number[]; rows: Row[]; cur?: number; compact?: boolean }) {
+  const cols = Array.from({ length: ROUND_HOLES }, (_, i) => i);
   return (
-    <div className="mt-3 w-full overflow-hidden rounded-xl bg-[#f0f6fe] px-2 py-1.5 text-[11px] tabular-nums">
-      {[{ name: "Par", card: pars, total: sum(pars) }, ...rows].map((r, k) => (
-        <div key={k} className={`flex items-center ${k === 0 ? "text-[#5a6b85]" : "font-semibold"}`}>
-          <span className="w-12 shrink-0 truncate text-left">{r.name}</span>
-          {r.card.map((s, i) => <span key={i} className="flex-1 text-center">{s >= PICKUP ? 7 : s}</span>)}
-          <span className="w-7 shrink-0 text-right font-bold">{r.total}</span>
+    <div className={`w-full overflow-hidden rounded-xl border border-[#e8dcc3] tabular-nums ${compact ? "mt-1 text-[10px] [&>div]:py-[1px]" : "mt-2 text-[11px] shadow-[inset_0_1px_3px_rgba(120,90,40,0.12)]"}`}
+      style={{ background: "#fffaf0", backgroundImage: "repeating-linear-gradient(180deg, transparent 0 19px, rgba(63,127,214,0.08) 19px 20px)" }}>
+      <div className="flex items-center bg-[#c8463c] px-1.5 py-[3px] font-bold text-white">
+        <span className="w-[62px] shrink-0 text-left">Hole</span>{cols.map(i => <span key={i} className={`flex-1 text-center ${cur === i ? "rounded bg-white/25" : ""}`}>{i + 1}</span>)}<span className="w-7 shrink-0 text-right">Tot</span>
+      </div>
+      <div className="flex items-center px-1.5 py-[3px] text-[#8a7a5c]">
+        <span className="w-[62px] shrink-0 text-left font-semibold">Par</span>{cols.map(i => <span key={i} className="flex-1 text-center">{pars[i] ?? ""}</span>)}<span className="w-7 shrink-0 text-right font-semibold">{sum(pars)}</span>
+      </div>
+      {rows.map((r, k) => (
+        <div key={k} className="flex items-center border-t border-[#efe4cd] px-1.5 py-[3px] font-semibold text-[#101b2e]">
+          <span className="flex w-[62px] shrink-0 items-center gap-1 truncate text-left"><span className="h-1.5 w-1.5 shrink-0 rounded-full" style={{ background: r.color }} /><span className="truncate">{r.name}</span></span>
+          {cols.map(i => {
+            const s = r.card[i], par = pars[i];
+            const cls = s === undefined ? "" : s === 1 ? "bg-[#f2c230] text-[#5a3d00]" : s < par ? "ring-[1.5px] ring-[#2eaa6e] text-[#1f8a52]" : s >= PICKUP ? "text-[#c8463c]" : "";
+            return <span key={i} className="flex flex-1 justify-center"><span className={`flex h-[17px] w-[17px] items-center justify-center rounded-full ${cls} ${cur === i ? "font-black" : ""}`}>{s === undefined ? "" : s}</span></span>;
+          })}
+          <span className="w-7 shrink-0 text-right font-black">{r.card.length ? sum(r.card) : ""}</span>
         </div>
       ))}
     </div>
   );
 }
 
+/** A meatball turning slowly, for the start card. */
+function MeatballIcon({ size }: { size: number }) {
+  const ref = useRef<HTMLCanvasElement>(null);
+  useEffect(() => {
+    const cv = ref.current!, dpr = window.devicePixelRatio || 1, c = cv.getContext("2d")!;
+    cv.width = size * dpr; cv.height = size * dpr; c.scale(dpr, dpr);
+    let q = quatIdentity(), raf = 0;
+    const tick = () => { q = rollQuat(q, 0.5, 0.2, 1); c.clearRect(0, 0, size, size); drawMeatball(c, size / 2 - 2, size / 2 - 3, size * 0.36, q, 1); raf = requestAnimationFrame(tick); };
+    tick(); return () => cancelAnimationFrame(raf);
+  }, [size]);
+  return <canvas ref={ref} style={{ width: size, height: size }} aria-hidden />;
+}
+function SoundIcon({ muted }: { muted: boolean }) {
+  return <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"><path d="M4 9v6h4l5 4V5L8 9z" fill="currentColor" />{muted ? <path d="M17 9l5 5m0-5l-5 5" /> : <><path d="M16.5 8.5a5 5 0 0 1 0 7" /><path d="M19 6a8.5 8.5 0 0 1 0 12" /></>}</svg>;
+}
+
 function Card({ children }: { children: ReactNode }) {
   return (
     <div className="absolute inset-0 z-10 flex items-center justify-center rounded-[22px] bg-[#101b2e]/35 p-5">
-      <div className="w-full max-w-[300px] rounded-3xl bg-white p-5 text-center shadow-2xl">{children}</div>
+      <div className="w-full max-w-[310px] rounded-3xl bg-white p-5 text-center shadow-2xl">{children}</div>
     </div>
   );
 }
