@@ -163,7 +163,6 @@ export default function PatsLawnmower() {
       },
       finishRef,
       zoomRef,
-      assist: () => saveRef.current.assist !== false,
     });
   }, [session]);
 
@@ -367,7 +366,7 @@ export default function PatsLawnmower() {
                 <div className="text-center text-[24px] font-black">How To Drive</div>
                 <ol className="mt-3 space-y-2.5 text-[15px] leading-snug">
                   {["Put your thumb in the strip under the lawn and push the way you want to go. Pat drives that way.",
-                    "Point back the way you came and Pat makes a tight U-turn, right alongside the last stripe. Hold the stick steady and Straight Assist keeps the line dead straight (it's in the pause menu).",
+                    "Point back the way you came and Pat makes a tight U-turn, right alongside the last stripe.",
                     "Watch for the grey cat. Pat always stops for her, and that costs a few seconds."].map((s, i) => (
                     <li key={i} className="flex gap-3"><span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-[#f26b1d] text-sm font-black text-white">{i + 1}</span><span>{s}</span></li>
                   ))}
@@ -403,10 +402,6 @@ export default function PatsLawnmower() {
                 <div className="text-[24px] font-black">Paused</div>
                 <div className="mt-4 space-y-2.5">
                   <Btn onClick={() => { sfx(); setHeld(false); }}>Resume</Btn>
-                  <button onClick={() => { sfx(); update(s => ({ ...s, assist: !s.assist })); }} aria-pressed={save.assist} className="pl-btn flex w-full items-center justify-between rounded-2xl bg-[#eef6e3] px-4 py-2.5 text-left">
-                    <span><span className="block text-[14.5px] font-extrabold">Straight Assist</span><span className="block text-[11.5px] text-[#5a6b4f]">Hold the stick steady for dead-straight stripes</span></span>
-                    <span className={`relative h-6 w-11 shrink-0 rounded-full transition-colors ${save.assist ? "bg-[#3d8a26]" : "bg-[#c5cbbd]"}`}><span className={`absolute top-0.5 h-5 w-5 rounded-full bg-white shadow transition-all ${save.assist ? "left-[22px]" : "left-0.5"}`} /></span>
-                  </button>
                   <Btn small color="#f26b1d" onClick={() => startJob(job)}>Restart</Btn>
                   <Btn small color="#9aa58f" onClick={goTitle}>Quit To Menu</Btn>
                 </div>

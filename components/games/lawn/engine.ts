@@ -21,7 +21,6 @@ export type Hooks = {
   onStart: () => void;
   onEnd: (o: Outcome) => void;
   finishRef: { current: (() => void) | null };
-  assist?: () => boolean;   // Straight Assist (a setting): hold the stick steady and the heading locks for straight stripes
   zoomRef?: { current: ((dir: number) => void) | null };
 };
 export type Config = { mode: Mode; job: Job; up: Upgrades; sound: Sound; debug: boolean; showStrip: boolean };
@@ -30,10 +29,9 @@ const STEP = 1 / 60;
 const FONT = "system-ui, -apple-system, sans-serif";
 const DECK_LON = 0.9;                 // half the deck's length front to back (grid)
 const ACC = 6, DEC = 10, DEC_SOFT = 3.5, VREV = 2.2;   // DEC_SOFT: letting go of the stick at speed, the tractor coasts to a stop
-const DEAD = 0.12;                    // joystick dead zone (fraction of its throw)
-const CURVE = 1.5;                    // past the dead zone the push eases in: gentle pushes crawl, a full push is full speed
-const SNAP = (2.5 * Math.PI) / 180;   // within this of the heading asked for, the tractor locks dead straight
-const LOCK_OFF = (10 * Math.PI) / 180; // Straight Assist lets go when the stick moves this far
+const DEAD = 0.08;                    // joystick dead zone (fraction of its throw)
+const CURVE = 1;                      // past the dead zone, speed follows the push straight (a half push is half speed)
+const SNAP = (1.5 * Math.PI) / 180;   // within this of the heading asked for, the tractor locks dead straight
 const rmin = (v: number) => 0.85 + 0.2 * Math.abs(v);   // tightest turn (radius) at a speed: about 1 m when slow
 const CAT_R = 0.5, MEOW_D = 3.2, STOP_T = 2, PENALTY = 3;
 const STRAIGHT_OM = 0.4;             // turning slower than this (radians a second, smoothed) counts as driving straight
@@ -207,7 +205,7 @@ export function startEngine(canvas: HTMLCanvasElement, wrap: HTMLElement, cfg: C
   // input
   type Stick = { id: number; bx: number; by: number; kx: number; ky: number };
   let stick: Stick | null = null, released: { bx: number; by: number; kx: number; ky: number; t: number } | null = null;   // (the knob springs back after a release)
-  let thS = 0, thHeld = false, lock: number | null = null, lockCand = 0, lockT = 0, thAsk: number | null = null;   // the heading asked for, smoothed; Straight Assist's lock
+  let thS = 0, thHeld = false, thAsk: number | null = null;   // the heading asked for, lightly smoothed
   const keys: Record<string, boolean> = {};
   let testIn: [number, number] | null = null, auto = mode === "attract", speedK = 1;
   // layout
@@ -232,11 +230,7 @@ export function startEngine(canvas: HTMLCanvasElement, wrap: HTMLElement, cfg: C
   const onMove = (e: PointerEvent) => {
     if (fingers.has(e.pointerId)) { fingers.set(e.pointerId, local(e)); if (fingers.size === 2 && pinch) setZoom((pinch.z * pinch.d) / fingerGap()); return; }
     if (!stick || stick.id !== e.pointerId) return;
-    const p = local(e); let dx = p.x - stick.bx, dy = p.y - stick.by, d = Math.hypot(dx, dy);
-    if (d > STICK_R) {   // dragged past the edge: the base follows the thumb, so the stick never runs out
-      const over = d - STICK_R; stick.bx = clamp(stick.bx + (dx / d) * over, STICK_R, CW - STICK_R); stick.by = clamp(stick.by + (dy / d) * over, Math.min(MH + 9 + STICK_R + KNOB_R, CH - STICK_R - KNOB_R + 1), Math.max(MH + 9 + STICK_R + KNOB_R, CH - STICK_R - KNOB_R + 1));
-      dx = p.x - stick.bx; dy = p.y - stick.by; d = Math.hypot(dx, dy);
-    }
+    const p = local(e), dx = p.x - stick.bx, dy = p.y - stick.by, d = Math.hypot(dx, dy);   // (the base stays put; past the rim is a full push that way)
     stick.kx = d > STICK_R ? (dx / d) * STICK_R : dx; stick.ky = d > STICK_R ? (dy / d) * STICK_R : dy;
   };
   const onDown = (e: PointerEvent) => {
@@ -250,7 +244,7 @@ export function startEngine(canvas: HTMLCanvasElement, wrap: HTMLElement, cfg: C
     }
     if (p.y < MH + 4 || stick) return;
     try { canvas.setPointerCapture(e.pointerId); } catch {}
-    stick = { id: e.pointerId, bx: clamp(p.x, STICK_R, CW - STICK_R), by: clamp(p.y, Math.min(MH + 9 + STICK_R + KNOB_R, CH - STICK_R - KNOB_R + 1), Math.max(MH + 9 + STICK_R + KNOB_R, CH - STICK_R - KNOB_R + 1)), kx: 0, ky: 0 };   // right under the thumb, kept inside the strip
+    const rest = stickRest(); stick = { id: e.pointerId, bx: rest.x, by: rest.y, kx: 0, ky: 0 };   // one fixed stick in the middle of the strip
     onMove(e); e.preventDefault();
   };
   const onUp = (e: PointerEvent) => { if (fingers.delete(e.pointerId) && fingers.size < 2) pinch = null; if (stick?.id === e.pointerId) { released = { bx: stick.bx, by: stick.by, kx: stick.kx, ky: stick.ky, t: performance.now() / 1000 }; stick = null; } };
@@ -642,17 +636,13 @@ export function startEngine(canvas: HTMLCanvasElement, wrap: HTMLElement, cfg: C
       revT -= dt; target = -VREV; omT = -revSide * (Math.abs(v) / rmin(v));
       if (revT <= 0) { revSide = 0; }
     } else if (!halt && raw > DEAD) {
-      // the heading asked for, smoothed so a wobbly thumb doesn't wobble the tractor; Straight Assist locks it when steady
+      // the heading asked for, lightly smoothed so a shaky thumb doesn't wobble the tractor
       const thRaw = Math.atan2(ay, ax);
-      if (!thHeld) { thS = thRaw; thHeld = true; lockCand = thRaw; lockT = 0; } else thS = wrapA(thS + wrapA(thRaw - thS) * Math.min(1, dt * 7));
-      if (hooks.assist?.() ?? true) {
-        if (lock === null) { if (Math.abs(wrapA(thRaw - lockCand)) < 0.11) { lockT += dt; if (lockT > 0.3) lock = thS; } else { lockCand = thRaw; lockT = 0; } }
-        else if (Math.abs(wrapA(thRaw - lock)) > LOCK_OFF) { lock = null; lockCand = thRaw; lockT = 0; }
-      } else lock = null;
-      const mag = Math.pow((raw - DEAD) / (1 - DEAD), CURVE), th = lock ?? thS, diff = wrapA(th - h);
+      if (!thHeld) { thS = thRaw; thHeld = true; } else thS = wrapA(thS + wrapA(thRaw - thS) * Math.min(1, dt * 20));
+      const mag = Math.pow((raw - DEAD) / (1 - DEAD), CURVE), th = thS, diff = wrapA(th - h);
       thAsk = th;
       const diffRaw = wrapA(thRaw - h);   // (a U-turn starts on the raw stick, without waiting for the smoothing)
-      if (!uturn && Math.abs(diffRaw) > 2.25) { uturn = uturnSide(Math.abs(Math.abs(diffRaw) - Math.PI) < 0.45 ? 0 : Math.sign(diffRaw)); thS = thRaw; lock = null; }
+      if (!uturn && Math.abs(diffRaw) > 2.25) { uturn = uturnSide(Math.abs(Math.abs(diffRaw) - Math.PI) < 0.45 ? 0 : Math.sign(diffRaw)); thS = thRaw; }
       if (uturn && Math.abs(diff) < 0.5) uturn = 0;
       if (uturn) {
         // pointing behind: a tight forward U-turn that comes back alongside the last strip
@@ -660,11 +650,11 @@ export function startEngine(canvas: HTMLCanvasElement, wrap: HTMLElement, cfg: C
         target = Math.min(vmax, 3.6) * Math.max(0.65, mag); omT = uturn * (Math.max(0.5, v) / uR);
       } else {
         target = vmax * mag * Math.max(0.3, Math.pow(Math.cos(Math.min(Math.abs(diff), 1.35)), 1.4));
-        omT = clamp(diff * 2.6, -3.2, 3.2);
+        omT = clamp(diff * 4, -4, 4);
       }
       // stopped against something with the stick pulled back for a moment: back up a little
       if (v < 0.3 && blockedT > 0.3 && Math.abs(diff) > 2.25) { backHoldT += dt; if (backHoldT > 0.6) { revT = 0.9; revSide = Math.sign(diff) || 1; backHoldT = 0; uturn = 0; } } else backHoldT = 0;
-    } else { uturn = 0; backHoldT = 0; thHeld = false; lock = null; thAsk = null; }
+    } else { uturn = 0; backHoldT = 0; thHeld = false; thAsk = null; }
     const inPuddle = puddles.some(p => { const dx = x - p.x, dy = y - p.y, c = Math.cos(-p.rot), s = Math.sin(-p.rot), lx = dx * c - dy * s, ly = dx * s + dy * c; return (lx * lx) / (p.rx * p.rx) + (ly * ly) / (p.ry * p.ry) < 1; });
     if (inPuddle && phase === "play") { target = Math.sign(target) * Math.min(Math.abs(target), vmax * 0.42); if (Math.abs(v) > 0.5) { wetT += dt; if (rnd() < 0.5) parts.push({ x: x + (rnd() - 0.5), y: y + (rnd() - 0.5), vx: (rnd() - 0.5) * 3, vy: (rnd() - 0.5) * 3, life: 0.45, c: "rgba(210,230,245,0.9)", s: 0.12 }); } }
     // loading and unloading: creep near the trailer and the barn, and ride up the ramps
@@ -675,7 +665,7 @@ export function startEngine(canvas: HTMLCanvasElement, wrap: HTMLElement, cfg: C
     v += clamp(target - v, -dec * dt, ACC * dt);
     // yaw follows the request smoothly, never tighter than the turning circle allows at this speed (it can't spin on the spot)
     const omMax = Math.abs(v) / rmin(v);
-    om += clamp(clamp(omT, -omMax, omMax) - om, -9 * dt, 9 * dt); om = clamp(om, -omMax, omMax);
+    om += clamp(clamp(omT, -omMax, omMax) - om, -16 * dt, 16 * dt); om = clamp(om, -omMax, omMax);
     h = wrapA(h + om * dt); omS += (Math.abs(om) - omS) * Math.min(1, dt * 5);
     if (thAsk !== null && !uturn && revT <= 0 && Math.abs(v) > 0.2 && Math.abs(wrapA(thAsk - h)) < SNAP) { h = thAsk; om *= 0.5; }   // close enough: dead straight, for neat stripes
     const steerT = Math.abs(v) > 0.3 ? clamp(Math.atan((1.3 * om) / v), -0.7, 0.7) : (raw > DEAD ? clamp(wrapA(Math.atan2(ay, ax) - h), -0.7, 0.7) : 0);
@@ -832,7 +822,6 @@ export function startEngine(canvas: HTMLCanvasElement, wrap: HTMLElement, cfg: C
     if (job.twist === "trailer" && rig) drawStraps(c, rig, strapK);
     if (thAsk !== null && !auto && (phase === "play" || phase === "ready")) {   // where Pat's trying to go: a faint arrow just ahead
       const d0 = Math.max(2.6, deckShow * 0.6 + 1.8), ax2 = x + Math.cos(thAsk) * d0, ay2 = y + Math.sin(thAsk) * d0;
-      if (lock !== null) { c.save(); c.strokeStyle = "rgba(255,255,255,0.45)"; c.lineWidth = 0.12; c.setLineDash([0.5, 0.5]); c.beginPath(); c.moveTo(ax2 + Math.cos(thAsk) * 0.9, ay2 + Math.sin(thAsk) * 0.9); c.lineTo(x + Math.cos(thAsk) * 14, y + Math.sin(thAsk) * 14); c.stroke(); c.restore(); }
       c.save(); c.translate(ax2, ay2); c.rotate(thAsk); c.globalAlpha = 0.6; c.fillStyle = "#ffffff"; c.strokeStyle = "rgba(30,50,20,0.45)"; c.lineWidth = 0.06;
       c.beginPath(); c.moveTo(0.75, 0); c.lineTo(-0.3, -0.55); c.lineTo(-0.05, 0); c.lineTo(-0.3, 0.55); c.closePath(); c.fill(); c.stroke(); c.restore();
     }
@@ -1042,7 +1031,6 @@ export function startEngine(canvas: HTMLCanvasElement, wrap: HTMLElement, cfg: C
       if (on) { const an = Math.atan2(ky, kx); ctx.save(); ctx.translate(qx, qy); ctx.rotate(an); ctx.fillStyle = "rgba(255,255,255,0.95)"; ctx.beginPath(); ctx.moveTo(KR * 0.62, 0); ctx.lineTo(KR * 0.08, -KR * 0.36); ctx.lineTo(KR * 0.2, 0); ctx.lineTo(KR * 0.08, KR * 0.36); ctx.closePath(); ctx.fill(); ctx.restore(); }   // the wedge points the way
       if (!stick && !released) { ctx.fillStyle = "rgba(255,255,255,0.95)"; for (let q = 0; q < 4; q++) { const an = (q * Math.PI) / 2; ctx.beginPath(); ctx.moveTo(rest.x + Math.cos(an) * STICK_R * 0.86, rest.y + Math.sin(an) * STICK_R * 0.86); ctx.lineTo(rest.x + Math.cos(an + 0.22) * STICK_R * 0.7, rest.y + Math.sin(an + 0.22) * STICK_R * 0.7); ctx.lineTo(rest.x + Math.cos(an - 0.22) * STICK_R * 0.7, rest.y + Math.sin(an - 0.22) * STICK_R * 0.7); ctx.fill(); } }
       if (!stick) text("Push Where You Want To Go", rest.x, CH - 9, 11, "#5a6b4f", 700);
-      else if (lock !== null) { ctx.save(); ctx.font = `800 11px ${FONT}`; const tw = ctx.measureText("Straight Assist").width + 26, lx = (stick.bx > CW / 2 ? 12 : CW - 12 - tw), ly = MH + 18; ctx.fillStyle = "rgba(61,122,38,0.14)"; rr(ctx, lx, ly, tw, 20, 10); ctx.fill(); ctx.strokeStyle = "#3d7a26"; ctx.lineWidth = 1.6; ctx.beginPath(); ctx.moveTo(lx + 8, ly + 14); ctx.lineTo(lx + 8, ly + 6); ctx.moveTo(lx + 5.5, ly + 8.5); ctx.lineTo(lx + 8, ly + 6); ctx.lineTo(lx + 10.5, ly + 8.5); ctx.stroke(); ctx.restore(); text("Straight Assist", lx + 16, ly + 10.5, 11, "#3d7a26", 800, "left"); }   // (in the corner away from the thumb)
     }
   }
 
@@ -1088,7 +1076,7 @@ export function startEngine(canvas: HTMLCanvasElement, wrap: HTMLElement, cfg: C
     (window as unknown as { __lm: unknown }).__lm = {
       state: () => ({ mode, job: job.id, phase, stickIn: lastIn, blockedT, toLen: toPath.length, goal, goalK, pct: pct(), cut: cutCount, need: needCount, areaM2, limit, par, x, y, h, v, om, uturn, revT, stopT, meows, bumps, simT, penalty, drove, wetT,
         apples: applesGot(), applesLeft: apples.filter(a => a.st === 0).length, priority: priorityTotal ? priorityCut / priorityTotal : null, quality: stripeScore(), straight: freshAll ? freshStraight / freshAll : 1, trimmedN, eff: clamp(areaM2 * pct() / Math.max(1, drove * deckHalf * 2) / 0.8, 0, 1),
-        cat: { st: cat.st, x: cat.x, y: cat.y, act: cat.act, next: cat.next }, size: [CW, CH, MH], zoom: zoomK, lock, thAsk, stickBase: stick ? [stick.bx, stick.by] : null, elev, inBox, parkT, waits, box: parkSpot, rig, kids: kids.map(kd => [kd.x, kd.y]), scrollH: document.documentElement.scrollHeight, PX, deckHalf, vmax }),
+        cat: { st: cat.st, x: cat.x, y: cat.y, act: cat.act, next: cat.next }, size: [CW, CH, MH], zoom: zoomK, thAsk, stickBase: stick ? [stick.bx, stick.by] : null, elev, inBox, parkT, waits, box: parkSpot, rig, kids: kids.map(kd => [kd.x, kd.y]), scrollH: document.documentElement.scrollHeight, PX, deckHalf, vmax }),
       hold: (hx: number, hy: number) => { testIn = [hx, hy]; },
       release: () => { testIn = null; },
       auto: (on: boolean) => { auto = on; },
