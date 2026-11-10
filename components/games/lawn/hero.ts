@@ -10,7 +10,7 @@ type Part = { x: number; y: number; vx: number; vy: number; life: number; c: str
 export type HeroLayout = { W: number; H: number; top: number; bottom: number; og?: boolean };
 
 /** The house and its porch from the map, turned half round about the house (porch toward us) and centred on 0,0. */
-function heroBuildings() {
+export function heroBuildings() {
   const m = toMetres(LAWN_MAP), house = m.buildings.find(b => b.kind === "house")!, porch = m.buildings.find(b => b.kind === "porch")!;
   const xs = house.poly.map(p => p[0]), ys = [...house.poly, ...porch.poly].map(p => p[1]);
   const cx = (Math.min(...xs) + Math.max(...xs)) / 2, cy = (Math.min(...ys) + Math.max(...ys)) / 2;

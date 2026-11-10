@@ -1,7 +1,7 @@
 // Pat's Big Weekend: the story jobs, the tractor upgrades and the saved progress (this browser only).
 
 export type Light = "day" | "morning" | "dusk" | "storm" | "golden";
-export type Twist = "bonfire" | "storm" | "guests" | "apples" | "stripes" | "cat" | "finale" | "free";
+export type Twist = "bonfire" | "storm" | "guests" | "apples" | "stripes" | "cat" | "finale" | "trailer" | "away" | "unload" | "free";
 export type Job = {
   id: number;
   title: string;
@@ -18,28 +18,41 @@ export type Job = {
   cash: number;             // pay for finishing (stars add more)
   deckBonus?: number;       // extra half-width on this job's cut (a borrowed deck), metres
   trim?: number;            // grass this close to a fence, wall or trunk (metres) is already trimmed by the boys
+  map?: "home" | "community";   // where the job is (home unless it says)
+  chapter?: string;         // a heading in the job list above this job
+  star2?: string;           // the second star, when it isn't "finish under par" (then it's "no big bumps")
+  stripeZones?: string[];   // the stripe score only counts grass in these zones
+  stripeGoal?: number;      // the stripe score for the third star
 };
+/** Jobs with no mowing: drive the tractor somewhere and park it. */
+export const isPark = (j: Job) => j.twist === "trailer" || j.twist === "unload";
 
 export const JOBS: Job[] = [
   { id: 0, title: "Before The Bonfire", intro: ["Friends are coming over for a fire tonight.", "Get the yard round the house mowed before the sun goes down."],
-    goal: "Mow round the house and the fire pit", zones: ["frontHouse"], pace: 7.5, limit: 190, par: 140, light: "dusk", twist: "bonfire", star3: "No Big Bumps", cash: 40, tip: "A big bump is hitting a fence, wall or tree at speed. Ease off near them." },
+    goal: "Mow round the house and the fire pit", zones: ["frontHouse"], pace: 7.5, limit: 230, par: 170, light: "dusk", twist: "bonfire", star3: "No Big Bumps", cash: 40, tip: "A big bump is hitting a fence, wall or tree at speed. Ease off near them." },
   { id: 1, title: "Storm's Rolling In", intro: ["Dark clouds over the field. Rain's on the way.", "Puddles from last night will slow you down."],
-    goal: "Mow the top of the big field before the rain", zones: ["northField"], pace: 8.5, limit: 200, par: 145, light: "storm", twist: "storm", star3: "Stay Out Of The Puddles", cash: 50, tip: "Puddles slow you down. Steer round them: the grass under the water doesn't count. Under 4 seconds in puddles earns the star." },
+    goal: "Mow the top of the big field before the rain", zones: ["northField"], pace: 8.5, limit: 230, par: 175, light: "storm", twist: "storm", star3: "Stay Out Of The Puddles", cash: 50, tip: "Puddles slow you down. Steer round them: the grass under the water doesn't count. Under 4 seconds in puddles earns the star." },
   { id: 2, title: "Horseshoe Tournament", intro: ["The neighbours are coming for horseshoes.", "Mow the pits and the walk to the barn first, before the guests arrive."],
-    goal: "Mow from the horseshoe pits to the barn", zones: ["barnSide"], pace: 7.5, limit: 160, par: 118, light: "day", twist: "guests", star3: "Pits And Path Done In Time", cash: 60, tip: "The yellow patches are the pits and the path. Mow them first: the guests arrive just past halfway." },
+    goal: "Mow from the horseshoe pits to the barn", zones: ["barnSide"], pace: 7.5, limit: 240, par: 180, light: "day", twist: "guests", star3: "Pits And Path Done In Time", cash: 60, tip: "The yellow patches are the pits and the path. Mow them first: the guests arrive just past halfway." },
   { id: 3, title: "Apple Season", intro: ["The apple trees are dropping fruit.", "Ease off over the apples and the deck scoops them up. Rush over them and they squish!"],
-    goal: "Mow the orchard and pick up apples", zones: ["orchard"], pace: 6.5, limit: 130, par: 95, light: "day", twist: "apples", star3: "Pick Up 10 Apples", cash: 60, tip: "Drive slowly over an apple (push the stick halfway) to pick it up." },
+    goal: "Mow the orchard and pick up apples", zones: ["orchard"], pace: 6.5, limit: 160, par: 125, light: "day", twist: "apples", star3: "Pick Up 10 Apples", cash: 60, tip: "Drive slowly over an apple (push the stick halfway) to pick it up." },
   { id: 4, title: "Sunday Stripes", intro: ["Sunday morning. Time to show off.", "Long, straight, side-by-side stripes score best."],
     goal: "Mow neat stripes in the field", zones: ["stripes"], pace: 6.5, limit: 95, par: 66, light: "morning", twist: "stripes", star3: "Stripe Score 75%", cash: 70, tip: "Stripe Score is the grass you cut driving straight. Turning and going back over cut grass bring it down. Mow a lap round the edge first, then turn on the cut border." },
   { id: 5, title: "The Cat's Day Out", intro: ["The cat wants to be outside all day.", "She'll keep wandering into the yard. Steer round her!"],
-    goal: "Mow the east lawn", zones: ["eastLawn"], pace: 8, limit: 240, par: 180, light: "day", twist: "cat", star3: "No Cat Stops", cash: 70, tip: "Pat stops if the cat is close in front of him. Give her room and steer wide." },
+    goal: "Mow the east lawn", zones: ["eastLawn"], pace: 8, limit: 330, par: 250, light: "day", twist: "cat", star3: "No Cat Stops", cash: 70, tip: "Pat stops if the cat is close in front of him. Give her room and steer wide." },
   { id: 6, title: "The Whole Property", intro: ["The big one. Every blade on the property.", "The boys trimmed round the trees and fences this morning, and Pat borrowed the wide deck. Then the whole gang meets at the fire pit."],
-    goal: "Mow the whole lawn", zones: null, pace: 9.5, limit: 450, par: 360, light: "golden", twist: "finale", star3: "No Cat Stops", cash: 120, deckBonus: 0.5, trim: 1.5, tip: "The borrowed deck cuts a 5 m strip. Long runs end to end are quickest." },
+    goal: "Mow the whole lawn", zones: null, pace: 9.5, limit: 450, par: 360, light: "golden", twist: "finale", star3: "No Cat Stops", cash: 120, deckBonus: 0.8, trim: 1.5, tip: "The borrowed deck cuts a wider strip. Long runs end to end are quickest." },
+  { id: 7, chapter: "Chapter 2: The Away Game", title: "Load The Trailer", intro: ["The community centre needs its ball diamonds mowed before tonight's game.", "Pat's truck and trailer are in the driveway. Drive up the ramps and park in the box."],
+    goal: "Park the tractor on the trailer", zones: null, pace: 1, limit: 60, par: 25, light: "morning", twist: "trailer", star3: "No Bumps", cash: 50, tip: "The deck folds up for the trip. Line up straight behind the ramps, creep up and stop inside the yellow box. Touching the ramp sides or the truck costs the star." },
+  { id: 8, map: "community", title: "Malahide Community Place", intro: ["The ball game starts this evening, and the ball club has trimmed along the fences.", "Mow both outfields and the grass round the hall and the playground. The dirt, the paths and the parking don't need it."],
+    goal: "Mow the outfields and round the hall", zones: ["outfieldE", "outfieldW", "hallLawn"], pace: 8, limit: 330, par: 260, light: "day", twist: "away", star2: "No Big Bumps", star3: "Outfield Stripes 60%", stripeZones: ["outfieldW", "outfieldE"], stripeGoal: 0.6, trim: 1.3, cash: 130, tip: "Go in through the gates in the fences. Two kids are playing catch: Pat waits if they're close. Long straight runs in the outfields make the best stripes." },
+  { id: 9, title: "Back Home", intro: ["Home again, just as the sun goes down.", "The tractor's off the trailer. Drive it down to the barn and park it inside for the night."],
+    goal: "Park the tractor in the barn", zones: null, pace: 1, limit: 75, par: 40, light: "golden", twist: "unload", star3: "No Bumps", cash: 60, tip: "The barn doors face the house, by the little concrete pad. Ease in through the doors and stop inside the yellow box." },
 ];
 export const FREE_JOB: Job = { id: -1, title: "Free Mow", intro: ["The whole lawn, no clock."], goal: "Mow the whole lawn", zones: null, pace: 9.5, light: "day", twist: "free", star3: "", cash: 25 };
 
 export type Upgrades = { deck: number; gear: number; lights: boolean; bagger: boolean; paint: string };
-export const DECKS = [2.0, 2.5, 3.0];        // half the cut width, metres
+export const DECKS = [1.7, 2.1, 2.5];        // half the cut width, metres (a 3.4 m wing deck to start)
 export const GEARS = [6.5, 7.4, 8.3];        // top speed, metres a second
 export const PAINTS: Record<string, { name: string; body: string; hood: string; trim: string; cost: number }> = {
   orange: { name: "Classic Orange", body: "#f26b1d", hood: "#f47c20", trim: "#b04e12", cost: 0 },

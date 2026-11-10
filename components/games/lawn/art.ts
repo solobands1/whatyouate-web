@@ -65,6 +65,8 @@ export function makeGround(map: LawnMap, PX: number) {
       c.strokeStyle = "#e5c24c"; c.lineWidth = 0.15; c.setLineDash([2, 2.4]); c.beginPath();
       if (horiz) { const m = (y0 + inset + y1) / 2; c.moveTo(x0, m); c.lineTo(x1, m); } else { const m = (x0 + x1) / 2; c.moveTo(m, y0); c.lineTo(m, y1); }
       c.stroke(); c.setLineDash([]);
+    } else if (n.kind === "yard") {   // a neighbour's lawn: neat and mowed, soft wide stripes
+      for (let sx = Math.floor(x0 / 3) * 3; sx < x1; sx += 3) { c.fillStyle = Math.floor(sx / 3) % 2 ? "rgb(128,182,84)" : "rgb(140,192,94)"; c.fillRect(sx, y0, 3.02, y1 - y0); }
     } else if (n.kind === "water") { c.fillStyle = "#6fa7c9"; c.fillRect(x0, y0, x1 - x0, y1 - y0); c.strokeStyle = "rgba(255,255,255,0.35)"; c.lineWidth = 0.08; for (let k = 0; k < 20; k++) { const x = x0 + rnd() * (x1 - x0), y = y0 + rnd() * (y1 - y0); c.beginPath(); c.moveTo(x, y); c.lineTo(x + 0.8, y); c.stroke(); } }
     else if (n.kind === "field") {   // a tilled field: soil with crop-stubble rows
       c.fillStyle = "#a88e66"; c.fillRect(x0, y0, x1 - x0, y1 - y0);
@@ -86,6 +88,7 @@ export function makeGround(map: LawnMap, PX: number) {
   // lanes: gravel (light, speckled, two darker tire tracks) or dirt (a two-track with grass down the middle)
   for (const l of map.lanes) {
     if (l.kind === "dirt") { stroke(l, l.width, "#b39f7c"); stroke(l, l.width * 0.22, "rgba(120,140,70,0.55)"); continue; }
+    if (l.kind === "paved") { stroke(l, l.width + 0.22, "rgba(70,80,60,0.35)"); stroke(l, l.width, "#a9aca9"); stroke(l, l.width * 0.86, "#b7bab6"); continue; }   // a paved walking path
     stroke(l, l.width + 0.3, "rgba(90,110,50,0.35)"); stroke(l, l.width, "#cdc3ae");
     for (let i = 1; i < l.pts.length; i++) {
       const [ax, ay] = l.pts[i - 1], [bx, by] = l.pts[i], L = Math.hypot(bx - ax, by - ay);
@@ -109,6 +112,15 @@ export function makeGround(map: LawnMap, PX: number) {
       c.fillStyle = "#a88d68"; c.fillRect(x0, y0, x1 - x0, y1 - y0);
       for (let k = 0; k < (x1 - x0) * (y1 - y0) * 12; k++) { c.fillStyle = rnd() < 0.5 ? "rgba(90,70,45,0.3)" : rnd() < 0.5 ? "rgba(200,182,145,0.35)" : "rgba(110,140,70,0.35)"; c.fillRect(x0 + rnd() * (x1 - x0), y0 + rnd() * (y1 - y0), 0.08, 0.08); }
       c.restore(); c.strokeStyle = "rgba(90,120,50,0.5)"; c.lineWidth = 0.3; pathPoly(c, d.poly); c.stroke();
+    } else if (d.kind === "clay" || d.kind === "sand" || d.kind === "asphalt") {
+      // a ball diamond's red dirt (raked arcs), sand (the court, the playground) or parking asphalt (painted lines)
+      c.save(); pathPoly(c, d.poly); c.clip(); const xs = d.poly.map(p => p[0]), ys = d.poly.map(p => p[1]), x0 = Math.min(...xs), x1 = Math.max(...xs), y0 = Math.min(...ys), y1 = Math.max(...ys);
+      const base = d.kind === "clay" ? "#c0714a" : d.kind === "sand" ? "#ddcda4" : "#6d7073";
+      c.fillStyle = base; c.fillRect(x0, y0, x1 - x0, y1 - y0);
+      for (let k = 0; k < (x1 - x0) * (y1 - y0) * 8; k++) { const v = rnd(); c.fillStyle = d.kind === "asphalt" ? (v < 0.5 ? "rgba(255,255,255,0.05)" : "rgba(0,0,0,0.07)") : v < 0.5 ? "rgba(255,240,220,0.18)" : "rgba(90,50,30,0.14)"; c.fillRect(x0 + rnd() * (x1 - x0), y0 + rnd() * (y1 - y0), 0.07, 0.07); }
+      if (d.kind === "clay") { c.strokeStyle = "rgba(120,60,35,0.18)"; c.lineWidth = 0.05; for (let r = 1; r < Math.max(x1 - x0, y1 - y0) * 1.4; r += 0.7) { c.beginPath(); c.arc(x1, y1, r, Math.PI, Math.PI * 1.5); c.stroke(); } }
+      if (d.kind === "asphalt") { c.strokeStyle = "rgba(245,245,240,0.7)"; c.lineWidth = 0.1; for (let px = x0 + 1.5; px < x1; px += 2.8) { c.beginPath(); c.moveTo(px, y1 - 5.2); c.lineTo(px, y1 - 0.6); c.stroke(); } }
+      c.restore(); c.strokeStyle = d.kind === "asphalt" ? "rgba(200,200,190,0.7)" : "rgba(90,110,50,0.45)"; c.lineWidth = d.kind === "asphalt" ? 0.14 : 0.2; pathPoly(c, d.poly); c.stroke();
     } else { c.fillStyle = "#d3cfc6"; pathPoly(c, d.poly); c.fill(); c.strokeStyle = "rgba(0,0,0,0.12)"; c.lineWidth = 0.08; c.stroke(); }
   }
   // gravel driveway
@@ -155,7 +167,15 @@ export function makeGround(map: LawnMap, PX: number) {
     c.strokeStyle = "#a9a291"; c.lineWidth = 0.12; c.stroke(); c.beginPath(); c.arc(t.x, t.y, t.r * 0.55, 0, 7); c.stroke();
   }
   // fences: post and rail
-  for (const f of map.fences) {
+  if (map.fenceStyle === "chain") for (const f of map.fences) {   // chain-link: a grey mesh line, round steel posts, a rail along the top
+    c.lineCap = "round"; c.lineJoin = "round";
+    c.strokeStyle = "rgba(20,40,10,0.16)"; c.lineWidth = 0.12; c.beginPath(); f.forEach((p, i) => (i ? c.lineTo(p[0] + 0.15, p[1] + 0.18) : c.moveTo(p[0] + 0.15, p[1] + 0.18))); c.stroke();
+    c.strokeStyle = "rgba(160,168,176,0.75)"; c.lineWidth = 0.1; c.beginPath(); f.forEach((p, i) => (i ? c.lineTo(p[0], p[1]) : c.moveTo(p[0], p[1]))); c.stroke();
+    c.strokeStyle = "#7d858d"; c.lineWidth = 0.035; c.stroke();
+    c.fillStyle = "#6f777f";
+    for (let i = 1; i < f.length; i++) { const [ax, ay] = f[i - 1], [bx, by] = f[i], L = Math.hypot(bx - ax, by - ay), n = Math.max(1, Math.round(L / 3)); for (let k = 0; k <= n; k++) { c.beginPath(); c.arc(ax + ((bx - ax) * k) / n, ay + ((by - ay) * k) / n, 0.07, 0, 7); c.fill(); } }
+  }
+  else for (const f of map.fences) {
     c.lineCap = "round";
     c.strokeStyle = "rgba(20,40,10,0.18)"; c.lineWidth = 0.14; c.beginPath(); f.forEach((p, i) => (i ? c.lineTo(p[0] + 0.18, p[1] + 0.22) : c.moveTo(p[0] + 0.18, p[1] + 0.22))); c.stroke();
     c.strokeStyle = "#b39a76"; c.lineWidth = 0.09; c.beginPath(); f.forEach((p, i) => (i ? c.lineTo(p[0], p[1]) : c.moveTo(p[0], p[1]))); c.stroke();
@@ -171,6 +191,13 @@ export function makeGround(map: LawnMap, PX: number) {
 
 export function drawProp(c: CanvasRenderingContext2D, p: Prop, rnd: () => number) {
   c.save(); c.translate(p.x, p.y);
+  if (p.kind === "pole") {   // a light pole: a grey post with the lamp head and its long shadow
+    const r = p.r ?? 0.3;
+    c.strokeStyle = "rgba(20,40,10,0.22)"; c.lineWidth = r * 0.7; c.lineCap = "round"; c.beginPath(); c.moveTo(0.1, 0.1); c.lineTo(3.2, 2.6); c.stroke();
+    c.fillStyle = "#6f757b"; c.beginPath(); c.arc(0, 0, r, 0, 7); c.fill(); c.fillStyle = "#9aa0a6"; c.beginPath(); c.arc(-r * 0.25, -r * 0.25, r * 0.5, 0, 7); c.fill();
+    c.fillStyle = "#e9edf0"; c.fillRect(-r * 1.6, -r * 2.4, r * 3.2, r * 1.2); c.strokeStyle = "rgba(40,45,50,0.6)"; c.lineWidth = 0.04; c.strokeRect(-r * 1.6, -r * 2.4, r * 3.2, r * 1.2);
+    c.restore(); return;
+  }
   if (p.kind === "firepit") {   // a ring of stones, ash and a few embers in the middle
     const r = p.r ?? 0.6;
     c.fillStyle = "rgba(20,20,10,0.25)"; c.beginPath(); c.arc(0.08, 0.1, r * 1.05, 0, 7); c.fill();
@@ -194,6 +221,16 @@ export function drawProp(c: CanvasRenderingContext2D, p: Prop, rnd: () => number
       c.fillStyle = "#d9ae72"; c.fillRect(-w / 2 + 0.05, -h / 2 + h * 0.35, w - 0.1, h * 0.65);
       c.strokeStyle = "rgba(90,60,30,0.45)"; c.lineWidth = 0.03; for (let k = 1; k < 4; k++) { const x = -w / 2 + (w * k) / 4; c.beginPath(); c.moveTo(x, -h / 2); c.lineTo(x, h / 2); c.stroke(); }
       c.fillStyle = "#b8894f"; c.fillRect(-w / 2 - 0.06, -h * 0.1, 0.12, h * 0.6); c.fillRect(w / 2 - 0.06, -h * 0.1, 0.12, h * 0.6);
+    } else if (p.kind === "bleacher" || p.kind === "bench") {   // aluminium bleachers (rows of seats) or a park bench
+      c.fillStyle = "#8d9399"; c.fillRect(-w / 2, -h / 2, w, h); const rows = p.kind === "bleacher" ? 5 : 3;
+      for (let k = 0; k < rows; k++) { c.fillStyle = k % 2 ? "#c9ced3" : "#e1e5e8"; if (h > w) c.fillRect(-w / 2 + (w * k) / rows + 0.03, -h / 2 + 0.05, w / rows - 0.06, h - 0.1); else c.fillRect(-w / 2 + 0.05, -h / 2 + (h * k) / rows + 0.02, w - 0.1, h / rows - 0.04); }
+      c.strokeStyle = "rgba(40,45,50,0.55)"; c.lineWidth = 0.05; c.strokeRect(-w / 2, -h / 2, w, h);
+    } else if (p.kind === "base") { c.fillStyle = "#ffffff"; c.fillRect(-w / 2, -h / 2, w, h); c.strokeStyle = "rgba(0,0,0,0.25)"; c.lineWidth = 0.04; c.strokeRect(-w / 2, -h / 2, w, h); }
+    else if (p.kind === "play") {   // a little climbing frame with a slide and a set of swings
+      c.fillStyle = "#e35d4f"; c.fillRect(-w * 0.32, -h * 0.25, w * 0.3, h * 0.42); c.fillStyle = "#f2c84b"; c.fillRect(-w * 0.28, -h * 0.21, w * 0.22, h * 0.34);
+      c.fillStyle = "#4e9bd6"; c.beginPath(); c.moveTo(-w * 0.02, -h * 0.1); c.lineTo(w * 0.2, -h * 0.02); c.lineTo(w * 0.2, h * 0.1); c.lineTo(-w * 0.02, h * 0.04); c.fill();
+      c.strokeStyle = "#5d6166"; c.lineWidth = 0.1; c.beginPath(); c.moveTo(w * 0.05, h * 0.3); c.lineTo(w * 0.45, h * 0.3); c.stroke();
+      c.fillStyle = "#2f3237"; for (const sx of [0.14, 0.26, 0.38]) c.fillRect(w * sx - 0.12, h * 0.33, 0.24, 0.1);
     } else {   // a small white box (a cover or little shed)
       c.fillStyle = "#f4f2ec"; c.fillRect(-w / 2, -h / 2, w, h); c.strokeStyle = "rgba(0,0,0,0.25)"; c.lineWidth = 0.06; c.strokeRect(-w / 2, -h / 2, w, h);
       c.beginPath(); c.moveTo(-w / 2, 0); c.lineTo(w / 2, 0); c.stroke();
@@ -379,6 +416,9 @@ function walls(c: CanvasRenderingContext2D, b: Building, P: Pt[], dz: number, do
       c.beginPath(); c.moveTo(wx - dw / 2, wy); c.lineTo(wx, wy + hh); c.lineTo(wx + dw / 2, wy); c.moveTo(wx - dw / 2, wy + hh); c.lineTo(wx, wy); c.lineTo(wx + dw / 2, wy + hh); c.moveTo(wx, wy); c.lineTo(wx, wy + hh); c.stroke();
       c.fillStyle = "#3a3d42"; c.fillRect(wx - dw / 2 - 0.1, wy - 0.12, dw + 0.2, 0.07);   // the door track
       const [vx, vy] = at(Math.abs(L - east - L * 0.12), dz * 0.75); windowAt(c, vx, vy, 0.6, dz * 0.4, trim);
+    } else if (b.kind === "hall") {   // a long row of windows and the glass doors
+      const n = Math.max(1, Math.floor(L / 2.2));
+      for (let k = 0; k < n; k++) { const [wx, wy] = at((L / n) * (k + 0.5), dz * 0.72); windowAt(c, wx, wy, 1.1, dz * 0.36, trim); }
     } else if (b.kind === "shed") {
       const d0 = at(L * 0.5 - 0.4, 0), d1 = at(L * 0.5 + 0.4, 0), hh = dz * 0.82, dq: Pt[] = [d0, d1, [d1[0], d1[1] - hh], [d0[0], d0[1] - hh]];
       pathPoly(c, dq); c.fillStyle = tone(b.wall, -0.25); c.fill(); c.strokeStyle = trim; c.lineWidth = 0.07; c.stroke();
@@ -496,7 +536,7 @@ export function drawBuilding(c: CanvasRenderingContext2D, b: Building, alpha: nu
   c.save(); c.globalAlpha *= alpha; c.lineJoin = "round"; c.lineCap = "round";
   if (b.kind === "deck") { drawDeck(c, b, dz, door); c.restore(); return; }
   walls(c, b, P, dz, door);
-  const metal = b.kind === "barn" || b.kind === "shed" || b.kind === "garage" || b.kind === "other";
+  const metal = b.kind === "barn" || b.kind === "shed" || b.kind === "garage" || b.kind === "hall" || b.kind === "other";
   if (b.flat || b.kind === "porch") flatRoof(c, b, T);
   else if (b.wings?.length) {
     b.wings.forEach((wg, i) => gableRoof(c, outset(lift(wg), 0.2), b.roof, metal, b.trim ?? "#fff", 50 + i * 7));
@@ -689,8 +729,8 @@ export function drawCat(c: CanvasRenderingContext2D, cat: CatPose, time: number,
 }
 
 /** A little person from above: shoulders, arms, head and hair. */
-export function drawPerson(c: CanvasRenderingContext2D, x: number, y: number, ang: number, shirt: string, hair: string, skin: string, pose: "sit" | "stand" | "throw", t: number) {
-  c.save(); c.translate(x, y); c.scale(1.35, 1.35);
+export function drawPerson(c: CanvasRenderingContext2D, x: number, y: number, ang: number, shirt: string, hair: string, skin: string, pose: "sit" | "stand" | "throw", t: number, size = 1.35) {
+  c.save(); c.translate(x, y); c.scale(size, size);
   c.fillStyle = "rgba(20,40,10,0.2)"; c.beginPath(); c.ellipse(0.1, 0.12, 0.3, 0.2, ang, 0, 7); c.fill();
   c.rotate(ang);
   if (pose === "sit") { c.fillStyle = "#3d5378"; c.beginPath(); c.roundRect(-0.05, -0.16, 0.34, 0.12, 0.05); c.roundRect(-0.05, 0.04, 0.34, 0.12, 0.05); c.fill(); }

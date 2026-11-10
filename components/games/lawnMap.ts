@@ -11,8 +11,9 @@
 //   lawn       polygons that need mowing (several allowed). Anything inside them that is also a building, bed, tree trunk,
 //              driveway, pad, lane, road, prop, vehicle or no-go area is not counted as lawn.
 //   driveway   gravel polygons (the parking / turnaround area): drive on them, nothing to mow.
-//   pads       flat polygons you can drive on, nothing to mow: kind "concrete" or "dirt" (bare ground).
-//   lanes      tracks as polylines with a width: kind "gravel" (light, with tire tracks) or "dirt".
+//   pads       flat polygons you can drive on, nothing to mow: kind "concrete", "dirt" (bare ground), "clay" (a ball
+//              diamond's red dirt), "sand" or "asphalt" (parking).
+//   lanes      tracks as polylines with a width: kind "gravel" (light, with tire tracks), "dirt" or "paved" (a path).
 //   roads      paved roads as polylines with a width, drawn with gravel shoulders and a dashed centre line (drive on).
 //   buildings  footprint polygons, height (metres at map scale; only for the look: taller shows more wall), colours.
 //              A 4-point rectangle at any angle gets a gable roof along its long side; `wings` (4-point rectangles) give
@@ -27,23 +28,25 @@
 //   beds       garden bed polygons (block the mower). `veg: true` draws rows instead of flowers.
 //   fences     polylines (block the mower). Leave a gap in the line for a gate.
 //   props      small things that block the mower: "firepit" (x, y, r), and rectangles (x, y = centre, w, h, heading in
-//              degrees) for "horseshoe" pits, lawn "chair"s and a "box" (a little shed or cover).
+//              degrees) for "horseshoe" pits, lawn "chair"s and a "box" (a little shed or cover); a light "pole" (x, y,
+//              r), "bleacher"s, "bench"es, "base"s and "play" (playground equipment).
 //   vehicles   parked cars and trucks: centre, length, width, heading (degrees), colour. They block the mower.
-//   noGo       polygons the mower can't enter, drawn by kind: a tilled field, a pond, woods (a dense tree row), a road.
+//   noGo       polygons the mower can't enter, drawn by kind: a tilled field, a pond, woods (a dense tree row), a road, a
+//              neighbour's "yard".
 //   door       a point just outside the house door: where the cat comes out and goes back in.
 //   start      where the mower starts, heading in degrees (0 = up/north, 90 = right/east, 180 = down/south).
 //   zones      named areas the story jobs use (which part of the yard a job mows, highlighted priority spots).
 // Anything not covered by a shape is rough grass: drivable, nothing to mow. The map's outer rectangle is a wall.
 
 export type Pt = [number, number];
-export type Building = { kind: "house" | "barn" | "shed" | "garage" | "deck" | "porch" | "other"; poly: Pt[]; height: number; wall: string; roof: string; trim?: string; wings?: Pt[][]; flat?: boolean; frontGable?: Pt[]; chimney?: Pt };
+export type Building = { kind: "house" | "barn" | "shed" | "garage" | "deck" | "porch" | "hall" | "other"; poly: Pt[]; height: number; wall: string; roof: string; trim?: string; wings?: Pt[][]; flat?: boolean; frontGable?: Pt[]; chimney?: Pt };
 export type Tree = { x: number; y: number; r: number; kind?: "leafy" | "spruce" | "fruit" | "well" };
 export type Bed = { poly: Pt[]; veg?: boolean };
-export type Pad = { poly: Pt[]; kind: "concrete" | "dirt" };
-export type Line = { pts: Pt[]; width: number; kind?: "gravel" | "dirt" };
-export type Prop = { kind: "firepit" | "horseshoe" | "chair" | "box"; x: number; y: number; r?: number; w?: number; h?: number; heading?: number };
+export type Pad = { poly: Pt[]; kind: "concrete" | "dirt" | "clay" | "sand" | "asphalt" };
+export type Line = { pts: Pt[]; width: number; kind?: "gravel" | "dirt" | "paved" };
+export type Prop = { kind: "firepit" | "horseshoe" | "chair" | "box" | "pole" | "bleacher" | "bench" | "base" | "play"; x: number; y: number; r?: number; w?: number; h?: number; heading?: number };
 export type Vehicle = { x: number; y: number; len: number; wid: number; heading: number; color: string };
-export type NoGo = { kind: "road" | "water" | "field" | "woods"; poly: Pt[] };
+export type NoGo = { kind: "road" | "water" | "field" | "woods" | "yard"; poly: Pt[] };
 export type LawnMap = {
   unit: number;
   origin: Pt;
@@ -63,6 +66,7 @@ export type LawnMap = {
   door: { x: number; y: number };
   start: { x: number; y: number; heading: number };
   zones: Record<string, Pt[]>;
+  fenceStyle?: "rail" | "chain";   // wooden post-and-rail (the default) or chain-link
 };
 
 /** A rectangle as a polygon, optionally turned `deg` degrees clockwise about its centre. */
@@ -166,6 +170,9 @@ export const LAWN_MAP: LawnMap = {
   },
 };
 
+/** Where Pat's truck and trailer stand in the driveway (the front of the truck, in units; heading 0 = facing north). */
+export const HOME_RIG = { x: 1106, y: -37, heading: 0 };
+
 /** The map in metres with its origin at (0, 0) (unit becomes 1). */
 export function toMetres(m: LawnMap): LawnMap {
   const k = m.unit, [ox, oy] = m.origin, P = (p: Pt): Pt => [(p[0] - ox) * k, (p[1] - oy) * k], L = (ps: Pt[]) => ps.map(P);
@@ -180,7 +187,7 @@ export function toMetres(m: LawnMap): LawnMap {
     props: m.props.map(p => ({ ...p, ...pt(p.x, p.y), r: p.r !== undefined ? p.r * k : undefined, w: p.w !== undefined ? p.w * k : undefined, h: p.h !== undefined ? p.h * k : undefined })),
     vehicles: m.vehicles.map(v => ({ ...v, ...pt(v.x, v.y), len: v.len * k, wid: v.wid * k })),
     noGo: m.noGo.map(n => ({ ...n, poly: L(n.poly) })),
-    door: pt(m.door.x, m.door.y), start: { ...m.start, ...pt(m.start.x, m.start.y) },
+    fenceStyle: m.fenceStyle, door: pt(m.door.x, m.door.y), start: { ...m.start, ...pt(m.start.x, m.start.y) },
     zones: Object.fromEntries(Object.entries(m.zones).map(([k, z]) => [k, L(z)])),
   };
 }

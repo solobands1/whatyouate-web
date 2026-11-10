@@ -11,14 +11,14 @@ export const CAT_CLEAR = 0.35;
 /** Trees only block at the trunk: canopies are overhead (and fade when the tractor is under them). */
 export const trunkR = (t: Tree) => (t.kind === "well" ? t.r : t.kind === "spruce" ? Math.max(0.35, t.r * 0.22) : Math.max(0.28, t.r * 0.11));
 
-export function buildWorld(map: LawnMap) {
+export function buildWorld(map: LawnMap, extra: Shape[] = []) {
   const W = map.size[0], H = map.size[1];
-  const shapes: Shape[] = [];
+  const shapes: Shape[] = [...extra];
   for (const b of map.buildings) shapes.push(polyShape(b.poly));
   for (const b of map.beds) shapes.push(polyShape(b.poly));
   for (const n of map.noGo) shapes.push(polyShape(n.poly));
   for (const v of map.vehicles) shapes.push(polyShape(vehiclePoly(v)));
-  for (const pr of map.props) shapes.push(pr.kind === "firepit" ? { k: 1, x: pr.x, y: pr.y, r: pr.r ?? 0.6 } : polyShape(propPoly(pr)));
+  for (const pr of map.props) shapes.push(pr.kind === "firepit" || pr.kind === "pole" ? { k: 1, x: pr.x, y: pr.y, r: pr.r ?? 0.6 } : polyShape(propPoly(pr)));
   for (const t of map.trees) shapes.push({ k: 1, x: t.x, y: t.y, r: trunkR(t) });
   for (const f of map.fences) for (let i = 1; i < f.length; i++) shapes.push({ k: 2, ax: f[i - 1][0], ay: f[i - 1][1], bx: f[i][0], by: f[i][1], r: 0.12 });
   const NX = Math.ceil(W / CELL), NY = Math.ceil(H / CELL), N = NX * NY;
