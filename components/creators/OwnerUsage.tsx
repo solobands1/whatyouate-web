@@ -354,9 +354,10 @@ function Funnel({ funnels }: { funnels: Usage["funnels"] }) {
 
 // Three small charts side by side instead of one with three scales: signups, active people and meals are very different sizes.
 function Daily({ days }: { days: UsageDay[] }) {
-  const charts: { key: keyof Omit<UsageDay, "day">; label: string }[] = [
+  // (active people can't be added up across days: the same person counts on every day they're active)
+  const charts: { key: keyof Omit<UsageDay, "day">; label: string; perDay?: boolean }[] = [
     { key: "signups", label: "Signups" },
-    { key: "active", label: "Active Users" },
+    { key: "active", label: "Active Users", perDay: true },
     { key: "meals", label: "Meals Logged" },
   ];
   return (
@@ -365,14 +366,14 @@ function Daily({ days }: { days: UsageDay[] }) {
       <p className="text-[13px]" style={{ color: BODY }}>Per day. Activity is counted on each person&apos;s own local day.</p>
       <div className="mt-4 grid gap-6 md:grid-cols-3">
         {charts.map((c) => (
-          <MiniBars key={c.key} label={c.label} days={days} pick={(d) => d[c.key]} />
+          <MiniBars key={c.key} label={c.label} days={days} pick={(d) => d[c.key]} perDay={c.perDay} />
         ))}
       </div>
     </Card>
   );
 }
 
-function MiniBars({ label, days, pick }: { label: string; days: UsageDay[]; pick: (d: UsageDay) => number }) {
+function MiniBars({ label, days, pick, perDay }: { label: string; days: UsageDay[]; pick: (d: UsageDay) => number; perDay?: boolean }) {
   const [hover, setHover] = useState<number | null>(null);
   const values = days.map(pick);
   const max = Math.max(1, ...values);
@@ -386,7 +387,7 @@ function MiniBars({ label, days, pick }: { label: string; days: UsageDay[]; pick
       <div className="flex items-baseline justify-between">
         <p className="text-[13px] font-semibold" style={{ color: INK }}>{label}</p>
         <p className="text-[12px] tabular-nums" style={{ color: shown ? INK : FAINT }}>
-          {shown ? `${dayLabel(shown.day)}: ${n(pick(shown))}` : `${n(total)} in 30 days`}
+          {shown ? `${dayLabel(shown.day)}: ${n(pick(shown))}` : perDay ? `up to ${n(Math.max(0, ...values))} a day` : `${n(total)} in 30 days`}
         </p>
       </div>
       <div className="relative mt-5 h-[96px]" onMouseLeave={() => setHover(null)}>
