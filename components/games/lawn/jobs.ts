@@ -62,7 +62,7 @@ export const JOBS: Job[] = [
     goal: "Pick up the leaves round the house", zones: ["frontHouse"], pace: 7.5, limit: 235, par: 180, light: "day", twist: "leaves", star3: "No Big Bumps", cash: 80, fall: 1,
     tip: "Long straight runs pick up the most. A big bump is hitting a fence, wall or tree at speed." },
   { id: 12, title: "The Flat Tire", intro: ["The tractor's got a flat, and the Rona in Springfield has the right tire.", "Take Pat's blue '67 into town, park in the Rona lot, then bring it home and park by the barn."],
-    goal: "Get the tire and come home", zones: null, pace: 1, limit: 270, par: 200, light: "day", twist: "tire", star3: "No Bumps", cash: 90, fall: 0.85,
+    goal: "Get the tire and come home", zones: null, pace: 1, limit: 325, par: 250, light: "day", twist: "tire", star3: "No Bumps", cash: 90, fall: 0.85,
     tip: "Stay on the road. Going off it slows the '67 right down and counts as a bump. Point back the way you came to turn round." },
   { id: 13, title: "Linda's Ride", intro: ["Linda wants to go for a ride round the property before supper.", "She's in the little trailer behind the tractor. Two laps round the edge, and go easy on her."],
     goal: "Two laps round the property", zones: null, pace: 1, limit: 170, par: 125, light: "golden", twist: "ride", star3: "Linda Stays Happy", cash: 100, fall: 0.85,

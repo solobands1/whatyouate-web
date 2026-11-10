@@ -10,11 +10,11 @@ import { clamp, wrapA } from "./geo";
 import { STRIP, type Config, type Hooks, type Hud, type Phase } from "./engine";
 
 const STEP = 1 / 60, FONT = "system-ui, -apple-system, sans-serif";
-const VMAX = 24, BRAKE = 14, COAST = 2.4, WB = CAR.wb, MAXSTEER = 0.48, LAT = 7.5, VREV = 3.2;
+const VMAX = 15, BRAKE = 14, COAST = 9, WB = CAR.wb, LAT = 7.5, VREV = 3.2;
+const RMIN = 3.4;   // the tightest circle it turns (m): it handles like the tractor, turning straight toward the stick, just quicker
 const DEAD = 0.08, STICK_R = 40, KNOB_R = 21;
 const CAP = { road: 99, grass: 7, rough: 5.5 };
-const accel = (v: number) => 1.6 + 6.2 * Math.max(0, 1 - Math.abs(v) / (VMAX * 1.1));
-const steerMax = (v: number) => Math.min(MAXSTEER, Math.atan((WB * LAT) / Math.max(1, v * v)));
+const accel = (v: number) => 3 + 6 * Math.max(0, 1 - Math.abs(v) / (VMAX * 1.1));
 const fmtD = (d: number) => (d >= 1000 ? `${(d / 1000).toFixed(1)} km` : d >= 10 ? `${Math.round(d)} m` : `${d.toFixed(1)} m`);
 
 export function startCar(canvas: HTMLCanvasElement, wrap: HTMLElement, cfg: Config, hooks: Hooks) {
@@ -22,7 +22,7 @@ export function startCar(canvas: HTMLCanvasElement, wrap: HTMLElement, cfg: Conf
   const limit = job.limit ?? 300, par = job.par ?? 210, paint = PAINTS[cfg.up.paint] ?? PAINTS.orange;
   // ── state ──
   let phase: Phase = "ready", leg: "out" | "shop" | "back" = "out";
-  let x = T.yardBox.x, y = T.yardBox.y, h = T.yardBox.a, v = 0, steer = 0;
+  let x = T.yardBox.x, y = T.yardBox.y, h = T.yardBox.a, v = 0, steer = 0, om = 0;   // (steer only turns the drawn wheels)
   let simT = 0, bumps = 0, bumpCool = 0, shake = 0, surf: "road" | "grass" | "rough" = "road", parkT = 0, inBox = false, braking = false;
   let uturn = 0, revT = 0, blockedT = 0, sceneT = 0, success = false, ended = false, shopT = 0, gi = 0, catSay = 2.5;
   const floats: { text: string; x: number; y: number; t: number; color: string }[] = [];
@@ -81,14 +81,18 @@ export function startCar(canvas: HTMLCanvasElement, wrap: HTMLElement, cfg: Conf
     const look = left < 9 ? Math.max(1.2, left) : 4.5 + Math.abs(v) * 0.55, [tx, ty] = ptAt(a.s + look);
     let turn = 0; for (let s = a.s; s < a.s + 10 + Math.abs(v) * 2.4; s += 2) { const p0 = ptAt(s), p1 = ptAt(s + 4), p2 = ptAt(s + 8), d = Math.abs(wrapA(Math.atan2(p2[1] - p1[1], p2[0] - p1[0]) - Math.atan2(p1[1] - p0[1], p1[0] - p0[0]))) / 6; turn = Math.max(turn, d); }
     let vT = turn > 1e-3 ? Math.max(4.5, Math.sqrt((LAT * 0.8) / turn)) : VMAX; vT = Math.min(vT, VMAX, Math.sqrt(2 * 3.2 * Math.max(0, left - 0.4)) + 0.6);
-    if (inBox || left < 0.5) return [0, 0];
+    if (inBox) return [0, 0];
+    if (left < 4) {   // the last few metres: creep straight into the box (the car stops when the stick lets go)
+      const bx = box(), ex = bx.x - x, ey = bx.y - y, ed = Math.hypot(ex, ey) || 1, m = clamp(ed * 0.06, 0.1, 0.3);
+      return [(ex / ed) * m, (ey / ed) * m];
+    }
     const dx = tx - x, dy = ty - y, d = Math.hypot(dx, dy) || 1, m = clamp(vT / VMAX, 0.12, 1);
     return [(dx / d) * m, (dy / d) * m];
   }
 
   // ── driving ──
   function arcClear(side: number) {   // room ahead for a full-lock U-turn that way?
-    const R = WB / Math.tan(MAXSTEER);
+    const R = RMIN;
     for (const a of [0.35, 0.8, 1.3, 1.9, 2.6]) { const px = x + R * (Math.sin(a) * Math.cos(h) - side * (1 - Math.cos(a)) * Math.sin(h)), py = y + R * (Math.sin(a) * Math.sin(h) + side * (1 - Math.cos(a)) * Math.cos(h)); if (T.clearAt(px, py) < 1.4 || T.surface(px, py) === "rough") return false; }
     return true;
   }
@@ -96,17 +100,17 @@ export function startCar(canvas: HTMLCanvasElement, wrap: HTMLElement, cfg: Conf
     const live = phase === "ready" || (phase === "play" && leg !== "shop");
     const [ax, ay] = live ? readStick() : [0, 0], raw = Math.min(1, Math.hypot(ax, ay));
     if (phase === "ready" && raw > DEAD) { phase = "play"; hooks.onStart(); }
-    let target = 0, steerT = 0, dec = COAST;
-    if (revT > 0) { revT -= dt; target = -VREV; steerT = -uturn * MAXSTEER; dec = BRAKE; }
+    let target = 0, omT = 0, dec = COAST;
+    if (revT > 0) { revT -= dt; target = -VREV; omT = -uturn * (Math.abs(v) / RMIN); dec = BRAKE; }
     else if (raw > DEAD && live) {
       const th = Math.atan2(ay, ax); if (!thHeld) { thS = th; thHeld = true; } else thS = wrapA(thS + wrapA(th - thS) * Math.min(1, dt * 18));
       const mag = (raw - DEAD) / (1 - DEAD), diff = wrapA(thS - h), back = Math.abs(wrapA(th - h)) > 2.25;
       if (uturn && Math.abs(diff) < 0.6) uturn = 0;
-      if (back && !uturn && v > 7) { target = 0; dec = BRAKE; }   // pointing back at speed: brake first
+      if (back && !uturn && v > 6) { target = 0; dec = BRAKE; }   // pointing back at speed: brake first
       else {
         if (back && !uturn) { const pref = Math.abs(Math.abs(wrapA(th - h)) - Math.PI) < 0.45 ? 0 : Math.sign(wrapA(th - h)); const s = pref || (arcClear(1) || !arcClear(-1) ? 1 : -1); uturn = s; if (!arcClear(s)) { revT = 1.3; } }
-        if (uturn) { target = 4.2; steerT = uturn * MAXSTEER; dec = BRAKE; }
-        else { target = VMAX * mag * Math.max(0.2, Math.pow(Math.cos(Math.min(Math.abs(diff), 1.45)), 1.6)); steerT = clamp(diff * 1.9, -steerMax(v), steerMax(v)); dec = target < v - 0.5 ? BRAKE * (0.35 + 0.65 * Math.min(1, (v - target) / 8)) : COAST; }
+        if (uturn) { target = 4.2; omT = uturn * (Math.max(0.5, v) / RMIN); dec = BRAKE; }
+        else { target = VMAX * mag * Math.max(0.3, Math.pow(Math.cos(Math.min(Math.abs(diff), 1.35)), 1.4)); omT = clamp(diff * 4, -4, 4); dec = target < v - 0.5 ? BRAKE : COAST; }   // (like the tractor: turns hard toward the stick, easing off the gas while it does)
       }
     } else { uturn = 0; thHeld = false; }
     target = Math.sign(target) * Math.min(Math.abs(target), CAP[surf]);
@@ -114,8 +118,11 @@ export function startCar(canvas: HTMLCanvasElement, wrap: HTMLElement, cfg: Conf
     braking = target < v - 1 && v > 1;
     v += clamp(target - v, -dec * dt, accel(v) * dt);
     if (Math.abs(v) > CAP[surf] + 0.2) v -= Math.sign(v) * Math.min(Math.abs(v) - CAP[surf], 9 * dt);
-    steer += clamp(steerT - steer, -2.6 * dt, 2.6 * dt);
-    h = wrapA(h + (v / WB) * Math.tan(steer) * dt);
+    // it turns as fast as the stick asks, never tighter than its turning circle (it can't spin on the spot)
+    const omMax = Math.abs(v) / RMIN;
+    om += clamp(clamp(omT, -omMax, omMax) - om, -16 * dt, 16 * dt); om = clamp(om, -omMax, omMax);
+    h = wrapA(h + om * dt);
+    steer += (clamp(Math.abs(v) > 0.3 ? Math.atan((WB * om) / v) : 0, -0.6, 0.6) - steer) * Math.min(1, dt * 12);
     // move, then push out of anything solid (three circles down the car)
     const ox = x, oy = y; x += Math.cos(h) * v * dt; y += Math.sin(h) * v * dt;
     let hitN: [number, number] | null = null;
