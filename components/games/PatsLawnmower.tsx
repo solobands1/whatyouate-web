@@ -10,10 +10,12 @@
 import { useEffect, useRef, useState, type ReactNode } from "react";
 import { useNoScroll } from "./kit";
 import { startEngine, type Hud, type Mode } from "./lawn/engine";
-import { JOBS, FREE_JOB, PAINTS, DECKS, DECK_NAMES, GEAR_NAMES, isPark, loadout, loadoutLabel, loadSave, writeSave, newSave, shopItems, unlockedUpTo, payFor, type Save, type Outcome, type Job } from "./lawn/jobs";
+import { JOBS, FREE_JOB, PAINTS, DECKS, DECK_NAMES, GEAR_NAMES, isPark, noMowing, loadout, loadoutLabel, loadSave, writeSave, newSave, shopItems, unlockedUpTo, payFor, type Save, type Outcome, type Job } from "./lawn/jobs";
 import { Sound, renderEngineClip, toWav } from "./lawn/sound";
 import { startHero } from "./lawn/hero";
 import { startTravel } from "./lawn/travel";
+import { startCar } from "./lawn/car";
+import CardArt, { type CardArtKind } from "./lawn/CardArt";
 
 type Screen = "title" | "jobs" | "shop" | "travel" | "intro" | "play" | "result";
 type Session = { mode: Mode | "travel"; job: Job; n: number };
@@ -146,7 +148,8 @@ export default function PatsLawnmower() {
       const job = session.job;
       return startTravel(canvasRef.current!, wrapRef.current!, { dir: job.twist === "unload" ? "home" : "out", paint: PAINTS[s.up.paint] ?? PAINTS.orange, debug: isDebug(), onDone: () => { setSession(ss => ({ mode: "job", job, n: ss.n + 1 })); setScreen("intro"); if (!saveRef.current.tutorial) setHowTo(true); } });
     }
-    return startEngine(canvasRef.current!, wrapRef.current!, { mode: session.mode, job: session.job, up: loadout(s), sound: SOUND!, debug: isDebug(), showStrip: true }, {
+    const run: typeof startEngine = session.job.twist === "tire" ? startCar : startEngine;   // the flat-tire job drives the car instead
+    return run(canvasRef.current!, wrapRef.current!, { mode: session.mode, job: session.job, up: loadout(s), sound: SOUND!, debug: isDebug(), showStrip: true }, {
       paused: () => pausedRef.current,
       onHud: h => setHud(h),
       onStart: () => setScreen(sc => (sc === "intro" ? "play" : sc)),
@@ -194,6 +197,7 @@ export default function PatsLawnmower() {
   const timeLeft = hud ? (hud.limit ? hud.limit - hud.time : hud.time) : job.id >= 0 ? 0 : 0;
   const pctLabel = hud ? (hud.pct >= 1 ? "100" : (Math.floor(hud.pct * 1000) / 10).toFixed(1)) : "0.0";
   const nextJob = job.id >= 0 && job.id < JOBS.length - 1 && unlockedUpTo(save) > job.id ? JOBS[job.id + 1] : null;
+  const art: CardArtKind | null = job.twist === "sticks" || job.twist === "leaves" || job.twist === "tire" || job.twist === "ride" ? job.twist : null;   // Pat's Fall Chores have a little picture on their cards
 
   return (
     <main className="fixed inset-0 flex select-none flex-col overflow-hidden bg-gradient-to-b from-[#eef6e3] via-[#f3f8ec] to-[#b9dc98] text-[#1f2c17]"
@@ -207,7 +211,7 @@ export default function PatsLawnmower() {
                 : <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><path d="M15 5l-7 7 7 7" /></svg>}
             </IconBtn>
             <div className="min-w-0 flex-1 leading-tight">
-              <div className="text-[10px] font-bold uppercase tracking-wider text-[#5a7a45]">{job.id >= 0 ? `Job ${job.id + 1} Of ${JOBS.length}` : "Free Mow"}{isPark(job) ? "" : ` · ${((DECKS[loadout(save).deck] + (job.deckBonus ?? 0)) * 2).toFixed(1)} m Deck`}</div>
+              <div className="text-[10px] font-bold uppercase tracking-wider text-[#5a7a45]">{job.id >= 0 ? `Job ${job.id + 1} Of ${JOBS.length}` : "Free Mow"}{noMowing(job) ? "" : ` · ${((DECKS[loadout(save).deck] + (job.deckBonus ?? 0)) * 2).toFixed(1)} m Deck`}</div>
               <div className="truncate text-[17px] font-extrabold tracking-tight">{job.title}</div>
             </div>
             <IconBtn label={save.muted ? "Sound On" : "Sound Off"} onClick={toggleMute}><SoundIcon muted={save.muted} /></IconBtn>
@@ -322,8 +326,10 @@ export default function PatsLawnmower() {
                   <span className="rounded-full bg-[#f26b1d] px-3 py-1 text-[12px] font-extrabold uppercase tracking-wider text-white">{job.id >= 0 ? `Job ${job.id + 1}` : "Free Mow"}</span>
                   {job.id >= 0 && <span className="flex gap-0.5">{[0, 1, 2].map(s => <Star key={s} on={save.stars[job.id] > s} size={18} />)}</span>}
                 </div>
+                {job.chapter && job.id >= 10 && <div className="mt-2 text-[12px] font-extrabold uppercase tracking-[0.14em] text-[#5a8a3a]">{job.chapter}</div>}
                 <div className="mt-2 text-[26px] font-black leading-tight tracking-tight [@media(max-height:700px)]:mt-1.5 [@media(max-height:700px)]:text-[22px]">{job.title}</div>
                 <div className="mt-1.5 space-y-1 text-[15px] leading-snug text-[#3f4f35] [@media(max-height:700px)]:mt-1 [@media(max-height:700px)]:text-[13.5px]">{job.intro.map((l, i) => <p key={i}>{l}</p>)}</div>
+                {art && <CardArt kind={art} />}
                 <div className="mt-3 rounded-2xl bg-[#eef6e3] px-3 py-2.5 text-[14px] [@media(max-height:700px)]:mt-2 [@media(max-height:700px)]:py-2 [@media(max-height:700px)]:text-[13px]">
                   <div className="flex items-center justify-between font-extrabold"><span>{job.goal}</span>{hud?.limit ? <span className="tabular-nums text-[#b4561a]">{fmt(hud.limit)}</span> : null}</div>
                   {job.id >= 0 && hud?.limit ? (
@@ -334,10 +340,10 @@ export default function PatsLawnmower() {
                     </ul>
                   ) : <div className="mt-1 text-[13px] text-[#3f4f35]">No clock. Best time: {save.free.secs !== null ? fmt(save.free.secs) : "none yet"}.</div>}
                 </div>
-                <div className="mt-2 flex items-center gap-2 rounded-2xl bg-[#f1f4ec] px-3 py-1.5">
+                {job.twist !== "tire" && <div className="mt-2 flex items-center gap-2 rounded-2xl bg-[#f1f4ec] px-3 py-1.5">
                   <span className="min-w-0 flex-1 truncate text-[12.5px] font-bold text-[#3f4f35]">{loadoutLabel(loadout(save))}</span>
                   <button onClick={() => { sfx(); gearAtOpen.current = JSON.stringify(loadout(save)); setGearOpen(true); }} className="pl-btn shrink-0 rounded-full bg-[#2f7fa8] px-3 py-1 text-[12.5px] font-extrabold text-white shadow-[0_2px_0_rgba(0,0,0,.15)]">Equipment</button>
-                </div>
+                </div>}
                 {job.tip && <div className="mt-2 flex gap-2 rounded-2xl bg-[#fff6d6] px-3 py-2 text-[12.5px] leading-snug text-[#5c4a12] [@media(max-height:700px)]:py-1.5 [@media(max-height:700px)]:text-[12px]"><span className="mt-px flex h-4 w-4 shrink-0 items-center justify-center rounded-full bg-[#f2b81d] text-[10px] font-black text-white">!</span><span>{job.tip}</span></div>}
                 <div className="mt-4 grid grid-cols-[1fr_2fr] gap-2.5 [@media(max-height:700px)]:mt-3">
                   <Btn small color="#9aa58f" onClick={goTitle}>Menu</Btn>
@@ -415,7 +421,7 @@ export default function PatsLawnmower() {
               <Card className="max-h-full w-full max-w-[360px] overflow-y-auto text-center">
                 {result.o.done ? (<>
                   <div className="text-[13px] font-extrabold uppercase tracking-wider text-[#5a8a3a]">{job.id >= 0 ? `Job ${job.id + 1}` : "Free Mow"}</div>
-                  <div className="text-[28px] font-black leading-tight">{job.id === JOBS.length - 1 ? "Weekend Done!" : job.twist === "trailer" ? "Loaded Up!" : job.id >= 0 ? "Job Done!" : "Lawn Mowed!"}</div>
+                  <div className="text-[28px] font-black leading-tight">{job.endTitle ? job.endTitle : job.twist === "trailer" ? "Loaded Up!" : job.id >= 0 ? "Job Done!" : "Lawn Mowed!"}</div>
                   {job.id >= 0 ? (
                     <div className="mt-3 grid grid-cols-3 gap-1">
                       {[0, 1, 2].map(i => {
@@ -429,13 +435,14 @@ export default function PatsLawnmower() {
                       })}
                     </div>
                   ) : result.newBest ? <div className="mx-auto mt-2 w-fit rounded-full bg-[#fff3c4] px-3 py-1 text-[13px] font-extrabold text-[#8a6a00]">New Best Time!</div> : null}
+                  {art && <CardArt kind={art} done />}
                   <div className="mt-3 grid grid-cols-2 gap-2 text-left">
                     <div className="rounded-2xl bg-[#eef6e3] px-3 py-2"><div className="text-[10.5px] font-bold uppercase tracking-wide text-[#5a6b4f]">Time</div><div className="text-[18px] font-extrabold tabular-nums">{fmt(result.o.secs)}</div></div>
-                    <div className="rounded-2xl bg-[#eef6e3] px-3 py-2"><div className="text-[10.5px] font-bold uppercase tracking-wide text-[#5a6b4f]">{job.twist === "apples" ? "Apples" : job.twist === "stripes" ? "Stripe Score" : job.twist === "away" ? "Outfield Stripes" : job.twist === "storm" ? "Puddle Time" : job.twist === "bonfire" ? "Big Bumps" : isPark(job) ? "Bumps" : job.twist === "guests" ? "Pits & Path" : "Cat Stops"}</div>
-                      <div className="text-[18px] font-extrabold tabular-nums">{job.twist === "apples" ? `${result.o.apples} / ${result.o.applesTotal}` : job.twist === "stripes" || job.twist === "away" ? `${Math.round(result.o.quality * 100)}%` : job.twist === "storm" ? `${result.o.wet.toFixed(1)}s` : job.twist === "bonfire" || isPark(job) ? result.o.bumps : job.twist === "guests" ? (result.o.priorityOk ? "Ready" : "Late") : result.o.meows}</div></div>
+                    <div className="rounded-2xl bg-[#eef6e3] px-3 py-2"><div className="text-[10.5px] font-bold uppercase tracking-wide text-[#5a6b4f]">{result.o.extra ? result.o.extra.label : job.twist === "apples" ? "Apples" : job.twist === "stripes" ? "Stripe Score" : job.twist === "away" ? "Outfield Stripes" : job.twist === "storm" ? "Puddle Time" : job.twist === "bonfire" ? "Big Bumps" : isPark(job) ? "Bumps" : job.twist === "guests" ? "Pits & Path" : "Cat Stops"}</div>
+                      <div className="text-[18px] font-extrabold tabular-nums">{result.o.extra ? result.o.extra.value : job.twist === "apples" ? `${result.o.apples} / ${result.o.applesTotal}` : job.twist === "stripes" || job.twist === "away" ? `${Math.round(result.o.quality * 100)}%` : job.twist === "storm" ? `${result.o.wet.toFixed(1)}s` : job.twist === "bonfire" || isPark(job) ? result.o.bumps : job.twist === "guests" ? (result.o.priorityOk ? "Ready" : "Late") : result.o.meows}</div></div>
                   </div>
-                  <div className="mt-2 text-[11.5px] font-bold text-[#7d8873]">{loadoutLabel(loadout(save))}</div>
-                  {job.id === JOBS.length - 1 && <div className="mt-3 rounded-2xl bg-[#eef6e3] px-3 py-2 text-[14px] font-bold text-[#2f6d1c]" style={{ animation: "plUp .4s ease-out 1.2s both" }}>You finished Pat&apos;s Big Weekend with {totalStars} of {JOBS.length * 3} stars!</div>}
+                  {job.twist !== "tire" && <div className="mt-2 text-[11.5px] font-bold text-[#7d8873]">{loadoutLabel(loadout(save))}</div>}
+                  {job.endLine && <div className="mt-3 rounded-2xl bg-[#eef6e3] px-3 py-2 text-[14px] font-bold text-[#2f6d1c]" style={{ animation: "plUp .4s ease-out 1.2s both" }}>{job.endLine(save.stars.slice(job.chapterFrom ?? 0, job.id + 1).reduce((a, b) => a + b, 0), (job.id + 1 - (job.chapterFrom ?? 0)) * 3)}</div>}
                   <div className="mt-3 flex items-center justify-center gap-2 rounded-2xl bg-[#fff6d6] px-3 py-2.5" style={{ animation: "plUp .4s ease-out 1.3s both" }}>
                     <span className="text-[13px] font-bold text-[#7a5a00]">Pay</span>
                     <span className="text-[24px] font-black tabular-nums text-[#7a5a00]">+$<CountUp to={result.pay.total} delay={1.4} onTick={() => SOUND?.coin()} /></span>
@@ -450,7 +457,7 @@ export default function PatsLawnmower() {
                   </div>
                 </>) : (<>
                   <div className="text-[28px] font-black leading-tight text-[#a3352a]">{job.twist === "bonfire" ? "Too Dark To Mow" : job.twist === "storm" ? "Rained Out" : "Out Of Time"}</div>
-                  {isPark(job) ? <p className="mt-2 text-[15px] text-[#3f4f35]">Line up straight first, then creep in slowly and stop inside the yellow box.</p> : (<>
+                  {result.o.failLine ? <p className="mt-2 text-[15px] text-[#3f4f35]">{result.o.failLine}</p> : isPark(job) ? <p className="mt-2 text-[15px] text-[#3f4f35]">Line up straight first, then creep in slowly and stop inside the yellow box.</p> : (<>
                   <p className="mt-2 text-[15px] text-[#3f4f35]">You got {Math.floor(result.o.pct * 100)}% done. {job.twist === "bonfire" ? "Headlights from the shop help when the sun's going down." : "Long straight runs and U-turns at the ends are quickest."}</p>
                   <div className="mx-auto mt-3 h-3 w-full overflow-hidden rounded-full bg-[#eef0ea]"><div className="h-full rounded-full bg-[#f26b1d]" style={{ width: `${result.o.pct * 100}%` }} /></div></>)}
                   <div className="mt-4 grid grid-cols-[1fr_2fr] gap-2.5">

@@ -253,7 +253,11 @@ export function drawVehicle(c: CanvasRenderingContext2D, v: Vehicle) {
 }
 
 
-export function drawTree(c: CanvasRenderingContext2D, t: Tree, blobs: number[][], alpha: number, time: number) {
+/** Fall colours for a leafy tree: each tree turns its own way (orange, red, gold or rust), `f` 0 summer .. 1 full fall. */
+const FALL: [string, string, string][] = [["#c25a22", "#dc7a2c", "#ee9a3c"], ["#9e3326", "#c2462e", "#d9653a"], ["#b8901f", "#d9b336", "#ecca52"], ["#8f5a26", "#b0742e", "#c98f3e"]];
+function mixHex(a: string, b: string, t: number) { const p = (h: string) => [1, 3, 5].map(i => parseInt(h.slice(i, i + 2), 16)), A = p(a), B = p(b); return `rgb(${A.map((v, i) => Math.round(v + (B[i] - v) * t)).join(",")})`; }
+export function drawTree(c: CanvasRenderingContext2D, t: Tree, blobs: number[][], alpha: number, time: number, fall = 0) {
+  if (fall > 0 && t.kind !== "spruce" && t.kind !== "well") { drawFallTree(c, t, blobs, alpha, time, fall); return; }
   c.save(); c.globalAlpha = alpha; c.translate(t.x, t.y);
   const sway = Math.sin(time * 0.8 + t.x) * 0.03 * t.r;
   if (t.kind === "spruce") {
@@ -276,6 +280,19 @@ export function drawTree(c: CanvasRenderingContext2D, t: Tree, blobs: number[][]
   c.restore();
 }
 
+function drawFallTree(c: CanvasRenderingContext2D, t: Tree, blobs: number[][], alpha: number, time: number, f: number) {
+  const pal = t.kind === "fruit" ? (["#8f8a2a", "#b3a63a", "#cdbf52"] as [string, string, string]) : FALL[Math.abs(Math.round(t.x * 7.3 + t.y * 3.1)) % FALL.length];
+  c.save(); c.globalAlpha = alpha; c.translate(t.x, t.y);
+  const sway = Math.sin(time * 0.8 + t.x) * 0.03 * t.r, k = Math.min(1, f);
+  c.strokeStyle = mixHex("#1a3814", "#4a2410", k * 0.8); c.globalAlpha = alpha * 0.42; c.lineWidth = Math.max(0.06, t.r * 0.05);
+  c.beginPath(); c.arc(sway * 0.5, 0, t.r, 0, 7); for (const [bx, by, br] of blobs) { c.moveTo(bx * t.r + sway + br * t.r, by * t.r); c.arc(bx * t.r + sway, by * t.r, br * t.r, 0, 7); } c.stroke();
+  c.globalAlpha = alpha;
+  c.fillStyle = mixHex("#3a7330", pal[0], k); c.beginPath(); c.arc(sway * 0.5, 0, t.r, 0, 7); c.fill();
+  blobs.forEach(([bx, by, br, sh], i) => { c.fillStyle = mixHex(sh < 0.5 ? "#4b8c3a" : "#58a043", pal[(i % 2) + 1], k * (0.75 + 0.25 * sh)); c.beginPath(); c.arc(bx * t.r + sway, by * t.r, br * t.r, 0, 7); c.fill(); });
+  c.fillStyle = "rgba(60,25,10,0.14)"; for (const [bx, by, br] of blobs) if (bx + by > 0.2) { c.beginPath(); c.arc(bx * t.r + sway + br * t.r * 0.25, by * t.r + br * t.r * 0.25, br * t.r * 0.7, 0, 7); c.fill(); }
+  c.fillStyle = "rgba(255,225,150,0.3)"; c.beginPath(); c.arc(-t.r * 0.3 + sway, -t.r * 0.32, t.r * 0.42, 0, 7); c.fill();
+  c.restore();
+}
 
 // ── buildings: one soft, slightly toy-like style for all of them. Roofs overhang their walls, shingled (house, porch)
 // or standing-seam metal (barn, shed, lean-to), trimmed in white and edged with a soft dark line; the south walls show
@@ -561,7 +578,7 @@ export function bakeBuilding(b: Building, door: { x: number; y: number } | null,
 
 export type Paint = { body: string; hood: string; trim: string };
 /** Pat on the lawn tractor, life size. Local frame: +x forward, +y to Pat's right. `deckHalf` is half the cut width. */
-export type MowerExtras = { head?: number; wave?: number };
+export type MowerExtras = { head?: number; wave?: number; empty?: boolean };   // empty: Pat's off the tractor (an empty seat)
 /** Pat on the tractor. `head` scales Pat's head (bigger reads better small); `wave` (0..1) raises his left hand for a wave. */
 export function drawMower(c: CanvasRenderingContext2D, x: number, y: number, h: number, steer: number, odo: number, time: number, running: boolean, deckHalf: number, paint: Paint, bagger: boolean, lights: boolean, ex: MowerExtras = {}) {
   c.save();
@@ -621,6 +638,7 @@ export function drawMower(c: CanvasRenderingContext2D, x: number, y: number, h: 
   // the black seat
   c.fillStyle = "#1b1b1b"; rr(-0.66, -0.26, 0.42, 0.52, 0.1); c.fill();
   c.fillStyle = "#2b2b2b"; rr(-0.77, -0.28, 0.12, 0.56, 0.05); c.fill();
+  if (ex.empty) { c.restore(); return; }
   // Pat: legs to the running boards, arms to the wheel, shirt, head with brown hair going grey
   c.fillStyle = "#3d5378"; rr(-0.36, -0.2, 0.5, 0.13, 0.05); c.fill(); rr(-0.36, 0.07, 0.5, 0.13, 0.05); c.fill();
   c.fillStyle = "#3a2f28"; rr(0.12, -0.21, 0.1, 0.12, 0.03); c.fill(); rr(0.12, 0.09, 0.1, 0.12, 0.03); c.fill();

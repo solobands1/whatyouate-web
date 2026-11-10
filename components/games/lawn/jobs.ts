@@ -1,7 +1,7 @@
 // Pat's Big Weekend: the story jobs, the tractor upgrades and the saved progress (this browser only).
 
 export type Light = "day" | "morning" | "dusk" | "storm" | "golden";
-export type Twist = "bonfire" | "storm" | "guests" | "apples" | "stripes" | "cat" | "finale" | "trailer" | "away" | "unload" | "free";
+export type Twist = "bonfire" | "storm" | "guests" | "apples" | "stripes" | "cat" | "finale" | "trailer" | "away" | "unload" | "free" | "sticks" | "leaves" | "tire" | "ride";
 export type Job = {
   id: number;
   title: string;
@@ -23,9 +23,15 @@ export type Job = {
   star2?: string;           // the second star, when it isn't "finish under par" (then it's "no big bumps")
   stripeZones?: string[];   // the stripe score only counts grass in these zones
   stripeGoal?: number;      // the stripe score for the third star
+  fall?: number;            // how far the leaves have turned (0 summer .. 1 full fall colour)
+  endTitle?: string;        // the end card's heading when this job closes a chapter
+  endLine?: (stars: number, of: number) => string;   // and its line about the chapter's stars
+  chapterFrom?: number;     // the first job of this chapter (for the end card's star count)
 };
 /** Jobs with no mowing: drive the tractor somewhere and park it. */
 export const isPark = (j: Job) => j.twist === "trailer" || j.twist === "unload";
+/** Jobs where the deck isn't cutting: parking, picking up sticks, the drive to town, Linda's ride. */
+export const noMowing = (j: Job) => isPark(j) || j.twist === "sticks" || j.twist === "tire" || j.twist === "ride";
 
 export const JOBS: Job[] = [
   { id: 0, title: "Before The Bonfire", intro: ["Friends are coming over for a fire tonight.", "Get the yard round the house mowed before the sun goes down."],
@@ -47,7 +53,21 @@ export const JOBS: Job[] = [
   { id: 8, map: "community", title: "Malahide Community Place", intro: ["The ball game starts this evening, and the ball club has trimmed along the fences.", "Mow both outfields and the grass round the hall and the playground. The dirt, the paths and the parking don't need it."],
     goal: "Mow the outfields and round the hall", zones: ["outfieldE", "outfieldW", "hallLawn"], pace: 8, limit: 330, par: 290, light: "day", twist: "away", star2: "No Big Bumps", star3: "Outfield Stripes 60%", stripeZones: ["outfieldW", "outfieldE"], stripeGoal: 0.6, trim: 1.3, cash: 130, tip: "Go in through the gates in the fences. Two kids are playing catch: Pat waits if they're close. Long straight runs in the outfields make the best stripes." },
   { id: 9, title: "Back Home", intro: ["Home again, just as the sun goes down.", "The tractor's off the trailer. Drive it down to the barn and park it inside for the night."],
-    goal: "Park the tractor in the barn", zones: null, pace: 1, limit: 75, par: 40, light: "golden", twist: "unload", star3: "No Bumps", cash: 60, tip: "The barn doors face the house, by the little concrete pad. Ease in through the doors and stop inside the yellow box." },
+    goal: "Park the tractor in the barn", zones: null, pace: 1, limit: 75, par: 40, light: "golden", twist: "unload", star3: "No Bumps", cash: 60, tip: "The barn doors face the house, by the little concrete pad. Ease in through the doors and stop inside the yellow box.",
+    endTitle: "Weekend Done!", chapterFrom: 0, endLine: (n, of) => `You finished Pat's Big Weekend with ${n} of ${of} stars!` },
+  { id: 10, chapter: "Chapter 3: Pat's Fall Chores", title: "After The Wind", intro: ["It blew hard all night. There are sticks all over the yard.", "Pull up beside each one and tap it. Pat hops off, grabs it and tosses it in the cart."],
+    goal: "Pick up every stick", zones: null, pace: 1, limit: 200, par: 150, light: "morning", twist: "sticks", star3: "No Cat Stops", cash: 70, fall: 0.55,
+    tip: "Stop close to a stick, then tap it. If it's too far for Pat to walk, pull in closer. The little map shows where they all are." },
+  { id: 11, title: "Leaves Everywhere", intro: ["The maples let go all at once. Leaves everywhere round the house.", "Drive over them with the deck down and the tractor sucks them right up."],
+    goal: "Pick up the leaves round the house", zones: ["frontHouse"], pace: 7.5, limit: 235, par: 180, light: "day", twist: "leaves", star3: "No Big Bumps", cash: 80, fall: 1,
+    tip: "Long straight runs pick up the most. A big bump is hitting a fence, wall or tree at speed." },
+  { id: 12, title: "The Flat Tire", intro: ["The tractor's got a flat, and the Rona in Springfield has the right tire.", "Take Pat's blue '67 into town, park in the Rona lot, then bring it home and park by the barn."],
+    goal: "Get the tire and come home", zones: null, pace: 1, limit: 270, par: 200, light: "day", twist: "tire", star3: "No Bumps", cash: 90, fall: 0.85,
+    tip: "Stay on the road. Going off it slows the '67 right down and counts as a bump. Point back the way you came to turn round." },
+  { id: 13, title: "Linda's Ride", intro: ["Linda wants to go for a ride round the property before supper.", "She's in the little trailer behind the tractor. Two laps round the edge, and go easy on her."],
+    goal: "Two laps round the property", zones: null, pace: 1, limit: 170, par: 125, light: "golden", twist: "ride", star3: "Linda Stays Happy", cash: 100, fall: 0.85,
+    tip: "Drive through the flags in order. Cutting across the field doesn't count. Bumping into anything upsets Linda.",
+    endTitle: "Chores Done!", chapterFrom: 10, endLine: (n, of) => `You finished Pat's Fall Chores with ${n} of ${of} stars! Linda says it was the best ride of the fall.` },
 ];
 export const FREE_JOB: Job = { id: -1, title: "Free Mow", intro: ["The whole lawn, no clock."], goal: "Mow the whole lawn", zones: null, pace: 9.5, light: "day", twist: "free", star3: "", cash: 25 };
 
@@ -95,6 +115,8 @@ export const unlockedUpTo = (s: Save) => { let n = 0; while (n < JOBS.length - 1
 export type Outcome = {
   job: number; done: boolean; secs: number; limit: number; par: number; pct: number;
   stars: [boolean, boolean, boolean]; meows: number; bumps: number; apples: number; applesTotal: number; quality: number; wet: number; priorityOk: boolean;
+  extra?: { label: string; value: string };   // the end card's second box, for jobs that say it their own way
+  failLine?: string;                          // what to try next time, when it's out of time
 };
 /** Pay for a finished job: the base (half on a replay) plus 15 a star for stars not earned before, plus the bagger bonus. */
 export function payFor(job: Job, o: Outcome, s: Save) {

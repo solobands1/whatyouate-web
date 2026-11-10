@@ -8,7 +8,8 @@ import { RIG, rigPt, rigLocal, rigShapes, drawRig, drawStraps, type Rig } from "
 import { buildWorld, pushOut, CELL, BODY_R, NEED_R } from "./world";
 import { clamp, wrapA, smooth, pip, polyClosest, mulberry32 } from "./geo";
 import { makeGrass, makeGround, drawTree, bakeBuilding, drawMower, drawCat, drawPerson, drawFire, drawApple, drawPuddle, stripeCol, oldStripeCol, pathPoly, OBL, type CatPose } from "./art";
-import { DECKS, GEARS, PAINTS, isPark, type Job, type Upgrades, type Outcome } from "./jobs";
+import { DECKS, GEARS, PAINTS, isPark, noMowing, type Job, type Upgrades, type Outcome } from "./jobs";
+import { makeChore } from "./chores";
 import type { Sound } from "./sound";
 
 export type Mode = "attract" | "job" | "free";
@@ -70,10 +71,11 @@ export function startEngine(canvas: HTMLCanvasElement, wrap: HTMLElement, cfg: C
   const jobShapes = park && rig ? rigShapes(rig, job.twist === "trailer") : [], jw = { ...w, shapes: jobShapes };   // bumping these costs the star
   const rnd = mulberry32((Math.random() * 1e9) | 0);
   const deckHalf = Math.min(3.3, (DECKS[cfg.up.deck] ?? DECKS[0]) + (job.deckBonus ?? 0)), vmax = GEARS[cfg.up.gear] ?? GEARS[0], paint = PAINTS[cfg.up.paint] ?? PAINTS.orange;
-  const deckShow = park ? 0.62 : deckHalf;   // the wings fold up for loading and the road
+  const noMow = noMowing(job);   // parking, the sticks, Linda's ride: the deck isn't cutting
+  const deckShow = noMow ? 0.62 : deckHalf;   // the wings fold up for loading and the road
   const zone = (names: string[] | null) => (names ? names.map(n => map.zones[n]).filter(Boolean) : null);
   const jobNeed = w.maskIn(w.need, zone(job.zones));
-  if (park) jobNeed.fill(0);   // nothing to mow: just park it
+  if (noMow) jobNeed.fill(0);   // nothing to mow: just park it
   // the storm job's puddles: standing water, so the grass under it doesn't count; set clear of fences and walls so
   // there's always room to drive round them. `wet` is a little wider: the autopilot keeps the tractor out of it.
   // where a job starts: the edge of its own piece of lawn nearest the house, facing into it
@@ -157,6 +159,10 @@ export function startEngine(canvas: HTMLCanvasElement, wrap: HTMLElement, cfg: C
   let toast = { text: "", t: 0 }, banner = { text: "", sub: "", t: 0 };
   const say = (text: string) => { toast = { text, t: 3 }; };
   const floatAt = (text: string, fx: number, fy: number, color = "#ffffff") => floats.push({ text, x: fx, y: fy, t: 1.4, color });
+  // Pat's Fall Chores: the sticks, the leaves and Linda's ride play their own way on top of this engine (./chores)
+  const ext = makeChore(job, { job, map, w, up: cfg.up, snd, mode, grass, jobNeed, cut, pose: () => ({ x, y, h, v }), place: (px, py, ph) => { x = px; y = py; h = ph; },
+    phase: () => phase, simT: () => simT, pct: () => pct(), bumps: () => bumps, meows: () => meows, say: t => say(t), floatAt, shake: k => { shake = Math.max(shake, k); }, buzz: () => buzz() });
+  let viewT = { ox: 0, oy: 0, S: 1 }, tapAt: { id: number; x: number; y: number; t: number } | null = null;
   let camX = x, camY = y, camS = 0, missed: number[] = [], missedAt = -1;
   const firePit = map.props.find(p => p.kind === "firepit"), chairs = map.props.filter(p => p.kind === "chair"), pits = map.props.filter(p => p.kind === "horseshoe");
   const deck = map.buildings.find(b => b.kind === "deck");
@@ -191,7 +197,7 @@ export function startEngine(canvas: HTMLCanvasElement, wrap: HTMLElement, cfg: C
   const cat: Cat = { st: "in", x: map.door.x, y: map.door.y, h: Math.PI / 2, act: "idle", actT: 0, tx: 0, ty: 0, outT: 0, next: mode === "attract" ? 4 : catCfg.first + rnd() * 6, fleeT: 0, cool: 0, phase: rnd() * 6 };
   let bubbleT = 0, catSeen = false, nearTold = false;
   // she's at home today (watching from the deck while Pat loads up), or not here at all (the community centre)
-  const catMode: "roam" | "deck" | "none" = away ? "none" : park ? "deck" : "roam";
+  const catMode: "roam" | "deck" | "none" = away ? "none" : park || job.twist === "ride" ? "deck" : "roam";   // (on Linda's ride she watches from the deck)
   if (catMode === "none") { cat.st = "in"; cat.next = 1e9; }
   if (catMode === "deck" && deck) { cat.st = "out"; cat.x = (deck.poly[0][0] + deck.poly[2][0]) / 2; cat.y = (deck.poly[0][1] + deck.poly[2][1]) / 2 - deck.height * OBL - 0.4; cat.act = "sit"; cat.h = 0.6; cat.outT = 1e9; cat.actT = 1e9; }
   // loading and unloading: where to park, how close Pat is, the straps going on
@@ -236,6 +242,7 @@ export function startEngine(canvas: HTMLCanvasElement, wrap: HTMLElement, cfg: C
   const onDown = (e: PointerEvent) => {
     if (!cfg.showStrip) return;
     const p = local(e);
+    if (p.y < MH && ext?.tap) tapAt = { id: e.pointerId, x: p.x, y: p.y, t: performance.now() };   // a tap on the map (picking up a stick)
     if (p.y < MH) {   // a finger on the map: two of them pinch to zoom
       if (e.pointerType === "mouse" || fingers.size >= 2) return;
       fingers.set(e.pointerId, p); try { canvas.setPointerCapture(e.pointerId); } catch {}
@@ -247,7 +254,9 @@ export function startEngine(canvas: HTMLCanvasElement, wrap: HTMLElement, cfg: C
     const rest = stickRest(); stick = { id: e.pointerId, bx: rest.x, by: rest.y, kx: 0, ky: 0 };   // one fixed stick in the middle of the strip
     onMove(e); e.preventDefault();
   };
-  const onUp = (e: PointerEvent) => { if (fingers.delete(e.pointerId) && fingers.size < 2) pinch = null; if (stick?.id === e.pointerId) { released = { bx: stick.bx, by: stick.by, kx: stick.kx, ky: stick.ky, t: performance.now() / 1000 }; stick = null; } };
+  const onUp = (e: PointerEvent) => {
+    if (tapAt?.id === e.pointerId) { const p = local(e); if (!pinch && Math.hypot(p.x - tapAt.x, p.y - tapAt.y) < 14 && performance.now() - tapAt.t < 600) ext?.tap?.((p.x - viewT.ox) / viewT.S, (p.y - viewT.oy) / viewT.S); tapAt = null; }
+    if (fingers.delete(e.pointerId) && fingers.size < 2) pinch = null; if (stick?.id === e.pointerId) { released = { bx: stick.bx, by: stick.by, kx: stick.kx, ky: stick.ky, t: performance.now() / 1000 }; stick = null; } };
   const KEYS: Record<string, string> = { KeyW: "u", ArrowUp: "u", KeyS: "d", ArrowDown: "d", KeyA: "l", ArrowLeft: "l", KeyD: "r", ArrowRight: "r" };
   const onKey = (e: KeyboardEvent) => { const k = KEYS[e.code]; if (!k || !cfg.showStrip) return; e.preventDefault(); keys[k] = e.type === "keydown"; };
   canvas.addEventListener("pointerdown", onDown); canvas.addEventListener("pointermove", onMove);
@@ -546,10 +555,11 @@ export function startEngine(canvas: HTMLCanvasElement, wrap: HTMLElement, cfg: C
     if (moving || fresh) { const g = grass.c; g.save(); g.translate(x, y); g.rotate(h); g.fillStyle = stripeCol(h); g.fillRect(-DECK_LON * 0.75, -deckHalf + 0.04, DECK_LON * 1.5, deckHalf * 2 - 0.08); g.restore(); }
     lastFresh = fresh;
     if (fresh) {
+      const [cl0, cl1] = ext?.clipCols ?? ["#7fbf4f", "#4f8f2f"];
       freshAll += freshZ; if (omS < STRAIGHT_OM) freshStraight += freshZ;
       if (parts.length < 160) for (let n = 0; n < Math.min(3, fresh); n++) {
-        if (cfg.up.bagger) { const a = h + Math.PI + (rnd() - 0.5) * 0.6; parts.push({ x: x + Math.cos(h + Math.PI / 2) * 0.7, y: y + Math.sin(h + Math.PI / 2) * 0.7, vx: Math.cos(a) * 3, vy: Math.sin(a) * 3, life: 0.3, c: rnd() < 0.5 ? "#7fbf4f" : "#4f8f2f", s: 0.1 }); }
-        else { const sp = 3 + rnd() * 3, a = h + Math.PI / 2 + (rnd() - 0.5) * 0.7; parts.push({ x: x + Math.cos(h + Math.PI / 2) * deckHalf + Math.cos(h) * (rnd() - 0.5) * 0.5, y: y + Math.sin(h + Math.PI / 2) * deckHalf + Math.sin(h) * (rnd() - 0.5) * 0.5, vx: Math.cos(a) * sp, vy: Math.sin(a) * sp, life: 0.35 + rnd() * 0.3, c: rnd() < 0.5 ? "#8fcf5f" : "#4f8f2f", s: 0.12 }); }
+        if (cfg.up.bagger) { const a = h + Math.PI + (rnd() - 0.5) * 0.6; parts.push({ x: x + Math.cos(h + Math.PI / 2) * 0.7, y: y + Math.sin(h + Math.PI / 2) * 0.7, vx: Math.cos(a) * 3, vy: Math.sin(a) * 3, life: 0.3, c: rnd() < 0.5 ? cl0 : cl1, s: 0.1 }); }
+        else { const sp = 3 + rnd() * 3, a = h + Math.PI / 2 + (rnd() - 0.5) * 0.7; parts.push({ x: x + Math.cos(h + Math.PI / 2) * deckHalf + Math.cos(h) * (rnd() - 0.5) * 0.5, y: y + Math.sin(h + Math.PI / 2) * deckHalf + Math.sin(h) * (rnd() - 0.5) * 0.5, vx: Math.cos(a) * sp, vy: Math.sin(a) * sp, life: 0.35 + rnd() * 0.3, c: rnd() < 0.5 ? (ext?.clipCols ? cl0 : "#8fcf5f") : cl1, s: 0.12 }); }
       }
     }
   }
@@ -559,7 +569,8 @@ export function startEngine(canvas: HTMLCanvasElement, wrap: HTMLElement, cfg: C
     const secs = simT + penalty;
     const q = stripeScore();
     const s3 = park ? bumps === 0 : away ? q >= (job.stripeGoal ?? 0.6) : job.twist === "bonfire" ? bumps === 0 : job.twist === "storm" ? wetT < 4 : job.twist === "guests" ? priorityOk : job.twist === "apples" ? applesGot() >= 10 : job.twist === "stripes" ? q >= 0.75 : meows === 0;
-    return { job: job.id, done, secs, limit, par, pct: pct(), stars: [done, done && (job.star2 ? bumps === 0 : secs <= par), done && s3], meows, bumps, apples: applesGot(), applesTotal: apples.length, quality: q, wet: wetT, priorityOk };
+    const o: Outcome = { job: job.id, done, secs, limit, par, pct: pct(), stars: [done, done && (job.star2 ? bumps === 0 : secs <= par), done && s3], meows, bumps, apples: applesGot(), applesTotal: apples.length, quality: q, wet: wetT, priorityOk };
+    return ext ? ext.outcome(o) : o;
   }
   function endRun(ok: boolean) {
     if (phase !== "play") return;
@@ -576,17 +587,17 @@ export function startEngine(canvas: HTMLCanvasElement, wrap: HTMLElement, cfg: C
         for (const b of map.props.filter(q => q.kind === "bleacher")) addPeople([[b.x - 0.3, b.y - 0.8, Math.PI, "sit"], [b.x + 0.2, b.y + 0.9, Math.PI, "sit"]]);
       }
       if (job.twist === "cat") { cat.st = "out"; if (deck) { cat.x = (deck.poly[0][0] + deck.poly[2][0]) / 2; cat.y = (deck.poly[0][1] + deck.poly[2][1]) / 2 - deck.height * OBL; } cat.act = "nap"; }
-      banner = { text: job.twist === "trailer" ? "Strapped In!" : job.twist === "unload" ? "Home Sweet Home!" : away ? "Ready For The Game!" : job.twist === "storm" ? "Just In Time!" : job.twist === "apples" ? `${applesGot()} Apples Picked!` : job.twist === "finale" ? "Every Blade Done!" : job.twist === "bonfire" ? "Fire's Lit!" : job.twist === "guests" ? "Let The Games Begin!" : job.twist === "stripes" ? "Look At Those Stripes!" : job.twist === "cat" ? "Nap Time!" : mode === "free" ? "Lawn Mowed!" : "Job Done!", sub: "", t: 0 };
+      banner = { text: ext?.banner(true) ?? (job.twist === "trailer" ? "Strapped In!" : job.twist === "unload" ? "Home Sweet Home!" : away ? "Ready For The Game!" : job.twist === "storm" ? "Just In Time!" : job.twist === "apples" ? `${applesGot()} Apples Picked!` : job.twist === "finale" ? "Every Blade Done!" : job.twist === "bonfire" ? "Fire's Lit!" : job.twist === "guests" ? "Let The Games Begin!" : job.twist === "stripes" ? "Look At Those Stripes!" : job.twist === "cat" ? "Nap Time!" : mode === "free" ? "Lawn Mowed!" : "Job Done!"), sub: "", t: 0 };
       if (job.twist === "storm") { thunderAt = 0.6; }
     } else {
       snd.fail();
-      banner = { text: job.twist === "bonfire" ? "Too Dark To Mow" : job.twist === "storm" ? "Rained Out" : "Out Of Time", sub: "", t: 0 };
+      banner = { text: ext?.banner(false) ?? (job.twist === "bonfire" ? "Too Dark To Mow" : job.twist === "storm" ? "Rained Out" : "Out Of Time"), sub: "", t: 0 };
     }
   }
-  hooks.finishRef.current = () => { if (phase === "play" && pct() >= NEAR_DONE) endRun(true); };
+  hooks.finishRef.current = () => { if (phase === "play" && !noMow && pct() >= NEAR_DONE) endRun(true); };
 
   function readStick(): [number, number] {
-    if (auto) return autoInput(STEP);
+    if (auto) return ext?.autoInput ? ext.autoInput(STEP) : autoInput(STEP);
     if (testIn) return testIn;
     if (stick) return [stick.kx / STICK_R, stick.ky / STICK_R];
     const ax = (keys.r ? 1 : 0) - (keys.l ? 1 : 0), ay = (keys.d ? 1 : 0) - (keys.u ? 1 : 0), d = Math.hypot(ax, ay);
@@ -629,8 +640,9 @@ export function startEngine(canvas: HTMLCanvasElement, wrap: HTMLElement, cfg: C
     const raw = Math.min(1, Math.hypot(ax, ay));
     if (phase === "ready" && raw > DEAD) { phase = "play"; hooks.onStart(); }
     if (stopT > 0) { stopT -= dt; v = 0; om = 0; }
+    const extHold = !!ext?.hold(); if (extHold) { v = 0; om = 0; }   // Pat's off the tractor
     let target = 0, omT = 0;
-    const halt = stopT > 0 || phase === "scene" || phase === "over";
+    const halt = stopT > 0 || extHold || phase === "scene" || phase === "over";
     if (!halt && revT > 0) {
       // a short back-up: the tractor reverses with the wheels turned the other way, then carries on
       revT -= dt; target = -VREV; omT = -revSide * (Math.abs(v) / rmin(v));
@@ -674,6 +686,7 @@ export function startEngine(canvas: HTMLCanvasElement, wrap: HTMLElement, cfg: C
     const p = park ? collidePark(x + dirX * v * dt, y + dirY * v * dt) : pushOut(w, x + dirX * v * dt, y + dirY * v * dt, BODY_R, cat.st !== "in" && catMode === "roam" ? { x: cat.x, y: cat.y, r: CAT_R } : null);
     if (p.hit) {
       const into = -(dirX * p.nx + dirY * p.ny) * v;
+      ext?.hit?.(into);
       if (park) {   // loading up: any real touch on the trailer, the ramps, the truck or the barn counts
         if (into > 0.35) { v *= 0.3; if (bumpCool <= 0 && phase === "play") { buzz(); bumps++; bumpCool = 0.8; shake = 0.15; snd.bump(); floatAt("Bump!", x, y - 1.4, "#ffd2cc"); } }
       } else if (into > 1.4) {
@@ -689,11 +702,12 @@ export function startEngine(canvas: HTMLCanvasElement, wrap: HTMLElement, cfg: C
     if (stuckN >= 3 && revT <= 0) { stuckN = 0; revT = 1.4; revSide = 0.0001; }   // still boxed in: back straight out for a moment
     odo += moved; if (phase === "play") drove += moved;
     bumpCool -= dt; shake = Math.max(0, shake - dt);
-    if (!park && (phase === "play" || (phase === "ready" && moved > 0))) mow(moved > 0.001);
+    if (!noMow && (phase === "play" || (phase === "ready" && moved > 0))) mow(moved > 0.001);
     if (phase === "play") simT += dt;
     catStep(dt);
+    ext?.step(dt);
     // the cat and the tractor: Pat always stops for her
-    if (catMode === "roam" && cat.st !== "in" && cat.st !== "flee" && cat.cool <= 0 && phase === "play") {
+    if (catMode === "roam" && cat.st !== "in" && cat.st !== "flee" && cat.cool <= 0 && phase === "play" && !extHold) {
       const d = Math.hypot(cat.x - x, cat.y - y);
       if (d < MEOW_D && (Math.abs(v) > 0.3 || d < BODY_R + 1.2)) {
         stopT = STOP_T; v = 0; om = 0; uturn = 0; meows++; if (mode !== "attract") { penalty += PENALTY; floatAt(`+${PENALTY}s`, x, y + 1.6, "#ffe1dc"); }
@@ -721,8 +735,8 @@ export function startEngine(canvas: HTMLCanvasElement, wrap: HTMLElement, cfg: C
         parkT = inBox && Math.abs(v) < 0.3 ? parkT + dt : 0;
         if (parkT > 0.5) endRun(true);
       }
-      if (!park && !nearTold && pct() >= NEAR_DONE && mode !== "attract") { nearTold = true; say("Nearly Done! Follow The Arrow"); }
-      if (!park && cutCount >= needCount * DONE_AT) endRun(true);
+      if (!noMow && !nearTold && pct() >= NEAR_DONE && mode !== "attract") { nearTold = true; say("Nearly Done! Follow The Arrow"); }
+      if (ext?.done ? ext.done() : !noMow && cutCount >= needCount * DONE_AT) endRun(true);
       else if (limit && simT >= limit) endRun(false);
     }
     if (phase === "scene") {
@@ -759,7 +773,7 @@ export function startEngine(canvas: HTMLCanvasElement, wrap: HTMLElement, cfg: C
     if (noisePat) { c.fillStyle = noisePat; c.fillRect(cx - vw / 2 - 1, cy - vh / 2 - 1, vw + 2, vh + 2); }
     c.drawImage(groundCv, 0, 0, w.W, w.H);
     // tall grass tufts that sway, on the grass still to mow (only what's on screen)
-    {
+    if (!ext?.noTufts) {
       const i0 = Math.max(0, Math.floor((cx - vw / 2) / CELL)), i1 = Math.min(w.NX - 1, Math.ceil((cx + vw / 2) / CELL));
       const j0 = Math.max(0, Math.floor((cy - vh / 2) / CELL)), j1 = Math.min(w.NY - 1, Math.ceil((cy + vh / 2) / CELL));
       const wind = job.twist === "storm" ? 0.1 + 0.08 * Math.sin(time * 0.7) : 0.035;
@@ -774,6 +788,7 @@ export function startEngine(canvas: HTMLCanvasElement, wrap: HTMLElement, cfg: C
       c.lineCap = "round"; c.lineWidth = 0.04; c.strokeStyle = "rgba(30,72,22,0.5)"; c.stroke(dark); c.strokeStyle = "rgba(120,170,70,0.42)"; c.stroke(lite);
     }
     for (const pd of puddles) drawPuddle(c, pd.x, pd.y, pd.rx, pd.ry, pd.rot, time, rainAmt);
+    ext?.drawGround(c, time, cx, cy, vw, vh);
     // priority spots: a soft yellow wash on the grass still to mow there
     if (priorityMask && priorityCut < priorityTotal) {
       const pulse = 0.18 + 0.1 * Math.sin(time * 3);
@@ -784,7 +799,7 @@ export function startEngine(canvas: HTMLCanvasElement, wrap: HTMLElement, cfg: C
       c.setLineDash([]);
     }
     // missed spots, once nearly done
-    if (!park && phase === "play" && p >= NEAR_DONE && mode !== "attract") {
+    if (!noMow && phase === "play" && p >= NEAR_DONE && mode !== "attract") {
       if (frame - missedAt > 20) { missed = []; for (let q = 0; q < w.N; q++) if (jobNeed[q] && !cut[q]) missed.push(q); missedAt = frame; }
       const pulse = 0.5 + 0.5 * Math.sin(time * 5);
       c.fillStyle = `rgba(255,216,80,${(0.35 + 0.35 * pulse).toFixed(3)})`;
@@ -816,9 +831,11 @@ export function startEngine(canvas: HTMLCanvasElement, wrap: HTMLElement, cfg: C
     const catOnDeck = cat.st !== "in" && deck && pip(deck.poly.map(q => [q[0], q[1] - deck.height * OBL] as Pt), cat.x, cat.y);
     // up on the ramps and the trailer the tractor sits a little higher (drawn a touch bigger, its shadow further off)
     const ek = 1 + 0.07 * elev;
+    ext?.drawBelow(c, time);
     c.save(); c.translate(x, y); c.scale(ek, ek); c.translate(-x, -y);
-    drawMower(c, x, y, h, steer, odo, time, phase === "play" || (park && phase === "ready"), deckShow, paint, cfg.up.bagger, cfg.up.lights && (job.light === "dusk" || job.light === "storm"));
+    drawMower(c, x, y, h, steer, odo, time, phase === "play" || (park && phase === "ready"), deckShow, paint, cfg.up.bagger, cfg.up.lights && (job.light === "dusk" || job.light === "storm"), { empty: ext?.patOff() });
     c.restore();
+    ext?.drawAbove(c, time);
     if (job.twist === "trailer" && rig) drawStraps(c, rig, strapK);
     if (cat.st !== "in" && !catOnDeck) drawCat(c, cat, time);   // over the tractor, so she's never lost under the wide deck
     if (firePit) drawFire(c, firePit.x, firePit.y, firePit.r ?? 0.8, time, fireAmt);
@@ -830,12 +847,13 @@ export function startEngine(canvas: HTMLCanvasElement, wrap: HTMLElement, cfg: C
         if (t.kind === "well") return;
         const near = Math.hypot(t.x - x, t.y - y) < t.r + Math.max(BODY_R, deckHalf) + 0.4 || (cat.st !== "in" && Math.hypot(t.x - cat.x, t.y - cat.y) < t.r + 0.4);
         treeAlpha[i] += ((near ? 0.8 : 0.96) - treeAlpha[i]) * Math.min(1, dt * 8);
-        drawTree(cc, t, treeBlobs[i], treeAlpha[i], time * (job.twist === "storm" ? 2.2 : 1));
+        drawTree(cc, t, treeBlobs[i], treeAlpha[i], time * (job.twist === "storm" ? 2.2 : 1), job.fall ?? 0);
       });
       cc.globalCompositeOperation = "destination-out";
       const hole = (hx: number, hy: number, r: number) => { const g = cc.createRadialGradient(hx, hy, 0, hx, hy, r); g.addColorStop(0, "rgba(0,0,0,0.85)"); g.addColorStop(0.55, "rgba(0,0,0,0.7)"); g.addColorStop(1, "rgba(0,0,0,0)"); cc.fillStyle = g; cc.beginPath(); cc.arc(hx, hy, r, 0, 7); cc.fill(); };
       hole(x, y, Math.max(2.6, deckHalf + 1.0));
       if (cat.st !== "in") hole(cat.x, cat.y, 1.4);
+      if (ext) for (const [hx, hy, hr] of ext.holes()) hole(hx, hy, hr);
       if (rig && job.twist === "trailer") { const [ax, ay] = rigPt(rig, RIG.park, 0), [bx, by] = rigPt(rig, RIG.rampEnd, 0); hole(ax, ay, 3.2); hole(bx, by, 3.0); }   // keep the trailer and the ramps in view
       cc.globalCompositeOperation = "source-over";
       c.save(); c.setTransform(1, 0, 0, 1, 0, 0); c.drawImage(canopy, 0, 0); c.restore();
@@ -853,7 +871,7 @@ export function startEngine(canvas: HTMLCanvasElement, wrap: HTMLElement, cfg: C
     const covered = (px: number, py: number) => map.buildings.some((b, i) => roofAlpha[i] < 0.95 && pip(b.poly.map(q => [q[0], q[1] - b.height * OBL] as Pt), px, py));
     c.save(); c.globalAlpha = 0.55;
     if (cat.st !== "in" && !catOnDeck && covered(cat.x, cat.y)) drawCat(c, cat, time, 2.0, false);
-    if (covered(x, y)) drawMower(c, x, y, h, steer, odo, time, phase === "play", deckShow, paint, cfg.up.bagger, false);
+    if (covered(x, y)) drawMower(c, x, y, h, steer, odo, time, phase === "play", deckShow, paint, cfg.up.bagger, false, { empty: ext?.patOff() });
     c.restore();
     // cloud shadows drifting over the yard before the storm
     for (const cl of clouds) { const g = c.createRadialGradient(cl.x, cl.y, 0, cl.x, cl.y, cl.r); g.addColorStop(0, "rgba(20,30,40,0.22)"); g.addColorStop(1, "rgba(20,30,40,0)"); c.fillStyle = g; c.beginPath(); c.arc(cl.x, cl.y, cl.r, 0, 7); c.fill(); }
@@ -911,6 +929,7 @@ export function startEngine(canvas: HTMLCanvasElement, wrap: HTMLElement, cfg: C
       if (job.twist === "trailer" && rig) fit([rigPt(rig, -0.5, -1.5), rigPt(rig, RIG.rampEnd + 0.5, 1.5)], 2.5);
       if (job.twist === "unload" && barn) fit(barn.poly.map(q => [q[0], q[1]] as [number, number]), 3);
       if (away) { const zs = [...(map.zones.outfieldW ?? []), ...(map.zones.outfieldE ?? [])]; if (zs.length) fit(zs.map(q => [q[0], q[1]] as [number, number]), 2); }
+      const ef = ext?.focus?.(); if (ef) fit(ef, 4.5);
       if (job.twist === "stripes") { const z = map.zones.stripes; if (z) { const xs = z.map(q => q[0]), ys = z.map(q => q[1]); tx = (Math.min(...xs) + Math.max(...xs)) / 2; ty = (Math.min(...ys) + Math.max(...ys)) / 2; S = Math.min(CW / (Math.max(...xs) - Math.min(...xs) + 6), MH / (Math.max(...ys) - Math.min(...ys) + 6)); } }
     }
     if (!camS) camS = S;
@@ -920,6 +939,7 @@ export function startEngine(canvas: HTMLCanvasElement, wrap: HTMLElement, cfg: C
     const cx = vw >= w.W + 2 * m ? w.W / 2 : clamp(camX, vw / 2 - m, w.W - vw / 2 + m), cy = vh >= w.H + 2 * m ? w.H / 2 : clamp(camY, vh / 2 - m, w.H - vh / 2 + m);
     const shx = shake > 0 ? (Math.random() - 0.5) * shake * 0.6 : 0, shy = shake > 0 ? (Math.random() - 0.5) * shake * 0.6 : 0;
     const ox = CW / 2 - (cx + shx) * S, oy = MH / 2 - (cy + shy) * S;
+    viewT = { ox, oy, S };
     // the map
     ctx.save(); rr(ctx, 0, 0, CW, MH, cfg.showStrip ? 18 : 0); ctx.clip();
     ctx.fillStyle = "#8fa557"; ctx.fillRect(0, 0, CW, MH);
@@ -930,6 +950,7 @@ export function startEngine(canvas: HTMLCanvasElement, wrap: HTMLElement, cfg: C
     { const g = ctx.createLinearGradient(0, 0, CW, MH); g.addColorStop(0, "rgba(255,250,220,0.07)"); g.addColorStop(1, "rgba(0,20,0,0.07)"); ctx.fillStyle = g; ctx.fillRect(0, 0, CW, MH); }
     drawLight(ox, oy, S, time);
     const sx = (wx: number) => ox + wx * S, sy = (wy: number) => oy + wy * S;
+    ext?.drawScreen(ctx, sx, sy, CW, MH, time);
     // bubbles and floating words
     if (bubbleT > 0 && cat.st !== "in" && mode !== "attract") {
       const bx = sx(cat.x), by = sy(cat.y) - 32, a = Math.min(1, bubbleT * 3), pop = 1 + Math.max(0, (bubbleT - 1.8) * 1.5);
@@ -941,7 +962,7 @@ export function startEngine(canvas: HTMLCanvasElement, wrap: HTMLElement, cfg: C
     if (cat.st !== "in" && cat.act === "nap" && bubbleT <= 0) for (let q = 0; q < 3; q++) { const ph = (time * 0.6 + q / 3) % 1; ctx.save(); ctx.globalAlpha = Math.sin(ph * Math.PI) * 0.9; text("z", sx(cat.x) + 10 + ph * 10, sy(cat.y) - 12 - ph * 18, 10 + ph * 5, "#ffffff", 800); ctx.restore(); }
     for (const f of floats) { const u = 1 - f.t / 1.4; ctx.save(); ctx.globalAlpha = Math.min(1, f.t * 2); ctx.lineWidth = 3; ctx.strokeStyle = "rgba(30,40,20,0.55)"; ctx.font = `800 14px ${FONT}`; ctx.textAlign = "center"; ctx.strokeText(f.text, sx(f.x), sy(f.y) - u * 26); text(f.text, sx(f.x), sy(f.y) - u * 26, 14, f.color, 800); ctx.restore(); }
     // arrow to the nearest missed spot when it's off screen
-    if (!park && phase === "play" && pct() >= NEAR_DONE && missed.length && mode !== "attract") {
+    if (!noMow && phase === "play" && pct() >= NEAR_DONE && missed.length && mode !== "attract") {
       let best = -1, bd = Infinity; for (const q of missed) { const d = Math.hypot(w.cellX(q) - x, w.cellY(q) - y); if (d < bd) { bd = d; best = q; } }
       const qx = sx(w.cellX(best)), qy = sy(w.cellY(best));
       const bob = Math.sin(time * 6) * 3;
@@ -987,6 +1008,7 @@ export function startEngine(canvas: HTMLCanvasElement, wrap: HTMLElement, cfg: C
       for (const n of map.noGo) { ctx.fillStyle = n.kind === "field" ? "#a88e66" : n.kind === "woods" ? "#2f5a2c" : "#6a6d70"; pathPoly(ctx, n.poly); ctx.fill(); }
       for (const b of map.buildings) { ctx.fillStyle = b.kind === "barn" ? "#b3302a" : b.roof; pathPoly(ctx, b.poly); ctx.fill(); }
       for (const a of apples) if (a.st === 0) { ctx.fillStyle = "#e0352b"; ctx.beginPath(); ctx.arc(a.x, a.y, 1.6, 0, 7); ctx.fill(); }
+      ext?.drawMini?.(ctx, ms);
       ctx.strokeStyle = "rgba(255,255,255,0.95)"; ctx.lineWidth = 1 / ms; ctx.strokeRect(cx - vw / 2, cy - vh / 2, vw, vh);
       if (cat.st !== "in") { ctx.fillStyle = "#5b6068"; ctx.strokeStyle = "#fff"; ctx.lineWidth = 0.8 / ms; ctx.beginPath(); ctx.arc(cat.x, cat.y, 2.3 / ms, 0, 7); ctx.fill(); ctx.stroke(); }
       ctx.fillStyle = paint.body; ctx.strokeStyle = "#fff"; ctx.lineWidth = 1.3 / ms; ctx.beginPath(); ctx.arc(x, y, 3.2 / ms, 0, 7); ctx.fill(); ctx.stroke();
@@ -1046,7 +1068,7 @@ export function startEngine(canvas: HTMLCanvasElement, wrap: HTMLElement, cfg: C
       const onLawn = w.lawn[w.cellOf(x, y)] === 1, stickMag = Math.min(1, Math.hypot(lastIn[0], lastIn[1]));
       bladeUncut += ((lastFresh > 0 ? 1 : 0) - bladeUncut) * Math.min(1, dt * 6);
       const rpm = clamp(0.12 * (stickMag > DEAD ? stickMag : 0) + 0.88 * (Math.abs(v) / vmax), 0, 1);
-      snd.engine({ on: mode !== "attract" && (phase === "ready" || phase === "play"), rpm, blades: park ? 0 : onLawn ? 0.4 + 0.6 * bladeUncut : 0.15, load: Math.min(1, shake * 4 + Math.max(0, Math.abs(om) - 1.2) * 0.4) });
+      snd.engine({ on: mode !== "attract" && (phase === "ready" || phase === "play"), rpm, blades: noMow ? 0 : onLawn ? 0.4 + 0.6 * bladeUncut : 0.15, load: Math.min(1, shake * 4 + Math.max(0, Math.abs(om) - 1.2) * 0.4) });
       const quiet = paused || document.hidden; if (quiet !== wasQuiet) { wasQuiet = quiet; snd.setPaused(quiet); }
     }
     snd.rainLevel(paused ? 0 : rainAmt);
@@ -1062,7 +1084,8 @@ export function startEngine(canvas: HTMLCanvasElement, wrap: HTMLElement, cfg: C
       else if (away) { const q = stripeScore(); meter = { label: "Stripes", value: `${Math.round(q * 100)}%`, frac: q, good: q >= (job.stripeGoal ?? 0.6) }; }
       let lead: Hud["lead"] = null;
       if (parkSpot) { const d = Math.hypot(parkSpot.x - x, parkSpot.y - y); lead = { label: "To The Box", value: (phase === "scene" || phase === "over") && success ? "Parked" : inBox ? "Stop!" : `${d < 10 ? d.toFixed(1) : Math.round(d)} m` }; }
-      hooks.onHud({ pct: (phase === "scene" || phase === "over") && success ? 1 : pct(), time: simT + penalty, limit, par, meter, canFinish: !park && phase === "play" && pct() >= NEAR_DONE, phase, lead });
+      const eh = ext?.hud(); if (eh?.lead) lead = eh.lead; if (eh?.meter) meter = eh.meter;
+      hooks.onHud({ pct: (phase === "scene" || phase === "over") && success ? 1 : eh?.pct ?? pct(), time: simT + penalty, limit, par, meter, canFinish: !noMow && phase === "play" && pct() >= NEAR_DONE, phase, lead });
     }
   };
   raf = requestAnimationFrame(loop);
@@ -1093,6 +1116,8 @@ export function startEngine(canvas: HTMLCanvasElement, wrap: HTMLElement, cfg: C
       win: () => { if (phase === "ready") { phase = "play"; } cutCount = needCount; endRun(true); },   // jump to the end scene (screenshots only)
       setLimit: (n: number) => { limit = n; par = Math.round(n * 0.72); },
       segs: () => ({ segI, segMode, n: segs.length, cur: segs[segI] ?? null, first: segs.slice(0, 6) }),
+      ext: () => ext?.debug(),
+      scr: (wx: number, wy: number) => [viewT.ox + wx * viewT.S, viewT.oy + wy * viewT.S],
       unneeded: () => { let n = 0; for (let q = 0; q < w.N; q++) if (w.lawn[q] && !w.need[q]) n++; return n; },
     };
   }
