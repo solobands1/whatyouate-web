@@ -1,9 +1,11 @@
 // Pat's Big Weekend: the story jobs, the tractor upgrades and the saved progress (this browser only).
+import type { Bed } from "../lawnMap";
 
 export type Light = "day" | "morning" | "dusk" | "storm" | "golden";
 export type Twist = "bonfire" | "storm" | "guests" | "apples" | "stripes" | "cat" | "finale" | "trailer" | "away" | "unload" | "free" | "sticks" | "leaves" | "tire" | "ride"
   | "plow" | "wood" | "xmas" | "tidy"   // Chapter 4: Pat's Winter
-  | "paint" | "games" | "nets" | "party";   // Chapter 6: The Annual Party (./summer)
+  | "paint" | "games" | "nets" | "party"   // Chapter 6: The Annual Party (./summer)
+  | "dandelions" | "spray" | "gravel" | "trees" | "gas";   // Chapter 5
 export type Job = {
   id: number;
   title: string;
@@ -30,13 +32,15 @@ export type Job = {
   endLine?: (stars: number, of: number) => string;   // and its line about the chapter's stars
   chapterFrom?: number;     // the first job of this chapter (for the end card's star count)
   summer?: boolean;         // Chapter 6: high summer (deep green lawn, small green apples on the trees)
+  beds?: Bed[];             // Chapter 5: garden beds this job adds to the yard (yard units; drawn and solid like the map's)
 };
 /** Jobs with no mowing: drive the tractor somewhere and park it. */
 export const isPark = (j: Job) => j.twist === "trailer" || j.twist === "unload";
 /** Jobs where the deck isn't cutting: parking, picking up sticks, the drive to town, Linda's ride. */
 export const noMowing = (j: Job) => isPark(j) || j.twist === "sticks" || j.twist === "tire" || j.twist === "ride"
   || j.twist === "plow" || j.twist === "wood" || j.twist === "xmas" || j.twist === "tidy"   // (Chapter 4: winter, no mowing)
-  || j.twist === "paint" || j.twist === "games" || j.twist === "nets" || j.twist === "party";   // Chapter 6
+  || j.twist === "paint" || j.twist === "games" || j.twist === "nets" || j.twist === "party"   // Chapter 6
+  || j.twist === "spray" || j.twist === "gravel" || j.twist === "trees" || j.twist === "gas";   // Chapter 5
 
 export const JOBS: Job[] = [
   { id: 0, title: "Before The Bonfire", intro: ["Friends are coming over for a fire tonight.", "Get the yard round the house mowed before the sun goes down."],
@@ -87,9 +91,28 @@ export const JOBS: Job[] = [
     goal: "Put every tool away", zones: null, pace: 1, limit: 75, par: 60, light: "day", twist: "tidy", star3: "Give The Cat A Pat", cash: 120,
     tip: "Walk up to a tool and tap it to pick it up. Its spot lights up: walk over and Pat puts it away. The cat's in the shop too. Tap her when you're next to her.",
     endTitle: "Winter Done!", chapterFrom: 14, endLine: (n, of) => `You finished Pat's Winter with ${n} of ${of} stars! The shop's tidy and the stove's going.` },
-  // PLACEHOLDER for Chapter 5 (replaced at merge)
-  ...[18, 19, 20, 21, 22].map((id): Job => ({ id, chapter: id === 18 ? "Chapter 5 (Placeholder)" : undefined, title: `Placeholder ${id + 1}`, intro: ["Stands in for a Chapter 4 or 5 job until the merge."],
-    goal: "Mow the orchard", zones: ["orchard"], pace: 6.5, limit: 160, par: 125, light: "day", twist: "free", star3: "No Cat Stops", cash: 10 })),
+  // Chapter 5: spring on the farm (the jobs play their own way through ./spring and ./gasRun)
+  { id: 18, chapter: "Chapter 5: Spring On The Farm", title: "Dandelion Season", intro: ["Spring's here, and the dandelions beat Pat to the lawn.", "Mow over every yellow one before the rest go to seed."],
+    goal: "Cut every dandelion", zones: ["eastLawn"], pace: 1, limit: 160, par: 120, light: "morning", twist: "dandelions", star3: "No Seeds Blown", cash: 80,
+    tip: "Only the dandelions count, not the whole lawn. The white puffs have gone to seed: ease over them (push the stick halfway) or the seeds blow all over the yard." },
+  { id: 19, title: "Spray The Weeds", intro: ["Weeds are coming up along the fences, the driveway and round the barn.", "Pat's hooked the little sprayer on behind. Treat every weed, and keep it off Linda's flowers."],
+    goal: "Spray every weed", zones: null, pace: 1, limit: 215, par: 165, light: "day", twist: "spray", star3: "Flowers And Garden Safe", cash: 90,
+    tip: "Tap Spray to turn the sprayer on and off. Spray only over the weeds: the tank runs dry on clean grass. You can top it up at the barn.",
+    beds: [
+      { poly: [[924, 84], [1004, 84], [1004, 96], [924, 96]] },                 // Linda's flowers along the front porch
+      { poly: [[1033, 254], [1047, 254], [1047, 302], [1033, 302]] },           // and beside the deck
+      { poly: [[1124, 562], [1186, 562], [1186, 610], [1124, 610]], veg: true }, // the vegetable garden
+    ] },
+  { id: 20, title: "Fresh Gravel", intro: ["The driveway came through the winter full of muddy holes.", "A load of gravel's waiting by the road. Fill the cart and spread it on the bare patches."],
+    goal: "Fix every muddy patch", zones: null, pace: 1, limit: 200, par: 155, light: "day", twist: "gravel", star3: "No Big Bumps", cash: 90,
+    tip: "Stop with the cart beside the pile and Pat shovels in a load. Drive the cart over the muddy patches and the gravel spreads on its own." },
+  { id: 21, title: "Plant Trees", intro: ["Pat's planting a new row of maples along the big field.", "Load the young trees from the nursery cart by the barn, then stop by each stake and tap it."],
+    goal: "Plant all six trees", zones: null, pace: 1, limit: 140, par: 105, light: "morning", twist: "trees", star3: "No Cat Stops", cash: 100,
+    tip: "Stop beside the nursery cart to load up: Pat's cart holds three at a time. Then stop close to a stake and tap it. Pat digs, plants and waters." },
+  { id: 22, title: "Gas Run To Aylmer", intro: ["The tractor's out of gas, and mowing season's here.", "Take the '67 through Springfield and down to Aylmer, fill the gas cans, then bring them home to the barn."],
+    goal: "Fill the gas cans and come home", zones: null, pace: 1, limit: 290, par: 225, light: "day", twist: "gas", star3: "No Bumps", cash: 120,
+    tip: "Stay on the road. In Springfield, turn left onto Springfield Road, then right onto Talbot Street into Aylmer. Park in the box at the pump and Pat fills the cans.",
+    endTitle: "Spring's Done!", chapterFrom: 18, endLine: (n, of) => `You finished Spring On The Farm with ${n} of ${of} stars! The tractor's full and ready for the season.` },
   // Chapter 6: The Annual Party. Summer on the farm: paint the barn, set out the games and the nets, then party day (./summer)
   { id: 23, chapter: "Chapter 6: The Annual Party", title: "A Fresh Coat", intro: ["The annual party is next weekend, and the old barn is looking tired.", "Pat rigged a paint sprayer on the tractor. Drive along the walls and they turn red. The white trim he does by hand."],
     goal: "Paint the barn, then the trim", zones: null, pace: 1, limit: 90, par: 70, light: "morning", twist: "paint", star3: "Don't Bump The Wet Paint", cash: 110, summer: true,

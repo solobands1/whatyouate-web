@@ -202,6 +202,10 @@ export class Sound {
   }
   bump() { this.noise(0.16, 0.3, "lowpass", 260); this.tone(110, 0.18, "sine", 0.22, 0, 50); }
   squish() { this.noise(0.12, 0.25, "bandpass", 900); this.tone(300, 0.1, "square", 0.08, 0, 120); }
+  // Chapter 5: a robin's chirp, the sprayer's hiss, a shovel in gravel or dirt
+  chirp() { const f = 2600 + Math.random() * 500; this.tone(f, 0.07, "sine", 0.05, 0, f * 1.35); this.tone(f * 1.1, 0.06, "sine", 0.04, 0.11, f * 0.85); }
+  hiss() { this.noise(0.3, 0.05, "bandpass", 4200); }
+  crunch() { this.noise(0.14, 0.22, "lowpass", 1100); this.noise(0.08, 0.08, "bandpass", 2600, 0.03); }
   pop() { this.tone(660, 0.09, "sine", 0.2, 0, 990); this.tone(990, 0.1, "sine", 0.12, 0.06, 1320); }
   coin() { this.tone(1320, 0.08, "square", 0.06); this.tone(1760, 0.14, "square", 0.06, 0.07); }
   star(i: number) { this.tone(660 * Math.pow(1.26, i), 0.22, "triangle", 0.18); this.tone(1320 * Math.pow(1.26, i), 0.18, "sine", 0.06, 0.03); }

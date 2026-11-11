@@ -16,6 +16,7 @@ import { oldStripeCol } from "./art";
 import { drawLeaf, drawStick, drawPat, drawCart, drawFlag, scatterLeaves, LEAF_COLS, type Stick } from "./fallArt";
 import { winterChore, winterMap } from "./winter";   // Chapter 4: Pat's Winter
 import { makeSummerChore } from "./summer";   // Chapter 6
+import { springChore } from "./spring";   // Chapter 5
 
 export type ChoreCtx = {
   job: Job; map: LawnMap; w: World; up: Upgrades; snd: Sound; mode: string;
@@ -55,13 +56,18 @@ export type Chore = {
   drawBuilding?(c: CanvasRenderingContext2D, b: Building, time: number): boolean;
   push?(x: number, y: number, r: number): { x: number; y: number; nx: number; ny: number; hit: boolean } | null;
   catDeck?: boolean;
+  // Chapter 5: a chore with its own goal (the mowed percent isn't the job), a button in the strip, a touch on each tree
+  ownGoal?: boolean;
+  button?(): { label: string; on: boolean; level?: number } | null;
+  press?(): void;
+  drawTreeOver?(c: CanvasRenderingContext2D, t: Tree, blobs: number[][], alpha: number, time: number): void;   // (drawn over the usual tree)
 };
 
 const FONT = "system-ui, -apple-system, sans-serif";
 const U = (m: LawnMap, ux: number, uy: number): Pt => [ux * 0.075 - m.origin[0], (uy + 130) * 0.075 - m.origin[1]];   // a spot traced in the yard's units, in metres
 
 // ── shared bits: the cart behind the tractor, the screen arrow, a little grid route-finder for the autopilot ──
-function makeCart(ctx: ChoreCtx) {
+export function makeCart(ctx: ChoreCtx) {
   const HITCH = ctx.up.bagger ? 1.45 : 1.0, TONGUE = 1.55;
   const p0 = ctx.pose(); const c = { ax: p0.x - Math.cos(p0.h) * (HITCH + TONGUE), ay: p0.y - Math.sin(p0.h) * (HITCH + TONGUE), a: p0.h, hits: 0, cool: 0 };
   function update(dt: number) {
@@ -80,19 +86,19 @@ function makeCart(ctx: ChoreCtx) {
   }
   return { c, update, TONGUE, HITCH };
 }
-function edgeArrow(c: CanvasRenderingContext2D, qx: number, qy: number, fromX: number, fromY: number, CW: number, MH: number, time: number, label = "") {
+export function edgeArrow(c: CanvasRenderingContext2D, qx: number, qy: number, fromX: number, fromY: number, CW: number, MH: number, time: number, label = "") {
   const a = Math.atan2(qy - fromY, qx - fromX), bob = Math.sin(time * 6) * 3, ex = clamp(qx, 26, CW - 26);
   let ey = clamp(qy, 26, MH - 26); if (ex > CW - Math.min(104, CW * 0.28) - 30 && ey < 140) ey = 140;   // never under the minimap
   c.save(); c.translate(ex - Math.cos(a) * bob, ey - Math.sin(a) * bob); c.rotate(a); c.fillStyle = "#ffd646"; c.strokeStyle = "rgba(60,50,0,0.6)"; c.lineWidth = 2; c.shadowColor = "rgba(0,0,0,0.25)"; c.shadowBlur = 6;
   c.beginPath(); c.moveTo(15, 0); c.lineTo(-10, -12); c.lineTo(-4, 0); c.lineTo(-10, 12); c.closePath(); c.fill(); c.shadowBlur = 0; c.stroke(); c.restore();
   if (label) { const lx = clamp(ex - Math.cos(a) * 32, 26, CW - 26), ly = clamp(ey - Math.sin(a) * 28, 18, MH - 18); pill(c, label, lx, ly, 11, "#5c4a12", "rgba(255,246,214,0.95)", 8, 20); }
 }
-function pill(c: CanvasRenderingContext2D, t: string, cx: number, cy: number, size: number, fg: string, bg: string, padX = 14, hgt = 30) {
+export function pill(c: CanvasRenderingContext2D, t: string, cx: number, cy: number, size: number, fg: string, bg: string, padX = 14, hgt = 30) {
   c.save(); c.font = `800 ${size}px ${FONT}`; const tw = c.measureText(t).width + padX * 2;
   c.fillStyle = bg; if (c.globalAlpha > 0.98) { c.shadowColor = "rgba(0,0,0,0.2)"; c.shadowBlur = 10; c.shadowOffsetY = 2; } c.beginPath(); c.roundRect(cx - tw / 2, cy - hgt / 2, tw, hgt, hgt / 2); c.fill(); c.shadowBlur = 0; c.shadowOffsetY = 0;
   c.fillStyle = fg; c.textAlign = "center"; c.textBaseline = "middle"; c.fillText(t, cx, cy + 0.5); c.restore();
 }
-function bubble(c: CanvasRenderingContext2D, x: number, y: number, t: string, a: number) {
+export function bubble(c: CanvasRenderingContext2D, x: number, y: number, t: string, a: number) {
   c.save(); c.globalAlpha = a; c.font = `800 13px ${FONT}`; const tw = c.measureText(t).width + 20;
   c.fillStyle = "#fff"; if (a > 0.98) { c.shadowColor = "rgba(0,0,0,0.25)"; c.shadowBlur = 8; } c.beginPath(); c.roundRect(x - tw / 2, y - 13, tw, 25, 12.5); c.fill(); c.beginPath(); c.moveTo(x - 5, y + 11); c.lineTo(x, y + 19); c.lineTo(x + 5, y + 11); c.fill(); c.shadowBlur = 0;
   c.fillStyle = "#4a2f6b"; c.textAlign = "center"; c.textBaseline = "middle"; c.fillText(t, x, y); c.restore();
@@ -101,7 +107,7 @@ function heart(c: CanvasRenderingContext2D, x: number, y: number, s: number, a: 
   c.save(); c.globalAlpha = a; c.translate(x, y); c.scale(s, s); c.fillStyle = "#e8506a"; c.beginPath(); c.moveTo(0, 3); c.bezierCurveTo(-6, -1, -3, -6, 0, -2.5); c.bezierCurveTo(3, -6, 6, -1, 0, 3); c.fill(); c.restore();
 }
 /** Grid routes for the autopilot (tests only): breadth-first over the cells the tractor can reach. */
-function makeRouter(ctx: ChoreCtx) {
+export function makeRouter(ctx: ChoreCtx) {
   const w = ctx.w;
   const near = (x: number, y: number) => { let k = w.cellOf(x, y); if (w.reach[k]) return k; let bd = Infinity; const ci = Math.floor(x / CELL), cj = Math.floor(y / CELL); for (let dj = -8; dj <= 8; dj++) for (let di = -8; di <= 8; di++) { const a = ci + di, b = cj + dj; if (a < 0 || b < 0 || a >= w.NX || b >= w.NY) continue; const n = b * w.NX + a; if (w.reach[n] && Math.hypot(di, dj) < bd) { bd = Math.hypot(di, dj); k = n; } } return k; };
   function route(fx: number, fy: number, tx: number, ty: number) {
@@ -140,6 +146,7 @@ export function makeChore(job: Job, ctx: ChoreCtx): Chore | null {
   if (job.twist === "leaves") return leavesChore(ctx);
   if (job.twist === "ride") return rideChore(ctx);
   const summer = makeSummerChore(job, ctx); if (summer) return summer;   // Chapter 6
+  const sp = springChore(job, ctx); if (sp) return sp;   // Chapter 5: dandelions, the sprayer, gravel, planting trees
   return winterChore(job, ctx);   // Chapter 4
 }
 /** Chapter 4: a chore can change the map before the world is built (Linda's car in the driveway, the inside of the shop). */

@@ -52,7 +52,7 @@ type Puddle = { x: number; y: number; rx: number; ry: number; rot: number };
 
 export function startEngine(canvas: HTMLCanvasElement, wrap: HTMLElement, cfg: Config, hooks: Hooks) {
   const job = cfg.job, mode = cfg.mode, snd = cfg.sound, park = isPark(job), away = job.twist === "away";
-  const raw = job.map === "community" ? COMMUNITY_MAP : LAWN_MAP, map = choreMap(job, toMetres(raw));   // Chapter 4: a chore can change the map first (parked car, the inside of the shop)
+  const raw = job.map === "community" ? COMMUNITY_MAP : LAWN_MAP, map = choreMap(job, toMetres(job.beds ? { ...raw, beds: [...raw.beds, ...job.beds] } : raw));   // Chapter 4: a chore can change the map first; Chapter 5: a job can add its own garden beds
   // Pat's truck and trailer: in the driveway for loading and unloading, parked in the gravel lot at the community centre
   const rigSrc = away ? COMMUNITY_RIG : park ? HOME_RIG : null;
   const rig: Rig | null = rigSrc ? { x: (rigSrc.x - raw.origin[0]) * raw.unit, y: (rigSrc.y - raw.origin[1]) * raw.unit, a: ((rigSrc.heading - 90) * Math.PI) / 180 } : null;
@@ -163,6 +163,7 @@ export function startEngine(canvas: HTMLCanvasElement, wrap: HTMLElement, cfg: C
   const ext = makeChore(job, { job, map, w, up: cfg.up, snd, mode, grass, jobNeed, cut, pose: () => ({ x, y, h, v }), place: (px, py, ph) => { x = px; y = py; h = ph; },
     phase: () => phase, simT: () => simT, pct: () => pct(), bumps: () => bumps, meows: () => meows, say: t => say(t), floatAt, shake: k => { shake = Math.max(shake, k); }, buzz: () => buzz(),
     ground: groundCv, baked, stick: () => lastIn, cat: () => ({ x: cat.x, y: cat.y, out: cat.st !== "in" }) });   // Chapter 4: the ground canvas, the baked buildings, the stick, where the cat is
+  const mowGoal = !noMow && !ext?.ownGoal;   // Chapter 5: a chore with its own goal (the dandelions) mows, but the mowed percent isn't the job
   let viewT = { ox: 0, oy: 0, S: 1 }, tapAt: { id: number; x: number; y: number; t: number } | null = null;
   let camX = x, camY = y, camS = 0, missed: number[] = [], missedAt = -1;
   const firePit = map.props.find(p => p.kind === "firepit"), chairs = map.props.filter(p => p.kind === "chair"), pits = map.props.filter(p => p.kind === "horseshoe");
@@ -225,6 +226,7 @@ export function startEngine(canvas: HTMLCanvasElement, wrap: HTMLElement, cfg: C
   resize();
   const ro = new ResizeObserver(resize); ro.observe(wrap); window.addEventListener("resize", resize);
   const stickRest = () => ({ x: CW / 2, y: MH + 9 + STICK_R + KNOB_R });
+  const btnAt = () => ({ x: Math.max(40, Math.min(66, (CW / 2 - STICK_R - KNOB_R) / 2)), y: MH + 9 + STICK_R + KNOB_R - 4, r: 30 });   // Chapter 5: left of the stick, clear of the thumb
   const local = (e: PointerEvent) => { const r = canvas.getBoundingClientRect(); return { x: e.clientX - r.left, y: e.clientY - r.top }; };
   // zoom: pinch on the map or the +/- buttons; from 0.8x to 1.6x of the normal view, remembered in this browser
   const ZOOM_KEY = "pats-lawnmower-zoom";
@@ -251,6 +253,7 @@ export function startEngine(canvas: HTMLCanvasElement, wrap: HTMLElement, cfg: C
       e.preventDefault(); return;
     }
     if (p.y < MH + 4 || stick) return;
+    if (ext?.button?.()) { const b = btnAt(); if (Math.hypot(p.x - b.x, p.y - b.y) < b.r + 10) { ext.press?.(); e.preventDefault(); return; } }   // Chapter 5: a chore's button in the strip (the sprayer)
     try { canvas.setPointerCapture(e.pointerId); } catch {}
     const rest = stickRest(); stick = { id: e.pointerId, bx: rest.x, by: rest.y, kx: 0, ky: 0 };   // one fixed stick in the middle of the strip
     onMove(e); e.preventDefault();
@@ -259,7 +262,9 @@ export function startEngine(canvas: HTMLCanvasElement, wrap: HTMLElement, cfg: C
     if (tapAt?.id === e.pointerId) { const p = local(e); if (!pinch && Math.hypot(p.x - tapAt.x, p.y - tapAt.y) < 14 && performance.now() - tapAt.t < 600) ext?.tap?.((p.x - viewT.ox) / viewT.S, (p.y - viewT.oy) / viewT.S); tapAt = null; }
     if (fingers.delete(e.pointerId) && fingers.size < 2) pinch = null; if (stick?.id === e.pointerId) { released = { bx: stick.bx, by: stick.by, kx: stick.kx, ky: stick.ky, t: performance.now() / 1000 }; stick = null; } };
   const KEYS: Record<string, string> = { KeyW: "u", ArrowUp: "u", KeyS: "d", ArrowDown: "d", KeyA: "l", ArrowLeft: "l", KeyD: "r", ArrowRight: "r" };
-  const onKey = (e: KeyboardEvent) => { const k = KEYS[e.code]; if (!k || !cfg.showStrip) return; e.preventDefault(); keys[k] = e.type === "keydown"; };
+  const onKey = (e: KeyboardEvent) => {
+    if (e.code === "Space" && ext?.button?.() && cfg.showStrip) { e.preventDefault(); if (e.type === "keydown" && !e.repeat) ext.press?.(); return; }   // Chapter 5: space works the chore's button
+    const k = KEYS[e.code]; if (!k || !cfg.showStrip) return; e.preventDefault(); keys[k] = e.type === "keydown"; };
   canvas.addEventListener("pointerdown", onDown); canvas.addEventListener("pointermove", onMove);
   canvas.addEventListener("pointerup", onUp); canvas.addEventListener("pointercancel", onUp);
   window.addEventListener("keydown", onKey); window.addEventListener("keyup", onKey);
@@ -595,7 +600,7 @@ export function startEngine(canvas: HTMLCanvasElement, wrap: HTMLElement, cfg: C
       banner = { text: ext?.banner(false) ?? (job.twist === "bonfire" ? "Too Dark To Mow" : job.twist === "storm" ? "Rained Out" : "Out Of Time"), sub: "", t: 0 };
     }
   }
-  hooks.finishRef.current = () => { if (phase === "play" && !noMow && pct() >= NEAR_DONE) endRun(true); };
+  hooks.finishRef.current = () => { if (phase === "play" && mowGoal && pct() >= NEAR_DONE) endRun(true); };
 
   function readStick(): [number, number] {
     if (auto) return ext?.autoInput ? ext.autoInput(STEP) : autoInput(STEP);
@@ -738,7 +743,7 @@ export function startEngine(canvas: HTMLCanvasElement, wrap: HTMLElement, cfg: C
         parkT = inBox && Math.abs(v) < 0.3 ? parkT + dt : 0;
         if (parkT > 0.5) endRun(true);
       }
-      if (!noMow && !nearTold && pct() >= NEAR_DONE && mode !== "attract") { nearTold = true; say("Nearly Done! Follow The Arrow"); }
+      if (mowGoal && !nearTold && pct() >= NEAR_DONE && mode !== "attract") { nearTold = true; say("Nearly Done! Follow The Arrow"); }
       if (ext?.done ? ext.done() : !noMow && cutCount >= needCount * DONE_AT) endRun(true);
       else if (limit && simT >= limit) endRun(false);
     }
@@ -802,7 +807,7 @@ export function startEngine(canvas: HTMLCanvasElement, wrap: HTMLElement, cfg: C
       c.setLineDash([]);
     }
     // missed spots, once nearly done
-    if (!noMow && phase === "play" && p >= NEAR_DONE && mode !== "attract") {
+    if (mowGoal && phase === "play" && p >= NEAR_DONE && mode !== "attract") {
       if (frame - missedAt > 20) { missed = []; for (let q = 0; q < w.N; q++) if (jobNeed[q] && !cut[q]) missed.push(q); missedAt = frame; }
       const pulse = 0.5 + 0.5 * Math.sin(time * 5);
       c.fillStyle = `rgba(255,216,80,${(0.35 + 0.35 * pulse).toFixed(3)})`;
@@ -851,6 +856,7 @@ export function startEngine(canvas: HTMLCanvasElement, wrap: HTMLElement, cfg: C
         const near = Math.hypot(t.x - x, t.y - y) < t.r + Math.max(BODY_R, deckHalf) + 0.4 || (cat.st !== "in" && Math.hypot(t.x - cat.x, t.y - cat.y) < t.r + 0.4);
         treeAlpha[i] += ((near ? 0.8 : 0.96) - treeAlpha[i]) * Math.min(1, dt * 8);
         if (!ext?.drawTree?.(cc, t, treeAlpha[i], time)) drawTree(cc, t, treeBlobs[i], treeAlpha[i], time * (job.twist === "storm" ? 2.2 : 1), job.fall ?? 0, job.summer);   // (Chapter 4: bare winter trees; Chapter 6: summer apples)
+        ext?.drawTreeOver?.(cc, t, treeBlobs[i], treeAlpha[i], time);   // Chapter 5: spring blossom on the apple trees
       });
       cc.globalCompositeOperation = "destination-out";
       const hole = (hx: number, hy: number, r: number) => { const g = cc.createRadialGradient(hx, hy, 0, hx, hy, r); g.addColorStop(0, "rgba(0,0,0,0.85)"); g.addColorStop(0.55, "rgba(0,0,0,0.7)"); g.addColorStop(1, "rgba(0,0,0,0)"); cc.fillStyle = g; cc.beginPath(); cc.arc(hx, hy, r, 0, 7); cc.fill(); };
@@ -968,7 +974,7 @@ export function startEngine(canvas: HTMLCanvasElement, wrap: HTMLElement, cfg: C
     if (cat.st !== "in" && cat.act === "nap" && bubbleT <= 0) for (let q = 0; q < 3; q++) { const ph = (time * 0.6 + q / 3) % 1; ctx.save(); ctx.globalAlpha = Math.sin(ph * Math.PI) * 0.9; text("z", sx(cat.x) + 10 + ph * 10, sy(cat.y) - 12 - ph * 18, 10 + ph * 5, "#ffffff", 800); ctx.restore(); }
     for (const f of floats) { const u = 1 - f.t / 1.4; ctx.save(); ctx.globalAlpha = Math.min(1, f.t * 2); ctx.lineWidth = 3; ctx.strokeStyle = "rgba(30,40,20,0.55)"; ctx.font = `800 14px ${FONT}`; ctx.textAlign = "center"; ctx.strokeText(f.text, sx(f.x), sy(f.y) - u * 26); text(f.text, sx(f.x), sy(f.y) - u * 26, 14, f.color, 800); ctx.restore(); }
     // arrow to the nearest missed spot when it's off screen
-    if (!noMow && phase === "play" && pct() >= NEAR_DONE && missed.length && mode !== "attract") {
+    if (mowGoal && phase === "play" && pct() >= NEAR_DONE && missed.length && mode !== "attract") {
       let best = -1, bd = Infinity; for (const q of missed) { const d = Math.hypot(w.cellX(q) - x, w.cellY(q) - y); if (d < bd) { bd = d; best = q; } }
       const qx = sx(w.cellX(best)), qy = sy(w.cellY(best));
       const bob = Math.sin(time * 6) * 3;
@@ -1054,6 +1060,13 @@ export function startEngine(canvas: HTMLCanvasElement, wrap: HTMLElement, cfg: C
       if (on) { const an = Math.atan2(ky, kx); ctx.save(); ctx.translate(qx, qy); ctx.rotate(an); ctx.fillStyle = "rgba(255,255,255,0.95)"; ctx.beginPath(); ctx.moveTo(KR * 0.62, 0); ctx.lineTo(KR * 0.08, -KR * 0.36); ctx.lineTo(KR * 0.2, 0); ctx.lineTo(KR * 0.08, KR * 0.36); ctx.closePath(); ctx.fill(); ctx.restore(); }   // the wedge points the way
       if (!stick && !released) { ctx.fillStyle = "rgba(255,255,255,0.95)"; for (let q = 0; q < 4; q++) { const an = (q * Math.PI) / 2; ctx.beginPath(); ctx.moveTo(rest.x + Math.cos(an) * STICK_R * 0.86, rest.y + Math.sin(an) * STICK_R * 0.86); ctx.lineTo(rest.x + Math.cos(an + 0.22) * STICK_R * 0.7, rest.y + Math.sin(an + 0.22) * STICK_R * 0.7); ctx.lineTo(rest.x + Math.cos(an - 0.22) * STICK_R * 0.7, rest.y + Math.sin(an - 0.22) * STICK_R * 0.7); ctx.fill(); } }
       if (!stick) text("Push Where You Want To Go", rest.x, CH - 9, 11, "#5a6b4f", 700);
+      const eb = ext?.button?.();   // Chapter 5: the chore's button (the sprayer: on or off, with the tank level round the rim)
+      if (eb) {
+        const b = btnAt();
+        ctx.save(); ctx.shadowColor = "rgba(0,0,0,0.22)"; ctx.shadowBlur = 8; ctx.shadowOffsetY = 2; ctx.fillStyle = eb.on ? "#3d8ad6" : "rgba(255,255,255,0.92)"; ctx.beginPath(); ctx.arc(b.x, b.y, b.r, 0, 7); ctx.fill(); ctx.restore();
+        if (eb.level !== undefined) { ctx.strokeStyle = "rgba(0,0,0,0.1)"; ctx.lineWidth = 5; ctx.beginPath(); ctx.arc(b.x, b.y, b.r + 4, 0, 7); ctx.stroke(); ctx.strokeStyle = eb.level < 0.2 ? "#e0603a" : "#5fb0ef"; ctx.lineCap = "round"; ctx.beginPath(); ctx.arc(b.x, b.y, b.r + 4, -Math.PI / 2, -Math.PI / 2 + Math.PI * 2 * clamp(eb.level, 0, 1)); ctx.stroke(); }
+        text(eb.label, b.x, b.y - 6, 12, eb.on ? "#ffffff" : "#2f5a1f", 800); text(eb.on ? "On" : "Off", b.x, b.y + 9, 11, eb.on ? "#e6f2ff" : "#7d8873", 800);
+      }
     }
   }
 
@@ -1091,7 +1104,7 @@ export function startEngine(canvas: HTMLCanvasElement, wrap: HTMLElement, cfg: C
       let lead: Hud["lead"] = null;
       if (parkSpot) { const d = Math.hypot(parkSpot.x - x, parkSpot.y - y); lead = { label: "To The Box", value: (phase === "scene" || phase === "over") && success ? "Parked" : inBox ? "Stop!" : `${d < 10 ? d.toFixed(1) : Math.round(d)} m` }; }
       const eh = ext?.hud(); if (eh?.lead) lead = eh.lead; if (eh?.meter) meter = eh.meter;
-      hooks.onHud({ pct: (phase === "scene" || phase === "over") && success ? 1 : eh?.pct ?? pct(), time: simT + penalty, limit, par, meter, canFinish: !noMow && phase === "play" && pct() >= NEAR_DONE, phase, lead });
+      hooks.onHud({ pct: (phase === "scene" || phase === "over") && success ? 1 : eh?.pct ?? pct(), time: simT + penalty, limit, par, meter, canFinish: mowGoal && phase === "play" && pct() >= NEAR_DONE, phase, lead });
     }
   };
   raf = requestAnimationFrame(loop);

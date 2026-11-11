@@ -15,6 +15,7 @@ import { Sound, renderEngineClip, toWav } from "./lawn/sound";
 import { startHero } from "./lawn/hero";
 import { startTravel } from "./lawn/travel";
 import { startCar } from "./lawn/car";
+import { startGas } from "./lawn/gasRun";   // Chapter 5
 import CardArt, { type CardArtKind } from "./lawn/CardArt";
 
 type Screen = "title" | "jobs" | "shop" | "travel" | "intro" | "play" | "result";
@@ -148,7 +149,7 @@ export default function PatsLawnmower() {
       const job = session.job;
       return startTravel(canvasRef.current!, wrapRef.current!, { dir: job.twist === "unload" ? "home" : "out", paint: PAINTS[s.up.paint] ?? PAINTS.orange, debug: isDebug(), onDone: () => { setSession(ss => ({ mode: "job", job, n: ss.n + 1 })); setScreen("intro"); if (!saveRef.current.tutorial) setHowTo(true); } });
     }
-    const run: typeof startEngine = session.job.twist === "tire" ? startCar : startEngine;   // the flat-tire job drives the car instead
+    const run: typeof startEngine = session.job.twist === "tire" ? startCar : session.job.twist === "gas" ? startGas : startEngine;   // the flat-tire job drives the car instead (Chapter 5: so does the gas run)
     return run(canvasRef.current!, wrapRef.current!, { mode: session.mode, job: session.job, up: loadout(s), sound: SOUND!, debug: isDebug(), showStrip: true }, {
       paused: () => pausedRef.current,
       onHud: h => setHud(h),
@@ -197,7 +198,8 @@ export default function PatsLawnmower() {
   const timeLeft = hud ? (hud.limit ? hud.limit - hud.time : hud.time) : job.id >= 0 ? 0 : 0;
   const pctLabel = hud ? (hud.pct >= 1 ? "100" : (Math.floor(hud.pct * 1000) / 10).toFixed(1)) : "0.0";
   const nextJob = job.id >= 0 && job.id < JOBS.length - 1 && unlockedUpTo(save) > job.id ? JOBS[job.id + 1] : null;
-  const art: CardArtKind | null = job.twist === "sticks" || job.twist === "leaves" || job.twist === "tire" || job.twist === "ride" ? job.twist : null;   // Pat's Fall Chores have a little picture on their cards
+  const art: CardArtKind | null = job.twist === "sticks" || job.twist === "leaves" || job.twist === "tire" || job.twist === "ride"   // Pat's Fall Chores have a little picture on their cards
+    || job.twist === "dandelions" || job.twist === "spray" || job.twist === "gravel" || job.twist === "trees" || job.twist === "gas" ? job.twist : null;   // (Chapter 5 too)
   const cardArt: CardArtKind | null = art ?? (job.twist === "plow" || job.twist === "wood" || job.twist === "xmas" || job.twist === "tidy" ? job.twist : null);   // (Chapter 4: and Pat's Winter)
   const summerArt: CardArtKind | null = job.twist === "paint" || job.twist === "games" || job.twist === "nets" || job.twist === "party" ? job.twist : null;   // Chapter 6: and so does The Annual Party
 
@@ -343,7 +345,7 @@ export default function PatsLawnmower() {
                     </ul>
                   ) : <div className="mt-1 text-[13px] text-[#3f4f35]">No clock. Best time: {save.free.secs !== null ? fmt(save.free.secs) : "none yet"}.</div>}
                 </div>
-                {job.twist !== "tire" && <div className="mt-2 flex items-center gap-2 rounded-2xl bg-[#f1f4ec] px-3 py-1.5">
+                {job.twist !== "tire" && job.twist !== "gas" && <div className="mt-2 flex items-center gap-2 rounded-2xl bg-[#f1f4ec] px-3 py-1.5">
                   <span className="min-w-0 flex-1 truncate text-[12.5px] font-bold text-[#3f4f35]">{loadoutLabel(loadout(save))}</span>
                   <button onClick={() => { sfx(); gearAtOpen.current = JSON.stringify(loadout(save)); setGearOpen(true); }} className="pl-btn shrink-0 rounded-full bg-[#2f7fa8] px-3 py-1 text-[12.5px] font-extrabold text-white shadow-[0_2px_0_rgba(0,0,0,.15)]">Equipment</button>
                 </div>}
@@ -445,7 +447,7 @@ export default function PatsLawnmower() {
                     <div className="rounded-2xl bg-[#eef6e3] px-3 py-2"><div className="text-[10.5px] font-bold uppercase tracking-wide text-[#5a6b4f]">{result.o.extra ? result.o.extra.label : job.twist === "apples" ? "Apples" : job.twist === "stripes" ? "Stripe Score" : job.twist === "away" ? "Outfield Stripes" : job.twist === "storm" ? "Puddle Time" : job.twist === "bonfire" ? "Big Bumps" : isPark(job) ? "Bumps" : job.twist === "guests" ? "Pits & Path" : "Cat Stops"}</div>
                       <div className="text-[18px] font-extrabold tabular-nums">{result.o.extra ? result.o.extra.value : job.twist === "apples" ? `${result.o.apples} / ${result.o.applesTotal}` : job.twist === "stripes" || job.twist === "away" ? `${Math.round(result.o.quality * 100)}%` : job.twist === "storm" ? `${result.o.wet.toFixed(1)}s` : job.twist === "bonfire" || isPark(job) ? result.o.bumps : job.twist === "guests" ? (result.o.priorityOk ? "Ready" : "Late") : result.o.meows}</div></div>
                   </div>
-                  {job.twist !== "tire" && <div className="mt-2 text-[11.5px] font-bold text-[#7d8873]">{loadoutLabel(loadout(save))}</div>}
+                  {job.twist !== "tire" && job.twist !== "gas" && <div className="mt-2 text-[11.5px] font-bold text-[#7d8873]">{loadoutLabel(loadout(save))}</div>}
                   {job.endLine && <div className="mt-3 rounded-2xl bg-[#eef6e3] px-3 py-2 text-[14px] font-bold text-[#2f6d1c]" style={{ animation: "plUp .4s ease-out 1.2s both" }}>{job.endLine(save.stars.slice(job.chapterFrom ?? 0, job.id + 1).reduce((a, b) => a + b, 0), (job.id + 1 - (job.chapterFrom ?? 0)) * 3)}</div>}
                   <div className="mt-3 flex items-center justify-center gap-2 rounded-2xl bg-[#fff6d6] px-3 py-2.5" style={{ animation: "plUp .4s ease-out 1.3s both" }}>
                     <span className="text-[13px] font-bold text-[#7a5a00]">Pay</span>
