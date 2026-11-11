@@ -7,11 +7,13 @@ import { drawMower, drawTree } from "./art";
 import { PAINTS } from "./jobs";
 import { drawCart, drawCar, drawPat, drawStick, drawTire, scatterLeaves, drawLinda } from "./fallArt";
 import { mulberry32 } from "./geo";
+import { drawWinterCardArt, isWinterArt, type WinterArtKind } from "./winterArt";   // Chapter 4
 
-export type CardArtKind = "sticks" | "leaves" | "tire" | "ride";
+export type CardArtKind = "sticks" | "leaves" | "tire" | "ride" | WinterArtKind;
 const blobs = (seed: number) => { const r = mulberry32(seed), out: number[][] = []; for (let k = 0; k < 7; k++) { const a = (k / 7) * Math.PI * 2 + r(), d = 0.45 + r() * 0.2; out.push([Math.cos(a) * d, Math.sin(a) * d, 0.42 + r() * 0.12, r()]); } return out; };
 
 export function drawCardArt(c: CanvasRenderingContext2D, kind: CardArtKind, W: number, H: number, t: number, done = false) {
+  if (isWinterArt(kind)) { drawWinterCardArt(c, kind, W, H, t, done); return; }   // Chapter 4: Pat's Winter
   c.save();
   // the lawn: soft stripes with a warm fall wash
   for (let k = 0; k * 22 < W + 22; k++) { c.fillStyle = k % 2 ? "#98c463" : "#8ab857"; c.fillRect(k * 22, 0, 22, H); }

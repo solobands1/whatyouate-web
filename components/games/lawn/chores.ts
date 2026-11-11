@@ -5,7 +5,7 @@
 //           mowing does the counting; this paints the leaves and the fall look).
 //   ride    Linda rides in the cart for two laps round the edge of the property, through the flags in order.
 // The engine calls into a Chore at a handful of points (setup, each step, drawing, taps, the HUD, the outcome).
-import type { LawnMap, Pt } from "../lawnMap";
+import type { LawnMap, Pt, Tree } from "../lawnMap";
 import type { World } from "./world";
 import type { Job, Upgrades, Outcome } from "./jobs";
 import type { Sound } from "./sound";
@@ -14,6 +14,7 @@ import { pushOut, CELL, BODY_R } from "./world";
 import { clamp, wrapA, mulberry32 } from "./geo";
 import { oldStripeCol } from "./art";
 import { drawLeaf, drawStick, drawPat, drawCart, drawFlag, scatterLeaves, LEAF_COLS, type Stick } from "./fallArt";
+import { winterChore, winterMap } from "./winter";   // Chapter 4: Pat's Winter
 
 export type ChoreCtx = {
   job: Job; map: LawnMap; w: World; up: Upgrades; snd: Sound; mode: string;
@@ -22,6 +23,8 @@ export type ChoreCtx = {
   place: (x: number, y: number, h: number) => void;
   phase: () => Phase; simT: () => number; pct: () => number; bumps: () => number; meows: () => number;
   say: (t: string) => void; floatAt: (t: string, x: number, y: number, col?: string) => void; shake: (s: number) => void; buzz: () => void;
+  // Chapter 4: the ground canvas (drawn once, world units), the baked buildings, the stick as read this step, where the cat is
+  ground: HTMLCanvasElement; baked: { cv: HTMLCanvasElement; x: number; y: number; w: number; h: number }[]; stick: () => [number, number]; cat: () => { x: number; y: number; out: boolean };
 };
 export type Chore = {
   noTufts?: boolean; clipCols?: [string, string];
@@ -42,6 +45,10 @@ export type Chore = {
   focus?(): [number, number][] | null;
   autoInput?(dt: number): [number, number];
   debug(): unknown;
+  // Chapter 4 (all optional): the deck as drawn, where the cat is, the camera's target, a tree drawn its own way, a layer
+  // over the roofs, a longer end scene, no minimap, no engine noise, a top speed for now
+  deck?: number; catMode?: "roam" | "deck" | "none"; cam?(): [number, number] | null; drawTree?(c: CanvasRenderingContext2D, t: Tree, alpha: number, time: number): boolean;
+  drawTop?(c: CanvasRenderingContext2D, time: number): void; sceneSecs?: number; noMini?: boolean; silent?: boolean; speedCap?(): number | undefined;
 };
 
 const FONT = "system-ui, -apple-system, sans-serif";
@@ -126,8 +133,10 @@ export function makeChore(job: Job, ctx: ChoreCtx): Chore | null {
   if (job.twist === "sticks") return sticksChore(ctx);
   if (job.twist === "leaves") return leavesChore(ctx);
   if (job.twist === "ride") return rideChore(ctx);
-  return null;
+  return winterChore(job, ctx);   // Chapter 4
 }
+/** Chapter 4: a chore can change the map before the world is built (Linda's car in the driveway, the inside of the shop). */
+export function choreMap(job: Job, map: LawnMap): LawnMap { return winterMap(job, map) ?? map; }
 
 // ── Sticks ──
 // where they fell, traced in the yard's units: under the big trees, round the barn, along the fence lines

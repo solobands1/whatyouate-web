@@ -9,7 +9,7 @@ import { buildWorld, pushOut, CELL, BODY_R, NEED_R } from "./world";
 import { clamp, wrapA, smooth, pip, polyClosest, mulberry32 } from "./geo";
 import { makeGrass, makeGround, drawTree, bakeBuilding, drawMower, drawCat, drawPerson, drawFire, drawApple, drawPuddle, stripeCol, oldStripeCol, pathPoly, OBL, type CatPose } from "./art";
 import { DECKS, GEARS, PAINTS, isPark, noMowing, type Job, type Upgrades, type Outcome } from "./jobs";
-import { makeChore } from "./chores";
+import { makeChore, choreMap } from "./chores";   // Chapter 4: choreMap
 import type { Sound } from "./sound";
 
 export type Mode = "attract" | "job" | "free";
@@ -52,7 +52,7 @@ type Puddle = { x: number; y: number; rx: number; ry: number; rot: number };
 
 export function startEngine(canvas: HTMLCanvasElement, wrap: HTMLElement, cfg: Config, hooks: Hooks) {
   const job = cfg.job, mode = cfg.mode, snd = cfg.sound, park = isPark(job), away = job.twist === "away";
-  const raw = job.map === "community" ? COMMUNITY_MAP : LAWN_MAP, map = toMetres(raw);
+  const raw = job.map === "community" ? COMMUNITY_MAP : LAWN_MAP, map = choreMap(job, toMetres(raw));   // Chapter 4: a chore can change the map first (parked car, the inside of the shop)
   // Pat's truck and trailer: in the driveway for loading and unloading, parked in the gravel lot at the community centre
   const rigSrc = away ? COMMUNITY_RIG : park ? HOME_RIG : null;
   const rig: Rig | null = rigSrc ? { x: (rigSrc.x - raw.origin[0]) * raw.unit, y: (rigSrc.y - raw.origin[1]) * raw.unit, a: ((rigSrc.heading - 90) * Math.PI) / 180 } : null;
@@ -161,7 +161,8 @@ export function startEngine(canvas: HTMLCanvasElement, wrap: HTMLElement, cfg: C
   const floatAt = (text: string, fx: number, fy: number, color = "#ffffff") => floats.push({ text, x: fx, y: fy, t: 1.4, color });
   // Pat's Fall Chores: the sticks, the leaves and Linda's ride play their own way on top of this engine (./chores)
   const ext = makeChore(job, { job, map, w, up: cfg.up, snd, mode, grass, jobNeed, cut, pose: () => ({ x, y, h, v }), place: (px, py, ph) => { x = px; y = py; h = ph; },
-    phase: () => phase, simT: () => simT, pct: () => pct(), bumps: () => bumps, meows: () => meows, say: t => say(t), floatAt, shake: k => { shake = Math.max(shake, k); }, buzz: () => buzz() });
+    phase: () => phase, simT: () => simT, pct: () => pct(), bumps: () => bumps, meows: () => meows, say: t => say(t), floatAt, shake: k => { shake = Math.max(shake, k); }, buzz: () => buzz(),
+    ground: groundCv, baked, stick: () => lastIn, cat: () => ({ x: cat.x, y: cat.y, out: cat.st !== "in" }) });   // Chapter 4: the ground canvas, the baked buildings, the stick, where the cat is
   let viewT = { ox: 0, oy: 0, S: 1 }, tapAt: { id: number; x: number; y: number; t: number } | null = null;
   let camX = x, camY = y, camS = 0, missed: number[] = [], missedAt = -1;
   const firePit = map.props.find(p => p.kind === "firepit"), chairs = map.props.filter(p => p.kind === "chair"), pits = map.props.filter(p => p.kind === "horseshoe");
@@ -197,7 +198,7 @@ export function startEngine(canvas: HTMLCanvasElement, wrap: HTMLElement, cfg: C
   const cat: Cat = { st: "in", x: map.door.x, y: map.door.y, h: Math.PI / 2, act: "idle", actT: 0, tx: 0, ty: 0, outT: 0, next: mode === "attract" ? 4 : catCfg.first + rnd() * 6, fleeT: 0, cool: 0, phase: rnd() * 6 };
   let bubbleT = 0, catSeen = false, nearTold = false;
   // she's at home today (watching from the deck while Pat loads up), or not here at all (the community centre)
-  const catMode: "roam" | "deck" | "none" = away ? "none" : park || job.twist === "ride" ? "deck" : "roam";   // (on Linda's ride she watches from the deck)
+  const catMode: "roam" | "deck" | "none" = ext?.catMode ?? (away ? "none" : park || job.twist === "ride" ? "deck" : "roam");   // (Chapter 4: a chore can say where she is)   // (on Linda's ride she watches from the deck)
   if (catMode === "none") { cat.st = "in"; cat.next = 1e9; }
   if (catMode === "deck" && deck) { cat.st = "out"; cat.x = (deck.poly[0][0] + deck.poly[2][0]) / 2; cat.y = (deck.poly[0][1] + deck.poly[2][1]) / 2 - deck.height * OBL - 0.4; cat.act = "sit"; cat.h = 0.6; cat.outT = 1e9; cat.actT = 1e9; }
   // loading and unloading: where to park, how close Pat is, the straps going on
@@ -668,6 +669,7 @@ export function startEngine(canvas: HTMLCanvasElement, wrap: HTMLElement, cfg: C
       if (v < 0.3 && blockedT > 0.3 && Math.abs(diff) > 2.25) { backHoldT += dt; if (backHoldT > 0.6) { revT = 0.9; revSide = Math.sign(diff) || 1; backHoldT = 0; uturn = 0; } } else backHoldT = 0;
     } else { uturn = 0; backHoldT = 0; thHeld = false; thAsk = null; }
     const inPuddle = puddles.some(p => { const dx = x - p.x, dy = y - p.y, c = Math.cos(-p.rot), s = Math.sin(-p.rot), lx = dx * c - dy * s, ly = dx * s + dy * c; return (lx * lx) / (p.rx * p.rx) + (ly * ly) / (p.ry * p.ry) < 1; });
+    const cap = ext?.speedCap?.(); if (cap !== undefined) target = Math.sign(target) * Math.min(Math.abs(target), cap);   // Chapter 4: pushing a blade of snow slows it down
     if (inPuddle && phase === "play") { target = Math.sign(target) * Math.min(Math.abs(target), vmax * 0.42); if (Math.abs(v) > 0.5) { wetT += dt; if (rnd() < 0.5) parts.push({ x: x + (rnd() - 0.5), y: y + (rnd() - 0.5), vx: (rnd() - 0.5) * 3, vy: (rnd() - 0.5) * 3, life: 0.45, c: "rgba(210,230,245,0.9)", s: 0.12 }); } }
     // loading and unloading: creep near the trailer and the barn, and ride up the ramps
     const rl = rig && park ? rigLocal(rig, x, y) : null;
@@ -744,7 +746,7 @@ export function startEngine(canvas: HTMLCanvasElement, wrap: HTMLElement, cfg: C
       if (success && (job.twist === "bonfire" || job.twist === "finale")) fireAmt = Math.min(1, fireAmt + dt * 0.8);
       if ((job.twist === "storm") ) { rainAmt = Math.min(1, rainAmt + dt * 0.7); if (thunderAt > 0 && sceneT > thunderAt) { thunderAt = 0; snd.thunder(); } }
       if (success && job.twist === "trailer") { const k0 = strapK; strapK = Math.min(1, sceneT / 1.8); if (Math.floor(k0 * 8) !== Math.floor(strapK * 8)) snd.clank(); }
-      if (sceneT > (success ? (job.twist === "finale" || job.twist === "away" ? 5 : 3.6) : 2.4) && !ended) { ended = true; phase = "over"; hooks.onEnd(outcome(success)); }
+      if (sceneT > (success ? ext?.sceneSecs ?? (job.twist === "finale" || job.twist === "away" ? 5 : 3.6) : 2.4) && !ended) { ended = true; phase = "over"; hooks.onEnd(outcome(success)); }
     }
     for (const pp of people) pp.fade = Math.min(1, pp.fade + dt * 1.5);
     if (people.some(pp => pp.pose === "throw") && Math.floor((simT + sceneT) * 0.5) !== Math.floor((simT + sceneT - dt) * 0.5) && mode !== "attract") snd.clank();
@@ -833,7 +835,7 @@ export function startEngine(canvas: HTMLCanvasElement, wrap: HTMLElement, cfg: C
     const ek = 1 + 0.07 * elev;
     ext?.drawBelow(c, time);
     c.save(); c.translate(x, y); c.scale(ek, ek); c.translate(-x, -y);
-    drawMower(c, x, y, h, steer, odo, time, phase === "play" || (park && phase === "ready"), deckShow, paint, cfg.up.bagger, cfg.up.lights && (job.light === "dusk" || job.light === "storm"), { empty: ext?.patOff() });
+    drawMower(c, x, y, h, steer, odo, time, phase === "play" || (park && phase === "ready"), ext?.deck ?? deckShow, paint, cfg.up.bagger, cfg.up.lights && (job.light === "dusk" || job.light === "storm"), { empty: ext?.patOff() });
     c.restore();
     ext?.drawAbove(c, time);
     if (job.twist === "trailer" && rig) drawStraps(c, rig, strapK);
@@ -847,7 +849,7 @@ export function startEngine(canvas: HTMLCanvasElement, wrap: HTMLElement, cfg: C
         if (t.kind === "well") return;
         const near = Math.hypot(t.x - x, t.y - y) < t.r + Math.max(BODY_R, deckHalf) + 0.4 || (cat.st !== "in" && Math.hypot(t.x - cat.x, t.y - cat.y) < t.r + 0.4);
         treeAlpha[i] += ((near ? 0.8 : 0.96) - treeAlpha[i]) * Math.min(1, dt * 8);
-        drawTree(cc, t, treeBlobs[i], treeAlpha[i], time * (job.twist === "storm" ? 2.2 : 1), job.fall ?? 0);
+        if (!ext?.drawTree?.(cc, t, treeAlpha[i], time)) drawTree(cc, t, treeBlobs[i], treeAlpha[i], time * (job.twist === "storm" ? 2.2 : 1), job.fall ?? 0);   // (Chapter 4: bare winter trees)
       });
       cc.globalCompositeOperation = "destination-out";
       const hole = (hx: number, hy: number, r: number) => { const g = cc.createRadialGradient(hx, hy, 0, hx, hy, r); g.addColorStop(0, "rgba(0,0,0,0.85)"); g.addColorStop(0.55, "rgba(0,0,0,0.7)"); g.addColorStop(1, "rgba(0,0,0,0)"); cc.fillStyle = g; cc.beginPath(); cc.arc(hx, hy, r, 0, 7); cc.fill(); };
@@ -867,11 +869,12 @@ export function startEngine(canvas: HTMLCanvasElement, wrap: HTMLElement, cfg: C
       const im = baked[i]; c.globalAlpha = roofAlpha[i]; c.drawImage(im.cv, im.x, im.y, im.w, im.h); c.globalAlpha = 1;
     });
     if (catOnDeck) drawCat(c, cat, time);
+    ext?.drawTop?.(c, time);   // Chapter 4: things over the roofs (lights on the eaves, Pat up on the deck, breath, chimney smoke)
     // behind a roof: show the tractor and the cat through it, a little faded
     const covered = (px: number, py: number) => map.buildings.some((b, i) => roofAlpha[i] < 0.95 && pip(b.poly.map(q => [q[0], q[1] - b.height * OBL] as Pt), px, py));
     c.save(); c.globalAlpha = 0.55;
     if (cat.st !== "in" && !catOnDeck && covered(cat.x, cat.y)) drawCat(c, cat, time, 2.0, false);
-    if (covered(x, y)) drawMower(c, x, y, h, steer, odo, time, phase === "play", deckShow, paint, cfg.up.bagger, false, { empty: ext?.patOff() });
+    if (covered(x, y)) drawMower(c, x, y, h, steer, odo, time, phase === "play", ext?.deck ?? deckShow, paint, cfg.up.bagger, false, { empty: ext?.patOff() });
     c.restore();
     // cloud shadows drifting over the yard before the storm
     for (const cl of clouds) { const g = c.createRadialGradient(cl.x, cl.y, 0, cl.x, cl.y, cl.r); g.addColorStop(0, "rgba(20,30,40,0.22)"); g.addColorStop(1, "rgba(20,30,40,0)"); c.fillStyle = g; c.beginPath(); c.arc(cl.x, cl.y, cl.r, 0, 7); c.fill(); }
@@ -917,6 +920,7 @@ export function startEngine(canvas: HTMLCanvasElement, wrap: HTMLElement, cfg: C
     ctx.setTransform(dpr, 0, 0, dpr, 0, 0); ctx.clearRect(0, 0, CW, CH);
     let S = Math.min(CW, MH) / (mode === "attract" ? VIEW_M * 1.15 : VIEW_M * zoomK);
     let tx = x + Math.cos(h) * v * 0.55, ty = y + Math.sin(h) * v * 0.55 + (MH / S) * 0.06;
+    const ecam = ext?.cam?.(); if (ecam) { tx = ecam[0]; ty = ecam[1] + (MH / S) * 0.06; }   // Chapter 4: the camera follows Pat when he's on foot
     if (parkSpot) { const d = Math.hypot(parkSpot.x - x, parkSpot.y - y); if (d < 20) { const k2 = 0.45 * (1 - Math.max(0, d - 12) / 8); tx += (parkSpot.x - tx) * k2; ty += (parkSpot.y - ty) * k2; } }   // look ahead to where to park
     // end scenes: the camera goes to where the party is, or pulls back to show the stripes
     if ((phase === "scene" || phase === "over") && success) {
@@ -996,7 +1000,7 @@ export function startEngine(canvas: HTMLCanvasElement, wrap: HTMLElement, cfg: C
     // "Hi Pat!" from a kid he stopped for
     if (hiT > 0 && kids.length) { const kd = kids[hiKid], bx = sx(kd.x), by = sy(kd.y) - 30, a = Math.min(1, hiT * 3); ctx.save(); ctx.globalAlpha = a; pill("Hi Pat!", bx, by, 13, "#2b3441", "#ffffff", 12, 26); ctx.restore(); }
     // minimap
-    if (mode !== "attract" && phase !== "scene" && phase !== "over") {
+    if (mode !== "attract" && phase !== "scene" && phase !== "over" && !ext?.noMini) {   // (Chapter 4: none inside the shop)
       if (mmDirty && frame % 4 === 0) { mmc.putImageData(mmImg, 0, 0); mmDirty = false; }
       const mw = Math.min(104, CW * 0.28), mh = (mw * w.H) / w.W, mx = CW - mw - 9, my = 9, ms = mw / w.W;
       ctx.save(); ctx.fillStyle = "rgba(255,255,255,0.88)"; ctx.shadowColor = "rgba(0,0,0,0.18)"; ctx.shadowBlur = 8; rr(ctx, mx - 3, my - 3, mw + 6, mh + 6, 9); ctx.fill(); ctx.shadowBlur = 0;
@@ -1068,7 +1072,7 @@ export function startEngine(canvas: HTMLCanvasElement, wrap: HTMLElement, cfg: C
       const onLawn = w.lawn[w.cellOf(x, y)] === 1, stickMag = Math.min(1, Math.hypot(lastIn[0], lastIn[1]));
       bladeUncut += ((lastFresh > 0 ? 1 : 0) - bladeUncut) * Math.min(1, dt * 6);
       const rpm = clamp(0.12 * (stickMag > DEAD ? stickMag : 0) + 0.88 * (Math.abs(v) / vmax), 0, 1);
-      snd.engine({ on: mode !== "attract" && (phase === "ready" || phase === "play"), rpm, blades: noMow ? 0 : onLawn ? 0.4 + 0.6 * bladeUncut : 0.15, load: Math.min(1, shake * 4 + Math.max(0, Math.abs(om) - 1.2) * 0.4) });
+      snd.engine({ on: mode !== "attract" && !ext?.silent && (phase === "ready" || phase === "play"), rpm, blades: noMow ? 0 : onLawn ? 0.4 + 0.6 * bladeUncut : 0.15, load: Math.min(1, shake * 4 + Math.max(0, Math.abs(om) - 1.2) * 0.4) });
       const quiet = paused || document.hidden; if (quiet !== wasQuiet) { wasQuiet = quiet; snd.setPaused(quiet); }
     }
     snd.rainLevel(paused ? 0 : rainAmt);

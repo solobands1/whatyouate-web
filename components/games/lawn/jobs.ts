@@ -1,7 +1,8 @@
 // Pat's Big Weekend: the story jobs, the tractor upgrades and the saved progress (this browser only).
 
 export type Light = "day" | "morning" | "dusk" | "storm" | "golden";
-export type Twist = "bonfire" | "storm" | "guests" | "apples" | "stripes" | "cat" | "finale" | "trailer" | "away" | "unload" | "free" | "sticks" | "leaves" | "tire" | "ride";
+export type Twist = "bonfire" | "storm" | "guests" | "apples" | "stripes" | "cat" | "finale" | "trailer" | "away" | "unload" | "free" | "sticks" | "leaves" | "tire" | "ride"
+  | "plow" | "wood" | "xmas" | "tidy";   // Chapter 4: Pat's Winter
 export type Job = {
   id: number;
   title: string;
@@ -31,7 +32,8 @@ export type Job = {
 /** Jobs with no mowing: drive the tractor somewhere and park it. */
 export const isPark = (j: Job) => j.twist === "trailer" || j.twist === "unload";
 /** Jobs where the deck isn't cutting: parking, picking up sticks, the drive to town, Linda's ride. */
-export const noMowing = (j: Job) => isPark(j) || j.twist === "sticks" || j.twist === "tire" || j.twist === "ride";
+export const noMowing = (j: Job) => isPark(j) || j.twist === "sticks" || j.twist === "tire" || j.twist === "ride"
+  || j.twist === "plow" || j.twist === "wood" || j.twist === "xmas" || j.twist === "tidy";   // (Chapter 4: winter, no mowing)
 
 export const JOBS: Job[] = [
   { id: 0, title: "Before The Bonfire", intro: ["Friends are coming over for a fire tonight.", "Get the yard round the house mowed before the sun goes down."],
@@ -68,6 +70,20 @@ export const JOBS: Job[] = [
     goal: "Two laps round the property", zones: null, pace: 1, limit: 170, par: 125, light: "golden", twist: "ride", star3: "Linda Stays Happy", cash: 100, fall: 0.85,
     tip: "Drive through the flags in order. Cutting across the field doesn't count. Bumping into anything upsets Linda.",
     endTitle: "Chores Done!", chapterFrom: 10, endLine: (n, of) => `You finished Pat's Fall Chores with ${n} of ${of} stars! Linda says it was the best ride of the fall.` },
+  // ── Chapter 4: Pat's Winter (./winter) ──
+  { id: 14, chapter: "Chapter 4: Pat's Winter", title: "Plow The Driveway", intro: ["It snowed all night. The lane, the parking spot and the driveway are buried.", "Pat's put the plow blade on the tractor. Plow from the barn up to the road, then hop off and shovel the walk and round Linda's car."],
+    goal: "Plow the driveway, then shovel", zones: null, pace: 1, limit: 85, par: 65, light: "morning", twist: "plow", star3: "No Big Bumps", cash: 110,
+    tip: "The blade clears the gravel. Stop and tap Pat to hop off with the shovel, and tap the tractor to climb back on. A big bump is hitting the car or a tree at speed." },
+  { id: 15, title: "Firewood", intro: ["It's going to be a cold one tonight, and the wood stove needs plenty.", "Split logs at the chopping block by the woodshed, then haul them up to the back door in the cart. Three loads fills the woodbox."],
+    goal: "Split and stack three loads", zones: null, pace: 1, limit: 145, par: 110, light: "day", twist: "wood", star3: "Two Misses Or Fewer", cash: 110,
+    tip: "Stop beside the chopping block and tap it. Tap the map when the marker is in the green to split a log. Then drive to the back steps and tap them to unload." },
+  { id: 16, title: "Christmas Lights", intro: ["Linda found the Christmas lights in the shop.", "Hang a strand on the house, the spruce, the fence, both apple trees and the barn before it gets dark."],
+    goal: "Hang all six strands", zones: null, pace: 1, limit: 85, par: 65, light: "golden", twist: "xmas", star3: "No Big Bumps", cash: 120,
+    tip: "Stop near a glowing spot and tap it. Pat hops off and hangs the strand, then climbs back on. When they're all up, wait for dark." },
+  { id: 17, title: "Clean Up The Shop", intro: ["After all that, the shop's a mess. Tools all over the floor.", "Pick each one up and put it back where it goes: the pegboard, the rack, the shelf and the hook by the door."],
+    goal: "Put every tool away", zones: null, pace: 1, limit: 75, par: 60, light: "day", twist: "tidy", star3: "Give The Cat A Pat", cash: 120,
+    tip: "Walk up to a tool and tap it to pick it up. Its spot lights up: walk over and Pat puts it away. The cat's in the shop too. Tap her when you're next to her.",
+    endTitle: "Winter Done!", chapterFrom: 14, endLine: (n, of) => `You finished Pat's Winter with ${n} of ${of} stars! The shop's tidy and the stove's going.` },
 ];
 export const FREE_JOB: Job = { id: -1, title: "Free Mow", intro: ["The whole lawn, no clock."], goal: "Mow the whole lawn", zones: null, pace: 9.5, light: "day", twist: "free", star3: "", cash: 25 };
 
