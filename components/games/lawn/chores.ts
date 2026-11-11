@@ -5,7 +5,7 @@
 //           mowing does the counting; this paints the leaves and the fall look).
 //   ride    Linda rides in the cart for two laps round the edge of the property, through the flags in order.
 // The engine calls into a Chore at a handful of points (setup, each step, drawing, taps, the HUD, the outcome).
-import type { LawnMap, Pt, Tree } from "../lawnMap";
+import type { LawnMap, Pt, Tree, Building } from "../lawnMap";
 import type { World } from "./world";
 import type { Job, Upgrades, Outcome } from "./jobs";
 import type { Sound } from "./sound";
@@ -15,6 +15,7 @@ import { clamp, wrapA, mulberry32 } from "./geo";
 import { oldStripeCol } from "./art";
 import { drawLeaf, drawStick, drawPat, drawCart, drawFlag, scatterLeaves, LEAF_COLS, type Stick } from "./fallArt";
 import { winterChore, winterMap } from "./winter";   // Chapter 4: Pat's Winter
+import { makeSummerChore } from "./summer";   // Chapter 6
 
 export type ChoreCtx = {
   job: Job; map: LawnMap; w: World; up: Upgrades; snd: Sound; mode: string;
@@ -49,6 +50,11 @@ export type Chore = {
   // over the roofs, a longer end scene, no minimap, no engine noise, a top speed for now
   deck?: number; catMode?: "roam" | "deck" | "none"; cam?(): [number, number] | null; drawTree?(c: CanvasRenderingContext2D, t: Tree, alpha: number, time: number): boolean;
   drawTop?(c: CanvasRenderingContext2D, time: number): void; sceneSecs?: number; noMini?: boolean; silent?: boolean; speedCap?(): number | undefined;
+  // Chapter 6: optional extras. drawBuilding draws a building itself (true skips the engine's own picture of it);
+  // the end scene plays.
+  drawBuilding?(c: CanvasRenderingContext2D, b: Building, time: number): boolean;
+  push?(x: number, y: number, r: number): { x: number; y: number; nx: number; ny: number; hit: boolean } | null;
+  catDeck?: boolean;
 };
 
 const FONT = "system-ui, -apple-system, sans-serif";
@@ -133,6 +139,7 @@ export function makeChore(job: Job, ctx: ChoreCtx): Chore | null {
   if (job.twist === "sticks") return sticksChore(ctx);
   if (job.twist === "leaves") return leavesChore(ctx);
   if (job.twist === "ride") return rideChore(ctx);
+  const summer = makeSummerChore(job, ctx); if (summer) return summer;   // Chapter 6
   return winterChore(job, ctx);   // Chapter 4
 }
 /** Chapter 4: a chore can change the map before the world is built (Linda's car in the driveway, the inside of the shop). */

@@ -2,7 +2,8 @@
 
 export type Light = "day" | "morning" | "dusk" | "storm" | "golden";
 export type Twist = "bonfire" | "storm" | "guests" | "apples" | "stripes" | "cat" | "finale" | "trailer" | "away" | "unload" | "free" | "sticks" | "leaves" | "tire" | "ride"
-  | "plow" | "wood" | "xmas" | "tidy";   // Chapter 4: Pat's Winter
+  | "plow" | "wood" | "xmas" | "tidy"   // Chapter 4: Pat's Winter
+  | "paint" | "games" | "nets" | "party";   // Chapter 6: The Annual Party (./summer)
 export type Job = {
   id: number;
   title: string;
@@ -28,12 +29,14 @@ export type Job = {
   endTitle?: string;        // the end card's heading when this job closes a chapter
   endLine?: (stars: number, of: number) => string;   // and its line about the chapter's stars
   chapterFrom?: number;     // the first job of this chapter (for the end card's star count)
+  summer?: boolean;         // Chapter 6: high summer (deep green lawn, small green apples on the trees)
 };
 /** Jobs with no mowing: drive the tractor somewhere and park it. */
 export const isPark = (j: Job) => j.twist === "trailer" || j.twist === "unload";
 /** Jobs where the deck isn't cutting: parking, picking up sticks, the drive to town, Linda's ride. */
 export const noMowing = (j: Job) => isPark(j) || j.twist === "sticks" || j.twist === "tire" || j.twist === "ride"
-  || j.twist === "plow" || j.twist === "wood" || j.twist === "xmas" || j.twist === "tidy";   // (Chapter 4: winter, no mowing)
+  || j.twist === "plow" || j.twist === "wood" || j.twist === "xmas" || j.twist === "tidy"   // (Chapter 4: winter, no mowing)
+  || j.twist === "paint" || j.twist === "games" || j.twist === "nets" || j.twist === "party";   // Chapter 6
 
 export const JOBS: Job[] = [
   { id: 0, title: "Before The Bonfire", intro: ["Friends are coming over for a fire tonight.", "Get the yard round the house mowed before the sun goes down."],
@@ -84,6 +87,23 @@ export const JOBS: Job[] = [
     goal: "Put every tool away", zones: null, pace: 1, limit: 75, par: 60, light: "day", twist: "tidy", star3: "Give The Cat A Pat", cash: 120,
     tip: "Walk up to a tool and tap it to pick it up. Its spot lights up: walk over and Pat puts it away. The cat's in the shop too. Tap her when you're next to her.",
     endTitle: "Winter Done!", chapterFrom: 14, endLine: (n, of) => `You finished Pat's Winter with ${n} of ${of} stars! The shop's tidy and the stove's going.` },
+  // PLACEHOLDER for Chapter 5 (replaced at merge)
+  ...[18, 19, 20, 21, 22].map((id): Job => ({ id, chapter: id === 18 ? "Chapter 5 (Placeholder)" : undefined, title: `Placeholder ${id + 1}`, intro: ["Stands in for a Chapter 4 or 5 job until the merge."],
+    goal: "Mow the orchard", zones: ["orchard"], pace: 6.5, limit: 160, par: 125, light: "day", twist: "free", star3: "No Cat Stops", cash: 10 })),
+  // Chapter 6: The Annual Party. Summer on the farm: paint the barn, set out the games and the nets, then party day (./summer)
+  { id: 23, chapter: "Chapter 6: The Annual Party", title: "A Fresh Coat", intro: ["The annual party is next weekend, and the old barn is looking tired.", "Pat rigged a paint sprayer on the tractor. Drive along the walls and they turn red. The white trim he does by hand."],
+    goal: "Paint the barn, then the trim", zones: null, pace: 1, limit: 90, par: 70, light: "morning", twist: "paint", star3: "Don't Bump The Wet Paint", cash: 110, summer: true,
+    tip: "Drive beside a wall to paint it. Slower gives a fuller coat. Once a side is red, stop by its white marker and tap it for the trim." },
+  { id: 24, title: "Lawn Games", intro: ["The lawn games are stacked in the barn: cornhole, ladder ball and bocce.", "Load them in the cart, then set each one up on its spot in the field."],
+    goal: "Set up the three lawn games", zones: null, pace: 1, limit: 65, par: 50, light: "day", twist: "games", star3: "No Cat Stops", cash: 110, summer: true,
+    tip: "Stop by the barn door and tap it to load up. Then pull up beside each outlined spot and tap it. Pat hops off and sets the game up." },
+  { id: 25, title: "Nets And The Slip And Slide", intro: ["Up go the badminton net and the soccer net, then the slip and slide.", "Unroll the slide by driving along the dashed line, then hook up the hose."],
+    goal: "Put up both nets and the slide", zones: null, pace: 1, limit: 85, par: 65, light: "day", twist: "nets", star3: "Slide Laid Straight", cash: 120, summer: true,
+    tip: "Tap the start of the line to drop the roll, then drive along the line without wandering off it. Tap the hose at the end to turn the water on." },
+  { id: 26, title: "Party Day", intro: ["It's party day! The whole family is here, and the kids want hay rides.", "Pick them up by the tent, drive through the flags, and bring them back. Three rides before supper."],
+    goal: "Give the kids three hay rides", zones: null, pace: 1, limit: 150, par: 110, light: "golden", twist: "party", star3: "Kids Stay Happy", cash: 150, summer: true,
+    tip: "Stop in the box by the tent and the kids climb on. Drive through the flags in order, then stop in the box again. Bumping into anything scares the kids.",
+    endTitle: "What A Party!", chapterFrom: 0, endLine: (n, of) => `You finished every chapter of Pat's Lawnmower with ${n} of ${of} stars! Thanks for helping Pat and Linda all year.` },
 ];
 export const FREE_JOB: Job = { id: -1, title: "Free Mow", intro: ["The whole lawn, no clock."], goal: "Mow the whole lawn", zones: null, pace: 9.5, light: "day", twist: "free", star3: "", cash: 25 };
 

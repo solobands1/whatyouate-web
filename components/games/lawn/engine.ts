@@ -198,7 +198,7 @@ export function startEngine(canvas: HTMLCanvasElement, wrap: HTMLElement, cfg: C
   const cat: Cat = { st: "in", x: map.door.x, y: map.door.y, h: Math.PI / 2, act: "idle", actT: 0, tx: 0, ty: 0, outT: 0, next: mode === "attract" ? 4 : catCfg.first + rnd() * 6, fleeT: 0, cool: 0, phase: rnd() * 6 };
   let bubbleT = 0, catSeen = false, nearTold = false;
   // she's at home today (watching from the deck while Pat loads up), or not here at all (the community centre)
-  const catMode: "roam" | "deck" | "none" = ext?.catMode ?? (away ? "none" : park || job.twist === "ride" ? "deck" : "roam");   // (Chapter 4: a chore can say where she is)   // (on Linda's ride she watches from the deck)
+  const catMode: "roam" | "deck" | "none" = ext?.catMode ?? (away ? "none" : park || job.twist === "ride" || ext?.catDeck ? "deck" : "roam");   // (Chapter 4: a chore can say where she is; Chapter 6: catDeck)   // (on Linda's ride she watches from the deck)
   if (catMode === "none") { cat.st = "in"; cat.next = 1e9; }
   if (catMode === "deck" && deck) { cat.st = "out"; cat.x = (deck.poly[0][0] + deck.poly[2][0]) / 2; cat.y = (deck.poly[0][1] + deck.poly[2][1]) / 2 - deck.height * OBL - 0.4; cat.act = "sit"; cat.h = 0.6; cat.outT = 1e9; cat.actT = 1e9; }
   // loading and unloading: where to park, how close Pat is, the straps going on
@@ -685,7 +685,8 @@ export function startEngine(canvas: HTMLCanvasElement, wrap: HTMLElement, cfg: C
     const steerT = Math.abs(v) > 0.3 ? clamp(Math.atan((1.3 * om) / v), -0.7, 0.7) : (raw > DEAD ? clamp(wrapA(Math.atan2(ay, ax) - h), -0.7, 0.7) : 0);
     steer += (steerT - steer) * Math.min(1, dt * 12);
     const ox = x, oy = y, dirX = Math.cos(h), dirY = Math.sin(h);
-    const p = park ? collidePark(x + dirX * v * dt, y + dirY * v * dt) : pushOut(w, x + dirX * v * dt, y + dirY * v * dt, BODY_R, cat.st !== "in" && catMode === "roam" ? { x: cat.x, y: cat.y, r: CAT_R } : null);
+    let p = park ? collidePark(x + dirX * v * dt, y + dirY * v * dt) : pushOut(w, x + dirX * v * dt, y + dirY * v * dt, BODY_R, cat.st !== "in" && catMode === "roam" ? { x: cat.x, y: cat.y, r: CAT_R } : null);
+    { const q = park ? null : ext?.push?.(p.x, p.y, BODY_R); if (q?.hit) p = { x: q.x, y: q.y, nx: q.nx, ny: q.ny, hit: true }; }   // Chapter 6: the chore's own solid things
     if (p.hit) {
       const into = -(dirX * p.nx + dirY * p.ny) * v;
       ext?.hit?.(into);
@@ -746,7 +747,7 @@ export function startEngine(canvas: HTMLCanvasElement, wrap: HTMLElement, cfg: C
       if (success && (job.twist === "bonfire" || job.twist === "finale")) fireAmt = Math.min(1, fireAmt + dt * 0.8);
       if ((job.twist === "storm") ) { rainAmt = Math.min(1, rainAmt + dt * 0.7); if (thunderAt > 0 && sceneT > thunderAt) { thunderAt = 0; snd.thunder(); } }
       if (success && job.twist === "trailer") { const k0 = strapK; strapK = Math.min(1, sceneT / 1.8); if (Math.floor(k0 * 8) !== Math.floor(strapK * 8)) snd.clank(); }
-      if (sceneT > (success ? ext?.sceneSecs ?? (job.twist === "finale" || job.twist === "away" ? 5 : 3.6) : 2.4) && !ended) { ended = true; phase = "over"; hooks.onEnd(outcome(success)); }
+      if (sceneT > (success ? (ext?.sceneSecs ?? (job.twist === "finale" || job.twist === "away" ? 5 : 3.6)) : 2.4) && !ended) { ended = true; phase = "over"; hooks.onEnd(outcome(success)); }
     }
     for (const pp of people) pp.fade = Math.min(1, pp.fade + dt * 1.5);
     if (people.some(pp => pp.pose === "throw") && Math.floor((simT + sceneT) * 0.5) !== Math.floor((simT + sceneT - dt) * 0.5) && mode !== "attract") snd.clank();
@@ -849,7 +850,7 @@ export function startEngine(canvas: HTMLCanvasElement, wrap: HTMLElement, cfg: C
         if (t.kind === "well") return;
         const near = Math.hypot(t.x - x, t.y - y) < t.r + Math.max(BODY_R, deckHalf) + 0.4 || (cat.st !== "in" && Math.hypot(t.x - cat.x, t.y - cat.y) < t.r + 0.4);
         treeAlpha[i] += ((near ? 0.8 : 0.96) - treeAlpha[i]) * Math.min(1, dt * 8);
-        if (!ext?.drawTree?.(cc, t, treeAlpha[i], time)) drawTree(cc, t, treeBlobs[i], treeAlpha[i], time * (job.twist === "storm" ? 2.2 : 1), job.fall ?? 0);   // (Chapter 4: bare winter trees)
+        if (!ext?.drawTree?.(cc, t, treeAlpha[i], time)) drawTree(cc, t, treeBlobs[i], treeAlpha[i], time * (job.twist === "storm" ? 2.2 : 1), job.fall ?? 0, job.summer);   // (Chapter 4: bare winter trees; Chapter 6: summer apples)
       });
       cc.globalCompositeOperation = "destination-out";
       const hole = (hx: number, hy: number, r: number) => { const g = cc.createRadialGradient(hx, hy, 0, hx, hy, r); g.addColorStop(0, "rgba(0,0,0,0.85)"); g.addColorStop(0.55, "rgba(0,0,0,0.7)"); g.addColorStop(1, "rgba(0,0,0,0)"); cc.fillStyle = g; cc.beginPath(); cc.arc(hx, hy, r, 0, 7); cc.fill(); };
@@ -861,6 +862,7 @@ export function startEngine(canvas: HTMLCanvasElement, wrap: HTMLElement, cfg: C
       c.save(); c.setTransform(1, 0, 0, 1, 0, 0); c.drawImage(canopy, 0, 0); c.restore();
     }
     map.buildings.forEach((b, i) => {
+      if (ext?.drawBuilding?.(c, b, time)) return;   // Chapter 6: the chore draws this one itself (the barn being painted)
       const dz = b.height * OBL, roof = b.poly.map(q => [q[0], q[1] - dz] as Pt);
       const behind = pip(roof, x, y) && !pip(b.poly, x, y) && polyClosest(b.poly, x, y).d > 0.2;
       const catBehind = cat.st !== "in" && !catOnDeck && pip(roof, cat.x, cat.y);

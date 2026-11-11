@@ -8,12 +8,14 @@ import { PAINTS } from "./jobs";
 import { drawCart, drawCar, drawPat, drawStick, drawTire, scatterLeaves, drawLinda } from "./fallArt";
 import { mulberry32 } from "./geo";
 import { drawWinterCardArt, isWinterArt, type WinterArtKind } from "./winterArt";   // Chapter 4
+import { drawSummerCard, isSummerCard, type SummerCardKind } from "./summerArt";   // Chapter 6
 
-export type CardArtKind = "sticks" | "leaves" | "tire" | "ride" | WinterArtKind;
+export type CardArtKind = "sticks" | "leaves" | "tire" | "ride" | WinterArtKind | SummerCardKind;
 const blobs = (seed: number) => { const r = mulberry32(seed), out: number[][] = []; for (let k = 0; k < 7; k++) { const a = (k / 7) * Math.PI * 2 + r(), d = 0.45 + r() * 0.2; out.push([Math.cos(a) * d, Math.sin(a) * d, 0.42 + r() * 0.12, r()]); } return out; };
 
 export function drawCardArt(c: CanvasRenderingContext2D, kind: CardArtKind, W: number, H: number, t: number, done = false) {
   if (isWinterArt(kind)) { drawWinterCardArt(c, kind, W, H, t, done); return; }   // Chapter 4: Pat's Winter
+  if (isSummerCard(kind)) { drawSummerCard(c, kind, W, H, t, done); return; }   // Chapter 6
   c.save();
   // the lawn: soft stripes with a warm fall wash
   for (let k = 0; k * 22 < W + 22; k++) { c.fillStyle = k % 2 ? "#98c463" : "#8ab857"; c.fillRect(k * 22, 0, 22, H); }
@@ -51,7 +53,7 @@ export function drawLindaClose(c: CanvasRenderingContext2D, W: number, H: number
   c.save(); c.translate(W / 2, H / 2); c.scale(H / 1.8, H / 1.8); drawLinda(c, 0, 0, 0, t, 0.5 + 0.5 * Math.sin(t)); c.restore();
 }
 
-export default function CardArt({ kind, done = false }: { kind: CardArtKind; done?: boolean }) {
+export default function CardArt({ kind, done = false, tall = false }: { kind: CardArtKind; done?: boolean; tall?: boolean }) {   // (Chapter 6: tall, the finale's end card)
   const ref = useRef<HTMLCanvasElement>(null);
   useEffect(() => {
     const cv = ref.current; if (!cv) return;
@@ -65,5 +67,5 @@ export default function CardArt({ kind, done = false }: { kind: CardArtKind; don
     raf = requestAnimationFrame(draw);
     return () => cancelAnimationFrame(raf);
   }, [kind, done]);
-  return <canvas ref={ref} aria-hidden className="mt-2 block h-[92px] w-full rounded-2xl [@media(max-height:700px)]:h-[64px]" />;
+  return <canvas ref={ref} aria-hidden className={`mt-2 block w-full rounded-2xl ${tall ? "h-[130px] [@media(max-height:700px)]:h-[84px]" : "h-[92px] [@media(max-height:700px)]:h-[64px]"}`} />;
 }

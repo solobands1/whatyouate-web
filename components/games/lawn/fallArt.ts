@@ -52,7 +52,7 @@ function patHead(c: CanvasRenderingContext2D, hk: number) {
   c.restore();
 }
 
-export type PatPose = { walk: number; carry?: "stick" | "tire" | null; bend?: number; wave?: number; seed?: number };
+export type PatPose = { walk: number; carry?: "stick" | "tire" | "load" | null; bend?: number; wave?: number; seed?: number };   // (Chapter 6: "load", arms out, the caller draws what he holds)
 /** Pat on foot, from above: work boots stepping, jeans, his blue shirt, arms swinging (or carrying something), his head.
  *  `walk` is the step phase (0 standing); `bend` (0..1) reaches down to the grass. */
 export function drawPat(c: CanvasRenderingContext2D, x: number, y: number, a: number, p: PatPose, t: number, size = 1.3) {

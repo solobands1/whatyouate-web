@@ -256,7 +256,7 @@ export function drawVehicle(c: CanvasRenderingContext2D, v: Vehicle) {
 /** Fall colours for a leafy tree: each tree turns its own way (orange, red, gold or rust), `f` 0 summer .. 1 full fall. */
 const FALL: [string, string, string][] = [["#c25a22", "#dc7a2c", "#ee9a3c"], ["#9e3326", "#c2462e", "#d9653a"], ["#b8901f", "#d9b336", "#ecca52"], ["#8f5a26", "#b0742e", "#c98f3e"]];
 function mixHex(a: string, b: string, t: number) { const p = (h: string) => [1, 3, 5].map(i => parseInt(h.slice(i, i + 2), 16)), A = p(a), B = p(b); return `rgb(${A.map((v, i) => Math.round(v + (B[i] - v) * t)).join(",")})`; }
-export function drawTree(c: CanvasRenderingContext2D, t: Tree, blobs: number[][], alpha: number, time: number, fall = 0) {
+export function drawTree(c: CanvasRenderingContext2D, t: Tree, blobs: number[][], alpha: number, time: number, fall = 0, summer = false) {   // (Chapter 6: summer)
   if (fall > 0 && t.kind !== "spruce" && t.kind !== "well") { drawFallTree(c, t, blobs, alpha, time, fall); return; }
   c.save(); c.globalAlpha = alpha; c.translate(t.x, t.y);
   const sway = Math.sin(time * 0.8 + t.x) * 0.03 * t.r;
@@ -275,7 +275,8 @@ export function drawTree(c: CanvasRenderingContext2D, t: Tree, blobs: number[][]
     for (const [bx, by, br, sh] of blobs) { c.fillStyle = sh < 0.5 ? "#4b8c3a" : "#58a043"; c.beginPath(); c.arc(bx * t.r + sway, by * t.r, br * t.r, 0, 7); c.fill(); }
     c.fillStyle = "rgba(20,50,15,0.14)"; for (const [bx, by, br] of blobs) if (bx + by > 0.2) { c.beginPath(); c.arc(bx * t.r + sway + br * t.r * 0.25, by * t.r + br * t.r * 0.25, br * t.r * 0.7, 0, 7); c.fill(); }
     c.fillStyle = "rgba(150,210,100,0.35)"; c.beginPath(); c.arc(-t.r * 0.3 + sway, -t.r * 0.32, t.r * 0.42, 0, 7); c.fill();
-    if (t.kind === "fruit") { c.fillStyle = "#d8443a"; for (const [bx, by] of blobs) { c.beginPath(); c.arc(bx * t.r * 0.9 + sway, by * t.r * 0.9 + 0.1, 0.09, 0, 7); c.fill(); } }
+    if (t.kind === "fruit" && summer) { for (const [bx, by, , sh] of blobs) for (const [ox, oy] of [[0, 0.1], [0.32, -0.18], [-0.25, 0.3]]) { const ax = bx * t.r * 0.82 + sway + ox, ay = by * t.r * 0.82 + oy; c.fillStyle = sh > 0.5 ? "#b8cf4e" : "#a3c244"; c.beginPath(); c.arc(ax, ay, 0.065, 0, 7); c.fill(); c.fillStyle = "rgba(214,90,60,0.55)"; c.beginPath(); c.arc(ax - 0.02, ay - 0.02, 0.03, 0, 7); c.fill(); } }   // Chapter 6: small summer apples, still green with a blush
+    else if (t.kind === "fruit") { c.fillStyle = "#d8443a"; for (const [bx, by] of blobs) { c.beginPath(); c.arc(bx * t.r * 0.9 + sway, by * t.r * 0.9 + 0.1, 0.09, 0, 7); c.fill(); } }
   }
   c.restore();
 }
@@ -304,7 +305,7 @@ export function tone(col: string, k: number) { const [r, g, b] = rgbOf(col), t =
 const mid = (p: Pt, q: Pt): Pt => [(p[0] + q[0]) / 2, (p[1] + q[1]) / 2];
 const dist = (p: Pt, q: Pt) => Math.hypot(q[0] - p[0], q[1] - p[1]);
 /** A convex polygon pushed out by `d` (mitred corners): a roof's overhang past its walls. */
-function outset(P: Pt[], d: number): Pt[] {
+export function outset(P: Pt[], d: number): Pt[] {   // (exported for Chapter 6)
   const [cx, cy] = centroid(P), n = P.length;
   const nrm = (a: Pt, b: Pt): Pt => { const dx = b[0] - a[0], dy = b[1] - a[1], L = Math.hypot(dx, dy) || 1; let nx = dy / L, ny = -dx / L; const mx = (a[0] + b[0]) / 2 - cx, my = (a[1] + b[1]) / 2 - cy; if (nx * mx + ny * my < 0) { nx = -nx; ny = -ny; } return [nx, ny]; };
   return P.map((p, i) => { const a = P[(i + n - 1) % n], b = P[(i + 1) % n], n1 = nrm(a, p), n2 = nrm(p, b), k = d / (1 + n1[0] * n2[0] + n1[1] * n2[1]); return [p[0] + (n1[0] + n2[0]) * k, p[1] + (n1[1] + n2[1]) * k] as Pt; });
@@ -344,7 +345,7 @@ function roofSlope(c: CanvasRenderingContext2D, poly: Pt[], r0: Pt, r1: Pt, col:
   c.restore();
 }
 /** A gable roof over a 4-sided footprint, ridge along the long side. Returns the ridge. */
-function gableRoof(c: CanvasRenderingContext2D, R: Pt[], col: string, metal: boolean, trim: string, seed: number) {
+export function gableRoof(c: CanvasRenderingContext2D, R: Pt[], col: string, metal: boolean, trim: string, seed: number) {   // (exported for Chapter 6)
   const [p0, p1, p2, p3] = dist(R[0], R[1]) >= dist(R[1], R[2]) ? [R[0], R[1], R[2], R[3]] : [R[1], R[2], R[3], R[0]];
   const r0 = mid(p3, p0), r1 = mid(p1, p2);
   roofSlope(c, [p0, p1, r1, r0], r0, r1, col, metal, seed);
@@ -470,7 +471,7 @@ function drawDeck(c: CanvasRenderingContext2D, b: Building, dz: number, door: { 
 }
 
 /** A flat-ish roof: the porch roof (shingled) or a lean-to (metal), sloping away along its short side. */
-function flatRoof(c: CanvasRenderingContext2D, b: Building, T: Pt[]) {
+export function flatRoof(c: CanvasRenderingContext2D, b: Building, T: Pt[]) {   // (exported for Chapter 6)
   const metal = b.kind !== "porch", R = outset(T, 0.12);
   const [p0, p1, p2, p3] = dist(R[0], R[1]) >= dist(R[1], R[2]) ? [R[0], R[1], R[2], R[3]] : [R[1], R[2], R[3], R[0]];
   // the high edge is the long side nearer the bigger building it leans on; we just use the southern one

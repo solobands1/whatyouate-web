@@ -199,6 +199,7 @@ export default function PatsLawnmower() {
   const nextJob = job.id >= 0 && job.id < JOBS.length - 1 && unlockedUpTo(save) > job.id ? JOBS[job.id + 1] : null;
   const art: CardArtKind | null = job.twist === "sticks" || job.twist === "leaves" || job.twist === "tire" || job.twist === "ride" ? job.twist : null;   // Pat's Fall Chores have a little picture on their cards
   const cardArt: CardArtKind | null = art ?? (job.twist === "plow" || job.twist === "wood" || job.twist === "xmas" || job.twist === "tidy" ? job.twist : null);   // (Chapter 4: and Pat's Winter)
+  const summerArt: CardArtKind | null = job.twist === "paint" || job.twist === "games" || job.twist === "nets" || job.twist === "party" ? job.twist : null;   // Chapter 6: and so does The Annual Party
 
   return (
     <main className="fixed inset-0 flex select-none flex-col overflow-hidden bg-gradient-to-b from-[#eef6e3] via-[#f3f8ec] to-[#b9dc98] text-[#1f2c17]"
@@ -331,6 +332,7 @@ export default function PatsLawnmower() {
                 <div className="mt-2 text-[26px] font-black leading-tight tracking-tight [@media(max-height:700px)]:mt-1.5 [@media(max-height:700px)]:text-[22px]">{job.title}</div>
                 <div className="mt-1.5 space-y-1 text-[15px] leading-snug text-[#3f4f35] [@media(max-height:700px)]:mt-1 [@media(max-height:700px)]:text-[13.5px]">{job.intro.map((l, i) => <p key={i}>{l}</p>)}</div>
                 {cardArt && <CardArt kind={cardArt} />}
+                {summerArt && <CardArt kind={summerArt} />}
                 <div className="mt-3 rounded-2xl bg-[#eef6e3] px-3 py-2.5 text-[14px] [@media(max-height:700px)]:mt-2 [@media(max-height:700px)]:py-2 [@media(max-height:700px)]:text-[13px]">
                   <div className="flex items-center justify-between font-extrabold"><span>{job.goal}</span>{hud?.limit ? <span className="tabular-nums text-[#b4561a]">{fmt(hud.limit)}</span> : null}</div>
                   {job.id >= 0 && hud?.limit ? (
@@ -437,6 +439,7 @@ export default function PatsLawnmower() {
                     </div>
                   ) : result.newBest ? <div className="mx-auto mt-2 w-fit rounded-full bg-[#fff3c4] px-3 py-1 text-[13px] font-extrabold text-[#8a6a00]">New Best Time!</div> : null}
                   {cardArt && <CardArt kind={cardArt} done />}
+                  {summerArt && <CardArt kind={summerArt} done tall={job.id === JOBS.length - 1} />}
                   <div className="mt-3 grid grid-cols-2 gap-2 text-left">
                     <div className="rounded-2xl bg-[#eef6e3] px-3 py-2"><div className="text-[10.5px] font-bold uppercase tracking-wide text-[#5a6b4f]">Time</div><div className="text-[18px] font-extrabold tabular-nums">{fmt(result.o.secs)}</div></div>
                     <div className="rounded-2xl bg-[#eef6e3] px-3 py-2"><div className="text-[10.5px] font-bold uppercase tracking-wide text-[#5a6b4f]">{result.o.extra ? result.o.extra.label : job.twist === "apples" ? "Apples" : job.twist === "stripes" ? "Stripe Score" : job.twist === "away" ? "Outfield Stripes" : job.twist === "storm" ? "Puddle Time" : job.twist === "bonfire" ? "Big Bumps" : isPark(job) ? "Bumps" : job.twist === "guests" ? "Pits & Path" : "Cat Stops"}</div>
