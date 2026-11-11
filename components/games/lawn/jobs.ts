@@ -78,9 +78,9 @@ export const JOBS: Job[] = [
     tip: "Drive through the flags in order. Cutting across the field doesn't count. Bumping into anything upsets Linda.",
     endTitle: "Chores Done!", chapterFrom: 10, endLine: (n, of) => `You finished Pat's Fall Chores with ${n} of ${of} stars! Linda says it was the best ride of the fall.` },
   // ── Chapter 4: Pat's Winter (./winter) ──
-  { id: 14, chapter: "Chapter 4: Pat's Winter", title: "Plow The Driveway", intro: ["It snowed all night. The lane, the parking spot and the driveway are buried.", "Pat's put the plow blade on the tractor. Plow from the barn up to the road, then hop off and shovel the walk and round Linda's car."],
+  { id: 14, chapter: "Chapter 4: Pat's Winter", title: "Plow The Driveway", intro: ["It snowed all night. The lane, the parking spot and the driveway are buried.", "First plow the gravel between the orange stakes. Then stop, tap Pat to hop off, and shovel the blue spots: the walk and round Linda's car."],
     goal: "Plow the driveway, then shovel", zones: null, pace: 1, limit: 85, par: 65, light: "morning", twist: "plow", star3: "No Big Bumps", cash: 110,
-    tip: "The blade clears the gravel. Stop and tap Pat to hop off with the shovel, and tap the tractor to climb back on. A big bump is hitting the car or a tree at speed." },
+    tip: "Step 1: plow between the orange stakes. Step 2: stop, tap Pat to hop off with the shovel, and walk over the blue spots. Tap the tractor to climb back on. A big bump is hitting the car or a tree at speed." },
   { id: 15, title: "Firewood", intro: ["It's going to be a cold one tonight, and the wood stove needs plenty.", "Split logs at the chopping block by the woodshed, then haul them up to the back door in the cart. Three loads fills the woodbox."],
     goal: "Split and stack three loads", zones: null, pace: 1, limit: 145, par: 110, light: "day", twist: "wood", star3: "Two Misses Or Fewer", cash: 110,
     tip: "Stop beside the chopping block and tap it. Tap the map when the marker is in the green to split a log. Then drive to the back steps and tap them to unload." },

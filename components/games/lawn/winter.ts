@@ -264,6 +264,17 @@ function plowChore(ctx: ChoreCtx): Chore {
     lc.save(); lc.clip(gravelPath); const r = mulberry32(17); for (let k = 0; k < (bx1 - bx0) * (by1 - by0) * 2.2; k++) { const v = r(); lc.fillStyle = v < 0.45 ? "rgba(135,158,196,0.1)" : "rgba(255,255,255,0.7)"; lc.fillRect(bx0 + r() * (bx1 - bx0), by0 + r() * (by1 - by0), 0.06, 0.06); } lc.restore();
   }
   const inClear = (x: number, y: number) => { const k = w.cellOf(x, y); return gravel[k] === 1 || shovN[k] === 1 || x < 0 || y < 0 || x > w.W || y > w.H; };
+  // orange snow stakes along both edges of what the blade should clear, like real driveway markers, so it's plain where to plow
+  const stakes: Pt[] = [];
+  {
+    const ok = (x: number, y: number) => { const k = w.cellOf(x, y); return w.clearance[k] > 0.15 && !gravel[k] && !shovN[k] && !stakes.some(q => Math.hypot(q[0] - x, q[1] - y) < 2.2); };
+    for (const l of CLEAR.lanes) for (let i = 1; i < l.pts.length; i++) {
+      const [ax, ay] = l.pts[i - 1], [bx, by] = l.pts[i], L = Math.hypot(bx - ax, by - ay), nx = -(by - ay) / L, ny = (bx - ax) / L, off = l.width / 2 + 0.45;
+      for (let d = 0; d <= L; d += 3.2) for (const sd of [1, -1]) { const x = ax + ((bx - ax) * d) / L + nx * off * sd, y = ay + ((by - ay) * d) / L + ny * off * sd; if (ok(x, y)) stakes.push([x, y]); }
+    }
+    const T = outsetPoly(TURNAROUND, 0.45);
+    for (let i = 0; i < T.length; i++) { const [ax, ay] = T[i], [bx, by] = T[(i + 1) % T.length], L = Math.hypot(bx - ax, by - ay); for (let d = 0; d <= L; d += 3.2) { const x = ax + ((bx - ax) * d) / L, y = ay + ((by - ay) * d) / L; if (ok(x, y)) stakes.push([x, y]); } }
+  }
   // the plow and the shovel
   let load = 0, pushing = 0; const spillAcc = [0, 0, 0];
   const L2W = (lon: number, lat: number, x: number, y: number, h: number): Pt => [x + Math.cos(h) * lon - Math.sin(h) * lat, y + Math.sin(h) * lon + Math.cos(h) * lat];
@@ -304,7 +315,7 @@ function plowChore(ctx: ChoreCtx): Chore {
   }
   // Pat on and off the tractor
   type Mode = "seat" | "off" | "foot" | "on";
-  let mode: Mode = "seat", sideAt: Pt = [0, 0], toldPlow = false, toldShov = false, stopT = 0, autoReady: "" | "hop" | "climb" = "", linda = 0;
+  let mode: Mode = "seat", sideAt: Pt = [0, 0], toldPlow = false, toldShov = false, stopT = 0, autoReady: "" | "hop" | "climb" = "", linda = 0, footT = 0;
   const seatPt = (): Pt => { const p = ctx.pose(); return [p.x - Math.cos(p.h) * 0.44, p.y - Math.sin(p.h) * 0.44]; };
   const sidePt = (): Pt => { const p = ctx.pose(); return [p.x - Math.cos(p.h) * 0.3 + Math.sin(p.h) * 1.4, p.y - Math.sin(p.h) * 0.3 - Math.cos(p.h) * 1.4]; };
   const blocks = (): [number, number, number][] => { const p = ctx.pose(); return [[p.x, p.y, 0.9], [...L2W(1.38, 0, p.x, p.y, p.h), 0.42], [...L2W(1.38, -0.8, p.x, p.y, p.h), 0.42], [...L2W(1.38, 0.8, p.x, p.y, p.h), 0.42]] as [number, number, number][]; };
@@ -320,7 +331,7 @@ function plowChore(ctx: ChoreCtx): Chore {
       const ph = ctx.phase(), p = ctx.pose(), playing = ph === "play" || ph === "ready";
       pushing = Math.max(0, pushing - dt);
       base.step(dt, onFoot() ? pat : null, null); catHi.step(dt, onFoot() ? pat : null);
-      stopT = Math.abs(p.v) < 0.3 ? stopT + dt : 0;
+      stopT = Math.abs(p.v) < 0.3 ? stopT + dt : 0; footT = onFoot() ? footT + dt : 0;
       for (const q of tossed) { q.t += dt; q.x += q.vx * dt * (1 - q.t); q.y += q.vy * dt * (1 - q.t); } for (let i = tossed.length - 1; i >= 0; i--) if (tossed[i].t > 0.5) tossed.splice(i, 1);
       if (ph === "scene") { linda = Math.min(1, linda + dt * 1.5); return; }
       if (!playing) return;
@@ -341,11 +352,22 @@ function plowChore(ctx: ChoreCtx): Chore {
     drawGround(c, time) {
       base.outside(c);
       c.drawImage(layer, bx0, by0, bx1 - bx0, by1 - by0);
+      // the spots for the shovel (the walk and round Linda's car) tinted blue, brighter once the plowing's done
+      if (shovPct() < 0.95 && (ctx.phase() === "play" || ctx.phase() === "ready")) {
+        const strong = plowPct() >= 0.95 || onFoot(), a = strong ? 0.2 + 0.12 * (0.5 + 0.5 * Math.sin(time * 4)) : 0.14;
+        c.save(); c.fillStyle = c.strokeStyle = `rgba(70,130,215,${a.toFixed(3)})`; c.lineCap = "round"; c.lineJoin = "round";
+        c.lineWidth = WALK.width; c.beginPath(); WALK.pts.forEach((q, i) => (i ? c.lineTo(q[0], q[1]) : c.moveTo(q[0], q[1]))); c.stroke();
+        pathPoly(c, RING); c.fill();
+        c.setLineDash([0.35, 0.25]); c.lineWidth = 0.07; c.strokeStyle = `rgba(50,105,190,${(a * 2.4).toFixed(3)})`; pathPoly(c, RING); c.stroke(); c.restore();
+      }
       // nearly there: the last patches glow
-      const which = mode === "seat" ? (plowPct() >= 0.88 && plowPct() < 0.95 ? plowN : null) : shovPct() >= 0.8 && shovPct() < 0.95 ? shovN : plowPct() < 0.95 && plowPct() >= 0.88 ? plowN : null;
+      const which = mode === "seat" ? (plowPct() >= 0.8 && plowPct() < 0.95 ? plowN : null) : shovPct() >= 0.8 && shovPct() < 0.95 ? shovN : plowPct() < 0.95 && plowPct() >= 0.88 ? plowN : null;
       if (which && ctx.phase() === "play") { const pu = 0.5 + 0.5 * Math.sin(time * 5); c.fillStyle = `rgba(255,214,64,${(0.3 + 0.3 * pu).toFixed(3)})`; c.beginPath(); for (let k = 0; k < w.N; k++) if (which[k] && !clr[k]) { c.moveTo(w.cellX(k) + 0.32, w.cellY(k)); c.arc(w.cellX(k), w.cellY(k), 0.32, 0, 7); } c.fill(); }
     },
-    drawBelow(c, time) { drawSnowCar(c, CAR.x, CAR.y, -Math.PI / 2, CAR.color, 1, CAR.len, CAR.wid); const p = ctx.pose(); drawPlow(c, p.x, p.y, p.h, ctx.up.paint === "red" ? { body: "#d8322a", hood: "#e8443a", trim: "#8e1f19" } : ctx.up.paint === "yellow" ? { body: "#f2b81d", hood: "#f8c935", trim: "#a87c0c" } : { body: "#f26b1d", hood: "#f47c20", trim: "#b04e12" }, load, time); },
+    drawBelow(c, time) {
+      for (const [x, y] of stakes) { c.fillStyle = "rgba(60,80,110,0.25)"; c.beginPath(); c.ellipse(x + 0.16, y + 0.18, 0.16, 0.09, 0.6, 0, 7); c.fill(); c.fillStyle = "#f26b1d"; c.strokeStyle = "#7a2f08"; c.lineWidth = 0.04; c.beginPath(); c.arc(x, y, 0.15, 0, 7); c.fill(); c.stroke(); c.fillStyle = "#fff3e6"; c.beginPath(); c.arc(x - 0.04, y - 0.04, 0.05, 0, 7); c.fill(); }
+      if (mode === "seat" && plowPct() >= 0.95 && shovPct() < 0.95 && ctx.phase() === "play") { const p = ctx.pose(), u = (time * 1.4) % 1; c.strokeStyle = `rgba(255,214,64,${(0.9 * (1 - u)).toFixed(3)})`; c.lineWidth = 0.14; c.beginPath(); c.arc(p.x, p.y, 1.4 + u * 1.4, 0, 7); c.stroke(); }
+      drawSnowCar(c, CAR.x, CAR.y, -Math.PI / 2, CAR.color, 1, CAR.len, CAR.wid); const p = ctx.pose(); drawPlow(c, p.x, p.y, p.h, ctx.up.paint === "red" ? { body: "#d8322a", hood: "#e8443a", trim: "#8e1f19" } : ctx.up.paint === "yellow" ? { body: "#f2b81d", hood: "#f8c935", trim: "#a87c0c" } : { body: "#f26b1d", hood: "#f47c20", trim: "#b04e12" }, load, time); },
     drawAbove(c, time) {
       const p = ctx.pose();
       if (mode === "seat") drawPatSeated(c, p.x, p.y, p.h, 0, time, ctx.phase() === "scene" || ctx.phase() === "over" ? 1 : 0);
@@ -358,11 +380,14 @@ function plowChore(ctx: ChoreCtx): Chore {
       base.screen(c, CW, MH, time); catHi.draw(c, sx, sy);
       const ph = ctx.phase(); if (ph !== "play" && ph !== "ready") return;
       const p = ctx.pose();
-      if (mode === "seat" && stopT > 0.4 && shovPct() < 0.95 && (plowPct() >= 0.95 || (stopT > 1.6 && nearestTodo(p.x, p.y, "shovel") >= 0 && Math.hypot(w.cellX(nearestTodo(p.x, p.y, "shovel")) - p.x, w.cellY(nearestTodo(p.x, p.y, "shovel")) - p.y) < 9))) hint(c, "Tap Pat To Hop Off", CW, MH);
+      if (mode === "seat" && plowPct() >= 0.95 && shovPct() < 0.95) hint(c, stopT > 0.3 ? "Step 2 Of 2: Tap Pat To Hop Off And Shovel" : "Step 2 Of 2: Stop And Tap Pat To Shovel", CW, MH);
+      else if (mode === "seat" && plowPct() < 0.95 && (ctx.simT() < 7 || stopT > 1.5) && !(stopT > 1.6 && nearestTodo(p.x, p.y, "shovel") >= 0 && Math.hypot(w.cellX(nearestTodo(p.x, p.y, "shovel")) - p.x, w.cellY(nearestTodo(p.x, p.y, "shovel")) - p.y) < 9)) hint(c, "Step 1 Of 2: Plow Between The Orange Stakes", CW, MH);
+      else if (mode === "foot" && shovPct() < 0.95 && footT < 5) hint(c, "Walk Over The Blue Snow To Shovel It", CW, MH);
+      else if (mode === "seat" && stopT > 0.4 && shovPct() < 0.95 && (plowPct() >= 0.95 || (stopT > 1.6 && nearestTodo(p.x, p.y, "shovel") >= 0 && Math.hypot(w.cellX(nearestTodo(p.x, p.y, "shovel")) - p.x, w.cellY(nearestTodo(p.x, p.y, "shovel")) - p.y) < 9))) hint(c, "Tap Pat To Hop Off", CW, MH);
       else if (mode === "foot" && plowPct() < 0.95 && (shovPct() >= 0.95 || Math.hypot(pat.x - p.x, pat.y - p.y) < 3)) hint(c, "Tap The Tractor To Climb On", CW, MH);
       // what's left, when it's off screen
       const fx = onFoot() ? pat.x : p.x, fy = onFoot() ? pat.y : p.y, which = onFoot() ? (shovPct() < 0.95 ? "shovel" : plowPct() < 0.95 ? "plow" : null) : plowPct() < 0.95 ? "plow" : shovPct() < 0.95 ? "shovel" : null;
-      if (which && (which === "shovel" || plowPct() > 0.6)) { const k = nearestTodo(fx, fy, which); if (k >= 0) edgeArrow(c, sx(w.cellX(k)), sy(w.cellY(k)), sx(fx), sy(fy), CW, MH, time, `${Math.round(Math.hypot(w.cellX(k) - fx, w.cellY(k) - fy))} m`); }
+      if (which) { const k = nearestTodo(fx, fy, which); if (k >= 0) edgeArrow(c, sx(w.cellX(k)), sy(w.cellY(k)), sx(fx), sy(fy), CW, MH, time, `${Math.round(Math.hypot(w.cellX(k) - fx, w.cellY(k) - fy))} m`); }
     },
     drawMini(c, ms) {
       base.mini(c);
