@@ -7,6 +7,7 @@
 import { useEffect, useRef, useState, type ReactNode } from "react";
 import { sb } from "@/components/creators/api";
 import { appStoreLink, APP_STORE_ID } from "@/components/site";
+import { tagShareText, track, trackGamePlay } from "@/components/track";
 
 export type Mode = "daily" | "endless";
 export type Player = { token: string; name: string };
@@ -87,7 +88,7 @@ export function useScores(game: string, mode: Mode, player: Player | null) {
     const { data: r } = await sb().rpc("game_my_rank", { p_token: token, p_game: game, p_board: board });
     setPosted({ rank: r?.rank ?? null, total: r?.total ?? 0 });
   };
-  const finish = (f: Run) => { setFinal(f); setPosted(null); if (player) post(player.token, f); };
+  const finish = (f: Run) => { setFinal(f); setPosted(null); trackGamePlay(game); if (player) post(player.token, f); };   // first finished round this session counts as a play
   const reset = () => { setFinal(null); setPosted(null); };
   return { final, posted, finish, post, reset, board };
 }
@@ -312,7 +313,8 @@ export function useGameShell(game: string, mode: Mode) {
   const [boardOpen, setBoardOpen] = useState(false);
   const [copied, setCopied] = useState(false);
   const finishRef = useRef(scores.finish); finishRef.current = scores.finish;   // the game loop always calls the latest
-  const share = async (text: string) => { if (await shareText(text)) { setCopied(true); setTimeout(() => setCopied(false), 2000); } };
+  // Links in the message get ?via=share so visits from them count as shares (components/track.ts). Every tap on Share is counted.
+  const share = async (text: string) => { track("share"); if (await shareText(tagShareText(text))) { setCopied(true); setTimeout(() => setCopied(false), 2000); } };
   // the pause button, plus an automatic pause when you switch apps or lock the phone mid-run (see PauseButton)
   const [held, setHeld] = useState(false);
   useEffect(() => { const f = () => { if (document.hidden) setHeld(true); }; document.addEventListener("visibilitychange", f); return () => document.removeEventListener("visibilitychange", f); }, []);

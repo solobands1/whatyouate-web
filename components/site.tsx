@@ -5,7 +5,14 @@ export const APP_STORE_ID = "6762287393";
 
 /* App Store Connect campaign links: downloads from a tagged link show up under Acquisition > Campaigns, so we can
    tell whether a page (like the games) actually brings in installs. Apple only counts them once APP_STORE_PT,
-   the provider token from App Store Connect's campaign link generator, is filled in; until then they are plain links. */
+   the provider token from App Store Connect's campaign link generator, is filled in; until then they are plain links.
+
+   How to set it: App Store Connect > Apps > WhatYouAte > App Analytics > Acquisition > Campaigns > Generate Campaign
+   Link. The link it makes has "pt=" followed by a number: that number is the provider token. Paste just the number
+   between the quotes below (it isn't a secret; it's in every campaign link). Nothing else needs to change.
+
+   The campaign ("ct") names the page, and when someone taps the link the site adds where their visit came from, e.g.
+   "games-snack-merge-tiktok" (components/track.ts, onDocumentClick). Apple keeps the first 40 characters. */
 export const APP_STORE_PT = "";
 export function appStoreLink(campaign: string) {
   if (!APP_STORE_PT) return `${APP_STORE_URL}?ct=${encodeURIComponent(campaign)}`;

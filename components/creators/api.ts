@@ -3,12 +3,10 @@
 import { useCallback, useEffect, useState } from "react";
 import { createClient, type SupabaseClient } from "@supabase/supabase-js";
 import type { Country, PayoutMethod } from "./shared";
-
 // The publishable key is meant to ship in browser code. What anyone can read or change is
 // decided in the database: row-level security plus the creator_* functions in the app repo's
 // supabase/creators.sql.
-const SUPABASE_URL = "https://dopwptglzsfpdqmbeayw.supabase.co";
-const SUPABASE_KEY = "sb_publishable_nYhmn0_Ivtx51pT5LmmRPA_UFj7VsSP";
+import { SUPABASE_URL, SUPABASE_KEY } from "../supabaseConfig";
 
 // App Store id, for the free Pro redemption link.
 const APPLE_APP_ID = "6762287393";
@@ -427,3 +425,26 @@ export type OwnerUsage = {
   users: UsageUser[];
 };
 export const ownerUsage = (days = 30) => rpc<OwnerUsage>("owner_usage", { p_days: days });
+
+// ---- Website attribution (owner only; see attribution.sql in the app repo) ---------------------------------------
+// Daily website counts by where the visit came from. No visitor data: just totals (components/track.ts sends them).
+export type AttributionEvent = "visit" | "game_open" | "game_play" | "app_click" | "share";
+export type AttributionCounts = Record<AttributionEvent, number>;
+export type AttributionSource = AttributionCounts & {
+  source: string;
+  /** App Store taps per 100 visits from this source, or null with no visits. */
+  tapRate: number | null;
+};
+export type AttributionDay = AttributionCounts & { day: string };
+export type AttributionGame = { slug: string; opens: number; plays: number; appClicks: number; shares: number };
+export type OwnerAttribution = {
+  generatedAt: string;
+  days: number;
+  from: string;
+  to: string;
+  totals: AttributionCounts & { tapRate: number | null };
+  sources: AttributionSource[];
+  daily: AttributionDay[];
+  games: AttributionGame[];
+};
+export const ownerAttribution = (days = 30) => rpc<OwnerAttribution>("owner_attribution", { p_days: days });
