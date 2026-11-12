@@ -10,7 +10,7 @@
 // Everything here is safe to call anywhere: it never throws, does nothing during prerender, and if the database
 // function isn't installed yet the calls just fail quietly.
 import { SUPABASE_URL, SUPABASE_KEY } from "./supabaseConfig";
-import { appStoreLink } from "./site";
+import { appStoreLink, APP_STORE_URL } from "./site";
 import { GAMES } from "./games/catalog";
 
 export type TrackEvent = "visit" | "game_open" | "game_play" | "app_click" | "share";
@@ -22,15 +22,32 @@ const SOURCES = [
 ] as const;
 export type Source = (typeof SOURCES)[number];
 
-/** The short links. Each is a tiny page (app/<name>/page.tsx) that counts the visit, then sends people on. */
+/** The short links. Each is a tiny page (app/<name>/page.tsx) that counts the visit, then sends people on.
+ *  `path` is the page the visit is counted under (the database only knows /, /games and /play; anything else is
+ *  /other). `app` links also count an App Store tap and go straight on to the App Store. */
+type ShortLinkDef = { to: string; source: Source; label: string; path?: string; app?: boolean };
 export const SHORT_LINKS = {
-  "/play": { to: "/games", source: "video", label: "the games" },   // the end card on the game videos
+  "/play": { to: "/games", source: "video", label: "the games", path: "/play" },   // the end card on the game videos
   "/tt": { to: "/", source: "tiktok", label: "WhatYouAte" },       // bio links
   "/yt": { to: "/", source: "youtube", label: "WhatYouAte" },
   "/ig": { to: "/", source: "instagram", label: "WhatYouAte" },
   "/fb": { to: "/", source: "facebook", label: "WhatYouAte" },
-} as const satisfies Record<string, { to: string; source: Source; label: string }>;
+  // Instagram's bio has room for several links: the app, the games and the creator program, each counted as Instagram
+  "/ig/app": { to: APP_STORE_URL, source: "instagram", label: "the App Store", app: true },
+  "/ig/play": { to: "/games", source: "instagram", label: "the games", path: "/games" },
+  "/ig/creators": { to: "/creators", source: "instagram", label: "the Creators Program", path: "/other" },
+  // TikTok has one bio link (/tt); these are there for when it should point somewhere else
+  "/tt/app": { to: APP_STORE_URL, source: "tiktok", label: "the App Store", app: true },
+  "/tt/play": { to: "/games", source: "tiktok", label: "the games", path: "/games" },
+  "/tt/creators": { to: "/creators", source: "tiktok", label: "the Creators Program", path: "/other" },
+} satisfies Record<string, ShortLinkDef>;
 export type ShortLinkPath = keyof typeof SHORT_LINKS;
+
+/** Where a short link ends up: a page on the site, or for an app link the App Store, tagged "bio-<source>". */
+export function shortLinkTarget(from: ShortLinkPath): string {
+  const link: ShortLinkDef = SHORT_LINKS[from];
+  return link.app ? appStoreLink(`bio-${link.source}`) : link.to;
+}
 
 const PREFIX = "wya-t:";
 const GAME_SLUGS = new Set(GAMES.map((g) => g.slug));
@@ -198,8 +215,8 @@ export function trackGamePlay(game: string) {
 /** The short link pages: set the source, count the visit, then replace the address with the real page. */
 export function followShortLink(from: ShortLinkPath) {
   if (!inBrowser()) return;
-  const link = SHORT_LINKS[from];
-  const go = () => { try { window.location.replace(link.to); } catch {} };
+  const link: ShortLinkDef = SHORT_LINKS[from];
+  const go = () => { try { window.location.replace(shortLinkTarget(from)); } catch {} };
   try {
     let source: Source = link.source;
     // The game videos' end card: say which app the video was watched in when we can tell.
@@ -209,7 +226,9 @@ export function followShortLink(from: ShortLinkPath) {
     }
     write("src", source);
     write(`once:visit:${source}`, "1");
-    const sent = send("visit", source, from === "/play" ? "/play" : "/", true);
+    const counted = [send("visit", source, link.path ?? "/", true)];
+    if (link.app) counted.push(send("app_click", source, link.path ?? "/", true));
+    const sent = Promise.all(counted);
     // Give the count a moment to leave (it can also finish after we've moved on), then go.
     Promise.race([sent, new Promise((r) => setTimeout(r, 600))]).then(go, go);
   } catch {
