@@ -389,7 +389,11 @@ export default function PeaTanks() {
       if (m.t === "obs") { if (m.st === stage && (m.ov as number) > gOv) { gOv = m.ov as number; w.map = { ...w.map, obs: m.obs as Ob[] }; tableCache = null; } return; }
       if (m.t === "rend" && m.m === matchNo && m.st === stage) {
         phase = "end"; phaseT = 1e9; predOn = false; endText = m.text as string; endSub = (m.sub as string) ?? "";
-        if (m.wins) { const wv = m.wins as number[]; mw[0] = wv[0]; mw[1] = wv[1]; setWins(mw.slice()); endSub = `You ${mw[me]} · ${pnames[1 - me]} ${mw[1 - me]}`; }
+        if (m.wins) {   // a versus round: word the banner from this phone's side (the host's text says "You" for the host)
+          const wv = m.wins as number[], win = m.win as number; mw[0] = wv[0]; mw[1] = wv[1]; setWins(mw.slice());
+          endText = win === 2 ? "Tie Round" : win === me ? "You Win The Round!" : `${said(win)} Wins The Round`;
+          endSub = `You ${mw[me]} · ${pnames[1 - me]} ${mw[1 - me]}`;
+        }
         return;
       }
       if (m.t === "mend" && m.m === matchNo) { const wv = m.wins as number[]; mw[0] = wv[0]; mw[1] = wv[1]; setWins(mw.slice()); phase = "over"; setMatchEnd({ winner: m.win as number }); return; }
