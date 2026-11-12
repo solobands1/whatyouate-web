@@ -10,6 +10,27 @@ import { APP_STORE_URL, BODY, INK } from "./site";
 // any page opened from here count for it on the owner dashboard. The App Store button gets its campaign ("bio-tiktok")
 // and its tap counted by the site-wide click listener.
 const shadow = "0 14px 32px -12px rgba(10,32,74,0.35)";
+const BLUE = "#3F7FD6";
+
+// Line icons (Lucide, ISC licence), drawn in the brand blue on the white buttons
+function Icon({ children }: { children: React.ReactNode }) {
+  return (
+    <svg width="21" height="21" viewBox="0 0 24 24" fill="none" stroke={BLUE} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="shrink-0" aria-hidden="true">
+      {children}
+    </svg>
+  );
+}
+const GamepadIcon = () => (
+  <Icon>
+    <line x1="6" x2="10" y1="11" y2="11" /><line x1="8" x2="8" y1="9" y2="13" /><line x1="15" x2="15.01" y1="12" y2="12" /><line x1="18" x2="18.01" y1="10" y2="10" />
+    <path d="M17.32 5H6.68a4 4 0 0 0-3.978 3.59c-.006.052-.01.101-.017.152C2.604 9.416 2 14.456 2 16a3 3 0 0 0 3 3c1 0 1.5-.5 2-1l1.414-1.414A2 2 0 0 1 9.828 16h4.344a2 2 0 0 1 1.414.586L17 18c.5.5 1 1 2 1a3 3 0 0 0 3-3c0-1.545-.604-6.584-.685-7.258-.007-.05-.011-.1-.017-.151A4 4 0 0 0 17.32 5z" />
+  </Icon>
+);
+const VideoIcon = () => (
+  <Icon>
+    <path d="m16 13 5.223 3.482a.5.5 0 0 0 .777-.416V7.87a.5.5 0 0 0-.752-.432L16 10.5" /><rect x="2" y="6" width="14" height="12" rx="2" />
+  </Icon>
+);
 const pill = "flex w-full items-center justify-center gap-2.5 rounded-full px-7 py-[17px] text-[16px] font-semibold tracking-[-0.01em] transition duration-200 active:translate-y-px";
 
 export default function BioPage({ from }: { from: ShortLinkPath }) {
@@ -32,10 +53,10 @@ export default function BioPage({ from }: { from: ShortLinkPath }) {
             Get The App
           </a>
           <Link href="/games" className={pill} style={{ background: "#FFFFFF", color: INK, boxShadow: shadow }}>
-            <span aria-hidden="true">🎮</span> Play Free Games
+            <GamepadIcon /> Play Free Games
           </Link>
           <Link href="/creators" className={pill} style={{ background: "#FFFFFF", color: INK, boxShadow: shadow }}>
-            <span aria-hidden="true">🤝</span> Creator Program
+            <VideoIcon /> Creator Program
           </Link>
         </div>
 
