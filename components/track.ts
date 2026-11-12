@@ -28,7 +28,7 @@ export type Source = (typeof SOURCES)[number];
 type ShortLinkDef = { to: string; source: Source; label: string; path?: string; app?: boolean };
 export const SHORT_LINKS = {
   "/play": { to: "/games", source: "video", label: "the games", path: "/play" },   // the end card on the game videos
-  "/tt": { to: "/", source: "tiktok", label: "WhatYouAte" },       // bio links
+  "/tt": { to: "/", source: "tiktok", label: "WhatYouAte" },       // bio links (/tt is the TikTok landing page, components/BioPage.tsx)
   "/yt": { to: "/", source: "youtube", label: "WhatYouAte" },
   "/ig": { to: "/", source: "instagram", label: "WhatYouAte" },
   "/fb": { to: "/", source: "facebook", label: "WhatYouAte" },
@@ -210,6 +210,19 @@ export function pageView(pathname: string) {
 /** The first finished round of a game this session (called from the shared game kit). */
 export function trackGamePlay(game: string) {
   if (GAME_SLUGS.has(game)) track("game_play", { once: `play:${game}`, path: `/games/${game}` });
+}
+
+/** A bio landing page (whatyouate.app/tt): set the source so the buttons' taps and the pages they open count for that
+ *  app, and count the visit once per browser session. The App Store button is counted by onDocumentClick. */
+export function bioVisit(from: ShortLinkPath) {
+  if (!inBrowser()) return;
+  try {
+    const source: Source = SHORT_LINKS[from].source;
+    write("src", source);
+    if (read(`once:visit:${source}`)) return;
+    write(`once:visit:${source}`, "1");
+    void send("visit", source, "/", false);
+  } catch {}
 }
 
 /** The short link pages: set the source, count the visit, then replace the address with the real page. */
