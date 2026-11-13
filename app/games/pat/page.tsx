@@ -13,7 +13,7 @@ export const metadata: Metadata = {
     description: DESC,
     type: "website",
     url: "https://minimul.app/pat",
-    images: [{ url: "/og/pat.png", width: 1200, height: 630, alt: "Pat's Lawnmower: Pat on an orange lawn tractor mowing stripes, with the grey cat nearby" }],
+    images: [{ url: "/og/pat.png", width: 1200, height: 630, alt: "Pat's Lawnmower: Pat on an orange lawn tractor mowing stripes, with Willy The Cat nearby" }],
   },
   twitter: { card: "summary_large_image", title: "Pat's Lawnmower", description: DESC, images: ["/og/pat.png"] },
 };
