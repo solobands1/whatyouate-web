@@ -122,7 +122,7 @@ function DuelCard({ view, title, busy, err, defaultName, close, accept, submitNa
   const btn = "wk-btn wk-blue mt-4 h-[50px] w-full shrink-0 text-[19px]", quiet = "wk-link mt-2 w-full py-2 text-[15px]";
   return (
     <Modal onClose={close} z="z-30">
-      <div className="flex justify-center"><span className="flex h-[58px] w-[58px] items-center justify-center rounded-full bg-[linear-gradient(180deg,#FFE65C,#FFB618)] text-[#0E1F45] shadow-[0_0_0_3px_#B86E00,0_4px_0_3px_#8a5200]"><SwordsIcon size={30} /></span></div>
+      <div className="flex justify-center"><span className="flex h-[58px] w-[58px] items-center justify-center rounded-full bg-[#EAF2FF] text-[#4F88E8]"><SwordsIcon size={30} /></span></div>
       {view.kind === "invite" && (<>
         <div className="wk-f mt-2 text-center text-[24px] leading-tight text-[#0E1F45]">{view.duel.a_name} Challenged You</div>
         <p className="mt-2 text-center text-sm text-[#5a6b85]">Play today&apos;s {title} and beat <b className="text-[#101b2e]">{view.duel.a_score.toLocaleString()}</b>. Same board, one go. Your first finished game counts.</p>

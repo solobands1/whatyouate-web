@@ -36,10 +36,10 @@ export const metadata: Metadata = {
 
 // A tile in the launcher: the game's poster, a badge on its bottom edge, the name in the display face, and a chunky Play.
 const HUB_CSS = `
-.hub-tile { background: linear-gradient(180deg, #ffffff 0%, #eef4ff 100%); border-radius: 24px;
-  box-shadow: 0 0 0 1.5px #DDEBFF, 0 18px 36px -18px rgba(16,27,46,0.4), 0 3px 8px -3px rgba(16,27,46,0.1); transition: transform 120ms ease-out, box-shadow 120ms ease-out; }
-.hub-tile:active { transform: translateY(3px); box-shadow: 0 0 0 1.5px #DDEBFF, 0 8px 16px -12px rgba(16,27,46,0.4); }
-.hub-tile:active .wk-go { transform: translateY(3px); box-shadow: 0 1px 0 #3F78DB; }
+.hub-tile { background: #ffffff; border-radius: 28px;
+  box-shadow: 0 0 0 1px rgba(111,168,255,0.18), 0 26px 60px -30px rgba(31,70,140,0.45); transition: transform 120ms ease-out, box-shadow 120ms ease-out; }
+.hub-tile:active { transform: scale(0.985); }
+.hub-tile:active .wk-go { background: #5E9BF7; }
 @media (hover: hover) { .hub-tile:hover { transform: translateY(-3px); } .hub-tile:hover img { transform: scale(1.04); } }
 .hub-tile:focus-visible { outline: 4px solid #FFC21F; outline-offset: 5px; }
 `;
@@ -54,11 +54,11 @@ function GameCard({ g }: { g: Game }) {
             className="block aspect-square w-full object-cover transition-transform duration-300" />
         </div>
         {g.multiplayer ? (
-          <span className="wk-tag absolute -bottom-3 left-1/2 flex h-[26px] -translate-x-1/2 items-center gap-1.5 bg-[#E8505B] px-3 text-[13px] leading-none">
+          <span className="wk-tag absolute -bottom-3 left-1/2 flex h-[26px] -translate-x-1/2 items-center gap-1.5 bg-[#6FA8FF] px-3 text-[13px] leading-none shadow-[0_8px_18px_-10px_rgba(79,136,232,0.9)]">
             <PlayersIcon size={15} />2 Player
           </span>
         ) : g.daily ? (
-          <span className="wk-tag absolute -bottom-3 left-1/2 flex h-[26px] -translate-x-1/2 items-center gap-1 bg-[#FFC21F] px-2.5 text-[11.5px] leading-none text-[#0E1F45] [text-shadow:none] sm:text-[13px]">
+          <span className="wk-tag absolute -bottom-3 left-1/2 flex h-[26px] -translate-x-1/2 items-center gap-1 bg-[#EAF2FF] px-2.5 text-[11.5px] leading-none text-[#4F88E8] shadow-[0_0_0_2px_#fff] sm:text-[13px]">
             <CalendarIcon size={13} />New Challenge Daily
           </span>
         ) : null}
@@ -119,10 +119,10 @@ export default function Games() {
 
       <main className="px-4 pt-28 sm:px-6 sm:pt-36">
         <div className="mx-auto max-w-[44rem] text-center">
-          <p className="wk-f inline-flex items-center gap-1.5 rounded-full bg-[#DDEBFF] px-3.5 py-1.5 text-[13px] tracking-[0.06em] text-[#4F88E8]">
-            <SparkleIcon size={14} />Free Food Games
+          <p className="wk-f inline-flex items-center gap-1.5 text-[12px] font-semibold uppercase tracking-[0.18em] text-[#6F86A8]">
+            Free Food Games
           </p>
-          <h1 className="wk-f mt-5 text-balance text-[clamp(42px,11vw,76px)] leading-[0.95] text-[#0E1F45] [text-shadow:0_5px_0_#c3d7f5]">
+          <h1 className="wk-f mt-5 text-balance text-[clamp(40px,10.5vw,72px)] leading-[1.03] text-[#101B2E] tracking-[-0.04em]">
             Choose Your Game
           </h1>
           <p className="mx-auto mt-5 max-w-[36ch] text-balance text-[16px] leading-[1.6] sm:text-[17px]" style={{ color: BODY }}>

@@ -497,7 +497,7 @@ export default function FoodFling() {
         <PrizeLogo shell={shell} active={!over && !shell.paused} />
         {clear && !over && (
           <OverlayCard title={`Level ${clear.level} Cleared`} max="max-w-[270px]">
-            <div className={`${UI.big} text-[46px] [text-shadow:0_4px_0_#cfdff8]`}>+{clear.points.toLocaleString()}</div>
+            <div className={`${UI.big} text-[46px] tracking-[-0.03em]`}>+{clear.points.toLocaleString()}</div>
             <div className="mt-1.5 text-sm text-[#5a6b85]">{clear.spare ? `${clear.spare} fruit to spare` : "Just made it!"}</div>
             <button onClick={() => nextRef.current()} className={`${UI.go} mt-4 h-[52px] w-full text-[21px]`}>Next Level<PlayIcon size={17} /></button>
           </OverlayCard>

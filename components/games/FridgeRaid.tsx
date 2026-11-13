@@ -263,7 +263,7 @@ const lines = (log: string[]) => { const out: string[] = []; for (let i = 0; i <
 const plural = (n: number, one: string, many: string) => `${n} ${n === 1 ? one : many}`;
 const POWER = { light: { name: "Fridge Light", tip: "Peek At 4 Shelves", use: "Shine Here" }, blast: { name: "Freezer Blast", tip: "Hit 3 In A Row", use: "Blast Here" } };
 // each fridge has its own colour, so it's always clear whose is whose: yours blue, theirs red
-const MINE = { hi: "#78b2ff", lo: "#3f7fd6", lip: "#2a5ba8" }, THEIRS = { hi: "#ff8d84", lo: "#e8505b", lip: "#b33a44" };
+const MINE = { hi: "#9CC4FF", lo: "#6FA8FF", lip: "#4F88E8" }, THEIRS = { hi: "#FFA8B8", lo: "#FF7A93", lip: "#E0577A" };
 
 export default function FridgeRaid() {
   const wrapRef = useRef<HTMLDivElement>(null);
@@ -856,6 +856,7 @@ export default function FridgeRaid() {
   const G = g.current;
   const target = other(pov);
   const myTurn = phase === "play" && G.turn === pov;
+  const lit = phase === "place" || myTurn;   // the banner's "your move" look
   const canAct = myTurn && !locked && !awaiting.current && !(opp === "cpu" && shell.paused);
   const scoreNow = phase === "roundWon" ? total.current : total.current + G.roundScore;   // a won round is already in the total
   const winner: Side | null = G.found[1].length === SNACKS.length ? 0 : G.found[0].length === SNACKS.length ? 1 : null;
@@ -918,13 +919,13 @@ export default function FridgeRaid() {
     return (
       <div className="relative shrink-0" style={{ width: w, height: h }}>
         {glow && <div className={`pointer-events-none absolute ${glow === "go" ? "fr-go" : "fr-alert"}`} style={{ inset: small ? -4 : -6, borderRadius: r + (small ? 4 : 6),
-          border: `${small ? 2.5 : 3.5}px solid ${glow === "go" ? "#3ddc84" : "#ff5d6c"}` }} />}
+          border: `${small ? 2.5 : 3.5}px solid ${glow === "go" ? "#6FA8FF" : "#FF7A93"}` }} />}
         <div className="absolute inset-0" style={{ borderRadius: r, background: `linear-gradient(165deg, ${col.hi} 0%, ${col.lo} 70%)`,
-          boxShadow: `0 ${small ? 3 : 5}px 0 ${col.lip}, 0 14px 26px -10px rgba(16,42,86,0.5), inset 0 2px 0 rgba(255,255,255,0.35), inset 0 -2px 0 rgba(0,0,0,0.08)` }} />
+          boxShadow: `0 ${small ? 10 : 18}px ${small ? 22 : 36}px -${small ? 10 : 16}px rgba(31,70,140,0.45), inset 0 1px 0 rgba(255,255,255,0.35)` }} />
         <div className="absolute rounded-full" style={{ right: small ? 1.5 : 2, top: h * 0.24, width: small ? 3 : 4.5, height: h * 0.34, background: "linear-gradient(90deg, #c9d3e1, #ffffff 45%, #aab6c8)", boxShadow: "0 1px 2px rgba(16,42,86,0.35)" }} />
         <div className="absolute flex items-center justify-between gap-1" style={{ left: fr + 2, right: fr + handle, top: 0, height: head }}>
-          <span className={`game-font truncate uppercase text-white ${small ? "text-[10px]" : "text-[14px]"}`} style={{ textShadow: `0 1.5px 0 ${col.lip}` }}>{fridgeName(s)}</span>
-          {tag && <span className={`game-font shrink-0 rounded-full uppercase ${small ? "px-1.5 text-[8px] leading-[13px]" : "px-2 text-[10px] leading-[17px]"} ${tag === "Tap A Shelf" ? "fr-blink bg-[#3ddc84] text-[#0d4d2b]" : tag === "Searching" ? "fr-blink bg-[#ff5d6c] text-white" : "bg-black/20 text-white/90"}`}>{tag}</span>}
+          <span className={`game-font truncate uppercase text-white ${small ? "text-[10px]" : "text-[14px]"}`} style={{ letterSpacing: "0.08em" }}>{fridgeName(s)}</span>
+          {tag && <span className={`game-font shrink-0 rounded-full uppercase ${small ? "px-1.5 text-[8px] leading-[13px]" : "px-2 text-[10px] leading-[17px]"} ${tag === "Tap A Shelf" ? "fr-blink bg-white text-[#4F88E8]" : tag === "Searching" ? "fr-blink bg-white text-[#FF5A7A]" : "bg-black/20 text-white/90"}`}>{tag}</span>}
         </div>
         <div data-fridge={role} className={`absolute overflow-hidden transition-[filter] duration-300 ${role === "edit" ? "touch-none" : ""} ${clickable ? "cursor-pointer" : ""}`}
           style={{ left: fr, top: head, width: inner, height: inner, borderRadius: small ? 6 : 9, background: INTERIOR, filter: dim ? "saturate(0.55) brightness(0.9)" : undefined,
@@ -988,10 +989,10 @@ export default function FridgeRaid() {
       {fact && (phase === "over") && <FactCard fact={fact} />}
     </div>
   );
-  const btn = "game-font w-full rounded-2xl bg-[linear-gradient(180deg,#84B6FF,#5A95F5)] py-3 text-[19px] text-white shadow-[0_4px_0_#3F78DB] active:translate-y-[2px] active:shadow-[0_2px_0_#3F78DB] disabled:opacity-50";
-  const btn2 = "game-font w-full rounded-2xl bg-white py-3 text-[19px] text-[#4F88E8] shadow-[0_0_0_1.5px_#DDEBFF,0_4px_0_#D3E2F8] active:translate-y-[2px] active:shadow-[0_0_0_1.5px_#DDEBFF,0_2px_0_#D3E2F8]";
-  const btnGo = "game-font w-full rounded-2xl bg-[linear-gradient(180deg,#84B6FF,#5A95F5)] py-3 text-[21px] uppercase text-white shadow-[0_5px_0_#3F78DB] active:translate-y-[2px] active:shadow-[0_3px_0_#3F78DB]";
-  const chip = "game-font flex-1 rounded-2xl bg-white py-2.5 text-[16px] text-[#4F88E8] shadow-[0_0_0_1.5px_#DDEBFF,0_4px_0_#D3E2F8] active:translate-y-[2px] active:shadow-[0_0_0_1.5px_#DDEBFF,0_2px_0_#D3E2F8]";
+  const btn = "game-font w-full rounded-full bg-[#6FA8FF] py-3 text-[18px] text-white shadow-[0_12px_26px_-12px_rgba(79,136,232,0.85)] transition active:scale-[0.97] active:bg-[#5E9BF7] disabled:opacity-50";
+  const btn2 = "game-font w-full rounded-full bg-white py-3 text-[18px] text-[#4F88E8] shadow-[0_0_0_1px_#DCE8FA,0_8px_18px_-12px_rgba(31,70,140,0.3)] transition active:scale-[0.97]";
+  const btnGo = "game-font w-full rounded-full bg-[#6FA8FF] py-3.5 text-[19px] text-white shadow-[0_12px_26px_-12px_rgba(79,136,232,0.85)] transition active:scale-[0.97] active:bg-[#5E9BF7]";
+  const chip = "game-font flex-1 rounded-2xl bg-white py-2.5 text-[16px] text-[#4F88E8] shadow-[0_0_0_1px_#DCE8FA,0_8px_18px_-12px_rgba(31,70,140,0.3)] transition active:scale-[0.97]";
 
   const liveCard = (): ReactNode => {
     if (opp !== "live" && offer) return card(<>
@@ -1228,29 +1229,29 @@ export default function FridgeRaid() {
       </div>
 
       {phase === "play" || phase === "place" ? (
-        // the turn banner: green while it's yours (the one green left in the frame: it reads as "go"), near-black while it's theirs, blue while hiding snacks
+        // the turn banner: solid blue while it's your move (hiding snacks or your shot), plain white while it's theirs
         <div className="mt-2 flex h-[54px] shrink-0 items-center gap-2 rounded-2xl px-3 transition-colors duration-300"
-          style={{ background: phase === "place" ? "linear-gradient(180deg,#84B6FF,#5A95F5)" : myTurn ? "linear-gradient(180deg,#46d98c,#22a964)" : "linear-gradient(180deg,#2A3852,#101B2E)",
-            boxShadow: `0 4px 0 ${phase === "place" ? "#3F78DB" : myTurn ? "#167a45" : "#050a14"}` }}>
+          style={{ background: lit ? "#6FA8FF" : "#ffffff",
+            boxShadow: lit ? "0 14px 28px -14px rgba(79,136,232,0.9)" : "0 0 0 1px #E3EDFB, 0 8px 20px -14px rgba(31,70,140,0.35)" }}>
           <div className="min-w-0 flex-1">
-            <div className="game-font flex items-baseline gap-1 truncate text-[22px] uppercase leading-none text-white" style={{ textShadow: "0 2px 0 rgba(0,0,0,0.18)" }}>
+            <div className={`game-font flex items-baseline gap-1 truncate text-[21px] leading-none ${lit ? "text-white" : "text-[#101B2E]"}`}>
               <span className="truncate">{phase === "place" ? (placing ? "Hide Your Snacks" : "Get Set") : myTurn ? "Your Turn" : opp === "cpu" ? "Computer's Turn" : `${nameOf(other(pov))}'s Turn`}</span>
               {phase === "play" && !myTurn && <span className="shrink-0">{[0, 1, 2].map(k => <span key={k} className="fr-dot" style={{ animationDelay: `${k * 0.2}s` }}>.</span>)}</span>}
             </div>
-            <div className="mt-1 text-[12px] font-semibold leading-tight text-white/90" style={{ display: "-webkit-box", WebkitLineClamp: 1, WebkitBoxOrient: "vertical", overflow: "hidden" }}>
+            <div className={`mt-1 text-[12px] font-medium leading-tight ${lit ? "text-white/90" : "text-[#5A6B85]"}`} style={{ display: "-webkit-box", WebkitLineClamp: 1, WebkitBoxOrient: "vertical", overflow: "hidden" }}>
               {phase === "place" ? (placing && !msg.startsWith("Round") ? "Then Tap I'm Ready To Start." : msg) : msg.replace(/^Your Turn\.\s*/, "")}</div>
           </div>
           {opp === "cpu" && phase === "play" && (
             <div className="shrink-0 text-right">
-              <div className="text-[9px] font-bold uppercase tracking-wide text-white/75">Score</div>
-              <div className="game-font text-[20px] leading-none tabular-nums text-white">{scoreNow.toLocaleString()}</div>
+              <div className={`text-[9px] font-semibold uppercase tracking-[0.12em] ${lit ? "text-white/80" : "text-[#8A9AB5]"}`}>Score</div>
+              <div className={`game-font text-[20px] leading-none tabular-nums ${lit ? "text-white" : "text-[#101B2E]"}`}>{scoreNow.toLocaleString()}</div>
             </div>
           )}
           {opp === "cpu" && <PauseButton shell={shell} active={phase === "play"} />}
           {opp === "live" && phase === "play" && (
             <div className="relative flex h-10 w-10 shrink-0 items-center justify-center rounded-full" aria-label={`${secsLeft} seconds left`}
-              style={{ background: `conic-gradient(${secsLeft <= 10 ? "#ff5d6c" : "#ffffff"} ${(secsLeft / (TURN_MS / 1000)) * 360}deg, rgba(255,255,255,0.22) 0)` }}>
-              <div className="game-font flex h-[32px] w-[32px] items-center justify-center rounded-full text-[15px] tabular-nums text-white" style={{ background: myTurn ? "#22a964" : "#101B2E" }}>{secsLeft}</div>
+              style={{ background: `conic-gradient(${secsLeft <= 10 ? "#FF7A93" : lit ? "#ffffff" : "#6FA8FF"} ${(secsLeft / (TURN_MS / 1000)) * 360}deg, ${lit ? "rgba(255,255,255,0.28)" : "#E3EDFB"} 0)` }}>
+              <div className="game-font flex h-[32px] w-[32px] items-center justify-center rounded-full text-[15px] tabular-nums text-white" style={{ background: lit ? "#4F88E8" : "#101B2E" }}>{secsLeft}</div>
             </div>
           )}
         </div>

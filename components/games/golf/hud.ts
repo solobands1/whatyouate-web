@@ -6,7 +6,7 @@
 import { GAME_FONT } from "../gameFont";
 
 type C = CanvasRenderingContext2D;
-export const NAVY = "#101B2E", NAVY2 = "#24324D", YEL1 = "#FFE65C", YEL2 = "#FFB618", YEL_LIP = "#B86E00";
+export const NAVY = "#101B2E", NAVY2 = "#24324D", YEL1 = "#9CC4FF", YEL2 = "#6FA8FF", YEL_LIP = "#4F88E8";   // the "yellow" slots now hold the WhatYouAte blue
 export const gf = (size: number) => `${size}px ${GAME_FONT}`;
 const TAU = Math.PI * 2;
 
@@ -93,7 +93,7 @@ export function paintBand(g: C, b: Band, top: number, w: number, px: number, bal
     const f = fitText(g, p.name, room, 15, 11), status = p.picked ? "Picked Up" : p.done ? "Holed Out" : "";
     if (status) { say(g, f.s, nameX, cy + 0.5, f.size, "#ffffff", undefined, 0, align); say(g, status, nameX, cy + 12.5, 10, p.picked ? "#ffa3a9" : "#8debb4", undefined, 0, align); }
     else say(g, f.s, nameX, cy + 5.5, f.size, "#ffffff", undefined, 0, align);
-    say(g, String(p.strokes), nx, cy + 9, 25, p.active ? lin(g, 0, cy - 10, 0, cy + 9, [[0, "#FFF3A0"], [1, YEL2]]) : "#ffffff", NAVY, 5);
+    say(g, String(p.strokes), nx, cy + 9, 25, p.active ? lin(g, 0, cy - 10, 0, cy + 9, [[0, "#DCEBFF"], [1, "#9CC4FF"]]) : "#ffffff", NAVY, 5);
     g.restore();
   });
 

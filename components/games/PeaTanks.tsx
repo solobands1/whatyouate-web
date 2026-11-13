@@ -1072,7 +1072,7 @@ export default function PeaTanks() {
 
         {play.kind === "none" && !over && !menu && !rui && !rejoin && (mode === "daily" ? (
           <OverlayCard soft title={<>Today&apos;s Challenge #{n}</>} max="max-w-[300px]">
-            <div className="wk-f text-[32px] leading-none text-[#0E1F45] [text-shadow:0_3px_0_#d6e4fa]">Pea Tanks</div>
+            <div className="wk-f text-[32px] leading-none text-[#0E1F45] tracking-[-0.03em]">Pea Tanks</div>
             <p className="mt-2 text-sm text-[#5a6b85]">5 missions, 3 lives. The same tables and enemies for everyone today.</p>
             <button onClick={() => startSolo("missions", true)} className={`${UI.go} mt-4 h-[54px] w-full text-[20px]`}>Play Today&apos;s Missions</button>
             <button onClick={() => { setMode("endless"); }} className={`${UI.btn2} mt-3 h-[46px] w-full text-[17px]`}>More Ways To Play</button>
@@ -1245,7 +1245,7 @@ function MissionCard({ card, live, host, friend, again, onNext, onAgain, onMenu 
   if (card.k === "result") return (
     <Card>
       <div className="wk-f text-[15px] tracking-[0.03em] text-[#3F7FD6]">Mission {card.n} Cleared</div>
-      <div className="wk-f mt-1 text-[44px] leading-none tabular-nums text-[#0E1F45] [text-shadow:0_4px_0_#cfdff8]">+{card.pts.toLocaleString()}</div>
+      <div className="wk-f mt-1 text-[44px] leading-none tabular-nums text-[#0E1F45] tracking-[-0.03em]">+{card.pts.toLocaleString()}</div>
       <div className="mt-2 grid grid-cols-2 gap-2 text-sm">
         <div className="wk-hud py-2"><div className="wk-hud-label">Time</div><div className="wk-f mt-1 text-[20px] leading-none tabular-nums">{card.secs}s</div></div>
         <div className="wk-hud py-2"><div className="wk-hud-label">Aim</div><div className="wk-f mt-1 text-[20px] leading-none tabular-nums">{card.acc}%</div></div>
@@ -1267,7 +1267,7 @@ function MissionCard({ card, live, host, friend, again, onNext, onAgain, onMenu 
     <Card>
       <div className="wk-f text-[15px] tracking-[0.03em] text-[#3F7FD6]">{isGuard ? "Guard The Lunch" : "Co-op Missions"}</div>
       <div className="wk-f mt-1 text-[30px] leading-tight text-[#0E1F45]">{isGuard ? `${card.waves} ${card.waves === 1 ? "Wave" : "Waves"} Held` : card.won ? "Campaign Complete! 🎉" : `${card.cleared} ${card.cleared === 1 ? "Mission" : "Missions"} Cleared`}</div>
-      <div className="wk-f mt-1 text-[44px] leading-none tabular-nums text-[#0E1F45] [text-shadow:0_4px_0_#cfdff8]">{card.score.toLocaleString()}</div>
+      <div className="wk-f mt-1 text-[44px] leading-none tabular-nums text-[#0E1F45] tracking-[-0.03em]">{card.score.toLocaleString()}</div>
       {isGuard && <div className="text-sm text-[#5a6b85]">{card.score >= card.best ? "New Best!" : `Best: ${card.best.toLocaleString()}`} · {card.kills} knocked out</div>}
       {live && again.them && !again.me && <div className="wk-f mt-2 text-[16px] text-[#22A964]">{friend} Wants To Go Again!</div>}
       <button onClick={onAgain} disabled={live && again.me} className="mt-4 w-full wk-btn wk-blue h-[50px] text-[19px] disabled:opacity-70">{live && again.me ? `Waiting For ${friend}...` : "Play Again"}</button>

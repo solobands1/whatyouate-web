@@ -2,9 +2,11 @@
 // face the promo videos use, so the games and their ads look like one studio. DOM: put GAME_FONT_CSS in a <style> and use
 // the `game-font` class or GAME_FONT. Canvas: await loadGameFont() before the first draw that uses it.
 export const GAME_FONT = '"Lilita One", "Arial Rounded MT Bold", system-ui, sans-serif';
+/** The frame's face: the site's Geist (loaded by app/layout.tsx as --font-geist-sans), bold and tight like the homepage. */
+export const FRAME_FONT = 'var(--font-geist-sans), -apple-system, BlinkMacSystemFont, system-ui, sans-serif';
 export const GAME_FONT_CSS = `
 @font-face { font-family: "Lilita One"; src: url("/fonts/LilitaOne-Regular.ttf") format("truetype"); font-display: swap; }
-.game-font { font-family: ${GAME_FONT}; font-weight: 400; letter-spacing: 0.02em; }
+.game-font { font-family: ${FRAME_FONT}; font-weight: 700; letter-spacing: -0.01em; }
 `;
 let loading: Promise<void> | null = null;
 export function loadGameFont(): Promise<void> {

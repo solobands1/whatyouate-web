@@ -987,11 +987,11 @@ export default function KitchenGolf() {
         {isCpu ? (<>
           <div><div className="text-[10px] font-semibold uppercase tracking-wide text-[#5a6b85]">Score</div><div className="kg-f text-[28px] leading-none tabular-nums text-[#0E1F45]">{hud.score.toLocaleString()}</div></div>
           <div className="kg-f kg-ribbon rounded-full px-3 py-1 text-[13px] text-white">
-            {mode === "daily" ? `Hole ${hud.hole} Of 9` : `Round ${hud.round} · Hole ${hud.hole}`} <span className="text-[#FFE65C]">· {hud.tot[0]}-{hud.tot[1]}</span>
+            {mode === "daily" ? `Hole ${hud.hole} Of 9` : `Round ${hud.round} · Hole ${hud.hole}`} <span className="text-white/80">· {hud.tot[0]}-{hud.tot[1]}</span>
           </div>
         </>) : (<>
           <div className="min-w-0"><div className="truncate text-[10px] font-semibold uppercase tracking-wide text-[#5a6b85]">{isLive ? "You" : pn[0]}</div><div className="kg-f text-[28px] leading-none tabular-nums text-[#0E1F45]">{hud.tot[isLive ? me : 0]}</div></div>
-          <div className="kg-f kg-ribbon rounded-full px-3 py-1 text-[13px] text-white">{play.kind === "live" ? <>Live <span className="text-[#FFE65C]">· Room {play.code}</span></> : "Same Phone"}</div>
+          <div className="kg-f kg-ribbon rounded-full px-3 py-1 text-[13px] text-white">{play.kind === "live" ? <>Live <span className="text-white/80">· Room {play.code}</span></> : "Same Phone"}</div>
         </>)}
         <div className="flex items-center gap-1.5">
           {isCpu ? <div className="mr-1 text-right"><div className="text-[10px] font-semibold uppercase tracking-wide text-[#5a6b85]">Best</div><div className="kg-f text-[20px] leading-none tabular-nums text-[#0E1F45]">{best.toLocaleString()}</div></div>
@@ -1010,9 +1010,9 @@ export default function KitchenGolf() {
           <button onClick={() => skipRef.current()} className="kg-intro absolute inset-x-0 top-[24%] z-[6] mx-auto flex w-[80%] max-w-[296px] flex-col items-stretch">
             <style>{`@keyframes kg-in { 0% { opacity: 0; transform: translateY(-14px) scale(0.9) } 12% { opacity: 1; transform: scale(1.04) } 20% { transform: none } 62% { opacity: 1; transform: none } 85%, 100% { opacity: 0; transform: translateY(8px) scale(0.97) } } .kg-intro { animation: kg-in ${INTRO_MS}ms ease-out forwards }`}</style>
             <span className="kg-panel relative flex w-full flex-col items-center px-4 pb-4 pt-7 text-center">
-              <span className="kg-f kg-ribbon absolute -top-4 rounded-full px-4 py-1 text-[16px] text-[#FFE65C]">Hole {intro.n} Of 9</span>
+              <span className="kg-f kg-ribbon absolute -top-4 rounded-full px-4 py-1 text-[16px] text-white/80">Hole {intro.n} Of 9</span>
               <span className="kg-f text-[31px] leading-[1.05] text-[#0E1F45]">{intro.name}</span>
-              <span className="kg-f mt-2.5 rounded-full bg-gradient-to-b from-[#FFF07A] to-[#FFB618] px-4 py-0.5 text-[18px] text-[#0E1F45] shadow-[0_3px_0_#B86E00]">Par {intro.par}</span>
+              <span className="kg-f mt-2.5 rounded-full bg-[#EAF2FF] px-4 py-0.5 text-[18px] text-[#0E1F45]">Par {intro.par}</span>
             </span>
           </button>
         )}
@@ -1020,7 +1020,7 @@ export default function KitchenGolf() {
         {holeCard && !matchEnd && (
           <button onClick={() => skipRef.current()} className="kg-pop absolute inset-x-0 top-[13%] z-[6] mx-auto flex w-[90%] max-w-[330px] flex-col items-stretch">
             <span className="kg-panel relative flex w-full flex-col items-center px-3 pb-3 pt-7 text-center">
-              <span className="kg-f kg-ribbon absolute -top-4 max-w-[92%] truncate rounded-full px-4 py-1 text-[15px] text-white">Hole {holeCard.hole} <span className="text-[#FFE65C]">·</span> {holeCard.name}</span>
+              <span className="kg-f kg-ribbon absolute -top-4 max-w-[92%] truncate rounded-full px-4 py-1 text-[15px] text-white">Hole {holeCard.hole} <span className="text-white/80">·</span> {holeCard.name}</span>
               <span className="flex w-full flex-col gap-1.5">
                 {holeCard.results.map((r, i) => (
                   <span key={i} className="flex w-full items-center justify-between px-1">
@@ -1041,7 +1041,7 @@ export default function KitchenGolf() {
               <MeatballIcon size={52} />
               <div className="text-left">
                 <div className="kg-f text-[32px] leading-none text-[#0E1F45]">Kitchen Golf</div>
-                <div className="kg-f kg-ribbon mt-1.5 inline-block rounded-full px-2.5 py-0.5 text-[12px] text-[#FFE65C]">{mode === "daily" ? `Today's Challenge #${n}` : "Free Play"}</div>
+                <div className="kg-f kg-ribbon mt-1.5 inline-block rounded-full px-2.5 py-0.5 text-[12px] text-white/80">{mode === "daily" ? `Today's Challenge #${n}` : "Free Play"}</div>
               </div>
             </div>
             <p className="mt-3 text-sm leading-snug text-[#4a5b77]">{mode === "daily" ? "A 9-hole tour of the kitchen against the computer. Fewest strokes wins." : "Beat the computer round after round. New holes every round."}</p>
@@ -1049,7 +1049,7 @@ export default function KitchenGolf() {
               <div className="mt-2.5 flex flex-wrap justify-center gap-1">
                 {tour.map((t, i) => (
                   <span key={i} className="kg-f flex items-center gap-1 rounded-full bg-[#eef3fb] py-[2px] pl-[2px] pr-2 text-[11.5px] text-[#2c4470] shadow-[inset_0_0_0_1px_#d5e1f5]">
-                    <span className="flex h-[17px] w-[17px] items-center justify-center rounded-full bg-[#101B2E] text-[10px] text-[#FFE65C]">{i + 1}</span>{t}
+                    <span className="flex h-[17px] w-[17px] items-center justify-center rounded-full bg-[#EAF2FF] text-[10px] text-[#4F88E8]">{i + 1}</span>{t}
                   </span>
                 ))}
               </div>
@@ -1113,7 +1113,7 @@ export default function KitchenGolf() {
           </Card>
         ) : (
           <div className="pointer-events-none absolute inset-x-0 top-[66px] z-10 flex justify-center px-3">
-            <div className="kg-f truncate rounded-full bg-gradient-to-b from-[#FFF07A] to-[#FFB618] px-3.5 py-1 text-[13px] text-[#0E1F45] shadow-[0_3px_0_#B86E00,0_6px_14px_rgba(14,31,69,0.3)]">{friend} Stepped Away · {awayLeft}s · Your Putt</div>
+            <div className="kg-f truncate rounded-full bg-[#EAF2FF] px-3.5 py-1 text-[13px] text-[#0E1F45]">{friend} Stepped Away · {awayLeft}s · Your Putt</div>
           </div>
         ))}
         {isLive && room.reconnecting && !room.away && !rui && (
@@ -1139,7 +1139,7 @@ export default function KitchenGolf() {
             {rui.s === "waiting" && (<>
               <div className="kg-f text-[16px] text-[#5a6b85]">Your Room Code</div>
               <div className="mt-1.5 flex justify-center gap-1.5">
-                {rui.code.split("").map((ch, i) => <span key={i} className="kg-f flex h-[52px] w-[44px] items-center justify-center rounded-xl bg-gradient-to-b from-[#2A3852] to-[#101B2E] text-[30px] text-[#FFE65C] shadow-[0_4px_0_#050a14,inset_0_1px_0_rgba(255,255,255,0.12)]">{ch}</span>)}
+                {rui.code.split("").map((ch, i) => <span key={i} className="kg-f flex h-[52px] w-[44px] items-center justify-center rounded-xl bg-gradient-to-b from-[#2A3852] to-[#101B2E] text-[30px] text-white/80 shadow-[0_4px_0_#050a14,inset_0_1px_0_rgba(255,255,255,0.12)]">{ch}</span>)}
               </div>
               <p className="mt-3 text-sm leading-snug text-[#4a5b77]">Send your friend the link. The game starts when you&apos;re both ready.</p>
               <button onClick={() => shareRoom(rui.code)} className="kg-btn mt-4 w-full py-3 text-[19px]">{shell.copied ? "Link Copied!" : "Share Link"}</button>
@@ -1234,7 +1234,7 @@ export default function KitchenGolf() {
 // for worse, red for picking up
 function chipTone(s: number, par: number) {
   return s >= PICKUP ? "bg-[#e8505b] text-white shadow-[0_2px_0_#a8262f]"
-    : s === 1 ? "bg-gradient-to-b from-[#FFF07A] to-[#FFB618] text-[#0E1F45] shadow-[0_2px_0_#B86E00]"
+    : s === 1 ? "bg-[#EAF2FF] text-[#0E1F45]"
     : s < par ? "bg-[#2eaa6e] text-white shadow-[0_2px_0_#1d7a4c]"
     : s === par ? "bg-[#3f7fd6] text-white shadow-[0_2px_0_#19429A]"
     : s === par + 1 ? "bg-[#ff9a2e] text-white shadow-[0_2px_0_#b8620a]"
@@ -1243,7 +1243,7 @@ function chipTone(s: number, par: number) {
 // the same, for a score in the scorecard: only the ones worth noticing stand out
 function cellTone(s: number, par: number) {
   return s >= PICKUP ? "bg-[#e8505b] text-white"
-    : s === 1 ? "bg-gradient-to-b from-[#FFF07A] to-[#FFB618] text-[#0E1F45] shadow-[0_1px_0_#B86E00]"
+    : s === 1 ? "bg-[#EAF2FF] text-[#0E1F45]"
     : s < par ? "bg-[#2eaa6e] text-white"
     : s === par ? "text-[#0E1F45]"
     : s === par + 1 ? "text-[#e07800]"
@@ -1258,7 +1258,7 @@ function Scorecard({ pars, rows, cur, compact }: { pars: number[]; rows: Row[]; 
     <div className={`w-full overflow-hidden rounded-2xl bg-white text-[#101B2E] shadow-[0_0_0_1.5px_#DDEBFF,0_8px_18px_-10px_rgba(16,27,46,0.35)] ${compact ? "mb-1 mt-1.5" : "mb-0.5 mt-3"}`}>
       <div className={`kg-f kg-ribbon flex items-center px-1.5 text-white ${compact ? "py-[2px] text-[11px]" : "py-[4px] text-[13px]"}`}>
         <span className="w-[68px] shrink-0 text-left">Hole</span>
-        {cols.map(i => <span key={i} className="flex flex-1 justify-center"><span className={`flex h-[18px] min-w-[18px] items-center justify-center rounded-full px-1 ${cur === i ? "bg-[#FFE65C] text-[#0E1F45]" : ""}`}>{i + 1}</span></span>)}
+        {cols.map(i => <span key={i} className="flex flex-1 justify-center"><span className={`flex h-[18px] min-w-[18px] items-center justify-center rounded-full px-1 ${cur === i ? "bg-[#6FA8FF] text-white" : ""}`}>{i + 1}</span></span>)}
         <span className="w-7 shrink-0 text-right">Tot</span>
       </div>
       <div className={`kg-f flex items-center bg-[#eef3fb] px-1.5 text-[#6a7b96] ${compact ? "py-0 text-[11px]" : "py-[2px] text-[12px]"}`}>

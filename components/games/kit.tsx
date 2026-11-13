@@ -202,7 +202,7 @@ export function StartCard({ label, title, how, onStart }: { label: string; title
       <span className="wk-panel wk-pop flex w-full max-w-[300px] flex-col overflow-hidden text-center">
         <span className="wk-plate block px-4 py-2 text-[17px] leading-tight">{label}</span>
         <span className="flex flex-col items-center px-5 pb-5 pt-3.5">
-          <span className="wk-f text-[32px] leading-none text-[#0E1F45] [text-shadow:0_3px_0_#d6e4fa]">{title}</span>
+          <span className="wk-f text-[32px] leading-none text-[#0E1F45] tracking-[-0.03em]">{title}</span>
           <span className="mt-2 text-[14px] leading-snug text-[#41526e]">{how}</span>
           <span className="wk-btn wk-go wk-pulse mt-4 h-[54px] w-full text-[23px]">Tap To Start</span>
         </span>
@@ -220,7 +220,7 @@ export function drawHintPill(c: CanvasRenderingContext2D, cx: number, y: number,
   const g = c.createLinearGradient(0, y, 0, y + h); g.addColorStop(0, "#2A3852"); g.addColorStop(1, "#101B2E");
   c.fillStyle = g; c.beginPath(); c.roundRect(x, y, w, h, h / 2); c.fill();
   c.strokeStyle = "rgba(255,255,255,0.85)"; c.lineWidth = 2; c.beginPath(); c.roundRect(x + 1, y + 1, w - 2, h - 2, h / 2 - 1); c.stroke();
-  c.strokeStyle = "#FFE65C"; c.lineWidth = 3; c.lineCap = "round"; c.lineJoin = "round";
+  c.strokeStyle = "#9CC4FF"; c.lineWidth = 3; c.lineCap = "round"; c.lineJoin = "round";
   for (let i = 0; i < 2; i++) {
     const xx = x + 17 + i * 8 - slide; c.globalAlpha = a * (i ? 1 : 0.55);
     c.beginPath(); c.moveTo(xx + 4, y + h / 2 - 6); c.lineTo(xx - 2, y + h / 2); c.lineTo(xx + 4, y + h / 2 + 6); c.stroke();
@@ -326,7 +326,7 @@ export function GameOver({ label, headline, score, best, mode, posted, joined, c
           {headline && <div className="wk-f relative z-[1] text-[18px] leading-tight text-[#0E1F45] capitalize">{headline}</div>}
           <div className="relative mx-auto flex justify-center">
             {newBest && <span aria-hidden className="wk-rays pointer-events-none absolute left-1/2 top-1/2 -ml-[90px] -mt-[80px] h-[180px] w-[180px] rounded-full" />}
-            <div className="wk-f wk-pop relative text-[52px] leading-[1.04] tabular-nums text-[#0E1F45] [animation-delay:120ms] [text-shadow:0_4px_0_#cfdff8]">{score.toLocaleString()}</div>
+            <div className="wk-f wk-pop relative text-[52px] leading-[1.04] tabular-nums text-[#0E1F45] [animation-delay:120ms] tracking-[-0.03em]">{score.toLocaleString()}</div>
           </div>
           {newBest ? (
             <div className="relative mt-0.5 flex items-center justify-center gap-1.5">
@@ -459,7 +459,7 @@ export function Scoreboard({ game, token, initial, todayNote, onClose, onJoin }:
           </div>
           <div className="mt-3 shrink-0 text-center">
             {token ? (mine?.rank
-              ? <div className="wk-hud flex h-[42px] items-center justify-center gap-1.5 px-3 text-[14px]"><span className="text-white/80">You&apos;re</span><span className="wk-f text-[19px] leading-none">#{mine.rank}</span><span className="text-white/80">of {mine.total} with</span><span className="wk-f text-[19px] leading-none tabular-nums">{mine.score?.toLocaleString()}</span></div>
+              ? <div className="wk-hud flex h-[42px] items-center justify-center gap-1.5 px-3 text-[14px]"><span className="text-[#5A6B85]">You&apos;re</span><span className="wk-f text-[19px] leading-none">#{mine.rank}</span><span className="text-[#5A6B85]">of {mine.total} with</span><span className="wk-f text-[19px] leading-none tabular-nums">{mine.score?.toLocaleString()}</span></div>
               : <p className="text-sm text-[#5a6b85]">Play a round to get on this board.</p>)
               : <button onClick={onJoin} className="wk-btn wk-blue h-[46px] w-full text-[18px]">Join The Scoreboard</button>}
           </div>

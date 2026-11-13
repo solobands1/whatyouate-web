@@ -1039,7 +1039,7 @@ export default function FoodFight() {
 
         {isCpu && !started && !over && !menu && !rui && (
           <OverlayCard soft title={mode === "daily" ? `Today's Challenge #${n}` : "Free Play"} max="max-w-[300px]">
-            <div className="wk-f text-[32px] leading-none text-[#0E1F45] [text-shadow:0_3px_0_#d6e4fa]">Food Fight</div>
+            <div className="wk-f text-[32px] leading-none text-[#0E1F45] tracking-[-0.03em]">Food Fight</div>
             <p className="mt-2 text-sm text-[#5a6b85]">{mode === "daily" ? "Best of 3 rounds against the computer." : "Win round after round against the computer."}</p>
             <button onClick={() => startRef.current()} className={`${UI.go} mt-4 h-[54px] w-full text-[21px]`}>Play The Computer</button>
             <div className="mt-3 flex gap-2.5">
@@ -1180,7 +1180,7 @@ export default function FoodFight() {
         {roundCard && !over && (
           <Card>
             <div className="wk-f text-[24px] leading-tight text-[#0E1F45]">Round {roundCard.round} {roundCard.won ? "Won" : "Lost"}</div>
-            <div className="wk-f mt-1 text-[44px] leading-none tabular-nums text-[#0E1F45] [text-shadow:0_4px_0_#cfdff8]">+{roundCard.points.toLocaleString()}</div>
+            <div className="wk-f mt-1 text-[44px] leading-none tabular-nums text-[#0E1F45] tracking-[-0.03em]">+{roundCard.points.toLocaleString()}</div>
             <div className="text-sm text-[#5a6b85]">{roundCard.tie ? "Tied on health, so you take it" : roundCard.won ? "Nice Throwing!" : "The computer took this one"}</div>
             <button onClick={() => nextRef.current()} className={`${UI.go} mt-4 h-[52px] w-full text-[21px]`}>Next Round</button>
           </Card>

@@ -11,16 +11,15 @@ export function InfoIcon({ size = 18, className, color = "currentColor" }: P) {
   return <svg viewBox="0 0 24 24" {...box(size, className)}><circle cx="12" cy="5.6" r="2.4" fill={color} /><rect x="9.8" y="9.4" width="4.4" height="11" rx="2.2" fill={color} /></svg>;
 }
 
-export function TrophyIcon({ size = 20, className }: P) {
+export function TrophyIcon({ size = 20, className }: P) {   // in the WhatYouAte blue, like the site's icons
   return (
     <svg viewBox="0 0 32 32" {...box(size, className)}>
-      <path d="M9.2 8.2H5.6c-.9 0-1.5.7-1.4 1.6.4 3.6 2.7 6 6.2 6.6M22.8 8.2h3.6c.9 0 1.5.7 1.4 1.6-.4 3.6-2.7 6-6.2 6.6" fill="none" stroke="#C98A00" strokeWidth="2.6" strokeLinecap="round" />
-      <path d="M8.4 4.6h15.2v7.2c0 4.4-3.4 8-7.6 8s-7.6-3.6-7.6-8z" fill="#FFC21F" stroke="#C98A00" strokeWidth="1.6" strokeLinejoin="round" />
-      <path d="M19.4 6.4h2.4v5.4c0 2.7-1.4 5-3.5 6.2 .7-1.6 1.1-3.6 1.1-6.2z" fill="#F0A000" opacity="0.7" />
-      <path d="M11.6 7.6v3.8c0 1.7.6 3.2 1.6 4.3" fill="none" stroke="#FFF6C8" strokeWidth="1.9" strokeLinecap="round" />
-      <rect x="13.9" y="19.4" width="4.2" height="4.4" fill="#F5B100" stroke="#C98A00" strokeWidth="1.3" />
-      <rect x="9.6" y="23.2" width="12.8" height="5" rx="1.8" fill="#16336C" />
-      <rect x="11.4" y="24.6" width="9.2" height="1.4" rx="0.7" fill="#FFC21F" />
+      <path d="M9.2 8.2H5.6c-.9 0-1.5.7-1.4 1.6.4 3.6 2.7 6 6.2 6.6M22.8 8.2h3.6c.9 0 1.5.7 1.4 1.6-.4 3.6-2.7 6-6.2 6.6" fill="none" stroke="#4F88E8" strokeWidth="2.4" strokeLinecap="round" />
+      <path d="M8.4 4.6h15.2v7.2c0 4.4-3.4 8-7.6 8s-7.6-3.6-7.6-8z" fill="#DCEBFF" stroke="#4F88E8" strokeWidth="1.8" strokeLinejoin="round" />
+      <path d="M11.6 7.6v3.8c0 1.7.6 3.2 1.6 4.3" fill="none" stroke="#ffffff" strokeWidth="1.9" strokeLinecap="round" />
+      <rect x="13.9" y="19.4" width="4.2" height="4.4" fill="#9CC4FF" stroke="#4F88E8" strokeWidth="1.3" />
+      <rect x="9.6" y="23.2" width="12.8" height="5" rx="1.8" fill="#4F88E8" />
+      <rect x="11.4" y="24.6" width="9.2" height="1.4" rx="0.7" fill="#DCEBFF" />
     </svg>
   );
 }
@@ -59,11 +58,11 @@ export function CheckIcon({ size = 14, className, color = "currentColor" }: P) {
   return <svg viewBox="0 0 24 24" {...box(size, className)}><path d="M5 12.6l4.4 4.4L19 7.4" fill="none" stroke={color} strokeWidth="3.6" strokeLinecap="round" strokeLinejoin="round" /></svg>;
 }
 
-export function StarIcon({ size = 18, className, color = "#FFC21F", edge = "#B86E00" }: P & { edge?: string }) {
+export function StarIcon({ size = 18, className, color = "#6FA8FF", edge = "#4F88E8" }: P & { edge?: string }) {
   return (
     <svg viewBox="0 0 24 24" {...box(size, className)}>
       <path d="M12 2.6l2.7 5.6 6.1.8-4.5 4.2 1.1 6.1L12 16.4l-5.4 2.9 1.1-6.1L3.2 9l6.1-.8z" fill={color} stroke={edge} strokeWidth="1.6" strokeLinejoin="round" />
-      <path d="M9.6 9.4l1.4-2.8" stroke="#FFF6C8" strokeWidth="1.5" strokeLinecap="round" />
+      <path d="M9.6 9.4l1.4-2.8" stroke="#EAF2FF" strokeWidth="1.5" strokeLinecap="round" />
     </svg>
   );
 }
