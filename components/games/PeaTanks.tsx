@@ -40,7 +40,7 @@ const WINS_TO = 3;
 const STEP_MS = 1000 / 60, COUNT_MS = 1800, VS_COUNT_MS = 3000, END_MS = 1400, GO_MS = 700, LABEL_MS = 3000, LIVE_CARD_MS = 3500;
 const CH = 132, CHL = 112;     // the control strip under the table (one strip, or one at each end on Same Phone)
 const FONT = "system-ui, -apple-system, sans-serif";
-const BLUE = "#3f7fd6", RED = "#e8505b", GREEN = "#2eaa6e", GREY = "#5a6b85";
+const BLUE = "#4F88E8", RED = "#FF5A7A", GREEN = "#2eaa6e", GREY = "#5a6b85";   // the WhatYouAte blue, the soft pink used for the other player
 const ICONS = ["1f34e", "1f34a", "1f34c", "1f347", "1f350", "1f34b", "1f963", ...POWERS.map(p => p.icon)];
 const FRUIT = [["1f34e", "1f34a", "1f34c"], ["1f347", "1f350", "1f34e"], ["1f34a", "1f34b", "1f34c"]];
 const KIND_LIST: Kind[] = ["player", "crouton", "meatball", "chili", "jelly", "popcorn", "bagel", "pretzel", "coconut"];
@@ -780,25 +780,23 @@ export default function PeaTanks() {
       const F = (x: number, y: number) => (z.flip ? { x: AW - x, y: 2 * cy - y } : { x, y });
       // drive stick (floating)
       const ds = F(z.sx, z.sy), dst = cl.drive, db = dst ? F(dst.bx, dst.by) : ds, dk = dst ? (z.flip ? { x: -dst.kx, y: -dst.ky } : { x: dst.kx, y: dst.ky }) : { x: 0, y: 0 };
-      well(db.x, db.y, z.r, "rgba(63,127,214,0.32)", 2);
-      knob(db.x + dk.x, db.y + dk.y, z.r * 0.44, dst ? "#3a78d0" : BLUE);
+      well(db.x, db.y, z.r, dst ? "rgba(111,168,255,0.7)" : "#DCE8FA", dst ? 2 : 1.5);
+      knob(db.x + dk.x, db.y + dk.y, z.r * 0.44, dst ? "#5E9BF7" : "#6FA8FF", "rgba(79,136,232,0.45)");
       text("Drive", ds.x, z.flip ? 2 * cy - z.y0 - 8 : z.y1 - 8, 11, GREY, 700);
       // aim stick: a ring with a straw; drag to aim, let go to fire
       const as = F(z.ax, z.ay), ast = cl.aim, ak = ast ? (z.flip ? { x: -ast.kx, y: -ast.ky } : { x: ast.kx, y: ast.ky }) : { x: 0, y: 0 };
       const ready = !t || t.cd <= 0;
-      well(as.x, as.y, z.r, t && t.power === 1 ? "#d64545" : t && t.power === 2 ? GREEN : "rgba(95,174,52,0.55)", t && t.power > 0 ? 3.5 : 2);
-      if (t && t.cd > 0) { ctx.strokeStyle = "rgba(95,174,52,0.9)"; ctx.lineWidth = 3; ctx.lineCap = "round"; ctx.beginPath(); ctx.arc(as.x, as.y, z.r - 3, -Math.PI / 2, -Math.PI / 2 + Math.PI * 2 * (1 - t.cd / KINDS.player.cd)); ctx.stroke(); }
-      knob(as.x + ak.x, as.y + ak.y, z.r * 0.46, ast ? "#4f9a2a" : ready ? "#5fb434" : "#93c27a");
+      well(as.x, as.y, z.r, t && t.power === 1 ? "#FF7A93" : t && t.power === 2 ? "#6FA8FF" : ast ? "rgba(16,27,46,0.35)" : "#DCE8FA", t && t.power > 0 ? 3.5 : ast ? 2 : 1.5);
+      if (t && t.cd > 0) { ctx.strokeStyle = "#6FA8FF"; ctx.lineWidth = 3; ctx.lineCap = "round"; ctx.beginPath(); ctx.arc(as.x, as.y, z.r - 3, -Math.PI / 2, -Math.PI / 2 + Math.PI * 2 * (1 - t.cd / KINDS.player.cd)); ctx.stroke(); }
+      knob(as.x + ak.x, as.y + ak.y, z.r * 0.46, ast ? "#24324D" : ready ? "#101B2E" : "#A3AFC2", "rgba(16,27,46,0.35)");
       text(ast ? "Let Go To Fire" : "Aim + Fire", as.x, z.flip ? 2 * cy - z.y0 - 8 : z.y1 - 8, 11, GREY, 700);
       // mine button
       const mb = F(z.mx, z.my), mineOut = t ? (guest ? gMines : w.mines).filter(m => m.o === (guest ? me : mine(c))).length : 0, left = MINE_CAP - mineOut;
       ctx.globalAlpha = left > 0 ? 1 : 0.45;
-      ctx.fillStyle = "rgba(14,31,69,0.22)"; ctx.beginPath(); ctx.arc(mb.x + 0.6, mb.y + 2, z.mr, 0, 7); ctx.fill();
-      const mg = ctx.createLinearGradient(0, mb.y - z.mr, 0, mb.y + z.mr); mg.addColorStop(0, "#ffffff"); mg.addColorStop(1, "#ffe3ea");
-      ctx.fillStyle = mg; ctx.beginPath(); ctx.arc(mb.x, mb.y, z.mr, 0, 7); ctx.fill(); ctx.strokeStyle = "#e2456b"; ctx.lineWidth = 2; ctx.stroke();
-      const bg2 = ctx.createRadialGradient(mb.x - 2.5, mb.y - 3, 0.5, mb.x, mb.y - 1, z.mr * 0.5); bg2.addColorStop(0, "#ff9fb4"); bg2.addColorStop(1, "#c92f56");
-      ctx.fillStyle = bg2; ctx.beginPath(); ctx.ellipse(mb.x, mb.y - 1, z.mr * 0.45, z.mr * 0.34, 0.4, 0, 7); ctx.fill();
-      ctx.fillStyle = "rgba(255,255,255,0.75)"; ctx.beginPath(); ctx.ellipse(mb.x - 2, mb.y - 3, 2.5, 1.2, -0.5, 0, 7); ctx.fill();
+      ctx.fillStyle = "rgba(31,70,140,0.12)"; ctx.beginPath(); ctx.arc(mb.x, mb.y + 3, z.mr, 0, 7); ctx.fill();
+      ctx.fillStyle = "#ffffff"; ctx.beginPath(); ctx.arc(mb.x, mb.y, z.mr, 0, 7); ctx.fill(); ctx.strokeStyle = "#FFB3C1"; ctx.lineWidth = 1.5; ctx.stroke();
+      ctx.fillStyle = "#FF7A93"; ctx.beginPath(); ctx.ellipse(mb.x, mb.y, z.mr * 0.46, z.mr * 0.36, 0.4, 0, 7); ctx.fill();
+      ctx.fillStyle = "#FFC2CE"; ctx.beginPath(); ctx.ellipse(mb.x - z.mr * 0.14, mb.y - z.mr * 0.12, z.mr * 0.17, z.mr * 0.09, -0.5, 0, 7); ctx.fill();
       text(`Mine ${left}`, mb.x, mb.y + z.mr + 11, 10, GREY, 700);
       ctx.globalAlpha = 1;
       // the middle of the strip: whose controls (Same Phone), or a quiet note when the connection is slow
@@ -806,25 +804,22 @@ export default function PeaTanks() {
       else if (live && netRef.current.netMode() === "relay") { text("Slow Connection", cx, cy - 22, 10, GREY, 700); text("Mode", cx, cy - 10, 10, GREY, 700); }
       ctx.restore();
     }
-    // the control strip's pieces: a soft recessed well, and a glossy knob that sits in it
+    // the control strip's pieces, flat like the rest of the WhatYouAte frame: a pale pad with a hairline ring, a solid
+    // stick with a soft shadow under it (blue to drive, near-black to aim and fire), and a white strip behind them
     function well(x: number, y: number, r: number, ring: string, rw: number) {
-      const g = ctx.createLinearGradient(0, y - r, 0, y + r); g.addColorStop(0, "rgba(176,196,230,0.55)"); g.addColorStop(1, "rgba(255,255,255,0.8)");
-      ctx.fillStyle = g; ctx.beginPath(); ctx.arc(x, y, r, 0, 7); ctx.fill();
-      ctx.strokeStyle = "rgba(14,31,69,0.1)"; ctx.lineWidth = 3; ctx.beginPath(); ctx.arc(x, y + 1, r - 2, Math.PI * 1.1, Math.PI * 1.9); ctx.stroke();
+      ctx.fillStyle = "#F4F8FF"; ctx.beginPath(); ctx.arc(x, y, r, 0, 7); ctx.fill();
       ctx.strokeStyle = ring; ctx.lineWidth = rw; ctx.beginPath(); ctx.arc(x, y, r, 0, 7); ctx.stroke();
     }
-    function knob(x: number, y: number, r: number, col: string) {
-      ctx.fillStyle = "rgba(14,31,69,0.25)"; ctx.beginPath(); ctx.ellipse(x + 1, y + 3, r, r * 0.92, 0, 0, 7); ctx.fill();
-      const g = ctx.createRadialGradient(x - r * 0.35, y - r * 0.4, r * 0.1, x, y, r); g.addColorStop(0, "rgba(255,255,255,0.55)"); g.addColorStop(0.35, "rgba(255,255,255,0)"); g.addColorStop(1, "rgba(0,0,0,0.22)");
-      ctx.fillStyle = col; ctx.beginPath(); ctx.arc(x, y, r, 0, 7); ctx.fill(); ctx.fillStyle = g; ctx.fill();
-      ctx.strokeStyle = "rgba(255,255,255,0.9)"; ctx.lineWidth = 1.4; ctx.stroke();
-      ctx.fillStyle = "rgba(255,255,255,0.85)"; ctx.beginPath(); ctx.ellipse(x - r * 0.32, y - r * 0.4, r * 0.28, r * 0.15, -0.6, 0, 7); ctx.fill();
+    function knob(x: number, y: number, r: number, col: string, glow: string) {
+      ctx.fillStyle = glow; ctx.beginPath(); ctx.ellipse(x, y + r * 0.28, r * 0.96, r * 0.9, 0, 0, 7); ctx.fill();
+      ctx.fillStyle = col; ctx.beginPath(); ctx.arc(x, y, r, 0, 7); ctx.fill();
+      ctx.strokeStyle = "#ffffff"; ctx.lineWidth = 2; ctx.stroke();
     }
     function panel(x: number, y: number, w2: number, h2: number) {
-      const g = ctx.createLinearGradient(0, y, 0, y + h2); g.addColorStop(0, "rgba(255,255,255,0.62)"); g.addColorStop(1, "rgba(226,236,252,0.42)");
-      ctx.fillStyle = "rgba(14,31,69,0.08)"; rr(x, y + 3, w2, h2, 18); ctx.fill();
-      ctx.fillStyle = g; rr(x, y, w2, h2, 18); ctx.fill();
-      ctx.strokeStyle = "rgba(255,255,255,0.9)"; ctx.lineWidth = 1.2; ctx.stroke();
+      ctx.fillStyle = "rgba(31,70,140,0.05)"; rr(x - 1, y + 4, w2 + 2, h2, 19); ctx.fill();
+      ctx.fillStyle = "rgba(31,70,140,0.05)"; rr(x, y + 2, w2, h2, 18); ctx.fill();
+      ctx.fillStyle = "#ffffff"; rr(x, y, w2, h2, 18); ctx.fill();
+      ctx.strokeStyle = "#E3EDFB"; ctx.lineWidth = 1; ctx.stroke();
     }
     function draw(t: number) {
       ctx.save(); ctx.clearRect(0, 0, TW, TH);
