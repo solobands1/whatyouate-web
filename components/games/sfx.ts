@@ -5,8 +5,9 @@
 // One setting for all the games, kept in this browser: "wya-games-sound" is "on" or "off", and on when it's unset, so
 // muting in one game mutes them all. The kit's SoundButton toggles it.
 // One AudioContext per page, made on the player's first tap (browsers only start audio after a gesture). Before it's
-// made, the page asks for an "ambient" audio session (Safari 16.4+), so an iPhone on silent stays silent and the
-// player's own music keeps playing.
+// made, the page asks for a "playback" audio session (Safari 16.4+), so the games play sound even when an iPhone is on
+// silent (the owner's call: sound is on unless the player turns it off with the speaker button). Side effect: like a
+// video, it pauses music playing in another app while sound plays.
 // Quiet while a popup is open or the game is paused (hold), while the tab is hidden, and while the game-over card is up
 // (the end sting plays first, then nothing new starts). Repeats are rate-limited per sound and overall.
 //
@@ -177,7 +178,7 @@ class Sfx implements Synth {
     if (!this.ctx) {
       try {
         const nav = navigator as Navigator & { audioSession?: { type: string } };
-        if (nav.audioSession && nav.audioSession.type !== "ambient") nav.audioSession.type = "ambient";   // follow the ring/silent switch
+        if (nav.audioSession && nav.audioSession.type !== "playback") nav.audioSession.type = "playback";   // play even on silent; the speaker button mutes
       } catch {}
       try {
         const AC = window.AudioContext || (window as unknown as { webkitAudioContext: typeof AudioContext }).webkitAudioContext;
