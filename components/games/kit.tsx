@@ -528,6 +528,55 @@ export function SoundButton({ className = "" }: { className?: string }) {
   );
 }
 
+// ── ways to play (games with a computer, a same-phone and a live mode) ─────
+// The start card offers the three (PlayChoices); the slim ModeRow under the header says which one you're in, with Change
+// to go back to the start card (LeaveCard asks first mid-game); end cards get a quiet ChangeModeLink. Kitchen Golf's
+// start card is the model.
+
+/** The row under the header: the way you're playing, a small Change button, and the SoundButton in its standard spot. */
+export function ModeRow({ label, onChange }: { label: string; onChange?: () => void }) {
+  return (
+    <div className="mt-2 flex h-[40px] shrink-0 items-center gap-1.5" data-mode-row>
+      <div className="flex min-w-0 flex-1 items-center gap-2 pl-1">
+        <span className="wk-f min-w-0 truncate text-[16px] leading-none text-[#101B2E] [text-shadow:0_1px_0_rgba(255,255,255,0.9)]">{label}</span>
+        {onChange && <button onClick={onChange} className="wk-tag wk-tag-light flex h-[26px] shrink-0 items-center px-3 text-[13.5px] leading-none">Change</button>}
+      </div>
+      <SoundButton />
+    </div>
+  );
+}
+
+/** The ways to play on a start card: a big Play The Computer (left out when `onCpu` is), then Play A Friend and Same Phone. */
+export function PlayChoices({ onCpu, onFriend, onPhone }: { onCpu?: () => void; onFriend: () => void; onPhone: () => void }) {
+  return (
+    <>
+      {onCpu && <button onClick={onCpu} className="wk-btn wk-go wk-pulse mt-4 h-[54px] w-full text-[22px]"><PlayIcon size={19} />Play The Computer</button>}
+      <div className={`${onCpu ? "mt-2.5" : "mt-3"} flex gap-2.5`}>
+        <button onClick={onFriend} className="wk-btn wk-light h-[46px] flex-1 text-[16px]">Play A Friend</button>
+        <button onClick={onPhone} className="wk-btn wk-light h-[46px] flex-1 text-[16px]">Same Phone</button>
+      </div>
+    </>
+  );
+}
+
+/** Asked before Change drops a game in progress (put it inside BoardArea). `live` says the friend will be told. */
+export function LeaveCard({ live = false, onLeave, onStay }: { live?: boolean; onLeave: () => void; onStay: () => void }) {
+  return (
+    <OverlayCard title="Leave This Game?" max="max-w-[300px]" z="z-30">
+      <p className="text-[14px] leading-snug text-[#5a6b85]">{live ? "You'll leave the room, and your friend will see you've gone." : "This game ends here, and it won't count."}</p>
+      <div className="mt-4 flex gap-2.5">
+        <button onClick={onLeave} className="wk-btn wk-light h-[48px] flex-1 text-[17px]">Leave</button>
+        <button onClick={onStay} className="wk-btn wk-blue h-[48px] flex-1 text-[17px]">Keep Playing</button>
+      </div>
+    </OverlayCard>
+  );
+}
+
+/** A quiet link for game-over and rematch cards, back to the start card's choices. */
+export function ChangeModeLink({ onClick, className = "" }: { onClick: () => void; className?: string }) {
+  return <button onClick={onClick} className={`wk-link w-full py-1.5 text-[14px] ${className}`}>Change Game Mode</button>;
+}
+
 /** Live matches: the "Get Ready" card both players see before the first game (put it inside BoardArea). A short how-to,
  *  both names with a tick once they're ready, and a big I'm Ready button. `ready` is [you, your friend]. */
 export function ReadyCard({ steps, me, friend, ready, onReady, onLeave, title = "Get Ready" }: {

@@ -23,7 +23,7 @@ import { useEffect, useReducer, useRef, useState, type CSSProperties, type React
 import type { RealtimeChannel } from "@supabase/supabase-js";
 import { sb } from "@/components/creators/api";
 import { type Mode, type Toast, GameScreen, GameHeader, BoardArea, PrizeLogo, GameOver, PauseButton, PausedCard, ReadyCard, HelpModal, ModesHelp, ShellPopups,
-  useGameShell, dailySeed, dailyNumber, torontoDate, mulberry32, readBest, saveBest, foodPng, emoji, SoundButton } from "./kit";
+  useGameShell, dailySeed, dailyNumber, torontoDate, mulberry32, readBest, saveBest, foodPng, emoji, OverlayCard, ModeRow, PlayChoices, LeaveCard, ChangeModeLink } from "./kit";
 import { sfx } from "./sfx";
 import { GAME_FONT_CSS } from "./gameFont";
 import { PassPhoneIcon, ShuffleIcon, SparkleIcon, CheckIcon, CloseIcon, TrophyIcon } from "./icons";
@@ -205,7 +205,7 @@ const SKILL_TODAY = 0.6, SKILL_FREE = 0.5, SKILL_STEP = 0.1;   // Free Play: rou
 
 type Opp = "cpu" | "phone" | "live";
 type Side = 0 | 1;
-type Phase = "idle" | "gate" | "names" | "pass" | "place" | "play" | "roundWon" | "over" | "doneToday";   // gate: the live Get Ready card
+type Phase = "start" | "idle" | "gate" | "names" | "pass" | "place" | "play" | "roundWon" | "over" | "doneToday";   // start: the ways to play; gate: the live Get Ready card
 type Used = { light: boolean; blast: boolean };
 type Fx = { id: number; side: Side; kind: Kind; cells: Cell[] };   // the newest move on a fridge, for its little animations
 type Game = {
@@ -239,7 +239,7 @@ type Room = { status: "idle" | "connecting" | "waiting" | "paired" | "away" | "f
 type Snap = { p: number; from: string; round: number; ph: number; turnOwner: string; turnNo: number; inc: string[]; seen: number[][]; found: Placed[][]; used: Used[];
   shots: number[]; hits: number[]; streak: number[]; bestStreak: number[]; log: string[][]; lastFound: number | null };
 type SavedLive = { code: string; id: string; at: number; friendId: string; round: number; layout: Placed[]; ready: boolean; snap: Snap; t: number };
-const LIVE_KEY = "fridge-raid-live", AWAY_MS = 60000;
+const LIVE_KEY = "fridge-raid-live", AWAY_MS = 60000, BYE_MS = 8000;   // BYE_MS: after a "bye", how long their lingering presence is ignored
 function readLive(code?: string): SavedLive | null {
   try {
     const v = JSON.parse(sessionStorage.getItem(LIVE_KEY) ?? localStorage.getItem(LIVE_KEY) ?? "null") as SavedLive | null;
@@ -276,6 +276,7 @@ export default function FridgeRaid() {
   const [phase, setPhaseState] = useState<Phase>("idle");
   const phaseRef = useRef<Phase>("idle");
   const go = (p: Phase) => { phaseRef.current = p; setPhaseState(p); };
+  const autoStart = useRef(false);                      // Play Again and Free Play skip the start card
   const g = useRef<Game>(newGame(autoPlace(Math.random), autoPlace(Math.random)));
   const [, bump] = useReducer((x: number) => x + 1, 0);
   const [msg, setMsg] = useState("");
@@ -323,6 +324,7 @@ export default function FridgeRaid() {
   const answers = useRef(new Map<number, Msg>());
   const awayT = useRef<ReturnType<typeof setTimeout> | null>(null);
   const lastOpp = useRef<Meta | null>(null);
+  const byeAt = useRef(0);                               // when the friend last tapped Leave (their "bye"), so presence doesn't call it stepping away
   const [reconnecting, setReconnecting] = useState(false);
   const [offer, setOffer] = useState<SavedLive | null>(null);   // a live match from before a reload
   const [joinInput, setJoinInput] = useState("");
@@ -344,7 +346,8 @@ export default function FridgeRaid() {
   // ── starting things ────────────────────────────────────────────────────
   const todayRecord = (): Final | null => { try { const v = localStorage.getItem(todayKey); return v ? JSON.parse(v) : null; } catch { return null; } };
   const clearAim = () => { setArmed(null); setAimAt(null); };
-  const startCpu = (keep: Placed[] | null, nextRound: number) => {
+  // `choose`: set the game up behind the start card (the ways to play) instead of going straight to hiding snacks
+  const startCpu = (keep: Placed[] | null, nextRound: number, choose = false) => {
     const daily = mode === "daily";
     if (daily && todayRecord()) { setFinal(todayRecord()); go("doneToday"); setMsg("Today's Fridge Is Done. New One At Midnight."); return; }
     const lay = mulberry32(daily ? dailySeed(LAYOUT_SALT) : Math.floor(Math.random() * 1e9));
@@ -352,11 +355,13 @@ export default function FridgeRaid() {
     g.current = newGame(keep ?? autoPlace(Math.random), autoPlace(lay)); cpuPlan.current = null;
     if (nextRound === 1) { total.current = 0; runShots.current = 0; runStart.current = 0; resetScores(); }
     setRound(nextRound); setSel(null); setGhost(null); setFact(null); setFinal(null); setLocked(false); clearAim(); setCpuAim(null);
+    if (choose) { go("start"); setMsg("Five Snacks Each. Find Theirs First."); bump(); return; }
     go("place"); setMsg(nextRound === 1 ? "Hide Your Snacks, Then Tap Ready." : `Round ${nextRound}. Move Your Snacks If You Like.`);
     bump();
   };
+  const placeFirst = () => { go("place"); setMsg("Hide Your Snacks, Then Tap Ready."); };   // Play The Computer, from the start card
   useEffect(() => {
-    if (opp === "cpu") startCpu(null, 1);
+    if (opp === "cpu") { const now = autoStart.current; autoStart.current = false; startCpu(null, 1, !now); }
     else if (opp === "phone") { go("names"); setMsg("Two Players, One Phone."); setFact(null); setFinal(null); }
     else if (resuming.current) resuming.current = false;               // picking a saved live match back up: keep it
     else { go("idle"); setFact(null); setFinal(null); setMsg("Play Live On Two Phones."); }
@@ -377,6 +382,13 @@ export default function FridgeRaid() {
   useEffect(() => () => leaveRef.current(), []);
   const pickOpp = (o: Opp) => { if (o === opp) return; if (opp === "live") leaveRoom(); setOpp(o); };
   const pickMode = (m: Mode) => { if (opp === "live") leaveRoom(); setMode(m); if (opp !== "cpu") setOpp("cpu"); else setRun(r => r + 1); };
+  // the ways to play live on the start card; Change (the row under the header), Back and Change Game Mode come back to it,
+  // asking first if a game is going, and a live room is left cleanly
+  const [leaving, setLeaving] = useState(false);
+  const toStart = () => { setLeaving(false); setJoinInput(""); if (opp === "live") leaveRoom(); if (opp !== "cpu") setOpp("cpu"); else setRun(r => r + 1); };
+  const midGame = phase === "play" || phase === "pass" || phase === "roundWon" || (phase === "place" && (opp === "live" || round > 1));
+  const change = () => (midGame ? setLeaving(true) : toStart());
+  const choosing = opp === "cpu" && (phase === "start" || phase === "doneToday");
 
   // the pause button is for the computer only
   const { held, setHeld } = shell;
@@ -460,7 +472,7 @@ export default function FridgeRaid() {
     const G = g.current, t = other(pov);
     if (phaseRef.current !== "play" || G.turn !== pov || lockedRef.current || awaiting.current) return;
     if (opp === "live" && (room.status !== "paired" || reconnecting)) return;   // a shot needs their answer: wait for them
-    if (opp === "cpu" && shell.paused) return;
+    if (opp === "cpu" && (shell.paused || leaving)) return;
     let kind: Kind = "shot", v = false;
     if (armed) {
       if (!aimAt || !coverOf(armed, aimAt.at, aimAt.v).includes(i)) { setAimAt({ at: i, v: aimAt?.v ?? false }); setMsg(`Looks Good? Tap ${POWER[armed].use}.`); sfx.play("tap"); return; }
@@ -483,7 +495,7 @@ export default function FridgeRaid() {
   };
 
   // the computer's turn: think, show where it's going on your fridge, then land it (and go again after a bite)
-  const paused = shell.paused;
+  const paused = shell.paused || leaving;
   useEffect(() => {
     if (opp !== "cpu" || phase !== "play" || g.current.turn !== 1 || paused || locked) return;
     const timers: ReturnType<typeof setTimeout>[] = [];
@@ -641,9 +653,11 @@ export default function FridgeRaid() {
       if (!seats.some(m => m.id === me.id)) { full(); return; }       // two people raced in at once: the later one steps out
       let o = seats.find(m => m.id !== me.id) ?? null;
       if (o && heard.current?.id === o.id && heard.current.seq > (o.seq ?? 0)) o = heard.current;   // presence hasn't caught up yet
+      const bye = Date.now() - byeAt.current < BYE_MS;
+      if (bye && o && o.id === pairedWith.current) o = null;            // they tapped Leave: gone, even if presence lags the "bye"
       const host = seats[0].id === me.id;
       if (o) lastOpp.current = o;
-      if (!o && pairedWith.current && ["place", "play", "over"].includes(phaseRef.current)) {   // gone mid-match: give them 60 seconds
+      if (!o && !bye && pairedWith.current && ["place", "play", "over"].includes(phaseRef.current)) {   // gone mid-match: give them 60 seconds
         if (!awayT.current) {
           const until = Date.now() + AWAY_MS;
           awayT.current = setTimeout(() => { awayT.current = null; setRoom(v => (v.status === "away" ? { ...v, status: "waiting", opp: null, until: undefined } : v)); }, AWAY_MS);
@@ -782,6 +796,7 @@ export default function FridgeRaid() {
   const onMsg = (m: Msg) => {
     const G = g.current, r = meRef.current?.round;
     if (m?.t === "bye") {                                              // they tapped Leave: no grace period
+      byeAt.current = Date.now();
       if (awayT.current) clearTimeout(awayT.current); awayT.current = null;
       setRoom(v => ({ ...v, status: "waiting", opp: null, until: undefined })); return;
     }
@@ -864,7 +879,7 @@ export default function FridgeRaid() {
   const target = other(pov);
   const myTurn = phase === "play" && G.turn === pov;
   const lit = phase === "place" || myTurn;   // the banner's "your move" look
-  const canAct = myTurn && !locked && !awaiting.current && !(opp === "cpu" && shell.paused);
+  const canAct = myTurn && !locked && !awaiting.current && !(opp === "cpu" && (shell.paused || leaving));
   const scoreNow = phase === "roundWon" ? total.current : total.current + G.roundScore;   // a won round is already in the total
   const winner: Side | null = G.found[1].length === SNACKS.length ? 0 : G.found[0].length === SNACKS.length ? 1 : null;
   const secsLeft = opp === "live" && phase === "play" ? Math.max(0, Math.ceil((TURN_MS - (now - G.turnAt)) / 1000)) : 0;
@@ -1027,6 +1042,7 @@ export default function FridgeRaid() {
         <button disabled={!validCode(joinInput)} onClick={() => joinRoom(joinInput)} className="rounded-full bg-[#101b2e] px-5 font-semibold text-white disabled:opacity-40">Join</button>
       </div>
       {joinInput.length === 4 && !validCode(joinInput) && <p className="mt-2 text-xs font-semibold text-[#d64545]">That code doesn&apos;t look right. Check it again.</p>}
+      <button onClick={toStart} className="mt-3 w-full py-2 text-sm font-semibold text-[#5a6b85]">Back</button>
     </>);
     if (room.status === "connecting") return card(<><div className="game-font text-[24px] leading-tight text-[#101b2e]">Joining Room {code}</div><p className="mt-2 text-sm text-[#5a6b85]">One moment...</p></>);
     if (room.status === "full") return card(<>
@@ -1053,7 +1069,23 @@ export default function FridgeRaid() {
   };
 
   const overlay = (): ReactNode => {
+    if (leaving) return <LeaveCard live={opp === "live"} onLeave={toStart} onStay={() => setLeaving(false)} />;
     const live = liveCard(); if (live) return live;
+    if (opp === "cpu" && phase === "start") return (
+      <OverlayCard title={mode === "daily" ? `Today's Challenge #${n}` : "Free Play"} max="max-w-[340px]">
+        <div className="game-font text-[32px] leading-none text-[#101B2E]">Fridge Raid</div>
+        <p className="mt-2 text-[14px] leading-snug text-[#5a6b85]">{mode === "daily" ? "Hide five snacks in your fridge, then hunt for the computer's. Fewer shots, more points." : "Raid the computer's fridge round after round. It gets a little sharper each time."}</p>
+        <div className="mt-3 flex flex-wrap items-center justify-center gap-1.5">
+          {SNACKS.map(s => (
+            <span key={s.code} className="flex rounded-full px-1 py-0.5" style={{ background: s.color }}>
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img src={foodPng(s.code)} alt={s.name} className="h-5 w-5" />
+            </span>
+          ))}
+        </div>
+        <PlayChoices onCpu={placeFirst} onFriend={() => pickOpp("live")} onPhone={() => pickOpp("phone")} />
+      </OverlayCard>
+    );
     if (opp === "live" && phase === "gate" && room.status === "paired") return (
       <ReadyCard me={myName === "Guest" ? "You" : myName} friend={nameOf(1)} ready={[myOk, oppOk]} onReady={markOk}
         onLeave={() => { leaveRoom(); setJoinInput(""); go("idle"); }} steps={[
@@ -1068,9 +1100,10 @@ export default function FridgeRaid() {
         : mode === "daily" ? "The Computer Found Your Snacks First" : round > 1 ? `Round ${round}: The Computer Found Your Snacks First` : "The Computer Found Your Snacks First";
       return <GameOver label={mode === "daily" ? `Today's Challenge #${n}` : "Free Play"} headline={headline} score={final.score} best={best} mode={mode}
         posted={shell.scores.posted} joined={!!shell.player} campaign={GAME} copied={shell.copied} fact={fact}
+        extra={<ChangeModeLink onClick={toStart} className="mt-1" />}
         pitch="What's in your fridge matters too. WhatYouAte shows you how your meals affect your energy."
         onBoard={() => shell.setBoardOpen(true)} onJoin={() => shell.setJoinOpen(true)}
-        onAgain={() => (mode === "daily" ? pickMode("endless") : setRun(r => r + 1))} onShare={() => shareCpu(final)} />;
+        onAgain={() => { autoStart.current = true; if (mode === "daily") pickMode("endless"); else setRun(r => r + 1); }} onShare={() => shareCpu(final)} />;
     }
     if (opp === "cpu" && phase === "doneToday" && final) return card(<>
       <div className="text-sm font-semibold text-[#5a6b85]">Today&apos;s Challenge #{n}</div>
@@ -1078,9 +1111,10 @@ export default function FridgeRaid() {
       <div className="mt-1 text-4xl font-bold tabular-nums">{final.score.toLocaleString()}</div>
       <p className="text-sm text-[#5a6b85]">{final.won ? `You won in ${final.shots} shots.` : "The computer won this one."} New fridge at midnight.</p>
       <div className="mt-4 flex gap-2">
-        <button onClick={() => pickMode("endless")} className={btn}>Free Play</button>
+        <button onClick={() => { autoStart.current = true; pickMode("endless"); }} className={btn}>Free Play</button>
         <button onClick={() => shareCpu(final)} className={btn2}>{shell.copied ? "Copied!" : "Share"}</button>
       </div>
+      <PlayChoices onFriend={() => pickOpp("live")} onPhone={() => pickOpp("phone")} />
       <button onClick={() => shell.setBoardOpen(true)} className="mt-3 inline-flex items-center gap-1.5 text-sm font-semibold text-[#4F88E8]"><TrophyIcon size={18} />See Today&apos;s Scoreboard</button>
     </>);
     if (opp === "cpu" && phase === "roundWon") return card(<>
@@ -1100,6 +1134,7 @@ export default function FridgeRaid() {
           className="mt-3 w-full rounded-xl border border-[#d6e2f5] px-3 py-2.5 text-base outline-none focus:border-[#3f7fd6]" />
       ))}
       <button onClick={() => { const a = names[0].trim() || shell.player?.name || "Player 1", b = names[1].trim() || "Player 2"; setNames([a, b]); startPhone(1, a); }} className={`mt-4 ${btn}`}>Start</button>
+      <button onClick={toStart} className="mt-2 w-full py-2 text-sm font-semibold text-[#5a6b85]">Back</button>
     </>);
     if (opp === "phone" && phase === "pass") {
       const to = nameOf(pass.to), from = nameOf(other(pass.to));
@@ -1124,6 +1159,7 @@ export default function FridgeRaid() {
         </div>
         <button onClick={() => { if (opp === "phone") go("names"); else { leaveRoom(); setJoinInput(""); } }} className="mt-2 w-full py-2 text-sm font-semibold text-[#5a6b85]">
           {opp === "phone" ? "Change Players" : "Leave Room"}</button>
+        <ChangeModeLink onClick={toStart} />
       </>);
     }
     return null;
@@ -1229,14 +1265,8 @@ export default function FridgeRaid() {
     <GameScreen>
       <GameHeader title="Fridge Raid" mode={mode} onMode={pickMode} onBoard={() => shell.setBoardOpen(true)} onHelp={shell.help.show} />
 
-      <div className="mt-2 flex h-[40px] shrink-0 items-center gap-1.5">
-        <div className="flex h-8 min-w-0 flex-1 rounded-full bg-white/70 p-0.5 text-xs font-semibold">
-          {([["cpu", "Computer"], ["phone", "Same Phone"], ["live", "Play A Friend"]] as [Opp, string][]).map(([o, label]) => (
-            <button key={o} onClick={() => pickOpp(o)} className={`flex-1 rounded-full ${opp === o ? "bg-[#101b2e] text-white" : "text-[#4F88E8]"}`}>{label}</button>
-          ))}
-        </div>
-        <SoundButton />
-      </div>
+      <ModeRow label={choosing ? "Choose How To Play" : opp === "cpu" ? "Vs The Computer" : opp === "phone" ? "Same Phone" : "Live With A Friend"}
+        onChange={choosing ? undefined : change} />
 
       {phase === "play" || phase === "place" ? (
         // the turn banner: solid blue while it's your move (hiding snacks or your shot), plain white while it's theirs

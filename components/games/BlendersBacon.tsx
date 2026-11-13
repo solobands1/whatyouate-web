@@ -23,9 +23,9 @@ import { useEffect, useReducer, useRef, useState, type CSSProperties, type React
 import type { RealtimeChannel } from "@supabase/supabase-js";
 import { sb } from "@/components/creators/api";
 import { type Mode, GameScreen, GameHeader, BoardArea, PrizeLogo, GameOver, PauseButton, PausedCard, ReadyCard, HelpModal, ModesHelp, ShellPopups,
-  OverlayCard, UI, useGameShell, dailySeed, dailyNumber, torontoDate, mulberry32, readBest, saveBest, foodPng, SoundButton } from "./kit";
+  OverlayCard, UI, useGameShell, dailySeed, dailyNumber, torontoDate, mulberry32, readBest, saveBest, foodPng, ModeRow, PlayChoices, LeaveCard, ChangeModeLink } from "./kit";
 import { BB_CSS } from "./bacon/skin";
-import { CloseIcon, PlayIcon, ReplayIcon, ShareIcon } from "./icons";
+import { CloseIcon, ReplayIcon, ShareIcon } from "./icons";
 import { BoardArt, BlenderArt, BW, BH, spotOf, blenderGeo, tubeAt, tubeD, tubeLen, baconAt, baconD, baconLen, CARD_INFO, CardIcon, DieIcon, type Pt } from "./bacon/art";
 import { apply, cpuCard, newState, cloneState, canPlay, scoreFor, other, LAST, type State, type Action, type Ev, type Side, type Card } from "./bacon/rules";
 import { Particles } from "./bacon/fx";
@@ -54,7 +54,7 @@ const viewOf = (s: State, die: number | null = null): View => ({ ...cloneState(s
 
 // live play
 const CODE_LETTERS = "BCDFGHJKMNPQRSTVWXZ";   // no vowels (no accidental words), no I, L or O
-const TURN_MS = 30000, GRACE_MS = 8000, AWAY_MS = 60000;
+const TURN_MS = 30000, GRACE_MS = 8000, AWAY_MS = 60000, BYE_MS = 8000;   // BYE_MS: after a "bye", how long their lingering presence is ignored
 type Meta = { id: string; name: string; at: number; round: number; seq: number; ok: boolean; stage: "gate" | "game"; food: string };
 type Room = { status: "idle" | "connecting" | "waiting" | "paired" | "away" | "full" | "error"; code?: string; opp?: Meta | null; host?: boolean; until?: number };
 type Snap = { round: number; log: Action[]; from: string };
@@ -154,6 +154,7 @@ export default function BlendersBacon() {
   const heard = useRef<Meta | null>(null);
   const awayT = useRef<ReturnType<typeof setTimeout> | null>(null);
   const lastOpp = useRef<Meta | null>(null);
+  const byeAt = useRef(0);                               // when the friend last tapped Leave (their "bye"), so presence doesn't call it stepping away
   const [reconnecting, setReconnecting] = useState(false);
   const [offer, setOffer] = useState<SavedLive | null>(null);
   const [joinInput, setJoinInput] = useState("");
@@ -512,9 +513,15 @@ export default function BlendersBacon() {
   useEffect(() => () => leaveRef.current(), []);
   const pickOpp = (o: Opp) => { if (o === opp) return; if (opp === "live") leaveRoom(); setOpp(o); };
   const pickMode = (m: Mode) => { if (opp === "live") leaveRoom(); setMode(m); if (opp !== "cpu") setOpp("cpu"); else setRun(r => r + 1); };
+  // the ways to play live on the start card; Change (the row under the header), Back and Change Game Mode come back to it,
+  // asking first if a game is going, and a live room is left cleanly
+  const [leaving, setLeaving] = useState(false);
+  const toStart = () => { setLeaving(false); setJoinInput(""); if (opp === "live") leaveRoom(); if (opp !== "cpu") setOpp("cpu"); else setRun(r => r + 1); };
+  const change = () => (phase === "play" ? setLeaving(true) : toStart());
+  const choosing = opp === "cpu" && (phase === "start" || phase === "doneToday");
   const { held, setHeld } = shell;
   useEffect(() => { if (opp !== "cpu" && held) setHeld(false); }, [opp, held, setHeld]);
-  const paused = opp === "cpu" && shell.paused;
+  const paused = opp === "cpu" && (shell.paused || leaving);
 
   // ── the end ────────────────────────────────────────────────────────────
   const finishMatch = (winner: Side) => {
@@ -606,11 +613,13 @@ export default function BlendersBacon() {
       if (!seats.some(m => m.id === me.id)) { full(); return; }
       let o = seats.find(m => m.id !== me.id) ?? null;
       if (o && heard.current?.id === o.id && heard.current.seq > (o.seq ?? 0)) o = heard.current;   // presence hasn't caught up yet
+      const bye = Date.now() - byeAt.current < BYE_MS;
+      if (bye && o && o.id === pairedWith.current) o = null;            // they tapped Leave: gone, even if presence lags the "bye"
       const host = seats[0].id === me.id;
       // seats stay put for the whole match: while the friend is away, this phone doesn't become the host
       if (o || !pairedWith.current) hostRef.current = host;
       if (o) lastOpp.current = o;
-      if (!o && pairedWith.current && ["play", "over", "rematch"].includes(phaseRef.current)) {   // gone mid-match: give them 60 seconds
+      if (!o && !bye && pairedWith.current && ["play", "over", "rematch"].includes(phaseRef.current)) {   // gone mid-match: give them 60 seconds
         if (!awayT.current) {
           const until = Date.now() + AWAY_MS;
           awayT.current = setTimeout(() => { awayT.current = null; setRoom(v => (v.status === "away" ? { ...v, status: "waiting", opp: null, until: undefined } : v)); }, AWAY_MS);
@@ -720,6 +729,7 @@ export default function BlendersBacon() {
 
   const onMsg = (m: Msg) => {
     if (m?.t === "bye") {
+      byeAt.current = Date.now();
       if (awayT.current) clearTimeout(awayT.current); awayT.current = null;
       setRoom(v => ({ ...v, status: "waiting", opp: null, until: undefined })); return;
     }
@@ -811,6 +821,7 @@ export default function BlendersBacon() {
         <button disabled={!validCode(joinInput)} onClick={() => { sound.current?.unlock(); joinRoom(joinInput); }} className={`${UI.navy} px-5 text-[17px]`}>Join</button>
       </div>
       {joinInput.length === 4 && !validCode(joinInput) && <p className="mt-2 text-xs font-semibold text-[#d64545]">That code doesn&apos;t look right. Check it again.</p>}
+      <button onClick={toStart} className={`${UI.link} mt-3 w-full py-2 text-[15px]`}>Back</button>
     </>);
     if (room.status === "connecting") return card(<><div className="wk-f text-[26px] leading-tight">Joining Room {code}</div><p className="mt-2 text-sm text-[#5a6b85]">One moment...</p></>);
     if (room.status === "full") return card(<>
@@ -837,6 +848,7 @@ export default function BlendersBacon() {
 
   const winner = G.winner;
   const overlay = (): ReactNode => {
+    if (leaving) return <LeaveCard live={live} onLeave={toStart} onStay={() => setLeaving(false)} />;
     const lc = liveCard(); if (lc) return lc;
     if (live && phase === "gate" && room.status === "paired") return (
         <ReadyCard me={myName === "Guest" ? "You" : myName} friend={nameOf(other(mySide))} ready={[myOk, oppOk]} onReady={markOk}
@@ -852,14 +864,15 @@ export default function BlendersBacon() {
       <p className="mt-2 text-[14px] leading-snug text-[#5a6b85]">Race the computer up the pantry. Blenders whirl you up. Bacon slides you down.</p>
       <div className="wk-f mt-3 text-[15px] text-[#101B2E]">Pick Your Food</div>
       <FoodPicker value={foods[0]} onPick={c => { sound.current?.click(); setFoods([c, foods[1]]); }} />
-      <button onClick={() => { sound.current?.unlock(); startCpu(); }} className={`${UI.go} wk-pulse mt-5 h-[56px] w-full text-[24px]`}><PlayIcon size={20} />Play</button>
+      <PlayChoices onCpu={() => { sound.current?.unlock(); startCpu(); }} onFriend={() => pickOpp("live")} onPhone={() => pickOpp("phone")} />
     </>, mode === "daily" ? `Today's Challenge #${n}` : "Free Play");
     if (opp === "cpu" && phase === "over" && final) {
       const headline = final.won ? `You Won In ${final.turns} Turns!` : "The Computer Got There First";
       return (
           <GameOver label={mode === "daily" ? `Today's Challenge #${n}` : "Free Play"} headline={headline} score={final.score} best={best} mode={mode}
             posted={shell.scores.posted} joined={!!shell.player} campaign={GAME} copied={shell.copied}
-            extra={<p className="mt-3 text-[13px] font-semibold text-[#5a6b85]">{final.blenders} {final.blenders === 1 ? "Blender" : "Blenders"} · {final.bacon} Bacon {final.bacon === 1 ? "Slide" : "Slides"}{final.mitts ? ` · ${final.mitts} Oven Mitt ${final.mitts === 1 ? "Save" : "Saves"}` : ""}</p>}
+            extra={<><p className="mt-3 text-[13px] font-semibold text-[#5a6b85]">{final.blenders} {final.blenders === 1 ? "Blender" : "Blenders"} · {final.bacon} Bacon {final.bacon === 1 ? "Slide" : "Slides"}{final.mitts ? ` · ${final.mitts} Oven Mitt ${final.mitts === 1 ? "Save" : "Saves"}` : ""}</p>
+              <ChangeModeLink onClick={toStart} className="mt-1" /></>}
             pitch="What you eat changes how you feel. WhatYouAte shows you how your meals affect your energy."
             onBoard={() => shell.setBoardOpen(true)} onJoin={() => shell.setJoinOpen(true)}
             onAgain={() => { autoStart.current = true; if (mode === "daily") pickMode("endless"); else setRun(r => r + 1); }} onShare={() => shareCpu(final)} />
@@ -874,6 +887,7 @@ export default function BlendersBacon() {
         <button onClick={() => { autoStart.current = true; pickMode("endless"); }} className={`${UI.btn} h-[48px] flex-1 text-[18px]`}>Free Play</button>
         <button onClick={() => shareCpu(final)} className={`${UI.btn2} h-[48px] flex-1 text-[18px]`}><ShareIcon size={17} className="shrink-0" />{shell.copied ? "Copied!" : "Share"}</button>
       </div>
+      <PlayChoices onFriend={() => pickOpp("live")} onPhone={() => pickOpp("phone")} />
     </>);
     if (opp === "phone" && phase === "names") return card(<>
       <div className="wk-f text-[28px] leading-tight">Same Phone</div>
@@ -887,6 +901,7 @@ export default function BlendersBacon() {
         </div>
       ))}
       <button onClick={() => { sound.current?.unlock(); startPhone(); }} className={`${UI.go} mt-4 w-full rounded-full py-3 text-[20px]`}>Start</button>
+      <button onClick={toStart} className={`${UI.link} mt-2 w-full py-2 text-[15px]`}>Back</button>
     </>);
     if (opp !== "cpu" && (phase === "over" || phase === "rematch") && winner !== null) {
       const w = nameOf(winner), mine = opp === "live" && winner === mySide;
@@ -908,6 +923,7 @@ export default function BlendersBacon() {
         )}
         <button onClick={() => { if (opp === "phone") go("names"); else { leaveRoom(); setJoinInput(""); go("idle"); } }} className={`${UI.link} mt-2 w-full py-2 text-[15px]`}>
           {opp === "phone" ? "Change Players" : "Leave Room"}</button>
+        <ChangeModeLink onClick={toStart} />
       </>);
     }
     return null;
@@ -1067,15 +1083,8 @@ export default function BlendersBacon() {
     <GameScreen>
       <GameHeader title="Blenders & Bacon" mode={mode} onMode={pickMode} onBoard={() => shell.setBoardOpen(true)} onHelp={shell.help.show} />
 
-      <div className="mt-2 flex h-[40px] shrink-0 items-center gap-1.5">
-        <div className="flex h-[34px] min-w-0 flex-1 rounded-full bg-white p-[3px] shadow-[0_0_0_1px_#E3EDFB,0_6px_16px_-12px_rgba(31,70,140,0.3)]">
-          {([["cpu", "Computer"], ["phone", "Same Phone"], ["live", "Play A Friend"]] as [Opp, string][]).map(([o, label]) => (
-            <button key={o} onClick={() => pickOpp(o)} aria-pressed={opp === o}
-              className={`wk-f flex-1 rounded-full text-[14.5px] transition-colors ${opp === o ? "bg-[#101B2E] text-white" : "text-[#4F88E8]"}`}>{label}</button>
-          ))}
-        </div>
-        <SoundButton />
-      </div>
+      <ModeRow label={choosing ? "Choose How To Play" : opp === "cpu" ? "Vs The Computer" : opp === "phone" ? "Same Phone" : "Live With A Friend"}
+        onChange={choosing ? undefined : change} />
 
       {inGame ? (
         <div className="mt-2 flex shrink-0 items-center gap-2 rounded-2xl px-3 transition-colors duration-300" data-banner={myTurnNow ? "mine" : "theirs"}
