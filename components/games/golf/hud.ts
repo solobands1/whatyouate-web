@@ -3,11 +3,11 @@
 // your power while you drag), the score banners ("Birdie!"), the little floating words, the first-putt hint, and the
 // vignette. Anything with text is painted once into a small canvas and only repainted when what it shows changes, so a
 // frame just copies it.
-import { GAME_FONT } from "../gameFont";
+import { HUD_FONT } from "../gameFont";
 
 type C = CanvasRenderingContext2D;
 export const NAVY = "#101B2E", NAVY2 = "#24324D", YEL1 = "#9CC4FF", YEL2 = "#6FA8FF", YEL_LIP = "#4F88E8";   // the "yellow" slots now hold the WhatYouAte blue
-export const gf = (size: number) => `${size}px ${GAME_FONT}`;
+export const gf = (size: number) => `800 ${size}px ${HUD_FONT}`;   // the scorebar's text in the site's Geist
 const TAU = Math.PI * 2;
 
 const rgbOf = (h: string) => { const n = parseInt(h.slice(1), 16); return [(n >> 16) & 255, (n >> 8) & 255, n & 255]; };

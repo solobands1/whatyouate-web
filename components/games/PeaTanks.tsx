@@ -30,7 +30,7 @@ import { AW, AH, TANK_R, PEA_R, DUEL_HP, LIVES, MISSIONS, TODAY_MISSIONS, DAY_BO
 import { drawFloor, drawTableLight, drawZone, drawHerbs, drawShadow, drawCover, drawLunchbox, previewLunchbox, drawPea, drawMine, drawPick, drawBasket, drawFx, drawMarks,
   LOOKS, PLAYER_LOOKS, FX_LIFE, type Imgs, type Fx, type Mark, type Look } from "./tankArt";
 import { useTankRoom, savedSession, AWAY_MS, type RoomState, type Saved } from "./tankNet";
-import { GAME_FONT, loadGameFont } from "./gameFont";
+import { loadGameFont, HUD_FONT } from "./gameFont";
 import { textStamps } from "./art2/paint";
 
 const GAME = "pea-tanks";
@@ -903,7 +903,7 @@ export default function PeaTanks() {
       for (const f of floats) {
         const p = scr(f.x, f.y), a = 1 - f.age / f.life;
         ctx.globalAlpha = Math.max(0, Math.min(1, a * 1.6));
-        stamp(ctx, f.text, p.x, p.y - 30 - f.age * 0.02, `15px ${GAME_FONT}`, f.color, "#ffffff", 3.6, "rgba(14,31,69,0.22)");
+        stamp(ctx, f.text, p.x, p.y - 30 - f.age * 0.02, `800 15px ${HUD_FONT}`, f.color, "#ffffff", 3.6, "rgba(14,31,69,0.22)");
       }
       ctx.globalAlpha = 1;
 
@@ -919,7 +919,7 @@ export default function PeaTanks() {
           ctx.save(); const cy = arenaY + yy;
           if (flip) { ctx.translate(AW / 2, cy); ctx.rotate(Math.PI); ctx.translate(-AW / 2, -cy); }
           const isNum = /^\d$/.test(big), bh = isNum ? 64 : 44;
-          ctx.font = `${isNum ? 44 : 23}px ${GAME_FONT}`; const bwid = isNum ? 84 : Math.min(AW - 30, Math.max(40 + big.length * 11, ctx.measureText(big).width + 44));
+          ctx.font = `800 ${isNum ? 44 : 23}px ${HUD_FONT}`; const bwid = isNum ? 84 : Math.min(AW - 30, Math.max(40 + big.length * 11, ctx.measureText(big).width + 44));
           const bx = AW / 2 - bwid / 2, by = cy - bh / 2 - (small ? 8 : 0), bhh = bh + (small ? 18 : 0);   // a panel like the kit's cards: white, a pale blue edge, a soft shadow
           ctx.fillStyle = "rgba(16,27,46,0.18)"; rr(bx - 2, by + 6, bwid + 4, bhh, 20); ctx.fill();
           ctx.fillStyle = "#D3E2F8"; rr(bx - 1.5, by + 1.5, bwid + 3, bhh + 2, 19.5); ctx.fill();
@@ -981,8 +981,8 @@ export default function PeaTanks() {
   const friendRaw = play.kind === "live" ? play.names[1 - me] : "Guest";
   const friend = friendRaw === "Guest" ? "Your Friend" : friendRaw, friendLabel = friendRaw;
   const headline = !result ? "" : mode === "daily"
-    ? (result.kind === "won" ? `All 5 Missions Cleared! 🎉` : `${result.cleared} Of 5 Missions Cleared`)
-    : result.kind === "won" ? "Campaign Complete! 🎉" : `${result.cleared} Mission${result.cleared === 1 ? "" : "s"} Cleared`;
+    ? (result.kind === "won" ? `All 5 Missions Cleared!` : `${result.cleared} Of 5 Missions Cleared`)
+    : result.kind === "won" ? "Campaign Complete!" : `${result.cleared} Mission${result.cleared === 1 ? "" : "s"} Cleared`;
   const share = () => {
     if (!result) return;
     const label = mode === "daily" ? `Pea Tanks #${n} (Today's Challenge)` : "Pea Tanks (Free Play)";
@@ -1067,7 +1067,7 @@ export default function PeaTanks() {
 
         {play.kind === "none" && !over && !menu && !rui && !rejoin && (mode === "daily" ? (
           <OverlayCard soft title={<>Today&apos;s Challenge #{n}</>} max="max-w-[300px]">
-            <div className="wk-f text-[32px] leading-none text-[#0E1F45] tracking-[-0.03em]">Pea Tanks</div>
+            <div className="wk-f text-[32px] leading-none text-[#101B2E] tracking-[-0.03em]">Pea Tanks</div>
             <p className="mt-2 text-sm text-[#5a6b85]">5 missions, 3 lives. The same tables and enemies for everyone today.</p>
             <button onClick={() => startSolo("missions", true)} className={`${UI.go} mt-4 h-[54px] w-full text-[20px]`}>Play Today&apos;s Missions</button>
             <button onClick={() => { setMode("endless"); }} className={`${UI.btn2} mt-3 h-[46px] w-full text-[17px]`}>More Ways To Play</button>
@@ -1077,7 +1077,7 @@ export default function PeaTanks() {
           <OverlayCard soft title="Free Play" max="max-w-[340px]" className="pt-3!">
             {([["missions", "Missions", "20 kitchen tables. New enemies as you go."], ["guard", "Guard The Lunch", "Keep the waves off your picnic basket."], ["versus", "Versus", "One on one. First to 3 rounds."]] as [Game, string, string][]).map(([g, title, blurb], i) => (
               <div key={g} className={`${i ? "mt-2.5" : ""} rounded-2xl bg-[#e6eefc] p-2.5 text-left shadow-[inset_0_-2px_0_#d0ddf3]`}>
-                <div className="wk-f text-[18px] leading-tight text-[#0E1F45]">{title}</div>
+                <div className="wk-f text-[18px] leading-tight text-[#101B2E]">{title}</div>
                 <div className="text-xs text-[#5a6b85]">{blurb}</div>
                 <div className="mt-2 flex gap-1.5">
                   {g !== "versus" && <button onClick={() => pickGame(g, "solo")} className={`${UI.go} h-[36px] flex-1 rounded-xl text-[14px]`}>Solo</button>}
@@ -1091,7 +1091,7 @@ export default function PeaTanks() {
 
         {menu === "missions" && (
           <Card wide>
-            <div className="wk-f text-[25px] leading-tight text-[#0E1F45]">Pick A Mission</div>
+            <div className="wk-f text-[25px] leading-tight text-[#101B2E]">Pick A Mission</div>
             <p className="mt-1 text-xs text-[#5a6b85]">{pendingHow === "solo" || menuGame !== "missions" ? "3 lives, and a bonus life every 5 missions." : "Co-op: you share 3 lives."} Clear a mission to unlock the next.</p>
             <div className="mt-3 grid grid-cols-5 gap-1.5">
               {Array.from({ length: MISSIONS }, (_, i) => i + 1).map(k => (
@@ -1107,10 +1107,10 @@ export default function PeaTanks() {
 
         {menu === "friend" && !rui && (
           <Card>
-            <div className="wk-f text-[25px] leading-tight text-[#0E1F45]">Play A Friend</div>
+            <div className="wk-f text-[25px] leading-tight text-[#101B2E]">Play A Friend</div>
             <p className="mt-1 text-sm text-[#5a6b85]">{menuGame === "versus" ? "Versus, live on two phones." : menuGame === "guard" ? "Guard The Lunch together, live on two phones." : `Co-op missions from mission ${startAt}, live on two phones.`} Make a room and send your friend the link.</p>
             <button onClick={openRoom} className="mt-4 w-full wk-btn wk-blue h-[50px] text-[19px]">Make A Room</button>
-            <div className="wk-f mt-4 text-[14px] tracking-[0.03em] text-[#16336C]">Got A Code?</div>
+            <div className="wk-f mt-4 text-[14px] tracking-[0.03em] text-[#101B2E]">Got A Code?</div>
             <div className="mt-1 flex gap-2">
               <input value={code} onChange={e => setCode(e.target.value.toUpperCase().replace(/[^A-Z]/g, "").slice(0, 4))} placeholder="ABCD" autoCapitalize="characters" autoComplete="off" spellCheck={false}
                 onKeyDown={e => { if (e.key === "Enter") joinRoom(); }}
@@ -1123,7 +1123,7 @@ export default function PeaTanks() {
 
         {menu === "local" && (
           <Card>
-            <div className="wk-f text-[25px] leading-tight text-[#0E1F45]">Same Phone</div>
+            <div className="wk-f text-[25px] leading-tight text-[#101B2E]">Same Phone</div>
             <p className="mt-1 text-sm text-[#5a6b85]">Lay the phone flat between you. Player 2 plays from the top end. {menuGame === "versus" ? `First to ${WINS_TO} rounds.` : menuGame === "guard" ? "Guard the basket together." : `Co-op from mission ${startAt}.`}</p>
             {[0, 1].map(i => (
               <input key={i} value={names[i]} maxLength={12} placeholder={i === 0 ? "Player 1 (Bottom)" : "Player 2 (Top)"} autoComplete="off"
@@ -1139,7 +1139,7 @@ export default function PeaTanks() {
 
         {rejoin && !rui && !menu && (
           <Card>
-            <div className="wk-f text-[25px] leading-tight text-[#0E1F45]">Rejoin Your Game?</div>
+            <div className="wk-f text-[25px] leading-tight text-[#101B2E]">Rejoin Your Game?</div>
             <p className="mt-2 text-sm text-[#5a6b85]">You were playing {rejoin.friendName === "Guest" ? "your friend" : rejoin.friendName} in room {rejoin.code}.</p>
             <button onClick={() => { const r = rejoin; setRejoin(null); if (savedSession(GAME)) net.resume(r); }} className="mt-4 w-full wk-btn wk-blue h-[50px] text-[19px]">Rejoin Your Game</button>
             <button onClick={() => { setRejoin(null); try { localStorage.removeItem(`${GAME}-live`); sessionStorage.removeItem(`${GAME}-live`); } catch {} }} className="mt-2 w-full py-2 wk-link text-[15px]">Not Now</button>
@@ -1148,9 +1148,9 @@ export default function PeaTanks() {
 
         {isLive && paired && net.away && (
           <Card>
-            <div className="wk-f text-[25px] leading-tight text-[#0E1F45]">{net.away.who === "friend" ? `${friend} Stepped Away...` : "Reconnecting..."}</div>
+            <div className="wk-f text-[25px] leading-tight text-[#101B2E]">{net.away.who === "friend" ? `${friend} Stepped Away...` : "Reconnecting..."}</div>
             <p className="mt-2 text-sm text-[#5a6b85]">{net.away.who === "friend" ? "The game is paused. It carries on as soon as they're back." : "The game is paused while we get you back in."}</p>
-            <div className="wk-f mt-3 text-[46px] leading-none tabular-nums text-[#3f7fd6]">{awaySecs}</div>
+            <div className="wk-f mt-3 text-[46px] leading-none tabular-nums text-[#4F88E8]">{awaySecs}</div>
             <div className="wk-f text-[13px] tracking-[0.03em] text-[#5a6b85]">Seconds Left To Come Back</div>
             <button onClick={toMenu} className="mt-4 w-full wk-btn wk-light h-[48px] text-[18px]">Leave</button>
           </Card>
@@ -1160,7 +1160,7 @@ export default function PeaTanks() {
           <ReadyCard title={liveGameNow === "versus" ? "Get Ready: Versus" : liveGameNow === "guard" ? "Get Ready: Guard The Lunch" : "Get Ready: Co-op Missions"}
             me={nameRef.current === "Guest" ? "You" : nameRef.current} friend={friend} ready={[ready.me, ready.them]} onReady={imReady} onLeave={toMenu} steps={readySteps} />
         ) : (
-          <Card><div className="wk-f text-[25px] leading-tight text-[#0E1F45]">Joining...</div><p className="mt-2 text-sm text-[#5a6b85]">Finding out what {friend} wants to play.</p></Card>
+          <Card><div className="wk-f text-[25px] leading-tight text-[#101B2E]">Joining...</div><p className="mt-2 text-sm text-[#5a6b85]">Finding out what {friend} wants to play.</p></Card>
         ))}
 
         {card && !over && !(isLive && net.away) && <MissionCard card={card} live={isLive} host={me === 0} friend={friend} again={again}
@@ -1168,8 +1168,8 @@ export default function PeaTanks() {
 
         {matchEnd && !showRoomCard && !(isLive && net.away) && (
           <Card>
-            <div className="wk-f text-[15px] tracking-[0.03em] text-[#3F7FD6]">{play.kind === "live" ? `Room ${play.code}` : "Same Phone"}</div>
-            <div className="wk-f mt-1 text-[30px] leading-tight text-[#0E1F45]">{isLive ? (matchEnd.winner === me ? "You Won! 🎉" : `${friend} Won`) : `${pn[matchEnd.winner]} Wins! 🎉`}</div>
+            <div className="wk-f text-[15px] tracking-[0.03em] text-[#4F88E8]">{play.kind === "live" ? `Room ${play.code}` : "Same Phone"}</div>
+            <div className="wk-f mt-1 text-[30px] leading-tight text-[#101B2E]">{isLive ? (matchEnd.winner === me ? "You Won!" : `${friend} Won`) : `${pn[matchEnd.winner]} Wins!`}</div>
             <div className="mt-1 text-sm text-[#5a6b85]">{isLive ? `You ${wins[me]} · ${friendLabel} ${wins[1 - me]}` : `${pn[0]} ${wins[0]} · ${pn[1]} ${wins[1]}`}</div>
             {isLive && again.them && !again.me && <div className="wk-f mt-2 text-[16px] text-[#22A964]">{friend} Wants A Rematch!</div>}
             <button onClick={isLive ? liveRematch : localRematch} disabled={isLive && again.me} className="mt-4 w-full wk-btn wk-blue h-[50px] text-[19px] disabled:opacity-70">
@@ -1183,7 +1183,7 @@ export default function PeaTanks() {
         {over && isSolo && !menu && !rui && <GameOver label={mode === "daily" ? `Today's Challenge #${n}` : "Free Play Missions"} headline={headline} score={hud.score} best={best} mode={mode}
           posted={shell.scores.posted} joined={!!shell.player} campaign={GAME} copied={shell.copied} fact={fact}
           pitch="Quick reflexes are fun. Steady energy is better. WhatYouAte helps with the second one."
-          extra={<button onClick={() => { setOver(false); setMenuGame("missions"); setPendingHow("friend"); setPlay({ kind: "none" }); setMode("endless"); setMenu("friend"); }} className="wk-link mt-3 text-[16px] text-[#3F7FD6]">Play A Friend Instead</button>}
+          extra={<button onClick={() => { setOver(false); setMenuGame("missions"); setPendingHow("friend"); setPlay({ kind: "none" }); setMode("endless"); setMenu("friend"); }} className="wk-link mt-3 text-[16px] text-[#4F88E8]">Play A Friend Instead</button>}
           onBoard={() => shell.setBoardOpen(true)} onJoin={() => shell.setJoinOpen(true)} onAgain={() => { setOver(false); setPlay(p => (p.kind === "solo" ? { ...p, key: Date.now() } : p)); }} onShare={share} />}
       </BoardArea>
 
@@ -1218,8 +1218,8 @@ function MissionCard({ card, live, host, friend, again, onNext, onAgain, onMenu 
     const counts = new Map<Kind, number>(); for (const k of card.foes) counts.set(k, (counts.get(k) ?? 0) + 1);
     return (
       <Card>
-        <div className="wk-f text-[15px] tracking-[0.03em] text-[#3F7FD6]">Mission {card.n}{card.of ? ` Of ${card.of}` : ""} · {card.foes.length} {card.foes.length === 1 ? "Enemy" : "Enemies"}</div>
-        <div className="wk-f mt-0.5 text-[25px] leading-tight text-[#0E1F45]">{card.name}</div>
+        <div className="wk-f text-[15px] tracking-[0.03em] text-[#4F88E8]">Mission {card.n}{card.of ? ` Of ${card.of}` : ""} · {card.foes.length} {card.foes.length === 1 ? "Enemy" : "Enemies"}</div>
+        <div className="wk-f mt-0.5 text-[25px] leading-tight text-[#101B2E]">{card.name}</div>
         {card.isNew && (
           <div className="mt-3 flex items-center gap-2 rounded-2xl bg-[#fff4d6] p-2 text-left">
             <KindPreview look={LOOKS[card.isNew as Exclude<Kind, "player">]} />
@@ -1230,39 +1230,39 @@ function MissionCard({ card, live, host, friend, again, onNext, onAgain, onMenu 
           <div className="mt-2 rounded-2xl bg-[#e3f5e9] p-2 text-left"><div className="wk-f text-[14px] leading-tight text-[#1f7a4c]">New: {ZONES[card.newZone].name}</div><div className="text-sm">{ZONES[card.newZone].blurb}</div></div>
         )}
         <div className="mt-3 flex flex-wrap justify-center gap-1.5">
-          {[...counts.entries()].map(([k, c]) => (<span key={k} className="wk-f rounded-full bg-[#e6eefc] px-2.5 py-1 text-[13px] text-[#16336C] shadow-[inset_0_-2px_0_#d0ddf3]">{c > 1 ? `${c} × ` : ""}{KINDS[k].name}</span>))}
+          {[...counts.entries()].map(([k, c]) => (<span key={k} className="wk-f rounded-full bg-[#e6eefc] px-2.5 py-1 text-[13px] text-[#101B2E] shadow-[inset_0_-2px_0_#d0ddf3]">{c > 1 ? `${c} × ` : ""}{KINDS[k].name}</span>))}
         </div>
         <div className="mt-2 text-sm text-[#5a6b85]">{card.lives} {card.lives === 1 ? "Life" : "Lives"} {card.coop ? "(Shared)" : "Left"}</div>
-        {auto ? <div className="wk-f mt-3 text-[16px] text-[#3f7fd6]">Starting...</div> : <button onClick={onNext} className="mt-4 w-full wk-btn wk-go h-[52px] text-[20px]">Start Mission</button>}
+        {auto ? <div className="wk-f mt-3 text-[16px] text-[#4F88E8]">Starting...</div> : <button onClick={onNext} className="mt-4 w-full wk-btn wk-go h-[52px] text-[20px]">Start Mission</button>}
       </Card>
     );
   }
   if (card.k === "result") return (
     <Card>
-      <div className="wk-f text-[15px] tracking-[0.03em] text-[#3F7FD6]">Mission {card.n} Cleared</div>
-      <div className="wk-f mt-1 text-[44px] leading-none tabular-nums text-[#0E1F45] tracking-[-0.03em]">+{card.pts.toLocaleString()}</div>
+      <div className="wk-f text-[15px] tracking-[0.03em] text-[#4F88E8]">Mission {card.n} Cleared</div>
+      <div className="wk-f mt-1 text-[44px] leading-none tabular-nums text-[#101B2E] tracking-[-0.03em]">+{card.pts.toLocaleString()}</div>
       <div className="mt-2 grid grid-cols-2 gap-2 text-sm">
         <div className="wk-hud py-2"><div className="wk-hud-label">Time</div><div className="wk-f mt-1 text-[20px] leading-none tabular-nums">{card.secs}s</div></div>
         <div className="wk-hud py-2"><div className="wk-hud-label">Aim</div><div className="wk-f mt-1 text-[20px] leading-none tabular-nums">{card.acc}%</div></div>
       </div>
       {card.bonus && <div className="wk-f mt-2 flex items-center justify-center gap-1 text-[16px] text-[#22A964]">Bonus Life!<HeartIcon size={16} /></div>}
       <div className="mt-2 text-sm text-[#5a6b85]">Total {card.total.toLocaleString()}</div>
-      {auto ? <div className="wk-f mt-3 text-[16px] text-[#3f7fd6]">Next Mission Coming...</div> : <button onClick={onNext} className="mt-4 w-full wk-btn wk-go h-[52px] text-[20px]">{card.last ? "See Results" : "Next Mission"}</button>}
+      {auto ? <div className="wk-f mt-3 text-[16px] text-[#4F88E8]">Next Mission Coming...</div> : <button onClick={onNext} className="mt-4 w-full wk-btn wk-go h-[52px] text-[20px]">{card.last ? "See Results" : "Next Mission"}</button>}
     </Card>
   );
   if (card.k === "retry") return (
     <Card>
-      <div className="wk-f text-[25px] leading-tight text-[#0E1F45]">Knocked Out</div>
+      <div className="wk-f text-[25px] leading-tight text-[#101B2E]">Knocked Out</div>
       <p className="mt-1 text-sm text-[#5a6b85]">Mission {card.n} starts again. {card.lives} {card.lives === 1 ? "life" : "lives"} left.</p>
-      {auto ? <div className="wk-f mt-3 text-[16px] text-[#3f7fd6]">Trying Again...</div> : <button onClick={onNext} className="mt-4 w-full wk-btn wk-go h-[52px] text-[20px]">Try Again</button>}
+      {auto ? <div className="wk-f mt-3 text-[16px] text-[#4F88E8]">Trying Again...</div> : <button onClick={onNext} className="mt-4 w-full wk-btn wk-go h-[52px] text-[20px]">Try Again</button>}
     </Card>
   );
   const isGuard = card.k === "guardOver";
   return (
     <Card>
-      <div className="wk-f text-[15px] tracking-[0.03em] text-[#3F7FD6]">{isGuard ? "Guard The Lunch" : "Co-op Missions"}</div>
-      <div className="wk-f mt-1 text-[30px] leading-tight text-[#0E1F45]">{isGuard ? `${card.waves} ${card.waves === 1 ? "Wave" : "Waves"} Held` : card.won ? "Campaign Complete! 🎉" : `${card.cleared} ${card.cleared === 1 ? "Mission" : "Missions"} Cleared`}</div>
-      <div className="wk-f mt-1 text-[44px] leading-none tabular-nums text-[#0E1F45] tracking-[-0.03em]">{card.score.toLocaleString()}</div>
+      <div className="wk-f text-[15px] tracking-[0.03em] text-[#4F88E8]">{isGuard ? "Guard The Lunch" : "Co-op Missions"}</div>
+      <div className="wk-f mt-1 text-[30px] leading-tight text-[#101B2E]">{isGuard ? `${card.waves} ${card.waves === 1 ? "Wave" : "Waves"} Held` : card.won ? "Campaign Complete!" : `${card.cleared} ${card.cleared === 1 ? "Mission" : "Missions"} Cleared`}</div>
+      <div className="wk-f mt-1 text-[44px] leading-none tabular-nums text-[#101B2E] tracking-[-0.03em]">{card.score.toLocaleString()}</div>
       {isGuard && <div className="text-sm text-[#5a6b85]">{card.score >= card.best ? "New Best!" : `Best: ${card.best.toLocaleString()}`} · {card.kills} knocked out</div>}
       {live && again.them && !again.me && <div className="wk-f mt-2 text-[16px] text-[#22A964]">{friend} Wants To Go Again!</div>}
       <button onClick={onAgain} disabled={live && again.me} className="mt-4 w-full wk-btn wk-blue h-[50px] text-[19px] disabled:opacity-70">{live && again.me ? `Waiting For ${friend}...` : "Play Again"}</button>
@@ -1276,32 +1276,32 @@ function RoomCard({ rui, copied, onShare, onCancel, onBack, onNew }: { rui: Room
   return (
     <Card>
       {rui.s === "waiting" && (<>
-        <div className="wk-f text-[15px] tracking-[0.03em] text-[#3F7FD6]">Your Room Code</div>
-        <div className="wk-f mt-1 text-[46px] leading-none tracking-[0.14em] text-[#0E1F45]">{rui.code}</div>
+        <div className="wk-f text-[15px] tracking-[0.03em] text-[#4F88E8]">Your Room Code</div>
+        <div className="wk-f mt-1 text-[46px] leading-none tracking-[0.14em] text-[#101B2E]">{rui.code}</div>
         <p className="mt-2 text-sm text-[#5a6b85]">Send your friend the link. You&apos;ll both get a quick how-to, then the game starts.</p>
         <button onClick={onShare} className="mt-4 w-full wk-btn wk-blue h-[50px] text-[19px]">{copied ? "Link Copied!" : "Share Link"}</button>
-        <p className="wk-f mt-3 text-[16px] text-[#3f7fd6]">Waiting For Your Friend...</p>
+        <p className="wk-f mt-3 text-[16px] text-[#4F88E8]">Waiting For Your Friend...</p>
         <button onClick={onCancel} className="mt-1 w-full py-2 wk-link text-[15px]">Cancel</button>
       </>)}
       {rui.s === "joining" && (<>
-        <div className="wk-f text-[25px] leading-tight text-[#0E1F45]">Joining Room {rui.code}</div>
-        <p className="wk-f mt-2 text-[16px] text-[#3f7fd6]">Connecting...</p>
+        <div className="wk-f text-[25px] leading-tight text-[#101B2E]">Joining Room {rui.code}</div>
+        <p className="wk-f mt-2 text-[16px] text-[#4F88E8]">Connecting...</p>
         <button onClick={onCancel} className="mt-3 w-full py-2 wk-link text-[15px]">Cancel</button>
       </>)}
       {(rui.s === "full" || rui.s === "empty" || rui.s === "error") && (<>
-        <div className="wk-f text-[25px] leading-tight text-[#0E1F45]">{rui.s === "full" ? "Room Full" : rui.s === "empty" ? "No One's Here" : "Can't Connect"}</div>
+        <div className="wk-f text-[25px] leading-tight text-[#101B2E]">{rui.s === "full" ? "Room Full" : rui.s === "empty" ? "No One's Here" : "Can't Connect"}</div>
         <p className="mt-2 text-sm text-[#5a6b85]">{rui.s === "full" ? `Room ${rui.code} already has two players.` : rui.s === "empty" ? `Nobody is in room ${rui.code} right now. Ask your friend to make a room and send you the link.` : "We couldn't reach the game. Check your connection and try again."}</p>
         <button onClick={onBack} className="mt-4 w-full wk-btn wk-blue h-[50px] text-[19px]">Back</button>
         <button onClick={onCancel} className="mt-2 w-full py-2 wk-link text-[15px]">Back To Menu</button>
       </>)}
       {rui.s === "lost" && (<>
-        <div className="wk-f text-[25px] leading-tight text-[#0E1F45]">Connection Lost</div>
+        <div className="wk-f text-[25px] leading-tight text-[#101B2E]">Connection Lost</div>
         <p className="mt-2 text-sm text-[#5a6b85]">We couldn&apos;t get you back into room {rui.code} in time.</p>
         <button onClick={onNew} className="mt-4 w-full wk-btn wk-blue h-[50px] text-[19px]">Make A New Room</button>
         <button onClick={onCancel} className="mt-2 w-full wk-btn wk-light h-[48px] text-[18px]">Back To Menu</button>
       </>)}
       {rui.s === "left" && (<>
-        <div className="wk-f text-[25px] leading-tight text-[#0E1F45]">Your Friend Left</div>
+        <div className="wk-f text-[25px] leading-tight text-[#101B2E]">Your Friend Left</div>
         <p className="mt-2 text-sm text-[#5a6b85]">That game is over.</p>
         <button onClick={onNew} className="mt-4 w-full wk-btn wk-blue h-[50px] text-[19px]">Make A New Room</button>
         <button onClick={onCancel} className="mt-2 w-full wk-btn wk-light h-[48px] text-[18px]">Back To Menu</button>

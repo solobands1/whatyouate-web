@@ -131,3 +131,28 @@ export function SparkleIcon({ size = 20, className, color = "currentColor" }: P)
     </svg>
   );
 }
+
+/** Pass the phone: a phone with a curved arrow round it, in the WhatYouAte blue. */
+export function PassPhoneIcon({ size = 32, className, color = "#4F88E8" }: P) {
+  return (
+    <svg viewBox="0 0 32 32" {...box(size, className)}>
+      <rect x="10.5" y="5" width="11" height="20" rx="2.6" fill="#ffffff" stroke={color} strokeWidth="2" />
+      <path d="M14.4 7.6h3.2" stroke={color} strokeWidth="1.6" strokeLinecap="round" />
+      <circle cx="16" cy="21.6" r="1.2" fill={color} />
+      <path d="M4.6 17.5a11.6 11.6 0 0 0 18.5 8.2" fill="none" stroke={color} strokeWidth="2" strokeLinecap="round" opacity="0.55" />
+      <path d="M20.9 27.6l2.5-1.9-1.4-2.8" fill="none" stroke={color} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" opacity="0.55" />
+      <path d="M27.4 14.5A11.6 11.6 0 0 0 8.9 6.3" fill="none" stroke={color} strokeWidth="2" strokeLinecap="round" opacity="0.55" />
+      <path d="M11.1 4.4L8.6 6.3l1.4 2.8" fill="none" stroke={color} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" opacity="0.55" />
+    </svg>
+  );
+}
+
+/** Shuffle: two crossing arrows. */
+export function ShuffleIcon({ size = 18, className, color = "currentColor" }: P) {
+  return (
+    <svg viewBox="0 0 24 24" {...box(size, className)}>
+      <path d="M3.5 7h3.2c2 0 3.2.9 4.3 2.6l2 3c1.1 1.7 2.3 2.4 4.3 2.4h3.2M3.5 17h3.2c1.6 0 2.7-.5 3.6-1.6M14 8.6c.9-1.1 2-1.6 3.6-1.6h2.9" fill="none" stroke={color} strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" />
+      <path d="M17.8 4.3l2.7 2.7-2.7 2.7M17.8 12.3l2.7 2.7-2.7 2.7" fill="none" stroke={color} strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" />
+    </svg>
+  );
+}

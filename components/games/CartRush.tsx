@@ -14,7 +14,7 @@ import { useEffect, useRef, useState } from "react";
 import { type Mode, type Toast, GameScreen, GameHeader, BoardArea, PrizeLogo, GameOver, PauseButton, PausedCard, HelpModal, ModesHelp, ShellPopups,
   useGameShell, fitCanvas, loadImages, dailySeed, dailyNumber, torontoDate, mulberry32, readBest, saveBest, foodPng, HUD_ROW, HudStat, HudTag, StartCard } from "./kit";
 import { useDuel } from "./duels";
-import { GAME_FONT, loadGameFont } from "./gameFont";
+import { loadGameFont, HUD_FONT } from "./gameFont";
 import { type CartArt, buildCartArt, canStripes, heart, FLOOR_P, SHELF_P } from "./art2/cartArt";
 import { layer, textStamps, warmText } from "./art2/paint";
 
@@ -223,8 +223,8 @@ export default function CartRush() {
     const game = createRun(mode === "daily", mode === "daily" ? dailySeed(0xca127) : Math.floor(Math.random() * 1e9), mulberry32, (e) => {
       if (e.type === "grab") { basket.push(e.code); if (basket.length > 4) basket.shift(); }
       if (e.type === "grab") float(e.listed ? `+${e.pts}` : `Not on the list +${e.pts}`, e.listed ? "#2eaa6e" : "#8a96a8");
-      else if (e.type === "recipe") float(`${e.recipe.name} done! +${e.pts}${e.heart ? " ❤️" : ""}`, e.perfect ? "#2eaa6e" : "#3f7fd6", W / 2, H / 2 - 30, true);
-      else if (e.type === "hit") { float(`💔 ${e.hazard.hit}`, "#e8505b"); shakeUntil = performance.now() + 260; }
+      else if (e.type === "recipe") float(`${e.recipe.name} done! +${e.pts}${e.heart ? " · +1 Heart" : ""}`, e.perfect ? "#2eaa6e" : "#3f7fd6", W / 2, H / 2 - 30, true);
+      else if (e.type === "hit") { float(e.hazard.hit, "#e8505b"); shakeUntil = performance.now() + 260; }
       else finish();
     });
     const s = game.s;
@@ -299,7 +299,7 @@ export default function CartRush() {
     const stamp = textStamps();
     const ensureArt = () => {
       const k = canvas.width / W;
-      if (!art || Math.abs(art.k - k) > 1e-6) { art = buildCartArt(k, W, H, SHELF, LANE_W, IR, HUD, PAD); warmText([`17px ${GAME_FONT}`, `25px ${GAME_FONT}`], "💔 ❤️ +20 Level"); }
+      if (!art || Math.abs(art.k - k) > 1e-6) { art = buildCartArt(k, W, H, SHELF, LANE_W, IR, HUD, PAD); warmText([`800 17px ${HUD_FONT}`, `800 25px ${HUD_FONT}`], "+20 Level Heart"); }
       return art;
     };
     function scroll(im: HTMLCanvasElement, dx: number, dw: number, P: number, k: number) {   // a strip that repeats every P, moved by the distance
@@ -319,7 +319,7 @@ export default function CartRush() {
     function paintRecipeCard(A: CartArt, recipe: Recipe) {
       const L = layer(W, HUD + 12, A.k), c = L.c;
       c.drawImage(A.card, 0, 0, W, HUD + 12);
-      c.textAlign = "left"; c.textBaseline = "alphabetic"; c.fillStyle = "#0E1F45"; c.font = `19px ${GAME_FONT}`;
+      c.textAlign = "left"; c.textBaseline = "alphabetic"; c.fillStyle = "#0E1F45"; c.font = `800 19px ${HUD_FONT}`;
       c.fillText(recipe.name, 16, 27);
       recipe.items.forEach((code, i) => {
         const ix = 14 + i * 46 + 18, iy = 52, im = img(code);
@@ -329,7 +329,7 @@ export default function CartRush() {
       });
       c.textAlign = "right"; c.font = font(600, 13); c.fillStyle = s.perfect ? "#1f9a5a" : "#7d8798";
       c.fillText(s.perfect ? "No extras: ×2 bonus" : "Extras: no ×2 this time", W - 15, 26);
-      const lv = `Level ${level}`; c.font = `15px ${GAME_FONT}`; const lw = c.measureText(lv).width + 18, lx = W - 15 - lw, ly = 45;
+      const lv = `Level ${level}`; c.font = `800 15px ${HUD_FONT}`; const lw = c.measureText(lv).width + 18, lx = W - 15 - lw, ly = 45;
       c.fillStyle = "#3F78DB"; c.beginPath(); c.roundRect(lx, ly + 2, lw, 21, 10.5); c.fill();
       const lg = c.createLinearGradient(0, ly, 0, ly + 21); lg.addColorStop(0, "#84B6FF"); lg.addColorStop(1, "#5A95F5");
       c.fillStyle = lg; c.beginPath(); c.roundRect(lx, ly, lw, 21, 10.5); c.fill();
@@ -337,14 +337,11 @@ export default function CartRush() {
       c.textAlign = "center"; c.fillStyle = "rgba(30,70,150,0.35)"; c.fillText(lv, lx + lw / 2, ly + 16.5); c.fillStyle = "#fff"; c.fillText(lv, lx + lw / 2, ly + 15.5);
       return L.cv;
     }
-    function litButton(A: CartArt, bw: number, bh: number) {   // the lane pad's lit button: brand blue, a lip under it, a shine on top
+    function litButton(A: CartArt, bw: number, bh: number) {   // the lane pad's lit button: flat WhatYouAte blue with a soft blue glow under it
       if (buttonCv && buttonK === A.k) return buttonCv;
       const L = layer(bw, bh + 3, A.k), c = L.c;
-      c.fillStyle = "#3F78DB"; c.beginPath(); c.roundRect(0, 2.5, bw, bh, 11); c.fill();
-      const bg = c.createLinearGradient(0, 0, 0, bh); bg.addColorStop(0, "#84B6FF"); bg.addColorStop(0.5, "#6FA8FF"); bg.addColorStop(1, "#5A95F5");
-      c.fillStyle = bg; c.beginPath(); c.roundRect(0, 0, bw, bh, 11); c.fill();
-      const sh = c.createLinearGradient(0, 0, 0, bh * 0.5); sh.addColorStop(0, "rgba(255,255,255,0.42)"); sh.addColorStop(1, "rgba(255,255,255,0)");
-      c.fillStyle = sh; c.beginPath(); c.roundRect(5, 2, bw - 10, bh * 0.45, [8, 8, 5, 5]); c.fill();
+      c.fillStyle = "rgba(79,136,232,0.3)"; c.beginPath(); c.roundRect(1, 2.5, bw - 2, bh, 11); c.fill();
+      c.fillStyle = "#6FA8FF"; c.beginPath(); c.roundRect(0, 0, bw, bh, 11); c.fill();
       buttonCv = L.cv; buttonK = A.k; return buttonCv;
     }
     function check(ctx: CanvasRenderingContext2D, x: number, y: number) {   // a ticked-off item on the card
@@ -403,7 +400,7 @@ export default function CartRush() {
       ctx.drawImage(litButton(A, bw, bh), bx, by, bw, bh + 3);
       for (let l = 0; l < LANES; l++) {                  // ◀ left lane, • middle, ▶ right lane
         const mx = PAD.x + (l + 0.5) * segW, my = PAD_Y + PAD_H / 2 - 1, on = l === s.lane;
-        ctx.fillStyle = on ? "#fff" : "rgba(170,198,245,0.7)";
+        ctx.fillStyle = on ? "#fff" : "#A9C4EC";
         if (on) { ctx.shadowColor = "rgba(20,50,110,0.45)"; ctx.shadowBlur = 0; ctx.shadowOffsetY = 1.5 * A.k; }
         ctx.beginPath();
         if (l === 1) ctx.arc(mx, my, 5, 0, Math.PI * 2);
@@ -420,7 +417,7 @@ export default function CartRush() {
       for (const f of floats) {
         const life = f.big ? 1800 : 800, a = 1 - f.age / life;
         ctx.globalAlpha = Math.max(0, Math.min(1, a * 1.6));
-        stamp(ctx, f.text, Math.max(W * 0.3, Math.min(W * 0.7, f.x)), f.y - (f.big ? 0 : f.age * 0.05), `${f.big ? 25 : 17}px ${GAME_FONT}`, f.color, "rgba(255,255,255,0.95)", f.big ? 5 : 4);
+        stamp(ctx, f.text, Math.max(W * 0.3, Math.min(W * 0.7, f.x)), f.y - (f.big ? 0 : f.age * 0.05), `800 ${f.big ? 25 : 17}px ${HUD_FONT}`, f.color, "rgba(255,255,255,0.95)", f.big ? 5 : 4);
       }
       ctx.globalAlpha = 1; ctx.restore();
     }
@@ -435,7 +432,7 @@ export default function CartRush() {
 
   const n = dailyNumber(LAUNCH);
   const made = result?.done.length ?? 0, perfects = result?.done.filter(d => d.perfect).length ?? 0;
-  const headline = !result ? "" : made === 0 ? "No recipes this time 🛒" : `You made ${made} recipe${made === 1 ? "" : "s"} 🛒`;
+  const headline = !result ? "" : made === 0 ? "No recipes this time" : `You made ${made} recipe${made === 1 ? "" : "s"}`;
   const share = () => {
     if (!result) return;
     // Wordle-style: the dishes you made, a ⭐ after each one with nothing extra in the cart

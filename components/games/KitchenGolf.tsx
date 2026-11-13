@@ -943,7 +943,7 @@ export default function KitchenGolf() {
   const pn = play.kind === "cpu" ? ["You", "Computer"] : play.names;
   const friend = play.kind === "live" ? (play.names[1 - me] === "Guest" ? "Your Friend" : play.names[1 - me]) : "";
   const headline = !result ? "" : mode === "daily"
-    ? (result.kind === "won" ? `You Beat The Computer By ${result.cpu - result.you}! 🎉` : result.kind === "tie" ? "Tied With The Computer" : `The Computer Won By ${result.you - result.cpu}`)
+    ? (result.kind === "won" ? `You Beat The Computer By ${result.cpu - result.you}!` : result.kind === "tie" ? "Tied With The Computer" : `The Computer Won By ${result.you - result.cpu}`)
     : `${result.rounds - 1} Round${result.rounds === 2 ? "" : "s"} Won, Lost Round ${result.rounds}`;
   const toPar = (s: number, par: number) => (s === par ? "Even Par" : s < par ? `${par - s} Under Par` : `${s - par} Over Par`);
   const share = () => {
@@ -985,18 +985,18 @@ export default function KitchenGolf() {
 
       <div className="mt-2 flex items-center justify-between">
         {isCpu ? (<>
-          <div><div className="text-[10px] font-semibold uppercase tracking-wide text-[#5a6b85]">Score</div><div className="kg-f text-[28px] leading-none tabular-nums text-[#0E1F45]">{hud.score.toLocaleString()}</div></div>
+          <div><div className="text-[10px] font-semibold uppercase tracking-wide text-[#5a6b85]">Score</div><div className="kg-f text-[28px] leading-none tabular-nums text-[#101B2E]">{hud.score.toLocaleString()}</div></div>
           <div className="kg-f kg-ribbon rounded-full px-3 py-1 text-[13px] text-white">
             {mode === "daily" ? `Hole ${hud.hole} Of 9` : `Round ${hud.round} · Hole ${hud.hole}`} <span className="text-white/80">· {hud.tot[0]}-{hud.tot[1]}</span>
           </div>
         </>) : (<>
-          <div className="min-w-0"><div className="truncate text-[10px] font-semibold uppercase tracking-wide text-[#5a6b85]">{isLive ? "You" : pn[0]}</div><div className="kg-f text-[28px] leading-none tabular-nums text-[#0E1F45]">{hud.tot[isLive ? me : 0]}</div></div>
+          <div className="min-w-0"><div className="truncate text-[10px] font-semibold uppercase tracking-wide text-[#5a6b85]">{isLive ? "You" : pn[0]}</div><div className="kg-f text-[28px] leading-none tabular-nums text-[#101B2E]">{hud.tot[isLive ? me : 0]}</div></div>
           <div className="kg-f kg-ribbon rounded-full px-3 py-1 text-[13px] text-white">{play.kind === "live" ? <>Live <span className="text-white/80">· Room {play.code}</span></> : "Same Phone"}</div>
         </>)}
         <div className="flex items-center gap-1.5">
-          {isCpu ? <div className="mr-1 text-right"><div className="text-[10px] font-semibold uppercase tracking-wide text-[#5a6b85]">Best</div><div className="kg-f text-[20px] leading-none tabular-nums text-[#0E1F45]">{best.toLocaleString()}</div></div>
-            : <div className="mr-1 min-w-0 text-right"><div className="max-w-[96px] truncate text-[10px] font-semibold uppercase tracking-wide text-[#5a6b85]">{isLive ? friend : pn[1]}</div><div className="kg-f text-[28px] leading-none tabular-nums text-[#0E1F45]">{hud.tot[isLive ? 1 - me : 1]}</div></div>}
-          <button onClick={toggleSound} aria-label={muted ? "Sound On" : "Sound Off"} className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-white/70 text-[#3f7fd6]"><SoundIcon muted={muted} /></button>
+          {isCpu ? <div className="mr-1 text-right"><div className="text-[10px] font-semibold uppercase tracking-wide text-[#5a6b85]">Best</div><div className="kg-f text-[20px] leading-none tabular-nums text-[#101B2E]">{best.toLocaleString()}</div></div>
+            : <div className="mr-1 min-w-0 text-right"><div className="max-w-[96px] truncate text-[10px] font-semibold uppercase tracking-wide text-[#5a6b85]">{isLive ? friend : pn[1]}</div><div className="kg-f text-[28px] leading-none tabular-nums text-[#101B2E]">{hud.tot[isLive ? 1 - me : 1]}</div></div>}
+          <button onClick={toggleSound} aria-label={muted ? "Sound On" : "Sound Off"} className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-white/70 text-[#4F88E8]"><SoundIcon muted={muted} /></button>
           <PauseButton shell={shell} active={playing} />
         </div>
       </div>
@@ -1011,8 +1011,8 @@ export default function KitchenGolf() {
             <style>{`@keyframes kg-in { 0% { opacity: 0; transform: translateY(-14px) scale(0.9) } 12% { opacity: 1; transform: scale(1.04) } 20% { transform: none } 62% { opacity: 1; transform: none } 85%, 100% { opacity: 0; transform: translateY(8px) scale(0.97) } } .kg-intro { animation: kg-in ${INTRO_MS}ms ease-out forwards }`}</style>
             <span className="kg-panel relative flex w-full flex-col items-center px-4 pb-4 pt-7 text-center">
               <span className="kg-f kg-ribbon absolute -top-4 rounded-full px-4 py-1 text-[16px] text-white/80">Hole {intro.n} Of 9</span>
-              <span className="kg-f text-[31px] leading-[1.05] text-[#0E1F45]">{intro.name}</span>
-              <span className="kg-f mt-2.5 rounded-full bg-[#EAF2FF] px-4 py-0.5 text-[18px] text-[#0E1F45]">Par {intro.par}</span>
+              <span className="kg-f text-[31px] leading-[1.05] text-[#101B2E]">{intro.name}</span>
+              <span className="kg-f mt-2.5 rounded-full bg-[#EAF2FF] px-4 py-0.5 text-[18px] text-[#101B2E]">Par {intro.par}</span>
             </span>
           </button>
         )}
@@ -1024,7 +1024,7 @@ export default function KitchenGolf() {
               <span className="flex w-full flex-col gap-1.5">
                 {holeCard.results.map((r, i) => (
                   <span key={i} className="flex w-full items-center justify-between px-1">
-                    <span className="kg-f flex min-w-0 items-center gap-2 text-[19px] text-[#0E1F45]"><span className="h-3.5 w-3.5 shrink-0 rounded-full shadow-[0_0_0_2px_#fff,0_1px_3px_rgba(14,31,69,0.4)]" style={{ background: r.color }} /><span className="truncate">{r.name}</span></span>
+                    <span className="kg-f flex min-w-0 items-center gap-2 text-[19px] text-[#101B2E]"><span className="h-3.5 w-3.5 shrink-0 rounded-full shadow-[0_0_0_2px_#fff,0_1px_3px_rgba(14,31,69,0.4)]" style={{ background: r.color }} /><span className="truncate">{r.name}</span></span>
                     <span className={`kg-f shrink-0 rounded-full px-3 py-0.5 text-[15px] ${chipTone(r.strokes, holeCard.par)}`}>{scoreName(r.strokes, holeCard.par)}</span>
                   </span>
                 ))}
@@ -1040,7 +1040,7 @@ export default function KitchenGolf() {
             <div className="flex items-center justify-center gap-2.5">
               <MeatballIcon size={52} />
               <div className="text-left">
-                <div className="kg-f text-[32px] leading-none text-[#0E1F45]">Kitchen Golf</div>
+                <div className="kg-f text-[32px] leading-none text-[#101B2E]">Kitchen Golf</div>
                 <div className="kg-f kg-ribbon mt-1.5 inline-block rounded-full px-2.5 py-0.5 text-[12px] text-white/80">{mode === "daily" ? `Today's Challenge #${n}` : "Free Play"}</div>
               </div>
             </div>
@@ -1064,14 +1064,14 @@ export default function KitchenGolf() {
 
         {menu === "friend" && !rui && (
           <Card>
-            <div className="kg-f text-[27px] leading-tight text-[#0E1F45]">Play A Friend</div>
+            <div className="kg-f text-[27px] leading-tight text-[#101B2E]">Play A Friend</div>
             <p className="mt-1 text-sm leading-snug text-[#4a5b77]">Play live on two phones. Make a room and send your friend the link.</p>
             <button onClick={openRoom} className="kg-btn mt-4 w-full py-3 text-[19px]">Make A Room</button>
             <div className="kg-f mt-4 text-[14px] text-[#5a6b85]">Got A Code?</div>
             <div className="mt-1.5 flex gap-2">
               <input value={code} onChange={e => setCode(e.target.value.toUpperCase().replace(/[^A-Z]/g, "").slice(0, 4))} placeholder="ABCD" autoCapitalize="characters" autoComplete="off" spellCheck={false}
                 onKeyDown={e => { if (e.key === "Enter") joinRoom(); }}
-                className="kg-input w-0 min-w-0 flex-1 px-3 py-2.5 text-center font-mono text-lg font-bold tracking-[0.3em] text-[#0E1F45]" />
+                className="kg-input w-0 min-w-0 flex-1 px-3 py-2.5 text-center font-mono text-lg font-bold tracking-[0.3em] text-[#101B2E]" />
               <button onClick={joinRoom} disabled={code.length !== 4} className="kg-btn-2 px-5 text-[17px]">Join</button>
             </div>
             <button onClick={() => setMenu(null)} className="kg-link mt-3 w-full py-2 text-[15px]">Back</button>
@@ -1080,14 +1080,14 @@ export default function KitchenGolf() {
 
         {menu === "local" && (
           <Card>
-            <div className="kg-f text-[27px] leading-tight text-[#0E1F45]">Same Phone</div>
+            <div className="kg-f text-[27px] leading-tight text-[#101B2E]">Same Phone</div>
             <p className="mt-1 text-sm leading-snug text-[#4a5b77]">Two players, one phone. Pass it over when it&apos;s the other player&apos;s putt.</p>
             {[0, 1].map(i => (
               <div key={i} className="relative mt-3">
                 <span className="absolute left-3 top-1/2 h-3 w-3 -translate-y-1/2 rounded-full" style={{ background: i === 0 ? BLUE : RED }} />
                 <input value={names[i]} maxLength={12} placeholder={`Player ${i + 1}`} autoComplete="off"
                   onChange={e => setNames(v => v.map((x, j) => (j === i ? e.target.value : x)))}
-                  className="kg-input w-full py-2.5 pl-8 pr-3 text-base text-[#0E1F45]" />
+                  className="kg-input w-full py-2.5 pl-8 pr-3 text-base text-[#101B2E]" />
               </div>
             ))}
             <button onClick={startLocal} className="kg-btn mt-4 w-full py-3 text-[19px]">Start</button>
@@ -1097,7 +1097,7 @@ export default function KitchenGolf() {
 
         {offer && !rui && !isLive && (
           <Card>
-            <div className="kg-f text-[26px] leading-tight text-[#0E1F45]">Rejoin Your Game</div>
+            <div className="kg-f text-[26px] leading-tight text-[#101B2E]">Rejoin Your Game</div>
             <p className="mt-1 text-sm leading-snug text-[#4a5b77]">You were in the middle of a match in room {offer.saved.code}.</p>
             <button onClick={() => rejoinNow(offer.saved, offer.live)} className="kg-btn mt-4 w-full py-3 text-[19px]">Rejoin</button>
             <button onClick={() => { room.forget(); forgetLive(); setOffer(null); }} className="kg-link mt-2 w-full py-2 text-[15px]">No Thanks</button>
@@ -1106,14 +1106,14 @@ export default function KitchenGolf() {
 
         {isLive && room.away && !rui && (theirTurn ? (
           <Card>
-            <div className="kg-f text-[24px] leading-tight text-[#0E1F45]">{friend} Stepped Away...</div>
+            <div className="kg-f text-[24px] leading-tight text-[#101B2E]">{friend} Stepped Away...</div>
             <div className="kg-f mx-auto mt-3 flex h-[76px] w-[76px] items-center justify-center rounded-full bg-gradient-to-b from-[#66A6FF] to-[#3170DC] text-[34px] tabular-nums text-white shadow-[0_5px_0_#19429A,inset_0_2px_0_rgba(255,255,255,0.35)]">{awayLeft}s</div>
             <p className="mt-3 text-sm leading-snug text-[#4a5b77]">It&apos;s their putt, so the game waits. It picks up right where you left off when they&apos;re back.</p>
             <button onClick={toCpu} className="kg-link mt-3 w-full py-2 text-[15px]">Leave</button>
           </Card>
         ) : (
           <div className="pointer-events-none absolute inset-x-0 top-[66px] z-10 flex justify-center px-3">
-            <div className="kg-f truncate rounded-full bg-[#EAF2FF] px-3.5 py-1 text-[13px] text-[#0E1F45]">{friend} Stepped Away · {awayLeft}s · Your Putt</div>
+            <div className="kg-f truncate rounded-full bg-[#EAF2FF] px-3.5 py-1 text-[13px] text-[#101B2E]">{friend} Stepped Away · {awayLeft}s · Your Putt</div>
           </div>
         ))}
         {isLive && room.reconnecting && !room.away && !rui && (
@@ -1143,22 +1143,22 @@ export default function KitchenGolf() {
               </div>
               <p className="mt-3 text-sm leading-snug text-[#4a5b77]">Send your friend the link. The game starts when you&apos;re both ready.</p>
               <button onClick={() => shareRoom(rui.code)} className="kg-btn mt-4 w-full py-3 text-[19px]">{shell.copied ? "Link Copied!" : "Share Link"}</button>
-              <p className="kg-f mt-3 animate-pulse text-[15px] text-[#3f7fd6]">Waiting For Your Friend...</p>
+              <p className="kg-f mt-3 animate-pulse text-[15px] text-[#4F88E8]">Waiting For Your Friend...</p>
               <button onClick={toCpu} className="kg-link mt-1 w-full py-2 text-[15px]">Cancel</button>
             </>)}
             {rui.s === "joining" && (<>
-              <div className="kg-f text-[26px] leading-tight text-[#0E1F45]">Joining Room {rui.code}</div>
-              <p className="kg-f mt-2 animate-pulse text-[15px] text-[#3f7fd6]">Connecting...</p>
+              <div className="kg-f text-[26px] leading-tight text-[#101B2E]">Joining Room {rui.code}</div>
+              <p className="kg-f mt-2 animate-pulse text-[15px] text-[#4F88E8]">Connecting...</p>
               <button onClick={toCpu} className="kg-link mt-3 w-full py-2 text-[15px]">Cancel</button>
             </>)}
             {(rui.s === "full" || rui.s === "empty" || rui.s === "error") && (<>
-              <div className="kg-f text-[26px] leading-tight text-[#0E1F45]">{rui.s === "full" ? "Room Full" : rui.s === "empty" ? "No One's Here" : "Can't Connect"}</div>
+              <div className="kg-f text-[26px] leading-tight text-[#101B2E]">{rui.s === "full" ? "Room Full" : rui.s === "empty" ? "No One's Here" : "Can't Connect"}</div>
               <p className="mt-2 text-sm leading-snug text-[#4a5b77]">{rui.s === "full" ? `Room ${rui.code} already has two players.` : rui.s === "empty" ? `Nobody is in room ${rui.code} right now. Ask your friend to make a room and send you the link.` : "We couldn't reach the game. Check your connection and try again."}</p>
               <button onClick={() => { room.dismiss(); setMenu("friend"); }} className="kg-btn mt-4 w-full py-3 text-[19px]">Back</button>
               <button onClick={toCpu} className="kg-link mt-2 w-full py-2 text-[15px]">Play The Computer</button>
             </>)}
             {rui.s === "left" && (<>
-              <div className="kg-f text-[26px] leading-tight text-[#0E1F45]">Your Friend Left</div>
+              <div className="kg-f text-[26px] leading-tight text-[#101B2E]">Your Friend Left</div>
               <p className="mt-2 text-sm leading-snug text-[#4a5b77]">That match is over.</p>
               <button onClick={openRoom} className="kg-btn mt-4 w-full py-3 text-[19px]">Make A New Room</button>
               <button onClick={toCpu} className="kg-btn-2 mt-3 w-full py-3 text-[17px]">Play The Computer</button>
@@ -1170,7 +1170,7 @@ export default function KitchenGolf() {
           <button onClick={() => passRef.current()} className="kg-backdrop wk-raise absolute inset-0 z-10 flex items-center justify-center rounded-[22px] p-6">
             <span className="kg-panel kg-pop w-full max-w-[264px] px-6 pb-5 pt-5 text-center">
               <span className="kg-f block text-[15px] text-[#5a6b85]">Pass To {passTo}</span>
-              <span className="kg-f mt-0.5 block text-[28px] leading-tight text-[#0E1F45]">{passTo}&apos;s Putt</span>
+              <span className="kg-f mt-0.5 block text-[28px] leading-tight text-[#101B2E]">{passTo}&apos;s Putt</span>
               <span className="kg-btn mt-4 block py-3 text-[19px]">Tap To Start</span>
             </span>
           </button>
@@ -1178,9 +1178,9 @@ export default function KitchenGolf() {
 
         {matchEnd && !rui && (isLive || isLocal) && (
           <Card>
-            <div className="kg-f text-[14px] text-[#3f7fd6]">{play.kind === "live" ? `Room ${play.code}` : "Same Phone"}</div>
-            <div className="kg-f mt-0.5 text-[28px] leading-tight text-[#0E1F45]">
-              {matchEnd.winner < 0 ? "It's A Tie" : isLive ? (matchEnd.winner === me ? "You Won! 🎉" : `${friend} Won`) : `${pn[matchEnd.winner]} Wins! 🎉`}
+            <div className="kg-f text-[14px] text-[#4F88E8]">{play.kind === "live" ? `Room ${play.code}` : "Same Phone"}</div>
+            <div className="kg-f mt-0.5 text-[28px] leading-tight text-[#101B2E]">
+              {matchEnd.winner < 0 ? "It's A Tie" : isLive ? (matchEnd.winner === me ? "You Won!" : `${friend} Won`) : `${pn[matchEnd.winner]} Wins!`}
             </div>
             <Scorecard pars={matchEnd.pars} rows={(isLive ? [me, 1 - me] : [0, 1]).map(i => ({ name: cardNames(i), card: matchEnd.cards[i], color: (isLive ? i === me : i === 0) ? BLUE : RED }))} />
             {(wins[0] + wins[1] > 1) && <div className="kg-f mt-2 text-[13px] text-[#5a6b85]">{isLive ? `Matches: You ${wins[me]} · ${friend} ${wins[1 - me]}` : `Matches: ${pn[0]} ${wins[0]} · ${pn[1]} ${wins[1]}`}</div>}
@@ -1195,7 +1195,7 @@ export default function KitchenGolf() {
 
         {roundCard && !over && (
           <Card>
-            <div className="kg-f text-[15px] text-[#3f7fd6]">Round {roundCard.round} {roundCard.tie ? "Tied" : "Won"} · {roundCard.you} To {roundCard.cpu}</div>
+            <div className="kg-f text-[15px] text-[#4F88E8]">Round {roundCard.round} {roundCard.tie ? "Tied" : "Won"} · {roundCard.you} To {roundCard.cpu}</div>
             <div className="kg-f mt-1 text-[44px] leading-none tabular-nums text-[#22a861]">+{roundCard.points.toLocaleString()}</div>
             <div className="kg-f mt-1 text-[16px] text-[#5a6b85]">{roundCard.tie ? "A Tie Keeps You Going" : "Nice Putting!"}</div>
             <button onClick={() => nextRef.current()} className="kg-btn mt-4 w-full py-3 text-[19px]">Next Round</button>
@@ -1208,7 +1208,7 @@ export default function KitchenGolf() {
           extra={<>
             <div className="kg-f mt-2.5 text-[15px] leading-tight text-[#5a6b85]">{result.you} Strokes · {toPar(result.you, result.par)}</div>
             <div className="[@media(max-height:760px)]:hidden"><Scorecard pars={result.pars} rows={[{ name: "You", card: result.card, color: BLUE }]} compact /></div>
-            <button onClick={() => setMenu("friend")} className="kg-f mt-1.5 text-[15px] text-[#3f7fd6]">Play A Friend Instead →</button>
+            <button onClick={() => setMenu("friend")} className="kg-f mt-1.5 text-[15px] text-[#4F88E8]">Play A Friend Instead →</button>
           </>}
           onBoard={() => shell.setBoardOpen(true)} onJoin={() => shell.setJoinOpen(true)} onAgain={() => setRun(r => r + 1)} onShare={share} /></div>}
       </BoardArea>
@@ -1234,7 +1234,7 @@ export default function KitchenGolf() {
 // for worse, red for picking up
 function chipTone(s: number, par: number) {
   return s >= PICKUP ? "bg-[#e8505b] text-white shadow-[0_2px_0_#a8262f]"
-    : s === 1 ? "bg-[#EAF2FF] text-[#0E1F45]"
+    : s === 1 ? "bg-[#EAF2FF] text-[#101B2E]"
     : s < par ? "bg-[#2eaa6e] text-white shadow-[0_2px_0_#1d7a4c]"
     : s === par ? "bg-[#3f7fd6] text-white shadow-[0_2px_0_#19429A]"
     : s === par + 1 ? "bg-[#ff9a2e] text-white shadow-[0_2px_0_#b8620a]"
@@ -1243,9 +1243,9 @@ function chipTone(s: number, par: number) {
 // the same, for a score in the scorecard: only the ones worth noticing stand out
 function cellTone(s: number, par: number) {
   return s >= PICKUP ? "bg-[#e8505b] text-white"
-    : s === 1 ? "bg-[#EAF2FF] text-[#0E1F45]"
+    : s === 1 ? "bg-[#EAF2FF] text-[#101B2E]"
     : s < par ? "bg-[#2eaa6e] text-white"
-    : s === par ? "text-[#0E1F45]"
+    : s === par ? "text-[#101B2E]"
     : s === par + 1 ? "text-[#e07800]"
     : "text-[#c8463c]";
 }

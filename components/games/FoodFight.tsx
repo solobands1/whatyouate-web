@@ -20,7 +20,7 @@ import { sb } from "@/components/creators/api";
 import { appStoreLink } from "@/components/site";
 import { type Mode, type Toast, GameScreen, GameHeader, BoardArea, PrizeLogo, GameOver, PauseButton, PausedCard, ReadyCard, HelpModal, ModesHelp, ShellPopups,
   useGameShell, fitCanvas, loadImages, dailySeed, dailyNumber, torontoDate, mulberry32, readBest, saveBest, foodPng, HUD_ROW, HudStat, HudTag, OverlayCard, UI, drawHintPill } from "./kit";
-import { GAME_FONT, loadGameFont } from "./gameFont";
+import { loadGameFont, HUD_FONT } from "./gameFont";
 import { type FightArt, buildFightArt, basketSprite, paintGround, drawImpact, drawTrail } from "./art2/fightArt";
 import { layer, textStamps } from "./art2/paint";
 
@@ -932,7 +932,7 @@ export default function FoodFight() {
       }
       if (cpu && roundAge < 1600 && started && phase !== "over") {
         ctx.globalAlpha = Math.min(1, (1600 - roundAge) / 400);
-        stamp(ctx, mode === "daily" ? `Round ${round} Of ${TODAY_ROUNDS}` : `Round ${round}`, W / 2, 134, `30px ${GAME_FONT}`, "#0E1F45", "#ffffff", 6, "rgba(14,31,69,0.28)");
+        stamp(ctx, mode === "daily" ? `Round ${round} Of ${TODAY_ROUNDS}` : `Round ${round}`, W / 2, 134, `800 30px ${HUD_FONT}`, "#0E1F45", "#ffffff", 6, "rgba(14,31,69,0.28)");
         ctx.globalAlpha = 1;
       }
 
@@ -966,7 +966,7 @@ export default function FoodFight() {
       for (const f of floats) {
         const life = f.big ? 2200 : 1100, a = 1 - f.age / life;
         ctx.globalAlpha = Math.max(0, Math.min(1, a * 1.6));
-        stamp(ctx, f.text, Math.max(50, Math.min(W - 50, vx(f.x))), f.y - (f.big ? 0 : f.age * 0.03), `${f.big ? 26 : 19}px ${GAME_FONT}`, f.color, "#ffffff", f.big ? 5 : 4.2, "rgba(14,31,69,0.25)");
+        stamp(ctx, f.text, Math.max(50, Math.min(W - 50, vx(f.x))), f.y - (f.big ? 0 : f.age * 0.03), `800 ${f.big ? 26 : 19}px ${HUD_FONT}`, f.color, "#ffffff", f.big ? 5 : 4.2, "rgba(14,31,69,0.25)");
       }
       ctx.globalAlpha = 1; ctx.restore();
     }
@@ -986,7 +986,7 @@ export default function FoodFight() {
   const pn = play.kind === "cpu" ? ["You", "Computer"] : play.names;
   const friend = play.kind === "live" ? (play.names[1 - me] === "Guest" ? "Your Friend" : play.names[1 - me]) : "";
   const headline = !result ? "" : mode === "daily"
-    ? (result.kind === "won" ? `You Won The Day ${result.won}-${result.lost}! 🎉` : `The Computer Took It ${result.lost}-${result.won}`)
+    ? (result.kind === "won" ? `You Won The Day ${result.won}-${result.lost}!` : `The Computer Took It ${result.lost}-${result.won}`)
     : `${result.won} Round${result.won === 1 ? "" : "s"} Won, Lost Round ${result.round}`;
   const share = () => {
     if (!result) return;
@@ -1039,7 +1039,7 @@ export default function FoodFight() {
 
         {isCpu && !started && !over && !menu && !rui && (
           <OverlayCard soft title={mode === "daily" ? `Today's Challenge #${n}` : "Free Play"} max="max-w-[300px]">
-            <div className="wk-f text-[32px] leading-none text-[#0E1F45] tracking-[-0.03em]">Food Fight</div>
+            <div className="wk-f text-[32px] leading-none text-[#101B2E] tracking-[-0.03em]">Food Fight</div>
             <p className="mt-2 text-sm text-[#5a6b85]">{mode === "daily" ? "Best of 3 rounds against the computer." : "Win round after round against the computer."}</p>
             <button onClick={() => startRef.current()} className={`${UI.go} mt-4 h-[54px] w-full text-[21px]`}>Play The Computer</button>
             <div className="mt-3 flex gap-2.5">
@@ -1051,10 +1051,10 @@ export default function FoodFight() {
 
         {menu === "friend" && !rui && (
           <Card>
-            <div className="wk-f text-[25px] leading-tight text-[#0E1F45]">Play A Friend</div>
+            <div className="wk-f text-[25px] leading-tight text-[#101B2E]">Play A Friend</div>
             <p className="mt-1 text-sm text-[#5a6b85]">Play live on two phones. Make a room and send your friend the link.</p>
             <button onClick={openRoom} className="mt-4 w-full wk-btn wk-blue h-[50px] text-[19px]">Make A Room</button>
-            <div className="wk-f mt-4 text-[14px] tracking-[0.03em] text-[#16336C]">Got A Code?</div>
+            <div className="wk-f mt-4 text-[14px] tracking-[0.03em] text-[#101B2E]">Got A Code?</div>
             <div className="mt-1 flex gap-2">
               <input value={code} onChange={e => setCode(e.target.value.toUpperCase().replace(/[^A-Z]/g, "").slice(0, 4))} placeholder="ABCD" autoCapitalize="characters" autoComplete="off" spellCheck={false}
                 onKeyDown={e => { if (e.key === "Enter") joinRoom(); }}
@@ -1067,7 +1067,7 @@ export default function FoodFight() {
 
         {menu === "local" && (
           <Card>
-            <div className="wk-f text-[25px] leading-tight text-[#0E1F45]">Same Phone</div>
+            <div className="wk-f text-[25px] leading-tight text-[#101B2E]">Same Phone</div>
             <p className="mt-1 text-sm text-[#5a6b85]">Two players, one phone. Pass it over after each throw.</p>
             {[0, 1].map(i => (
               <input key={i} value={names[i]} maxLength={12} placeholder={`Player ${i + 1}`} autoComplete="off"
@@ -1081,7 +1081,7 @@ export default function FoodFight() {
 
         {offer && !rui && !isLive && (
           <Card>
-            <div className="wk-f text-[25px] leading-tight text-[#0E1F45]">Rejoin Your Game</div>
+            <div className="wk-f text-[25px] leading-tight text-[#101B2E]">Rejoin Your Game</div>
             <p className="mt-1 text-sm text-[#5a6b85]">You were in the middle of a match in room {offer.saved.code}.</p>
             <button onClick={() => rejoinNow(offer.saved, offer.live)} className="mt-4 w-full wk-btn wk-blue h-[50px] text-[19px]">Rejoin</button>
             <button onClick={() => { room.forget(); try { localStorage.removeItem(LIVE_KEY); } catch {} setOffer(null); }} className="mt-2 w-full py-2 wk-link text-[15px]">No Thanks</button>
@@ -1095,8 +1095,8 @@ export default function FoodFight() {
         )}
         {isLive && room.away && !rui && (!liveMine || !!matchEnd) && (
           <Card>
-            <div className="wk-f text-[25px] leading-tight text-[#0E1F45]">{friend} Stepped Away...</div>
-            <div className="wk-f mt-2 text-[46px] leading-none tabular-nums text-[#3f7fd6]">{Math.max(0, Math.ceil((room.away - Date.now()) / 1000) + tick * 0)}s</div>
+            <div className="wk-f text-[25px] leading-tight text-[#101B2E]">{friend} Stepped Away...</div>
+            <div className="wk-f mt-2 text-[46px] leading-none tabular-nums text-[#4F88E8]">{Math.max(0, Math.ceil((room.away - Date.now()) / 1000) + tick * 0)}s</div>
             <p className="mt-2 text-sm text-[#5a6b85]">The game is paused. It picks up right where you left off when they&apos;re back.</p>
             <button onClick={toCpu} className="mt-3 w-full py-2 wk-link text-[15px]">Leave</button>
           </Card>
@@ -1120,26 +1120,26 @@ export default function FoodFight() {
         {rui && rui.s !== "lobby" && (
           <Card>
             {rui.s === "waiting" && (<>
-              <div className="wk-f text-[15px] tracking-[0.03em] text-[#3F7FD6]">Your Room Code</div>
-              <div className="wk-f mt-1 text-[46px] leading-none tracking-[0.14em] text-[#0E1F45]">{rui.code}</div>
+              <div className="wk-f text-[15px] tracking-[0.03em] text-[#4F88E8]">Your Room Code</div>
+              <div className="wk-f mt-1 text-[46px] leading-none tracking-[0.14em] text-[#101B2E]">{rui.code}</div>
               <p className="mt-2 text-sm text-[#5a6b85]">Send your friend the link. The game starts as soon as they join.</p>
               <button onClick={() => shareRoom(rui.code)} className="mt-4 w-full wk-btn wk-blue h-[50px] text-[19px]">{shell.copied ? "Link Copied!" : "Share Link"}</button>
-              <p className="wk-f mt-3 text-[16px] text-[#3f7fd6]">Waiting For Your Friend...</p>
+              <p className="wk-f mt-3 text-[16px] text-[#4F88E8]">Waiting For Your Friend...</p>
               <button onClick={toCpu} className="mt-1 w-full py-2 wk-link text-[15px]">Cancel</button>
             </>)}
             {rui.s === "joining" && (<>
-              <div className="wk-f text-[25px] leading-tight text-[#0E1F45]">Joining Room {rui.code}</div>
-              <p className="wk-f mt-2 text-[16px] text-[#3f7fd6]">Connecting...</p>
+              <div className="wk-f text-[25px] leading-tight text-[#101B2E]">Joining Room {rui.code}</div>
+              <p className="wk-f mt-2 text-[16px] text-[#4F88E8]">Connecting...</p>
               <button onClick={toCpu} className="mt-3 w-full py-2 wk-link text-[15px]">Cancel</button>
             </>)}
             {(rui.s === "full" || rui.s === "empty" || rui.s === "error") && (<>
-              <div className="wk-f text-[25px] leading-tight text-[#0E1F45]">{rui.s === "full" ? "Room Full" : rui.s === "empty" ? "No One's Here" : "Can't Connect"}</div>
+              <div className="wk-f text-[25px] leading-tight text-[#101B2E]">{rui.s === "full" ? "Room Full" : rui.s === "empty" ? "No One's Here" : "Can't Connect"}</div>
               <p className="mt-2 text-sm text-[#5a6b85]">{rui.s === "full" ? `Room ${rui.code} already has two players.` : rui.s === "empty" ? `Nobody is in room ${rui.code} right now. Ask your friend to make a room and send you the link.` : "We couldn't reach the game. Check your connection and try again."}</p>
               <button onClick={() => { room.dismiss(); setMenu("friend"); }} className="mt-4 w-full wk-btn wk-blue h-[50px] text-[19px]">Back</button>
               <button onClick={toCpu} className="mt-2 w-full py-2 wk-link text-[15px]">Play The Computer</button>
             </>)}
             {rui.s === "left" && (<>
-              <div className="wk-f text-[25px] leading-tight text-[#0E1F45]">Your Friend Left</div>
+              <div className="wk-f text-[25px] leading-tight text-[#101B2E]">Your Friend Left</div>
               <p className="mt-2 text-sm text-[#5a6b85]">That match is over.</p>
               <button onClick={openRoom} className="mt-4 w-full wk-btn wk-blue h-[50px] text-[19px]">Make A New Room</button>
               <button onClick={toCpu} className="mt-2 w-full wk-btn wk-light h-[48px] text-[18px]">Play The Computer</button>
@@ -1152,7 +1152,7 @@ export default function FoodFight() {
             <span className="wk-panel wk-pop flex w-full max-w-[270px] flex-col overflow-hidden text-center">
               <span className="wk-plate block px-4 py-2 text-[17px] leading-tight">Pass To {passTo}</span>
               <span className="flex flex-col items-center px-5 pb-5 pt-3.5">
-                <span className="wk-f block text-[30px] leading-tight text-[#0E1F45]">{passTo}&apos;s Turn</span>
+                <span className="wk-f block text-[30px] leading-tight text-[#101B2E]">{passTo}&apos;s Turn</span>
                 <span className="wk-btn wk-go wk-pulse mt-4 h-[54px] w-full text-[22px]">Tap To Start</span>
               </span>
             </span>
@@ -1161,9 +1161,9 @@ export default function FoodFight() {
 
         {matchEnd && !rui && (isLive || isLocal) && (
           <Card>
-            <div className="wk-f text-[15px] tracking-[0.03em] text-[#3F7FD6]">{play.kind === "live" ? `Room ${play.code}` : "Same Phone"}</div>
-            <div className="wk-f mt-1 text-[30px] leading-tight text-[#0E1F45]">
-              {matchEnd.winner < 0 ? "It's A Tie" : isLive ? (matchEnd.winner === me ? "You Won! 🎉" : `${friend} Won`) : `${pn[matchEnd.winner]} Wins! 🎉`}
+            <div className="wk-f text-[15px] tracking-[0.03em] text-[#4F88E8]">{play.kind === "live" ? `Room ${play.code}` : "Same Phone"}</div>
+            <div className="wk-f mt-1 text-[30px] leading-tight text-[#101B2E]">
+              {matchEnd.winner < 0 ? "It's A Tie" : isLive ? (matchEnd.winner === me ? "You Won!" : `${friend} Won`) : `${pn[matchEnd.winner]} Wins!`}
             </div>
             <div className="mt-1 text-sm text-[#5a6b85]">
               {isLive ? `You ${wins[me]} · ${friend} ${wins[1 - me]}` : `${pn[0]} ${wins[0]} · ${pn[1]} ${wins[1]}`}
@@ -1179,8 +1179,8 @@ export default function FoodFight() {
 
         {roundCard && !over && (
           <Card>
-            <div className="wk-f text-[24px] leading-tight text-[#0E1F45]">Round {roundCard.round} {roundCard.won ? "Won" : "Lost"}</div>
-            <div className="wk-f mt-1 text-[44px] leading-none tabular-nums text-[#0E1F45] tracking-[-0.03em]">+{roundCard.points.toLocaleString()}</div>
+            <div className="wk-f text-[24px] leading-tight text-[#101B2E]">Round {roundCard.round} {roundCard.won ? "Won" : "Lost"}</div>
+            <div className="wk-f mt-1 text-[44px] leading-none tabular-nums text-[#101B2E] tracking-[-0.03em]">+{roundCard.points.toLocaleString()}</div>
             <div className="text-sm text-[#5a6b85]">{roundCard.tie ? "Tied on health, so you take it" : roundCard.won ? "Nice Throwing!" : "The computer took this one"}</div>
             <button onClick={() => nextRef.current()} className={`${UI.go} mt-4 h-[52px] w-full text-[21px]`}>Next Round</button>
           </Card>
@@ -1189,7 +1189,7 @@ export default function FoodFight() {
         {over && isCpu && !menu && !rui && <GameOver label={mode === "daily" ? `Today's Challenge #${n}` : "Free Play"} headline={headline} score={hud.score} best={best} mode={mode}
           posted={shell.scores.posted} joined={!!shell.player} campaign={GAME} copied={shell.copied} fact={toast}
           pitch="Good aim takes practice. So do good habits. WhatYouAte helps with the second one."
-          extra={<button onClick={() => setMenu("friend")} className="wk-link mt-3 text-[16px] text-[#3F7FD6]">Play A Friend Instead</button>}
+          extra={<button onClick={() => setMenu("friend")} className="wk-link mt-3 text-[16px] text-[#4F88E8]">Play A Friend Instead</button>}
           onBoard={() => shell.setBoardOpen(true)} onJoin={() => shell.setJoinOpen(true)} onAgain={() => setRun(r => r + 1)} onShare={share} />}
       </BoardArea>
 

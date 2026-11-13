@@ -829,7 +829,7 @@ export default function BlendersBacon() {
     return card(<>
       <div className="wk-f text-[26px] leading-tight">{left ? "Your Friend Left" : "Your Room"}</div>
       <p className="mt-1 text-sm text-[#5a6b85]">{left ? "Waiting for them to come back. If they rejoin, you'll start a fresh game." : "Send your friend the link, or have them type this code."}</p>
-      <div className="wk-f mt-3 text-[46px] leading-none tracking-[0.2em] text-[#0E1F45]">{code}</div>
+      <div className="wk-f mt-3 text-[46px] leading-none tracking-[0.2em] text-[#101B2E]">{code}</div>
       <button onClick={() => shell.share(`Play Blenders & Bacon with me! Room ${code}\n${roomLink(code)}`)} className={`${UI.btn} mt-4 h-[50px] w-full text-[19px]`}>{shell.copied ? "Link Copied!" : "Share The Link"}</button>
       <p className="mt-3 text-xs font-semibold text-[#5a6b85]">Waiting For Your Friend To Join...</p>
       <button onClick={() => { leaveRoom(); setJoinInput(""); }} className={`${UI.link} mt-1 w-full py-2 text-[15px]`}>Leave Room</button>
@@ -849,7 +849,7 @@ export default function BlendersBacon() {
           ]} />
     );
     if (opp === "cpu" && phase === "start") return card(<>
-      <div className="wk-f text-[32px] leading-none text-[#0E1F45] [text-shadow:0_3px_0_#d6e4fa]">Blenders &amp; Bacon</div>
+      <div className="wk-f text-[32px] leading-none text-[#101B2E] [text-shadow:0_3px_0_#d6e4fa]">Blenders &amp; Bacon</div>
       <p className="mt-2 text-[14px] leading-snug text-[#5a6b85]">Race the computer up the pantry. Blenders whirl you up. Bacon slides you down.</p>
       <div className="wk-f mt-3 text-[15px] text-[#101B2E]">Pick Your Food</div>
       <FoodPicker value={foods[0]} onPick={c => { sound.current?.click(); setFoods([c, foods[1]]); }} />
@@ -867,7 +867,7 @@ export default function BlendersBacon() {
       );
     }
     if (opp === "cpu" && phase === "doneToday" && final) return card(<>
-      <div className="wk-f text-[15px] tracking-wide text-[#3F7FD6]">Today&apos;s Challenge #{n}</div>
+      <div className="wk-f text-[15px] tracking-wide text-[#4F88E8]">Today&apos;s Challenge #{n}</div>
       <div className="wk-f mt-1 text-[26px] leading-tight">Today&apos;s Race Is Run</div>
       <div className="wk-f mt-1 text-[44px] leading-none tabular-nums">{final.score.toLocaleString()}</div>
       <p className="mt-1 text-sm text-[#5a6b85]">{final.won ? `You won in ${final.turns} turns.` : "The computer won this one."} New dice at midnight.</p>
@@ -894,7 +894,7 @@ export default function BlendersBacon() {
       const head = opp === "live" ? (mine ? "You Win!" : `${w} Wins`) : `${w} Wins!`;
       const theyWant = live && phase === "over" && oppRound > (meRef.current?.round ?? round);
       return card(<>
-        <div className="wk-f text-[15px] tracking-wide text-[#3F7FD6]">{opp === "phone" ? "Same Phone" : "Play A Friend"}</div>
+        <div className="wk-f text-[15px] tracking-wide text-[#4F88E8]">{opp === "phone" ? "Same Phone" : "Play A Friend"}</div>
         <div className="mt-2 flex justify-center"><TokenBadge col={colOf(winner)} food={foodOf(winner)} size={64} /></div>
         <div className="wk-f mt-2 text-[32px] leading-tight">{head}</div>
         <p className="mt-1 text-sm text-[#5a6b85]">Reached {LAST} in {G.turns[winner]} turns.</p>

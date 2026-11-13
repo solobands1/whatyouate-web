@@ -12,7 +12,7 @@ import { preload } from "react-dom";
 import { sb } from "@/components/creators/api";
 import { appStoreLink, APP_STORE_ID } from "@/components/site";
 import { tagShareText, track, trackGamePlay } from "@/components/track";
-import { GAME_FONT, GAME_FONT_CSS } from "./gameFont";
+import { GAME_FONT_CSS, HUD_FONT } from "./gameFont";
 import { KIT_CSS } from "./look";
 import { BackIcon, CheckIcon, CloseIcon, InfoIcon, MedalIcon, PauseIcon, PlayIcon, ReplayIcon, ShareIcon, StarIcon, TrophyIcon } from "./icons";
 
@@ -131,9 +131,9 @@ export const UI = {
   go: "wk-btn wk-go",             // start, ready, play
   navy: "wk-btn wk-navy",
   link: "wk-link",                // a quiet text button (Back, Leave, Cancel)
-  title: "wk-f text-[25px] leading-tight text-[#0E1F45]",
-  label: "wk-f text-[15px] leading-tight tracking-[0.04em] text-[#3F7FD6]",
-  big: "wk-f leading-none tabular-nums text-[#0E1F45]",
+  title: "wk-f text-[25px] leading-tight text-[#101B2E]",
+  label: "wk-f text-[15px] leading-tight tracking-[0.04em] text-[#4F88E8]",
+  big: "wk-f leading-none tabular-nums text-[#101B2E]",
   input: "wk-input",
 } as const;
 
@@ -155,7 +155,7 @@ export function GameHeader({ title, mode, onMode, onBoard, onHelp }: { title: st
   return (
     <div className="flex h-[40px] shrink-0 items-center gap-1.5">
       <a href="/games" aria-label="All games" className={round}><BackIcon size={17} /></a>
-      <h1 className="wk-f line-clamp-2 min-w-0 flex-1 pl-0.5 text-[19px] leading-[0.95] text-[#0E1F45] [text-shadow:0_2px_0_rgba(255,255,255,0.95)] min-[390px]:text-[21px]">{title}</h1>
+      <h1 className="wk-f line-clamp-2 min-w-0 flex-1 pl-0.5 text-[19px] leading-[0.95] text-[#101B2E] [text-shadow:0_2px_0_rgba(255,255,255,0.95)] min-[390px]:text-[21px]">{title}</h1>
       <div className="wk-seg h-[32px] shrink-0 text-[13px] min-[390px]:h-[34px] min-[390px]:text-[13.5px]">
         {(["daily", "endless"] as Mode[]).map(m => (
           <button key={m} onClick={() => onMode(m)} aria-pressed={mode === m} className="px-2.5 min-[390px]:px-[11px]">
@@ -164,7 +164,7 @@ export function GameHeader({ title, mode, onMode, onBoard, onHelp }: { title: st
         ))}
       </div>
       <button onClick={onBoard} aria-label="Scoreboard" className={round}><TrophyIcon size={21} /></button>
-      <button onClick={onHelp} aria-label="How to play" className={`${round} text-[#3F7FD6]`}><InfoIcon size={16} /></button>
+      <button onClick={onHelp} aria-label="How to play" className={`${round} text-[#4F88E8]`}><InfoIcon size={16} /></button>
     </div>
   );
 }
@@ -202,7 +202,7 @@ export function StartCard({ label, title, how, onStart }: { label: string; title
       <span className="wk-panel wk-pop flex w-full max-w-[300px] flex-col overflow-hidden text-center">
         <span className="wk-plate block px-4 py-2 text-[17px] leading-tight">{label}</span>
         <span className="flex flex-col items-center px-5 pb-5 pt-3.5">
-          <span className="wk-f text-[32px] leading-none text-[#0E1F45] tracking-[-0.03em]">{title}</span>
+          <span className="wk-f text-[32px] leading-none text-[#101B2E] tracking-[-0.03em]">{title}</span>
           <span className="mt-2 text-[14px] leading-snug text-[#41526e]">{how}</span>
           <span className="wk-btn wk-go wk-pulse mt-4 h-[54px] w-full text-[23px]">Tap To Start</span>
         </span>
@@ -225,7 +225,7 @@ export function drawHintPill(c: CanvasRenderingContext2D, cx: number, y: number,
     const xx = x + 17 + i * 8 - slide; c.globalAlpha = a * (i ? 1 : 0.55);
     c.beginPath(); c.moveTo(xx + 4, y + h / 2 - 6); c.lineTo(xx - 2, y + h / 2); c.lineTo(xx + 4, y + h / 2 + 6); c.stroke();
   }
-  c.globalAlpha = a; c.fillStyle = "#ffffff"; c.font = `18px ${GAME_FONT}`; c.textAlign = "center"; c.textBaseline = "alphabetic";
+  c.globalAlpha = a; c.fillStyle = "#ffffff"; c.font = `800 18px ${HUD_FONT}`; c.textAlign = "center"; c.textBaseline = "alphabetic";
   c.fillText(label, cx + 11, y + h / 2 + 6.5);
   c.restore();
 }
@@ -247,7 +247,7 @@ function FactCard({ fact, onDismiss, className = "" }: { fact: Toast; onDismiss?
         {/* eslint-disable-next-line @next/next/no-img-element */}
         <img src={foodPng(fact.img)} alt="" className="h-7 w-7" />
       </span>
-      <div className="min-w-0 flex-1"><div className="wk-f text-[14px] capitalize leading-tight text-[#3F7FD6]">{fact.title}</div><div className="mt-0.5 text-[13px] leading-snug text-[#24324d]">{fact.body}</div></div>
+      <div className="min-w-0 flex-1"><div className="wk-f text-[14px] capitalize leading-tight text-[#4F88E8]">{fact.title}</div><div className="mt-0.5 text-[13px] leading-snug text-[#24324d]">{fact.body}</div></div>
       {onDismiss && <button onClick={onDismiss} aria-label="Dismiss" className="-mr-1 -mt-0.5 flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-[#8a9ab3]"><CloseIcon size={13} /></button>}
     </div>
   );
@@ -323,10 +323,10 @@ export function GameOver({ label, headline, score, best, mode, posted, joined, c
       <div className="wk-panel wk-pop flex min-h-0 w-full max-w-[360px] shrink flex-col overflow-hidden text-center">
         <Plate className="py-1.5 text-[17px]">{label}</Plate>
         <div className="min-h-0 overflow-y-auto px-4 pb-3 pt-2.5">
-          {headline && <div className="wk-f relative z-[1] text-[18px] leading-tight text-[#0E1F45] capitalize">{headline}</div>}
+          {headline && <div className="wk-f relative z-[1] text-[18px] leading-tight text-[#101B2E] capitalize">{headline}</div>}
           <div className="relative mx-auto flex justify-center">
             {newBest && <span aria-hidden className="wk-rays pointer-events-none absolute left-1/2 top-1/2 -ml-[90px] -mt-[80px] h-[180px] w-[180px] rounded-full" />}
-            <div className="wk-f wk-pop relative text-[52px] leading-[1.04] tabular-nums text-[#0E1F45] [animation-delay:120ms] tracking-[-0.03em]">{score.toLocaleString()}</div>
+            <div className="wk-f wk-pop relative text-[52px] leading-[1.04] tabular-nums text-[#101B2E] [animation-delay:120ms] tracking-[-0.03em]">{score.toLocaleString()}</div>
           </div>
           {newBest ? (
             <div className="relative mt-0.5 flex items-center justify-center gap-1.5">
@@ -338,7 +338,7 @@ export function GameOver({ label, headline, score, best, mode, posted, joined, c
             <div className="mt-0.5 flex justify-center">
               <span className="flex items-center gap-1.5 rounded-full bg-[#e3edfc] px-3 py-[3px] text-[#41526e]">
                 <span className="text-[10.5px] font-extrabold uppercase tracking-[0.08em]">Best</span>
-                <span className="wk-f text-[15px] leading-none tabular-nums text-[#0E1F45]">{best.toLocaleString()}</span>
+                <span className="wk-f text-[15px] leading-none tabular-nums text-[#101B2E]">{best.toLocaleString()}</span>
               </span>
             </div>
           )}
@@ -349,7 +349,7 @@ export function GameOver({ label, headline, score, best, mode, posted, joined, c
                 <span className="max-w-full truncate text-[16px] leading-tight">You&apos;re #{posted.rank} Of {posted.total} {mode === "daily" ? "Today" : "This Week"}</span>
                 <span className="text-[12px] leading-tight text-[#6b7c97]">See Scoreboard</span>
               </span>
-              <BackIcon size={15} className="ml-auto shrink-0 rotate-180 text-[#3F7FD6]" />
+              <BackIcon size={15} className="ml-auto shrink-0 rotate-180 text-[#4F88E8]" />
             </button>
           ) : !joined && score > 0 ? (
             <button onClick={onJoin} className="wk-btn wk-go wk-pulse mt-3 h-[48px] w-full text-[17px]">
@@ -393,7 +393,7 @@ export function JoinForm({ onClose, onJoined }: { onClose: () => void; onJoined:
     if (error || !data?.ok) { setErr(NAME_ERRORS[data?.error] ?? "Something went wrong. Try again."); return; }
     onJoined({ token: data.token, name: data.name });
   };
-  const label = "wk-f mt-3 block text-[14px] leading-tight tracking-[0.03em] text-[#16336C]";
+  const label = "wk-f mt-3 block text-[14px] leading-tight tracking-[0.03em] text-[#101B2E]";
   return (
     <Modal onClose={onClose} z="z-30" title={<><TrophyIcon size={26} />Join The Scoreboard</>}>
       <p className="text-center text-sm text-[#5a6b85]">Your name shows on the board. Your email never does.</p>
@@ -441,7 +441,7 @@ export function Scoreboard({ game, token, initial, todayNote, onClose, onJoin }:
               : rows.length === 0 ? (
                 <div className="flex flex-col items-center py-6 text-center">
                   <TrophyIcon size={40} className="opacity-90" />
-                  <p className="wk-f mt-2 text-[17px] text-[#16336C]">No scores yet. Be the first!</p>
+                  <p className="wk-f mt-2 text-[17px] text-[#101B2E]">No scores yet. Be the first!</p>
                 </div>
               )
               : rows.map(r => {
@@ -452,8 +452,8 @@ export function Scoreboard({ game, token, initial, todayNote, onClose, onJoin }:
                       {top ? <MedalIcon rank={r.rank as 1 | 2 | 3} size={30} />
                         : <span className="wk-f flex h-[26px] min-w-[26px] items-center justify-center rounded-full bg-[#e3ebf8] px-1 text-[14px] leading-none tabular-nums text-[#5a6b85]">{r.rank}</span>}
                     </span>
-                    <span className={`wk-f min-w-0 flex-1 truncate leading-tight ${top ? "text-[17px]" : "text-[16px]"} ${me ? "text-[#1f4fa8]" : "text-[#0E1F45]"}`}>{r.name}</span>
-                    <span className={`wk-f shrink-0 tabular-nums leading-none ${top ? "text-[19px]" : "text-[17px]"} ${me ? "text-[#1f4fa8]" : "text-[#0E1F45]"}`}>{r.score.toLocaleString()}</span>
+                    <span className={`wk-f min-w-0 flex-1 truncate leading-tight ${top ? "text-[17px]" : "text-[16px]"} ${me ? "text-[#1f4fa8]" : "text-[#101B2E]"}`}>{r.name}</span>
+                    <span className={`wk-f shrink-0 tabular-nums leading-none ${top ? "text-[19px]" : "text-[17px]"} ${me ? "text-[#1f4fa8]" : "text-[#101B2E]"}`}>{r.score.toLocaleString()}</span>
                   </div>);
               })}
           </div>
@@ -509,7 +509,7 @@ export function ReadyCard({ steps, me, friend, ready, onReady, onLeave, title = 
   const seat = (name: ReactNode, ok: boolean, color: string, waiting?: boolean) => (
     <div className="flex h-[36px] items-center gap-2.5 rounded-xl bg-white px-2.5 shadow-[0_2px_0_#d3e0f4]">
       <span className="h-3.5 w-3.5 shrink-0 rounded-full shadow-[inset_0_-2px_0_rgba(0,0,0,0.18)]" style={{ background: color }} />
-      <span className={`wk-f min-w-0 flex-1 truncate text-left text-[16px] leading-tight ${waiting ? "text-[#8a9ab3]" : "text-[#0E1F45]"}`}>{name}</span>
+      <span className={`wk-f min-w-0 flex-1 truncate text-left text-[16px] leading-tight ${waiting ? "text-[#8a9ab3]" : "text-[#101B2E]"}`}>{name}</span>
       {ok ? <span className="wk-f flex shrink-0 items-center gap-1 rounded-full bg-[#22A964] py-[3px] pl-1.5 pr-2.5 text-[13px] leading-none text-white shadow-[0_2px_0_#167A45]"><CheckIcon size={12} />Ready</span>
         : waiting ? <span className="flex shrink-0 gap-1 pr-1">{[0, 1, 2].map(k => <span key={k} className="wk-dot h-1.5 w-1.5 rounded-full bg-[#3F7FD6]" style={{ animationDelay: `${k * 0.2}s` }} />)}</span> : null}
     </div>
@@ -539,7 +539,7 @@ export function PausedCard({ shell, active }: { shell: Shell; active: boolean })
   return (
     <OverlayCard title="Paused" max="max-w-[270px]">
       <div className="flex justify-center">
-        <span className="flex h-[64px] w-[64px] items-center justify-center rounded-full bg-[#e3edfc] text-[#16336C] shadow-[inset_0_-3px_0_#c5d6f1]"><PauseIcon size={26} /></span>
+        <span className="flex h-[64px] w-[64px] items-center justify-center rounded-full bg-[#e3edfc] text-[#101B2E] shadow-[inset_0_-3px_0_#c5d6f1]"><PauseIcon size={26} /></span>
       </div>
       <button onClick={() => shell.setHeld(false)} className="wk-btn wk-go mt-4 h-[52px] w-full text-[21px]"><PlayIcon size={18} />Resume</button>
     </OverlayCard>

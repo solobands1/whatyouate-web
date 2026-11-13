@@ -25,6 +25,7 @@ import { sb } from "@/components/creators/api";
 import { type Mode, type Toast, GameScreen, GameHeader, BoardArea, PrizeLogo, GameOver, PauseButton, PausedCard, ReadyCard, HelpModal, ModesHelp, ShellPopups,
   useGameShell, dailySeed, dailyNumber, torontoDate, mulberry32, readBest, saveBest, foodPng, emoji } from "./kit";
 import { GAME_FONT_CSS } from "./gameFont";
+import { PassPhoneIcon, ShuffleIcon, SparkleIcon, CheckIcon, CloseIcon, TrophyIcon } from "./icons";
 
 const GAME = "fridge-raid";
 const LAUNCH = "2026-11-08";                 // Today's Challenge #1
@@ -944,7 +945,7 @@ export default function FridgeRaid() {
           {role === "edit" && ghost && <Pill p={ghost.p} c={c} ghost bad={!ghost.ok} />}
           {marks}
           {justFound.size > 0 && fx!.cells.filter(x => x.sunk).flatMap(x => cellsOf(x.sunk!)).map((i, k) => (
-            <span key={`sp${fx!.id}-${i}`} className="fr-spark pointer-events-none absolute text-center" style={{ ...at(i, c), fontSize: c * 0.45, lineHeight: `${c}px`, animationDelay: `${k * 60}ms` }}>✨</span>
+            <span key={`sp${fx!.id}-${i}`} className="fr-spark pointer-events-none absolute text-center" style={{ ...at(i, c), display: "flex", alignItems: "center", justifyContent: "center", animationDelay: `${k * 60}ms`, filter: "drop-shadow(0 0 4px rgba(111,168,255,0.9))" }}><SparkleIcon size={c * 0.5} color="#ffffff" /></span>
           ))}
           {preview.length > 0 && role === "target" && preview.map(i => (
             <span key={`pv${i}`} className="fr-aim pointer-events-none absolute rounded-[22%]" style={{ ...at(i, c * 0.92), boxShadow: armed === "light" ? "0 0 0 3px #f0b429, 0 0 14px rgba(255,214,90,0.8)" : "0 0 0 3px #4aa3ff, 0 0 14px rgba(120,190,255,0.8)", background: armed === "light" ? "rgba(255,240,180,0.45)" : "rgba(190,225,255,0.45)" }} />
@@ -976,7 +977,7 @@ export default function FridgeRaid() {
             <span key={k} className="relative flex h-6 w-6 items-center justify-center rounded-lg" style={{ background: got ? sn.color : "rgba(255,255,255,0.65)", boxShadow: got ? "inset 0 0 0 1.5px #2eaa6e" : "inset 0 0 0 1px rgba(16,42,86,0.08)" }}>
               {/* eslint-disable-next-line @next/next/no-img-element */}
               <img src={foodPng(sn.code)} alt={sn.name} title={sn.name} data-found={got ? "1" : "0"} className={`h-[18px] w-[18px] ${got ? "" : "opacity-30 grayscale"}`} />
-              {got && <span className="absolute -right-1 -top-1 flex h-3.5 w-3.5 items-center justify-center rounded-full bg-[#2eaa6e] text-[8px] font-bold leading-none text-white">✓</span>}
+              {got && <span className="absolute -right-1 -top-1 flex h-3.5 w-3.5 items-center justify-center rounded-full bg-[#6FA8FF] text-white"><CheckIcon size={8} color="#ffffff" /></span>}
             </span>); })}
         </div>
       </div>
@@ -1003,8 +1004,8 @@ export default function FridgeRaid() {
     </>);
     if (opp === "live" && room.status === "away") return card(<>
       <div className="game-font text-[24px] leading-tight text-[#101b2e]">{nameOf(1)} Stepped Away...</div>
-      <div className="mt-1 text-sm font-semibold text-[#3f7fd6]">Waiting For {nameOf(1)} To Come Back</div>
-      <div className="mt-2 text-4xl font-bold tabular-nums text-[#3f7fd6]">{Math.max(0, Math.ceil(((room.until ?? 0) - now) / 1000))}s</div>
+      <div className="mt-1 text-sm font-semibold text-[#4F88E8]">Waiting For {nameOf(1)} To Come Back</div>
+      <div className="mt-2 text-4xl font-bold tabular-nums text-[#4F88E8]">{Math.max(0, Math.ceil(((room.until ?? 0) - now) / 1000))}s</div>
       <p className="mt-2 text-sm text-[#5a6b85]">The game is paused. It picks up right where you left off when they&apos;re back.</p>
       <button onClick={() => { leaveRoom(); setJoinInput(""); go("idle"); }} className="mt-3 w-full py-2 text-sm font-semibold text-[#5a6b85]">Leave Room</button>
     </>);
@@ -1057,7 +1058,7 @@ export default function FridgeRaid() {
         ]} />
     );
     if (opp === "cpu" && phase === "over" && final) {
-      const headline = final.won ? `You Raided The Fridge In ${final.shots} Shots! 🎉`
+      const headline = final.won ? `You Raided The Fridge In ${final.shots} Shots!`
         : mode === "daily" ? "The Computer Found Your Snacks First" : round > 1 ? `Round ${round}: The Computer Found Your Snacks First` : "The Computer Found Your Snacks First";
       return <GameOver label={mode === "daily" ? `Today's Challenge #${n}` : "Free Play"} headline={headline} score={final.score} best={best} mode={mode}
         posted={shell.scores.posted} joined={!!shell.player} campaign={GAME} copied={shell.copied} fact={fact}
@@ -1074,11 +1075,11 @@ export default function FridgeRaid() {
         <button onClick={() => pickMode("endless")} className={btn}>Free Play</button>
         <button onClick={() => shareCpu(final)} className={btn2}>{shell.copied ? "Copied!" : "Share"}</button>
       </div>
-      <button onClick={() => shell.setBoardOpen(true)} className="mt-3 text-sm font-semibold text-[#3f7fd6]">🏆 See Today&apos;s Scoreboard</button>
+      <button onClick={() => shell.setBoardOpen(true)} className="mt-3 inline-flex items-center gap-1.5 text-sm font-semibold text-[#4F88E8]"><TrophyIcon size={18} />See Today&apos;s Scoreboard</button>
     </>);
     if (opp === "cpu" && phase === "roundWon") return card(<>
       <div className="text-sm font-semibold text-[#5a6b85]">Free Play</div>
-      <div className="game-font mt-1 text-[24px] leading-tight text-[#101b2e]">Round {round} Won! 🎉</div>
+      <div className="game-font mt-1 text-[24px] leading-tight text-[#101b2e]">Round {round} Won!</div>
       <p className="mt-1 text-sm text-[#5a6b85]">Found every snack in {G.shots[0]} shots. +{G.roundScore.toLocaleString()} points.</p>
       <div className="mt-2 text-3xl font-bold tabular-nums">{total.current.toLocaleString()}</div>
       <p className="text-xs text-[#5a6b85]">The computer gets a little sharper next round.</p>
@@ -1097,20 +1098,20 @@ export default function FridgeRaid() {
     if (opp === "phone" && phase === "pass") {
       const to = nameOf(pass.to), from = nameOf(other(pass.to));
       return card(<>
-        <div className="text-4xl">📱</div>
-        <div className="game-font mt-2 text-[24px] leading-tight text-[#101b2e]">Pass The Phone To {to}</div>
+        <div className="flex justify-center"><span className="flex h-16 w-16 items-center justify-center rounded-full bg-[#EAF2FF]"><PassPhoneIcon size={36} /></span></div>
+        <div className="game-font mt-2 text-balance text-[24px] leading-tight text-[#101b2e]">Pass The Phone To {to}</div>
         <p className="mt-1 text-sm text-[#5a6b85]">{from}, No Peeking!</p>
         <button onClick={takePhone} className={`mt-4 ${btn}`}>I&apos;m {to}, Show Me</button>
       </>, true);
     }
     if (opp !== "cpu" && phase === "over" && winner !== null) {
       const w = nameOf(winner), l = nameOf(other(winner));
-      const head = opp === "live" ? (winner === 0 ? "You Win! 🎉" : `${w} Wins`) : `${w} Wins! 🎉`;
+      const head = opp === "live" ? (winner === 0 ? "You Win!" : `${w} Wins`) : `${w} Wins!`;
       return card(<>
         <div className="text-sm font-semibold text-[#5a6b85]">{opp === "phone" ? "Same Phone" : "Play A Friend"}</div>
         <div className="game-font mt-1 text-[30px] leading-tight text-[#101b2e]">{head}</div>
         <p className="mt-1 text-sm text-[#5a6b85]">{opp === "live" && winner === 1 ? `${w} found all your snacks in ${G.shots[1]} shots.` : `Found all of ${l}'s snacks in ${G.shots[winner]} shots.`}</p>
-        {theyWantRematch && <p className="mt-2 rounded-2xl bg-[#e3effe] px-3 py-2 text-sm font-semibold text-[#3f7fd6]">{nameOf(1)} Wants A Rematch!</p>}
+        {theyWantRematch && <p className="mt-2 rounded-2xl bg-[#e3effe] px-3 py-2 text-sm font-semibold text-[#4F88E8]">{nameOf(1)} Wants A Rematch!</p>}
         <div className="mt-4 flex gap-2">
           <button onClick={() => (opp === "phone" ? startPhone(round + 1) : startLiveRound(round + 1))} className={btn}>Rematch</button>
           <button onClick={() => shareDuel(winner)} className={btn2}>{shell.copied ? "Copied!" : "Share"}</button>
@@ -1136,7 +1137,7 @@ export default function FridgeRaid() {
       return (
         <div className="flex items-center gap-2" style={{ height: BAR }}>
           <button onClick={() => { clearAim(); setMsg("Tap A Shelf In Their Fridge."); }} aria-label="Put it back"
-            className="game-font flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-white text-[20px] text-[#5a6b85] shadow-[0_4px_0_rgba(16,42,86,0.16)]">✕</button>
+            className="game-font flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-white text-[#5a6b85] shadow-[0_0_0_1px_#DCE8FA,0_8px_18px_-12px_rgba(31,70,140,0.3)]"><CloseIcon size={18} /></button>
           {!light && (
             <button onClick={() => setAimAt(a => (a ? { ...a, v: !a.v } : { at: 3 * N + 3, v: true }))} aria-label="Turn the blast"
               className="game-font flex h-12 shrink-0 items-center rounded-2xl bg-[#dff0ff] px-3 text-[16px] text-[#1f5fa8] shadow-[0_4px_0_#b8d9f7]">{aimAt?.v ? "↕" : "↔"} Turn</button>
@@ -1175,7 +1176,7 @@ export default function FridgeRaid() {
     <div className="flex flex-col justify-center gap-2" style={{ height: LOWH, width: N * cP + 2 * FR + HANDLE }}>
       <p className="text-center text-xs text-[#5a6b85]">{sel === null ? "Drag A Snack To Move It. Tap It Twice To Turn It." : `${SNACKS[sel].name}: Drag It, Tap An Empty Shelf, Or Tap Turn.`}</p>
       <div className="flex gap-2">
-        <button onClick={shuffle} className={chip}>🔀 Shuffle</button>
+        <button onClick={shuffle} className={`${chip} inline-flex items-center justify-center gap-1.5`}><ShuffleIcon size={17} />Shuffle</button>
         <button onClick={() => sel !== null && turnSnack(sel)} disabled={sel === null} className={`${chip} disabled:opacity-40`}>↻ Turn</button>
       </div>
       <button onClick={ready} className={btnGo}>I&apos;m Ready</button>
@@ -1224,7 +1225,7 @@ export default function FridgeRaid() {
 
       <div className="mt-2 flex h-8 shrink-0 rounded-full bg-white/70 p-0.5 text-xs font-semibold">
         {([["cpu", "Computer"], ["phone", "Same Phone"], ["live", "Play A Friend"]] as [Opp, string][]).map(([o, label]) => (
-          <button key={o} onClick={() => pickOpp(o)} className={`flex-1 rounded-full ${opp === o ? "bg-[#101b2e] text-white" : "text-[#3f7fd6]"}`}>{label}</button>
+          <button key={o} onClick={() => pickOpp(o)} className={`flex-1 rounded-full ${opp === o ? "bg-[#101b2e] text-white" : "text-[#4F88E8]"}`}>{label}</button>
         ))}
       </div>
 
@@ -1275,7 +1276,7 @@ export default function FridgeRaid() {
         {overlay()}
         {opp === "live" && reconnecting && room.status !== "away" && (
           <div className="pointer-events-none absolute inset-x-0 top-3 z-20 flex justify-center">
-            <div className="rounded-full bg-white/95 px-4 py-2 text-sm font-semibold text-[#3f7fd6] shadow-md">Reconnecting...</div>
+            <div className="rounded-full bg-white/95 px-4 py-2 text-sm font-semibold text-[#4F88E8] shadow-md">Reconnecting...</div>
           </div>
         )}
         <style>{FX_CSS + GAME_FONT_CSS}</style>
@@ -1374,7 +1375,7 @@ function FactCard({ fact }: { fact: Toast }) {
     <div className="flex w-full max-w-[340px] shrink-0 items-start gap-2 rounded-2xl bg-white/95 px-3 py-2 text-left shadow-md">
       {/* eslint-disable-next-line @next/next/no-img-element */}
       <img src={foodPng(fact.img)} alt="" className="mt-0.5 h-7 w-7" />
-      <div className="min-w-0 flex-1"><div className="text-xs font-bold text-[#3f7fd6]">{fact.title}</div><div className="text-[13px] leading-snug">{fact.body}</div></div>
+      <div className="min-w-0 flex-1"><div className="text-xs font-bold text-[#4F88E8]">{fact.title}</div><div className="text-[13px] leading-snug">{fact.body}</div></div>
     </div>
   );
 }

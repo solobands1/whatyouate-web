@@ -63,7 +63,7 @@ function GameCard({ g }: { g: Game }) {
           </span>
         ) : null}
       </div>
-      <h3 className="wk-f mt-5 px-1 text-[20px] leading-[1.05] text-[#0E1F45] sm:text-[23px]">{g.name}</h3>
+      <h3 className="wk-f mt-5 px-1 text-[20px] leading-[1.05] text-[#101B2E] sm:text-[23px]">{g.name}</h3>
       <p className="mt-1.5 line-clamp-3 px-1 text-[12.5px] leading-snug text-[#5A6B85] sm:line-clamp-none sm:text-[14px]">{g.tagline}</p>
       <span className="mt-auto block pt-3">
         <span className="wk-btn wk-go h-[42px] text-[18px] sm:h-[46px] sm:text-[20px]"><PlayIcon size={15} />Play</span>
@@ -79,7 +79,7 @@ function Section({ title, body, icon, games, children }: { title: string; body: 
       <div className="flex items-center gap-3">
         <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-[#DDEBFF] text-[#4F88E8]">{icon}</span>
         <div className="min-w-0">
-          <h2 className="wk-f text-[28px] leading-none text-[#0E1F45] sm:text-[32px]">{title}</h2>
+          <h2 className="wk-f text-[28px] leading-none text-[#101B2E] sm:text-[32px]">{title}</h2>
           <p className="mt-1 text-[14px] leading-snug" style={{ color: BODY }}>{body}</p>
         </div>
       </div>
@@ -136,8 +136,8 @@ export default function Games() {
           <Section title="Play Solo" body="A new challenge every day, and a scoreboard to climb."
             icon={<CalendarIcon size={22} />} games={GAMES.filter((g) => !g.multiplayer)}>
             <div className="flex min-h-[180px] flex-col items-center justify-center rounded-[24px] border-[2.5px] border-dashed border-[#16336C]/25 bg-white/40 px-4 py-8 text-center lg:col-span-3">
-              <span className="flex h-12 w-12 items-center justify-center rounded-2xl bg-[#e3edfc] text-[#3F7FD6]"><SparkleIcon size={26} /></span>
-              <p className="wk-f mt-3 text-[18px] leading-tight text-[#16336C] sm:text-[20px]">More Games Coming Soon</p>
+              <span className="flex h-12 w-12 items-center justify-center rounded-2xl bg-[#e3edfc] text-[#4F88E8]"><SparkleIcon size={26} /></span>
+              <p className="wk-f mt-3 text-[18px] leading-tight text-[#101B2E] sm:text-[20px]">More Games Coming Soon</p>
             </div>
           </Section>
         </div>

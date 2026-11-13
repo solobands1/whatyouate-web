@@ -3,6 +3,10 @@
 // the `game-font` class or GAME_FONT. Canvas: await loadGameFont() before the first draw that uses it.
 export const GAME_FONT = '"Lilita One", "Arial Rounded MT Bold", system-ui, sans-serif';
 /** The frame's face: the site's Geist (loaded by app/layout.tsx as --font-geist-sans), bold and tight like the homepage. */
+/** The same Geist for text a canvas draws that works like part of the screen (score pops, scorebars, countdowns, hint
+ *  pills). Canvas can't read CSS variables, so this names Geist's family directly. Use it as `800 18px ${HUD_FONT}`.
+ *  Words printed on drawn objects (tile numbers, signs, flags) can keep GAME_FONT as part of the illustration. */
+export const HUD_FONT = 'GeistSans, "GeistSans Fallback", -apple-system, BlinkMacSystemFont, system-ui, sans-serif';
 export const FRAME_FONT = 'var(--font-geist-sans), -apple-system, BlinkMacSystemFont, system-ui, sans-serif';
 export const GAME_FONT_CSS = `
 @font-face { font-family: "Lilita One"; src: url("/fonts/LilitaOne-Regular.ttf") format("truetype"); font-display: swap; }
@@ -15,7 +19,7 @@ export function loadGameFont(): Promise<void> {
     if (!document.getElementById("game-font-css")) {
       const s = document.createElement("style"); s.id = "game-font-css"; s.textContent = GAME_FONT_CSS; document.head.appendChild(s);
     }
-    loading = document.fonts.load('32px "Lilita One"').then(() => undefined, () => undefined);
+    loading = Promise.all([document.fonts.load('32px "Lilita One"'), document.fonts.load("800 32px GeistSans")]).then(() => undefined, () => undefined);
   }
   return loading;
 }

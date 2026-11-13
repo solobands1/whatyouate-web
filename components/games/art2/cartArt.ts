@@ -359,15 +359,11 @@ export function paintCartFront(c: C) {
   }
 }
 
-/** The lane pad's track: deep navy glass under the board's bottom edge, like the kit's segmented switch. */
+/** The lane pad's track: a flat white pad with a hairline pale blue edge and a soft shadow, like the kit's switches. */
 export function paintPadTrack(c: C, x: number, y: number, w: number, h: number) {
-  shade(c, 8, 0, 4, "rgba(10,20,45,0.4)"); c.fillStyle = "#16336C"; rr(c, x, y, w, h, 15); c.fill(); noShade(c);
-  c.fillStyle = lin(c, 0, y, 0, y + h, [[0, "#0f2654"], [0.5, "#16336C"], [1, "#1c3f82"]]); rr(c, x, y, w, h, 15); c.fill();
-  c.save(); rr(c, x, y, w, h, 15); c.clip();
-  c.strokeStyle = "rgba(4,10,30,0.6)"; c.lineWidth = 5; rr(c, x - 1, y + 1.6, w + 2, h + 4, 16); c.stroke();
-  c.restore();
-  c.strokeStyle = "rgba(255,255,255,0.6)"; c.lineWidth = 1.1; c.beginPath(); c.moveTo(x + 14, y + h + 0.6); c.lineTo(x + w - 14, y + h + 0.6); c.stroke();
-  for (let l = 1; l < 3; l++) { const lx = x + (w / 3) * l; c.fillStyle = "rgba(255,255,255,0.08)"; c.fillRect(lx - 0.5, y + 9, 1, h - 18); }
+  shade(c, 14, 0, 6, "rgba(31,70,140,0.22)"); c.fillStyle = "#ffffff"; rr(c, x, y, w, h, 15); c.fill(); noShade(c);
+  c.strokeStyle = "#DCE8FA"; c.lineWidth = 1; rr(c, x + 0.5, y + 0.5, w - 1, h - 1, 14.5); c.stroke();
+  for (let l = 1; l < 3; l++) { const lx = x + (w / 3) * l; c.fillStyle = "rgba(111,168,255,0.2)"; c.fillRect(lx - 0.5, y + 9, 1, h - 18); }
 }
 
 /** The recipe card along the top: cream card stock taped down at the corners, ruled lines, a shadow on the aisle. */

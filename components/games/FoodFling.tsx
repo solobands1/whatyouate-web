@@ -471,7 +471,7 @@ export default function FoodFling() {
   }, [mode, run, bestKey]);
 
   const n = dailyNumber(LAUNCH);
-  const headline = !result ? "" : result.kind === "done" ? `All ${DAILY_LEVELS} levels cleared! 🎉` : `Out of fruit on level ${result.level}`;
+  const headline = !result ? "" : result.kind === "done" ? `All ${DAILY_LEVELS} levels cleared!` : `Out of fruit on level ${result.level}`;
   const share = () => {
     if (!result) return;
     // Wordle-style: one square per level. Green took one fruit, yellow two, orange three, red didn't clear.

@@ -163,11 +163,11 @@ export default function BeatTheCrash() {
         for (let k = flows.length - 1; k >= 0; k--) { const f = flows[k], use = Math.min(dt, f.left); energy += f.perMs * use; f.left -= use; if (f.left <= 0) flows.splice(k, 1); }
         for (let k = crashes.length - 1; k >= 0; k--) if (gameMs >= crashes[k].at) {
           const c = crashes[k]; flows.push({ perMs: -c.amount / 800, left: 800 }); crashes.splice(k, 1);
-          hearts--; lastSugar = c.food; float(hearts > 0 ? "💔 Sugar crash!" : "💔 Out of hearts", "#e8505b");
+          hearts--; lastSugar = c.food; float(hearts > 0 ? "Sugar Crash!" : "Out Of Hearts", "#e8505b");
         }
         if (hearts <= 0) { finish("sugar"); }
         const h = hourNow(), p = progress(), slump = h >= 14 && h < 16;
-        if (slump && !slumpShown) { slumpShown = true; float("😩 The 3pm slump!", "#e8505b", W / 2, HUD + 60, true); }
+        if (slump && !slumpShown) { slumpShown = true; float("The 3pm Slump!", "#e8505b", W / 2, HUD + 60, true); }
         const drain = (4.2 + 1.6 * p) * (slump ? 1.9 : 1) * (1 + 0.12 * (day - 1)) * (gameMs < hydratedUntil ? 0.55 : 1);
         energy = Math.max(0, Math.min(100, energy - (drain * dt) / 1000));
         const z = zoneOf(energy);
@@ -190,7 +190,7 @@ export default function BeatTheCrash() {
           else {
             day++; gameMs = 0; nextSpawn = 700; slumpShown = false; total += 300; hours = hours.map(() => ({ steady: 0, ok: 0, bad: 0 }));
             const back = hearts < HEARTS; hearts = Math.min(HEARTS, hearts + 1);   // a good night's sleep: one heart back
-            float(`Day ${day}! +300${back ? " ❤️" : ""}`, "#2eaa6e", W / 2, H / 2, true);
+            float(`Day ${day}! +300${back ? " · +1 Heart" : ""}`, "#2eaa6e", W / 2, H / 2, true);
           }
         }
         if (t - lastHud > 100) { lastHud = t; setHud({ score: Math.floor(total), zone: zoneOf(energy), mult: mult() }); }
@@ -217,7 +217,7 @@ export default function BeatTheCrash() {
       ctx.fillText(clock(h), 16, 27);
       const slump = h >= 14 && h < 16;
       ctx.font = "600 13px system-ui, -apple-system, sans-serif"; ctx.textAlign = "right"; ctx.fillStyle = slump ? "#e8505b" : "#5a6b85";
-      ctx.fillText(slump ? "😩 Afternoon slump" : mode === "daily" ? "Make it to 10pm" : `Day ${day}`, W - 16, 25);
+      ctx.fillText(slump ? "Afternoon Slump" : mode === "daily" ? "Make it to 10pm" : `Day ${day}`, W - 16, 25);
       const bx = 16, bw = W - 32, by = 38, bh = 14;
       const kx = bx + (energy / 100) * bw, warn = crashes.some(c => c.at - gameMs < 1500);
       drawKnob(ctx, kx, by + bh / 2, warn && Math.floor(t / 150) % 2 ? "#e8505b" : ZONE_COLOR[z]);
@@ -255,8 +255,8 @@ export default function BeatTheCrash() {
   }, [mode, run, bestKey]);
 
   const n = dailyNumber(LAUNCH);
-  const why = !result ? "" : result.kind === "sugar" ? `Sugar crashed you at ${result.at} 💔` : `You fell asleep at ${result.at} 😴`;
-  const headline = !result ? "" : result.kind === "done" ? "You made it to 10pm! 🌙" : mode === "daily" ? why : `Day ${result.day}: ${why}`;
+  const why = !result ? "" : result.kind === "sugar" ? `Sugar crashed you at ${result.at}` : `You fell asleep at ${result.at}`;
+  const headline = !result ? "" : result.kind === "done" ? "You made it to 10pm!" : mode === "daily" ? why : `Day ${result.day}: ${why}`;
   const share = () => {
     if (!result) return;
     // Wordle-style: one square per hour of the day, green when you stayed steady
@@ -302,11 +302,11 @@ export default function BeatTheCrash() {
         <HelpModal onClose={shell.help.close} steps={[
           "Drag the bar at the bottom to move. Catch food to eat it.",
           "Real food keeps your energy up. Keep it in the green for the most points, and don't eat when you're full.",
-          "Sugar gives a quick boost, then a crash that costs a ❤️. Lose all three and your day is over.",
+          "Sugar gives a quick boost, then a crash that costs a heart. Lose all three and your day is over.",
           "Don't let your energy hit zero, and watch out for the 3pm slump.",
         ]}>
           <div className="mt-3 space-y-1 rounded-2xl bg-[#f0f6fe] p-2.5 text-xs font-semibold text-[#5a6b85]">
-            {([["steady", "Steady energy"], ["sugar", "Boost, then a crash (costs a ❤️)"]] as [Kind, string][]).map(([k, label]) => (
+            {([["steady", "Steady energy"], ["sugar", "Boost, then a crash (costs a heart)"]] as [Kind, string][]).map(([k, label]) => (
               <div key={k} className="flex flex-wrap items-center gap-1">
                 {/* eslint-disable-next-line @next/next/no-img-element */}
                 {BY_KIND[k].map(i => <img key={i} src={foodPng(FOODS[i].code)} alt={FOODS[i].name} className="h-[18px] w-[18px]" />)}

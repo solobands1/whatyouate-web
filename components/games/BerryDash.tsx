@@ -352,7 +352,7 @@ export default function BerryDash() {
   }, [mode, run, bestKey]);
 
   const n = dailyNumber(LAUNCH);
-  const headline = !result ? "" : `Level ${result.level} · ${result.meters.toLocaleString()} m 🍓`;
+  const headline = !result ? "" : `Level ${result.level} · ${result.meters.toLocaleString()} m`;
   const share = () => {
     if (!result) return;
     // Wordle-style: one square per 250 m, green when clean, yellow for a sugar rush, red where you got bumped

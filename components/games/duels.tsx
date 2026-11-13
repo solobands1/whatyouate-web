@@ -124,13 +124,13 @@ function DuelCard({ view, title, busy, err, defaultName, close, accept, submitNa
     <Modal onClose={close} z="z-30">
       <div className="flex justify-center"><span className="flex h-[58px] w-[58px] items-center justify-center rounded-full bg-[#EAF2FF] text-[#4F88E8]"><SwordsIcon size={30} /></span></div>
       {view.kind === "invite" && (<>
-        <div className="wk-f mt-2 text-center text-[24px] leading-tight text-[#0E1F45]">{view.duel.a_name} Challenged You</div>
+        <div className="wk-f mt-2 text-center text-[24px] leading-tight text-[#101B2E]">{view.duel.a_name} Challenged You</div>
         <p className="mt-2 text-center text-sm text-[#5a6b85]">Play today&apos;s {title} and beat <b className="text-[#101b2e]">{view.duel.a_score.toLocaleString()}</b>. Same board, one go. Your first finished game counts.</p>
         <button onClick={() => accept(view.duel)} className={btn}>Accept The Challenge</button>
         <button onClick={close} className={quiet}>Not Now</button>
       </>)}
       {view.kind === "over" && (<>
-        <div className="wk-f mt-2 text-center text-[24px] leading-tight text-[#0E1F45]">{view.why === "taken" ? "Challenge Already Taken" : view.why === "expired" ? "This Challenge Has Ended" : "Challenge Not Found"}</div>
+        <div className="wk-f mt-2 text-center text-[24px] leading-tight text-[#101B2E]">{view.why === "taken" ? "Challenge Already Taken" : view.why === "expired" ? "This Challenge Has Ended" : "Challenge Not Found"}</div>
         <p className="mt-2 text-center text-sm text-[#5a6b85]">
           {view.why === "taken" && view.duel ? `${view.duel.b_name} already took ${view.duel.a_name}'s challenge (${view.duel.b_score?.toLocaleString()} vs ${view.duel.a_score.toLocaleString()}).`
             : view.why === "expired" ? "Challenges only last for the day they were made, since the board changes at midnight."
@@ -139,7 +139,7 @@ function DuelCard({ view, title, busy, err, defaultName, close, accept, submitNa
         <button onClick={close} className={btn}>Play Today&apos;s {title}</button>
       </>)}
       {view.kind === "name" && (<>
-        <div className="wk-f mt-2 text-center text-[24px] leading-tight text-[#0E1F45]">{view.then === "create" ? "Your Name For The Challenge" : "Your Name"}</div>
+        <div className="wk-f mt-2 text-center text-[24px] leading-tight text-[#101B2E]">{view.then === "create" ? "Your Name For The Challenge" : "Your Name"}</div>
         <p className="mt-1 text-center text-sm text-[#5a6b85]">{view.then === "create" ? "So your friend knows who to beat." : "So they know who took them on."}</p>
         <input value={nm} onChange={e => setNm(e.target.value)} maxLength={20} placeholder="e.g. SnackKing" autoFocus
           className="wk-input mt-4 w-full px-3 py-2.5 text-base" />
@@ -147,7 +147,7 @@ function DuelCard({ view, title, busy, err, defaultName, close, accept, submitNa
         <button disabled={busy || nm.trim().length < 2} onClick={() => submitName(nm.trim())} className={btn}>{busy ? "Saving..." : view.then === "create" ? "Make My Challenge" : "See Who Won"}</button>
       </>)}
       {view.kind === "share" && (<>
-        <div className="wk-f mt-2 text-center text-[24px] leading-tight text-[#0E1F45]">Your Challenge Is Ready</div>
+        <div className="wk-f mt-2 text-center text-[24px] leading-tight text-[#101B2E]">Your Challenge Is Ready</div>
         <p className="mt-2 text-center text-sm text-[#5a6b85]">Send the link to a friend. They play today&apos;s board, and you&apos;ll see who won next time you open {title}.</p>
         <button onClick={() => share(view.code)} className={btn}>{copied ? "Link Copied!" : "Send The Challenge"}</button>
         <button onClick={close} className={quiet}>Done</button>
@@ -156,13 +156,13 @@ function DuelCard({ view, title, busy, err, defaultName, close, accept, submitNa
         const d = view.duel, a = d.a_score, b = d.b_score ?? 0, meWon = view.me === "a" ? a > b : b > a, tie = a === b;
         const other = view.me === "a" ? d.b_name : d.a_name;
         return (<>
-          <div className="wk-f mt-2 text-center text-[24px] leading-tight text-[#0E1F45]">{tie ? "It's A Tie!" : meWon ? "You Won The Duel! 🎉" : `${other} Won This One`}</div>
+          <div className="wk-f mt-2 text-center text-[24px] leading-tight text-[#101B2E]">{tie ? "It's A Tie!" : meWon ? "You Won The Duel!" : `${other} Won This One`}</div>
           <p className="mt-1 text-center text-sm text-[#5a6b85]">{view.me === "a" ? `${other} took your ${title} challenge.` : `Today's ${title}, same board.`}</p>
           <div className="mt-4 grid grid-cols-2 gap-2 text-center">
             {[[d.a_name, a, view.me === "a"], [d.b_name ?? "", b, view.me === "b"]].map(([n, sc, me], i) => (
               <div key={i} className={`rounded-2xl px-2 py-3 ${(i === 0 ? a > b : b > a) ? "bg-[#e3f6ea]" : "bg-[#f0f6fe]"}`}>
                 <div className="wk-f truncate text-[13px] text-[#5a6b85]">{me ? "You" : String(n)}</div>
-                <div className="wk-f text-[26px] leading-tight tabular-nums text-[#0E1F45]">{Number(sc).toLocaleString()}</div>
+                <div className="wk-f text-[26px] leading-tight tabular-nums text-[#101B2E]">{Number(sc).toLocaleString()}</div>
               </div>
             ))}
           </div>
