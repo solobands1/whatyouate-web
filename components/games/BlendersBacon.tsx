@@ -23,10 +23,10 @@ import { useEffect, useReducer, useRef, useState, type CSSProperties, type React
 import type { RealtimeChannel } from "@supabase/supabase-js";
 import { sb } from "@/components/creators/api";
 import { type Mode, GameScreen, GameHeader, BoardArea, PrizeLogo, GameOver, PauseButton, PausedCard, ReadyCard, HelpModal, ModesHelp, ShellPopups,
-  OverlayCard, UI, useGameShell, dailySeed, dailyNumber, torontoDate, mulberry32, readBest, saveBest, foodPng } from "./kit";
+  OverlayCard, UI, useGameShell, dailySeed, dailyNumber, torontoDate, mulberry32, readBest, saveBest, foodPng, SoundButton } from "./kit";
 import { BB_CSS } from "./bacon/skin";
 import { CloseIcon, PlayIcon, ReplayIcon, ShareIcon } from "./icons";
-import { BoardArt, BlenderArt, BW, BH, spotOf, blenderGeo, tubeAt, tubeD, tubeLen, baconAt, baconD, baconLen, CARD_INFO, CardIcon, DieIcon, SoundIcon, type Pt } from "./bacon/art";
+import { BoardArt, BlenderArt, BW, BH, spotOf, blenderGeo, tubeAt, tubeD, tubeLen, baconAt, baconD, baconLen, CARD_INFO, CardIcon, DieIcon, type Pt } from "./bacon/art";
 import { apply, cpuCard, newState, cloneState, canPlay, scoreFor, other, LAST, type State, type Action, type Ev, type Side, type Card } from "./bacon/rules";
 import { Particles } from "./bacon/fx";
 import { Sound } from "./bacon/sound";
@@ -125,8 +125,7 @@ export default function BlendersBacon() {
   const [fx, setFx] = useState<{ whirl?: number; tube?: number; sheen?: number }>({});
   const [word, setWord] = useState<{ id: number; text: string; at: Pt; col: string } | null>(null);
   const runStart = useRef(0);                         // when this match against the computer began, for the scoreboard's time check
-  const [soundOn, setSoundOn] = useState(false);
-  const sound = useRef<Sound | null>(null);
+  const sound = useRef<Sound | null>(null);         // plays through the shared games sound (./sfx)
   const parts = useRef(new Particles());
   const tokEl = useRef<(HTMLDivElement | null)[]>([null, null]);
   const tokIn = useRef<(HTMLDivElement | null)[]>([null, null]);
@@ -142,7 +141,7 @@ export default function BlendersBacon() {
   const bestKey = mode === "daily" ? `blendersbacon-daily-${torontoDate()}` : "blendersbacon-endless";
   const todayKey = `blendersbacon-today-${torontoDate()}`;
   useEffect(() => { setBest(readBest(bestKey)); }, [bestKey]);
-  useEffect(() => { sound.current = new Sound(); setSoundOn(!sound.current.muted); }, []);
+  useEffect(() => { sound.current = new Sound(); }, []);
   const myName = shell.player?.name || "Guest";
 
   // live
@@ -994,10 +993,6 @@ export default function BlendersBacon() {
           <span className="bb-turnpop wk-f whitespace-nowrap text-white" style={{ fontSize: Math.min(50, (boardW * 1.5) / Math.max(8, turnPopText.length)), textShadow: outline(popInk) }}>{turnPopText}</span>
         </div>
       )}
-      <button onClick={() => { const m = !sound.current?.muted; sound.current?.setMuted(m); setSoundOn(!m); }} aria-label={soundOn ? "Sound off" : "Sound on"}
-        className="absolute z-[12] flex items-center justify-center rounded-full text-[#8a5527]" style={{ right: 200 * S, bottom: 12 * S, width: Math.max(24, 40 * S), height: Math.max(24, 40 * S), background: "#fff4dc", boxShadow: "0 2px 0 #8d5526" }}>
-        <SoundIcon on={soundOn} size={Math.max(15, 20 * S * 1.2)} />
-      </button>
     </div>
   );
 
@@ -1072,11 +1067,14 @@ export default function BlendersBacon() {
     <GameScreen>
       <GameHeader title="Blenders & Bacon" mode={mode} onMode={pickMode} onBoard={() => shell.setBoardOpen(true)} onHelp={shell.help.show} />
 
-      <div className="mt-2 flex h-[34px] shrink-0 rounded-full bg-white p-[3px] shadow-[0_0_0_1px_#E3EDFB,0_6px_16px_-12px_rgba(31,70,140,0.3)]">
-        {([["cpu", "Computer"], ["phone", "Same Phone"], ["live", "Play A Friend"]] as [Opp, string][]).map(([o, label]) => (
-          <button key={o} onClick={() => pickOpp(o)} aria-pressed={opp === o}
-            className={`wk-f flex-1 rounded-full text-[14.5px] transition-colors ${opp === o ? "bg-[#101B2E] text-white" : "text-[#4F88E8]"}`}>{label}</button>
-        ))}
+      <div className="mt-2 flex h-[40px] shrink-0 items-center gap-1.5">
+        <div className="flex h-[34px] min-w-0 flex-1 rounded-full bg-white p-[3px] shadow-[0_0_0_1px_#E3EDFB,0_6px_16px_-12px_rgba(31,70,140,0.3)]">
+          {([["cpu", "Computer"], ["phone", "Same Phone"], ["live", "Play A Friend"]] as [Opp, string][]).map(([o, label]) => (
+            <button key={o} onClick={() => pickOpp(o)} aria-pressed={opp === o}
+              className={`wk-f flex-1 rounded-full text-[14.5px] transition-colors ${opp === o ? "bg-[#101B2E] text-white" : "text-[#4F88E8]"}`}>{label}</button>
+          ))}
+        </div>
+        <SoundButton />
       </div>
 
       {inGame ? (

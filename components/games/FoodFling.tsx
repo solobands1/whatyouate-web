@@ -14,7 +14,8 @@
 import { useEffect, useRef, useState } from "react";
 import Matter from "matter-js";
 import { type Mode, type Toast, GameScreen, GameHeader, BoardArea, PrizeLogo, GameOver, HelpModal, ModesHelp, ShellPopups,
-  useGameShell, fitCanvas, loadImages, dailySeed, dailyNumber, torontoDate, mulberry32, readBest, saveBest, foodPng, HUD_ROW, HudStat, HudTag, OverlayCard, UI, drawHintPill } from "./kit";
+  useGameShell, fitCanvas, loadImages, dailySeed, dailyNumber, torontoDate, mulberry32, readBest, saveBest, foodPng, HUD_ROW, HudStat, HudTag, OverlayCard, UI, drawHintPill, SoundButton } from "./kit";
+import { sfx } from "./sfx";
 import { useDuel } from "./duels";
 import { loadGameFont } from "./gameFont";
 import { PlayIcon } from "./icons";
@@ -280,10 +281,18 @@ export default function FoodFling() {
     const fruitImg = loadImages(FRUITS.map(f => f.code)), junkImg = loadImages(JUNK.map(j => j.code));
     const seed = mode === "daily" ? dailySeed(0xf11a6) : Math.floor(Math.random() * 1e9);
 
-    let level = 1, w = makeLevel(Matter, seed, level);
+    // sounds when the fruit hits something (and when pieces knock hard), heard from each level's world once it has settled
+    const listen = (world: World) => Matter.Events.on(world.engine, "collisionStart", e => {
+      for (const { bodyA, bodyB } of e.pairs) {
+        const fruit = world.fruit?.body, rel = Math.hypot(bodyA.velocity.x - bodyB.velocity.x, bodyA.velocity.y - bodyB.velocity.y);
+        if (fruit && (bodyA === fruit || bodyB === fruit)) { if (rel > 1.2) sfx.play("thud", { n: Math.min(1, rel / 12) }); }
+        else if (rel > 3.5) sfx.play("thud", { n: Math.min(0.6, rel / 16), vol: 0.7 });
+      }
+    });
+    let level = 1, w = makeLevel(Matter, seed, level); listen(w);
     let phase: "aim" | "fly" | "clear" | "over" = "aim";
     let total = 0, levelPoints = 0, combo = 0, drops = 0, realStart = 0, acc = 0, last = performance.now(), raf = 0, bannerAge = 0;
-    let drag: { sx: number; sy: number; px: number; py: number; id: number } | null = null;
+    let drag: { sx: number; sy: number; px: number; py: number; id: number } | null = null, creakAt = 0;
     const squares: string[] = [];
     const knockedBy = new Map<number, number>();     // junk type -> times knocked, for the end-of-run fact
     const floats: { x: number; y: number; text: string; color: string; age: number; big?: boolean }[] = [];
@@ -296,7 +305,7 @@ export default function FoodFling() {
     const pick = (j: JunkDef) => j.facts[Math.floor(Math.random() * j.facts.length)];
 
     const finish = (kind: Result["kind"]) => {
-      phase = "over";
+      phase = "over"; sfx.play(kind === "done" ? "win" : "over");
       if (kind === "done") { total += DAY_BONUS; floats.push({ x: W / 2, y: 200, text: `Day complete! +${DAY_BONUS}`, color: "#2eaa6e", age: 0, big: true }); }
       // one fact, after the run, about a junk food from it
       const standing = [...w.pieces.values()].find(p => p.kind === "junk");
@@ -316,7 +325,7 @@ export default function FoodFling() {
         const spare = w.fruits.length, bonus = clearBonus(level, spare);
         total += bonus; levelPoints += bonus; squares.push(SQUARE[THROWS - spare]); pushHud();
         if (mode === "daily" && level >= DAILY_LEVELS) finish("done");
-        else { phase = "clear"; setClear({ level, points: levelPoints, spare }); }
+        else { phase = "clear"; setClear({ level, points: levelPoints, spare }); sfx.play("level"); }
       } else if (!w.fruits.length) { squares.push("🟥"); finish("fail"); }
       else phase = "aim";
     };
@@ -324,7 +333,7 @@ export default function FoodFling() {
     const next = () => {
       if (phase !== "clear") return;
       Matter.Engine.clear(w.engine);
-      level++; w = makeLevel(Matter, seed, level); levelPoints = 0; bannerAge = 0; floats.length = 0; poofs.length = 0;
+      level++; w = makeLevel(Matter, seed, level); listen(w); levelPoints = 0; bannerAge = 0; floats.length = 0; poofs.length = 0;
       dropLevel(lvKey); lvKey = `${seed}:${level}`;
       phase = "aim"; setClear(null); pushHud();
     };
@@ -338,6 +347,7 @@ export default function FoodFling() {
         const x = Math.max(24, Math.min(W - 24, piece.body.position.x)), y = Math.min(FLOOR - 20, piece.body.position.y);
         poofs.push({ x, y, age: 0, seed: (x * 131 + y * 17 + combo) | 0 });
         floats.push({ x, y: y - 14, text: combo > 1 ? `+${pts} combo x${combo}` : `+${pts}`, color: combo > 1 ? "#b54bd1" : "#2eaa6e", age: 0 });
+        sfx.play("knock", { n: combo });   // a woody knock, higher with each one in the same throw
       }
       if (knocked.length) pushHud();
       if (done) resolveThrow();
@@ -347,19 +357,21 @@ export default function FoodFling() {
       if (phase !== "aim" || pausedRef.current || drag) return;
       const p = local(e);
       if (p.x > W * 0.6 || p.y < 110) return;
-      drag = { sx: p.x, sy: p.y, px: 0, py: 0, id: e.pointerId };
+      drag = { sx: p.x, sy: p.y, px: 0, py: 0, id: e.pointerId }; creakAt = 0;
       try { canvas.setPointerCapture(e.pointerId); } catch {}
     };
     const onMove = (e: PointerEvent) => {
       if (!drag || e.pointerId !== drag.id) return;
       const p = local(e), c = clampPull((p.x - drag.sx) * DRAG_GAIN, (p.y - drag.sy) * DRAG_GAIN);
       drag.px = c.x; drag.py = c.y;
+      const pull = Math.hypot(c.x, c.y) / MAX_PULL;   // the band creaks as you pull it further
+      if (pull > creakAt + 0.12) { creakAt = pull; sfx.play("creak", { n: pull }); } else if (pull < creakAt - 0.2) creakAt = pull;
     };
     const onUp = (e: PointerEvent) => {
       if (!drag || e.pointerId !== drag.id) return;
       onMove(e); const d = drag; drag = null;
       if (phase !== "aim" || pausedRef.current) return;
-      if (throwFruit(Matter, w, d.px, d.py)) { if (!drops) realStart = performance.now(); drops++; phase = "fly"; acc = 0; pushHud(); }
+      if (throwFruit(Matter, w, d.px, d.py)) { if (!drops) realStart = performance.now(); drops++; phase = "fly"; acc = 0; pushHud(); sfx.play("whoosh", { n: Math.hypot(d.px, d.py) / MAX_PULL }); }
     };
     const onCancel = () => { drag = null; };
     const onKey = (e: KeyboardEvent) => { if ((e.key === "Enter" || e.key === " ") && phase === "clear" && !pausedRef.current) { e.preventDefault(); next(); } };
@@ -488,8 +500,11 @@ export default function FoodFling() {
 
       <div className={HUD_ROW}>
         <HudStat label="Score" value={hud.score.toLocaleString()} />
-        <HudTag light>Level {hud.level}{mode === "daily" ? ` Of ${DAILY_LEVELS}` : ""} · {hud.left} Junk Left</HudTag>
-        <HudStat label="Best" value={best.toLocaleString()} align="right" />
+        <HudTag light>Level {hud.level}{mode === "daily" && <span className="max-[409px]:hidden"> Of {DAILY_LEVELS}</span>} · {hud.left} Junk Left</HudTag>
+        <div className="flex shrink-0 items-center gap-1.5">
+          <HudStat label="Best" value={best.toLocaleString()} align="right" />
+          <SoundButton />
+        </div>
       </div>
 
       <BoardArea wrapRef={wrapRef} size={board} reserve={0}>

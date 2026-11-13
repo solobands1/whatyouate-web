@@ -19,7 +19,8 @@ import type { RealtimeChannel } from "@supabase/supabase-js";
 import { sb } from "@/components/creators/api";
 import { appStoreLink } from "@/components/site";
 import { type Mode, type Toast, GameScreen, GameHeader, BoardArea, PrizeLogo, GameOver, PauseButton, PausedCard, ReadyCard, HelpModal, ModesHelp, ShellPopups,
-  useGameShell, fitCanvas, loadImages, dailySeed, dailyNumber, torontoDate, mulberry32, readBest, saveBest, foodPng, HUD_ROW, HudStat, HudTag, OverlayCard, UI, drawHintPill } from "./kit";
+  useGameShell, fitCanvas, loadImages, dailySeed, dailyNumber, torontoDate, mulberry32, readBest, saveBest, foodPng, HUD_ROW, HudStat, HudTag, OverlayCard, UI, drawHintPill, SoundButton } from "./kit";
+import { sfx } from "./sfx";
 import { loadGameFont, HUD_FONT } from "./gameFont";
 import { type FightArt, buildFightArt, basketSprite, paintGround, drawImpact, drawTrail } from "./art2/fightArt";
 import { layer, textStamps } from "./art2/paint";
@@ -536,7 +537,7 @@ export default function FoodFight() {
     let cpuShot: { px: number; py: number; f: number } | null = null, aimSent = "", aimAt = 0;
     let turnStart = { ground: [] as number[], hp: [] as number[], melons: [] as number[], shots: [] as number[] }, ended: number | null = null;
     let snap: { ground: number[]; hp: number[] } | null = null, pending: Extract<GameMsg, { t: "hit" }> | null = null, hits: Hit[] = [];
-    let drag: { sx: number; sy: number; px: number; py: number; id: number } | null = null;
+    let drag: { sx: number; sy: number; px: number; py: number; id: number } | null = null, creakAt = 0;
     const lastAim: ({ deg: number; pow: number } | null)[] = [null, null];
     const squares: string[] = [], thrown = [0, 0, 0], shake = [0, 0];
     const trails: { x: number; y: number }[][] = [];
@@ -564,8 +565,9 @@ export default function FoodFight() {
       else if (cpu && shooter === 1) { phase = "think"; wait = THINK_MS; cpuShot = aiShot(w, brain); seen.f = cpuShot.f; seen.on = true; }   // same throw as deciding at the end
       else phase = "aim";
       if (food === 1 && w.melons[local ? shooter : me] <= 0) food = 0;
+      if (phase === "aim" && human(shooter) && (!live || shooter === me)) sfx.play("turn");
     }
-    passRef.current = () => { if (phase !== "pass") return; phase = "aim"; setPassTo(null); };
+    passRef.current = () => { if (phase !== "pass") return; phase = "aim"; setPassTo(null); sfx.play("turn"); };
 
     function fire(px: number, py: number, f: number) {
       snap = { ground: w.ground.slice(), hp: w.hp.slice() }; hits = []; pending = null; pendingAge = 0; seen.on = false;
@@ -578,6 +580,7 @@ export default function FoodFight() {
       }
       if (live && shooter === me) send({ t: "shot", m: P.kind === "live" ? P.m : 0, n: turn, px, py, f });
       phase = "fly"; acc = 0;
+      sfx.play("whoosh", { n: Math.sqrt(px * px + py * py) / MAX_PULL });
     }
 
     function tick() {
@@ -591,6 +594,7 @@ export default function FoodFight() {
         const d = applyHit(w, h), food = FOODS[h.f];
         poofs.push({ x: h.x, y: h.y, age: 0, color: food.color, r: food.blast });
         if (cpu && shooter === 0) dealt += d[1];
+        if (d[0] > 0 || d[1] > 0) sfx.play("splat", { n: food.blast / 46 }); else sfx.play("thud", { n: 0.45 });   // a splat on a basket, a thud in the grass
         d.forEach((v, i) => { if (v > 0) { shake[i] = 300; const b = fortBox(w, i); float(FORT_X[i], b.t - 70 - (floats.length % 3) * 14, `-${v}`, "#e8505b"); } });
       });
       if (w.projs.every(p => !p.alive)) resolveShot();
@@ -634,6 +638,7 @@ export default function FoodFight() {
         phase = "over"; const winner = win === 2 ? -1 : win;
         ended = winner; turnStart = { ground: w.ground.slice(), hp: w.hp.slice(), melons: w.melons.slice(), shots: w.shots.slice() }; persist();
         if (live) roomRef.current.ended(winner);
+        sfx.play(local || winner === me ? "win" : "over");
         setWins(v => (winner < 0 ? v : v.map((n, i) => (i === winner ? n + 1 : n))));
         setMatchEnd({ winner }); return;
       }
@@ -641,7 +646,7 @@ export default function FoodFight() {
       total += pts; squares.push(youWon ? "🟩" : "🟥"); if (youWon) won++; else lost++; pushHud();
       if (mode === "daily" ? won >= 2 : false) { total += DAY_BONUS; finish("won"); }
       else if (mode === "daily" ? lost >= 2 : !youWon) finish("lost");
-      else { phase = "between"; setRoundCard({ round, won: youWon, tie: win === 2, points: pts }); }
+      else { phase = "between"; setRoundCard({ round, won: youWon, tie: win === 2, points: pts }); sfx.play(youWon ? "roundWon" : "roundLost"); }
     }
     function nextRound() {
       if (phase !== "between") return;
@@ -650,7 +655,7 @@ export default function FoodFight() {
     }
     nextRef.current = nextRound;
     function finish(kind: Result["kind"]) {
-      phase = "over";
+      phase = "over"; sfx.play(kind === "won" ? "win" : "over");
       const top = thrown.indexOf(Math.max(...thrown)), f = FOODS[top];
       if (throws) setToast({ title: `Your Top Throw: ${f.name}`, body: pick(f), img: f.code });
       setResult({ kind, won, lost, round, squares: squares.join("") });
@@ -703,15 +708,17 @@ export default function FoodFight() {
       const p = local2view(e);
       if (!started || drag || (pausedRef.current && !live)) return;
       const t = TRAY.findIndex(x => Math.hypot(p.x - x, p.y - TRAY_Y) < CHIP + 4);
-      if (t >= 0) { if (myTurn() && (t !== 1 || w.melons[shooter] > 0)) food = t; return; }
+      if (t >= 0) { if (myTurn() && (t !== 1 || w.melons[shooter] > 0)) { food = t; sfx.play("tap"); } return; }
       if (!canAim() || p.y < GRIP_Y) return;
-      drag = { sx: p.x, sy: p.y, px: 0, py: 0, id: e.pointerId };
+      drag = { sx: p.x, sy: p.y, px: 0, py: 0, id: e.pointerId }; creakAt = 0;
       try { canvas.setPointerCapture(e.pointerId); } catch {}
     };
     const onMove = (e: PointerEvent) => {
       if (!drag || e.pointerId !== drag.id) return;
       const p = local2view(e), c = clampPull((p.x - drag.sx) * GAIN, (p.y - drag.sy) * GAIN);
       drag.px = c.x; drag.py = c.y;
+      const pull = Math.sqrt(c.x * c.x + c.y * c.y) / MAX_PULL;   // a soft creak as you pull further back
+      if (pull > creakAt + 0.12) { creakAt = pull; sfx.play("creak", { n: pull }); } else if (pull < creakAt - 0.2) creakAt = pull;
     };
     const onUp = (e: PointerEvent) => {
       if (!drag || e.pointerId !== drag.id) return;
@@ -1020,15 +1027,16 @@ export default function FoodFight() {
       <div className={HUD_ROW}>
         {isCpu ? (<>
           <HudStat label="Score" value={hud.score.toLocaleString()} />
-          <HudTag light>Round {hud.round}{mode === "daily" ? ` Of ${TODAY_ROUNDS}` : ""} · {hud.won}-{hud.lost}</HudTag>
+          <HudTag light>Round {hud.round}{mode === "daily" && <span className="max-[409px]:hidden"> Of {TODAY_ROUNDS}</span>} · {hud.won}-{hud.lost}</HudTag>
         </>) : (<>
           <HudStat label={isLive ? "You" : pn[0]} value={wins[isLive ? me : 0]} tone="blue" />
-          <HudTag light>{play.kind === "live" ? `Live · Room ${play.code}` : "Same Phone"}</HudTag>
+          <HudTag light>{play.kind === "live" ? <><span className="max-[409px]:hidden">Live · </span>Room {play.code}</> : "Same Phone"}</HudTag>
         </>)}
         <div className="flex shrink-0 items-center gap-1.5">
           {isCpu ? <HudStat label="Best" value={best.toLocaleString()} align="right" />
             : <HudStat label={isLive ? friend : pn[1]} value={wins[isLive ? 1 - me : 1]} align="right" tone="red" />}
           <PauseButton shell={shell} active={playing} />
+          <SoundButton />
         </div>
       </div>
 

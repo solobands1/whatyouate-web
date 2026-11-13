@@ -23,7 +23,8 @@ import { useEffect, useReducer, useRef, useState, type CSSProperties, type React
 import type { RealtimeChannel } from "@supabase/supabase-js";
 import { sb } from "@/components/creators/api";
 import { type Mode, type Toast, GameScreen, GameHeader, BoardArea, PrizeLogo, GameOver, PauseButton, PausedCard, ReadyCard, HelpModal, ModesHelp, ShellPopups,
-  useGameShell, dailySeed, dailyNumber, torontoDate, mulberry32, readBest, saveBest, foodPng, emoji } from "./kit";
+  useGameShell, dailySeed, dailyNumber, torontoDate, mulberry32, readBest, saveBest, foodPng, emoji, SoundButton } from "./kit";
+import { sfx } from "./sfx";
 import { GAME_FONT_CSS } from "./gameFont";
 import { PassPhoneIcon, ShuffleIcon, SparkleIcon, CheckIcon, CloseIcon, TrophyIcon } from "./icons";
 
@@ -427,6 +428,10 @@ export default function FridgeRaid() {
       else line = bites ? `${who} Bit Your ${bitName}.` : `${who} Missed.`;
     }
     setMsg(line + tail);
+    // the sound of it: the light's shimmer, the blast's icy whoosh, a crunchy bite, a clink of ice, a little fanfare for a find
+    if (light) sfx.play("shine");
+    else if (a.kind === "blast") { sfx.play("blast", { n: bites }); if (sunk) sfx.play("found", { delay: 0.3 }); }
+    else sfx.play(sunk ? "found" : bites ? "bite" : "ice");
     return again;
   };
   const pickFact = (s: number | null): Toast | null => {
@@ -439,6 +444,7 @@ export default function FridgeRaid() {
   const cpuEnd = (won: boolean) => {
     const G = g.current; runShots.current += G.shots[0];
     setFact(pickFact(G.lastFound)); clearAim(); setCpuAim(null);
+    sfx.play(won && mode === "endless" ? "roundWon" : won ? "win" : "over");
     if (won && mode === "endless") { total.current += G.roundScore; go("roundWon"); bump(); return; }
     const score = total.current + G.roundScore;
     const f: Final = { score, won, shots: G.shots[0], hits: G.hits[0], streak: G.bestStreak[0], rounds: round, log: G.log[0] };
@@ -457,7 +463,7 @@ export default function FridgeRaid() {
     if (opp === "cpu" && shell.paused) return;
     let kind: Kind = "shot", v = false;
     if (armed) {
-      if (!aimAt || !coverOf(armed, aimAt.at, aimAt.v).includes(i)) { setAimAt({ at: i, v: aimAt?.v ?? false }); setMsg(`Looks Good? Tap ${POWER[armed].use}.`); return; }
+      if (!aimAt || !coverOf(armed, aimAt.at, aimAt.v).includes(i)) { setAimAt({ at: i, v: aimAt?.v ?? false }); setMsg(`Looks Good? Tap ${POWER[armed].use}.`); sfx.play("tap"); return; }
       kind = armed; i = aimAt.at; v = aimAt.v;
     }
     const cells = coverOf(kind, i, v);
@@ -471,7 +477,7 @@ export default function FridgeRaid() {
       setTimeout(() => { setLocked(false); nextMove(again); bump(); }, LOCK_MS); return;
     }
     // same phone: show the result for a moment, then go again or hand over
-    if (a.over) { setTimeout(() => { setLocked(false); go("over"); setFact(pickFact(G.lastFound)); bump(); }, LOCK_MS); return; }
+    if (a.over) { setTimeout(() => { setLocked(false); sfx.play("win"); go("over"); setFact(pickFact(G.lastFound)); bump(); }, LOCK_MS); return; }
     if (again) { setTimeout(() => { setLocked(false); nextMove(true); bump(); }, LOCK_MS); return; }
     setTimeout(() => { setLocked(false); nextMove(false); setPass({ to: t, then: "play" }); go("pass"); setMsg(`Pass The Phone To ${nameOf(t)}.`); bump(); }, 1400);
   };
@@ -511,7 +517,7 @@ export default function FridgeRaid() {
     if (key === lastTurn.current) return;
     lastTurn.current = key;
     const id = Date.now(), mine = g.current.turn === (opp === "phone" ? holder : 0);
-    setTurnPop({ id, mine });
+    setTurnPop({ id, mine }); if (mine) sfx.play("turn");
     const t = setTimeout(() => setTurnPop(p => (p && p.id === id ? null : p)), 1200);
     return () => clearTimeout(t);
   }, [phase, g.current.turn, round, holder, opp]);
@@ -527,7 +533,7 @@ export default function FridgeRaid() {
     const order = Array.from({ length: L }, (_, k) => k).sort((x, y) => Math.abs(x - at) - Math.abs(y - at));
     for (const k of order) {
       const q = { s, v, r: v ? pr - k : pr, c: v ? pcol : pcol - k };
-      if (fits(l, q)) { setDraft(l.map(o => (o.s === s ? q : o))); return; }
+      if (fits(l, q)) { setDraft(l.map(o => (o.s === s ? q : o))); sfx.play("tap"); return; }
     }
     setMsg("No Room To Turn It There. Move It First.");
   };
@@ -548,10 +554,10 @@ export default function FridgeRaid() {
     if (p) {
       e.currentTarget.setPointerCapture(e.pointerId);
       drag.current = { s: p.s, dr: Math.floor(i / N) - p.r, dc: (i % N) - p.c, from: i, moved: false, wasSel: sel === p.s };
-      setSel(p.s);
+      setSel(p.s); if (sel !== p.s) sfx.play("tap");
     } else if (sel !== null) {                     // tap an empty shelf to move the picked snack there
       const cur = l.find(q => q.s === sel)!, q = clampTo(sel, cur.v, Math.floor(i / N), i % N);
-      if (fits(l, q)) setDraft(l.map(o => (o.s === sel ? q : o))); else setMsg("That Spot's Taken. Try Another.");
+      if (fits(l, q)) { setDraft(l.map(o => (o.s === sel ? q : o))); sfx.play("tap"); } else setMsg("That Spot's Taken. Try Another.");
     }
   };
   const onMove = (e: React.PointerEvent<HTMLDivElement>) => {
@@ -564,10 +570,10 @@ export default function FridgeRaid() {
   const onUp = () => {
     const d = drag.current; drag.current = null; if (!d) return;
     const gh = ghostRef.current;
-    if (d.moved) { if (gh?.ok) setDraft(draft().map(o => (o.s === d.s ? gh.p : o))); else if (gh) setMsg("That Spot's Taken. Try Another."); setGhost(null); }
+    if (d.moved) { if (gh?.ok) { setDraft(draft().map(o => (o.s === d.s ? gh.p : o))); sfx.play("tap"); } else if (gh) setMsg("That Spot's Taken. Try Another."); setGhost(null); }
     else if (d.wasSel) turnSnack(d.s, d.from);
   };
-  const shuffle = () => { setDraft(autoPlace(Math.random)); setSel(null); };
+  const shuffle = () => { setDraft(autoPlace(Math.random)); setSel(null); sfx.play("tap"); };
 
   const ready = () => {
     setSel(null); setGhost(null);
@@ -770,7 +776,7 @@ export default function FridgeRaid() {
     send({ t: "move", round: meRef.current!.round, turn: G.turnNo, kind, at, v }); bump();
   };
   const liveOver = (won: boolean) => {
-    setFact(pickFact(g.current.lastFound)); go("over"); clearAim();
+    setFact(pickFact(g.current.lastFound)); sfx.play(won ? "win" : "over"); go("over"); clearAim();
     setMsg(won ? `You Found All Of ${nameOf(1)}'s Snacks!` : `${nameOf(1)} Found All Your Snacks.`);
   };
   const onMsg = (m: Msg) => {
@@ -1130,7 +1136,7 @@ export default function FridgeRaid() {
     const pick = (k: "light" | "blast") => {
       if (!canAct || used[k]) return;
       if (armed === k) { clearAim(); setMsg("Tap A Shelf In Their Fridge."); return; }
-      setArmed(k); setAimAt(null); setMsg(k === "light" ? "Tap Where To Shine The Light." : "Tap Where To Blast.");
+      setArmed(k); setAimAt(null); setMsg(k === "light" ? "Tap Where To Shine The Light." : "Tap Where To Blast."); sfx.play("tap");
     };
     if (armed) {
       const light = armed === "light";
@@ -1223,10 +1229,13 @@ export default function FridgeRaid() {
     <GameScreen>
       <GameHeader title="Fridge Raid" mode={mode} onMode={pickMode} onBoard={() => shell.setBoardOpen(true)} onHelp={shell.help.show} />
 
-      <div className="mt-2 flex h-8 shrink-0 rounded-full bg-white/70 p-0.5 text-xs font-semibold">
-        {([["cpu", "Computer"], ["phone", "Same Phone"], ["live", "Play A Friend"]] as [Opp, string][]).map(([o, label]) => (
-          <button key={o} onClick={() => pickOpp(o)} className={`flex-1 rounded-full ${opp === o ? "bg-[#101b2e] text-white" : "text-[#4F88E8]"}`}>{label}</button>
-        ))}
+      <div className="mt-2 flex h-[40px] shrink-0 items-center gap-1.5">
+        <div className="flex h-8 min-w-0 flex-1 rounded-full bg-white/70 p-0.5 text-xs font-semibold">
+          {([["cpu", "Computer"], ["phone", "Same Phone"], ["live", "Play A Friend"]] as [Opp, string][]).map(([o, label]) => (
+            <button key={o} onClick={() => pickOpp(o)} className={`flex-1 rounded-full ${opp === o ? "bg-[#101b2e] text-white" : "text-[#4F88E8]"}`}>{label}</button>
+          ))}
+        </div>
+        <SoundButton />
       </div>
 
       {phase === "play" || phase === "place" ? (

@@ -8,7 +8,8 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import Matter from "matter-js";
 import { type Mode, type Toast, GameScreen, GameHeader, BoardArea, PrizeLogo, FactStrip, GameOver, HelpModal, ModesHelp, ShellPopups,
-  useGameShell, fitCanvas, loadImages, dailySeed, dailyNumber, torontoDate, mulberry32, readBest, saveBest, foodPng, emoji, HUD_ROW, HudStat, HudTag } from "./kit";
+  useGameShell, fitCanvas, loadImages, dailySeed, dailyNumber, torontoDate, mulberry32, readBest, saveBest, foodPng, emoji, HUD_ROW, HudStat, HudTag, SoundButton } from "./kit";
+import { sfx } from "./sfx";
 import { useDuel } from "./duels";
 import { type Burst, BURST_MS, drawBox, drawShadow, drawFood as paintFood, drawDangerLine, drawAim, drawBurst, warm } from "./art/snackMerge";
 
@@ -94,6 +95,8 @@ export default function SnackMerge() {
         setTimeout(() => { if (performance.now() - lastMerge >= COMBO_WINDOW) setCombo(0); }, COMBO_WINDOW + 50);   // badge clears when the chain ends
         const mult = 1 + 0.25 * chain;                 // chains of quick merges are worth more
         bursts.push({ x, y, lv: Math.min(a + 1, FOODS.length - 1), age: 0, seed: (now * 1000) | 0 });
+        // a pop that rises with the size of the new food, a chime on a combo, a sparkle for two Power Bowls
+        if (a === FOODS.length - 1) sfx.play("bowl"); else { sfx.play("merge", { n: a + 1 }); if (chain > 0) sfx.play("combo", { n: chain }); }
         if (a === FOODS.length - 1) { total += Math.round(200 * mult); setScore(total); continue; }   // two Power Bowls: both clear, big bonus
         const nb = addFood(a + 1, x, y); Matter.Body.setVelocity(nb, { x: 0, y: -1.5 }); popAt.set(nb.id, now);
         if (a + 1 > reached) { reached = a + 1; setTop(reached); }
@@ -106,7 +109,7 @@ export default function SnackMerge() {
     const onMove = (e: PointerEvent) => { aimX = clampX(toLocal(e.clientX)); };
     const onUp = (e: PointerEvent) => {
       if (ended || !canDrop) return;
-      aimX = clampX(toLocal(e.clientX)); addFood(current, aimX, TOP - 40); drops++;
+      aimX = clampX(toLocal(e.clientX)); addFood(current, aimX, TOP - 40); drops++; sfx.play("drop");
       current = upcoming; upcoming = pick(); setNext(upcoming); canDrop = false;
       setTimeout(() => { canDrop = true; }, 550);
     };
@@ -119,7 +122,7 @@ export default function SnackMerge() {
       // lose: a settled food stays above the line for 1.5s
       const settledAbove = engine.world.bodies.some(b => level.has(b.id) && t - (born.get(b.id) || 0) > 1200 && b.position.y - FOODS[level.get(b.id)!].r < TOP);
       if (!ended) {
-        if (settledAbove) { aboveSince ||= t; if (t - aboveSince > 1500) { ended = true; setOver(true); if (total > readBest(bestKey)) { saveBest(bestKey, total); setBest(total); } shell.finishRef.current({ score: total, drops, ms: t - started }); } }
+        if (settledAbove) { aboveSince ||= t; if (t - aboveSince > 1500) { ended = true; sfx.play("over"); setOver(true); if (total > readBest(bestKey)) { saveBest(bestKey, total); setBest(total); } shell.finishRef.current({ score: total, drops, ms: t - started }); } }
         else aboveSince = 0;
       }
       // draw: the bento box, the line, the guide, shadows, then the foods in their cups and any merge bursts
@@ -164,7 +167,7 @@ export default function SnackMerge() {
 
       <div className={HUD_ROW}>
         <HudStat label="Score" value={score.toLocaleString()} />
-        <div className="flex min-w-0 flex-1 justify-center">{combo > 0 && <HudTag color="#22A964">Combo ×{combo + 1}</HudTag>}</div>
+        <div className="flex min-w-0 flex-1 justify-center">{combo > 0 && <HudTag color="#22A964"><span className="max-[409px]:hidden">Combo </span>×{combo + 1}</HudTag>}</div>
         <div className="flex shrink-0 items-center gap-1.5">
           <HudStat label="Best" value={best.toLocaleString()} align="right" />
           <div className="wk-hud flex h-[38px] items-center gap-1.5 pl-2.5 pr-1">
@@ -174,6 +177,7 @@ export default function SnackMerge() {
               <img src={foodPng(FOODS[next].code)} alt={FOODS[next].name} className="h-6 w-6" />
             </span>
           </div>
+          <SoundButton />
         </div>
       </div>
 

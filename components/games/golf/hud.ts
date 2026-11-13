@@ -4,6 +4,7 @@
 // vignette. Anything with text is painted once into a small canvas and only repainted when what it shows changes, so a
 // frame just copies it.
 import { HUD_FONT } from "../gameFont";
+import { drawHint as drawSharedHint } from "../hint";
 
 type C = CanvasRenderingContext2D;
 export const NAVY = "#101B2E", NAVY2 = "#24324D", YEL1 = "#9CC4FF", YEL2 = "#6FA8FF", YEL_LIP = "#4F88E8";   // the "yellow" slots now hold the WhatYouAte blue
@@ -204,17 +205,9 @@ export function drawSparkle(c: C, x: number, y: number, s: number, a: number, co
   c.fill(); c.globalAlpha = 1;
 }
 
-/** The first putt's hint: a navy pill saying what to do, a little chevron underneath nudging the way. */
+/** The first putt's hint: the shared WhatYouAte hint pill (../hint), chevrons nudging down. */
 export function drawHint(c: C, cx: number, y: number, t: number) {
-  const w = 214, h = 40, a = 0.88 + 0.12 * Math.sin(t / 300), bob = Math.sin(t / 220) * 2.5;
-  c.save(); c.globalAlpha = a;
-  c.fillStyle = "rgba(4,10,28,0.35)"; rr(c, cx - w / 2 + 1, y + 4, w, h, h / 2); c.fill();
-  c.fillStyle = lin(c, 0, y, 0, y + h, [[0, "#2A3852"], [1, NAVY]]); rr(c, cx - w / 2, y, w, h, h / 2); c.fill();
-  c.strokeStyle = "rgba(255,255,255,0.85)"; c.lineWidth = 2; rr(c, cx - w / 2 + 1, y + 1, w - 2, h - 2, h / 2 - 1); c.stroke();
-  say(c, "Drag Back To Putt", cx, y + 27, 19, "#ffffff");
-  c.strokeStyle = "#ffffff"; c.lineWidth = 3.2; c.lineCap = "round"; c.lineJoin = "round";
-  for (let i = 0; i < 2; i++) { const yy = y + h + 9 + i * 8 + bob; c.globalAlpha = a * (i ? 0.55 : 0.95); c.beginPath(); c.moveTo(cx - 7, yy); c.lineTo(cx, yy + 5); c.lineTo(cx + 7, yy); c.stroke(); }
-  c.restore();
+  drawSharedHint(c as CanvasRenderingContext2D, cx, y, "Drag Back To Putt", t, "down");
 }
 
 /** A soft darkening toward the board's edges, so the course pops (drawn small: it's only a gradient). */

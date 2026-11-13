@@ -11,7 +11,8 @@
 // ends at 10pm; Free Play keeps going day after day, faster each time. Everything around the board comes from ./kit.
 import { useEffect, useRef, useState } from "react";
 import { type Mode, type Toast, GameScreen, GameHeader, BoardArea, PrizeLogo, GameOver, PauseButton, PausedCard, HelpModal, ModesHelp, ShellPopups,
-  useGameShell, fitCanvas, loadImages, dailySeed, dailyNumber, torontoDate, mulberry32, readBest, saveBest, foodPng, HUD_ROW, HudStat, HudTag, StartCard } from "./kit";
+  useGameShell, fitCanvas, loadImages, dailySeed, dailyNumber, torontoDate, mulberry32, readBest, saveBest, foodPng, HUD_ROW, HudStat, HudTag, StartCard, SoundButton } from "./kit";
+import { sfx } from "./sfx";
 import { useDuel } from "./duels";
 import { lightAt, drawView, drawRoom, drawPanel, drawKnob, drawFood, drawFace, drawHeart, drawGrip, haloText, warm } from "./art/beatTheCrash";
 
@@ -112,17 +113,17 @@ export default function BeatTheCrash() {
       const f = FOODS[i]; eaten++; ate.set(i, (ate.get(i) ?? 0) + 1);
       if (f.kind === "steady") {
         flows.push({ perMs: 20 / 3000, left: 3000 });
-        if (energy >= 85) { if (streak >= 3) float("Too full! Streak lost", "#e09a00"); else float("Too full!", "#e09a00"); streak = 0; }   // overeating doesn't pay
-        else { streak++; const pts = Math.round(5 * mult()); total += pts; float(`+${pts}`, "#2eaa6e"); }
+        if (energy >= 85) { if (streak >= 3) float("Too full! Streak lost", "#e09a00"); else float("Too full!", "#e09a00"); streak = 0; sfx.play("full"); }   // overeating doesn't pay
+        else { streak++; const pts = Math.round(5 * mult()); total += pts; float(`+${pts}`, "#2eaa6e"); sfx.play("catch", { n: streak - 1 }); }
       }
-      else if (f.kind === "sugar") { energy += 24; crashes.push({ at: gameMs + 2500, amount: 28, food: i }); float("Sugar rush! Crash coming", "#b54bd1"); streak = 0; }
-      else { energy += 5; hydratedUntil = gameMs + 5000; total += 10; float("Hydrated!", "#3f7fd6"); }
+      else if (f.kind === "sugar") { energy += 24; crashes.push({ at: gameMs + 2500, amount: 28, food: i }); float("Sugar rush! Crash coming", "#b54bd1"); streak = 0; sfx.play("sugar"); }
+      else { energy += 5; hydratedUntil = gameMs + 5000; total += 10; float("Hydrated!", "#3f7fd6"); sfx.play("water"); }
     };
 
     const squares = () => hours.map(h => { const all = h.steady + h.ok + h.bad; return all < 1 ? "⬜" : h.steady >= all * 0.6 ? "🟩" : h.bad > all * 0.3 ? "🟥" : "🟨"; }).join("");
     const pick = (f: Food) => f.facts[Math.floor(Math.random() * f.facts.length)];
     const finish = (kind: Result["kind"]) => {
-      ended = true;
+      ended = true; sfx.play(kind === "done" ? "win" : "over");
       if (kind === "done") { const bonus = 300 + Math.round(energy * 3) + 200 * hearts; total += bonus; float(`Made it! +${bonus}`, "#2eaa6e", W / 2, H / 2, true); }
       // one fact, after the game, about what decided it
       if (kind === "sugar" && lastSugar >= 0) setToast({ title: `Why you crashed: ${FOODS[lastSugar].name}`, body: pick(FOODS[lastSugar]), img: FOODS[lastSugar].code });
@@ -138,7 +139,7 @@ export default function BeatTheCrash() {
       shell.finishRef.current({ score: sc, drops: eaten, ms: performance.now() - realStart });
     };
 
-    const start = () => { if (started || ended) return; started = true; realStart = performance.now(); last = realStart; setStarted(true); };
+    const start = () => { if (started || ended) return; started = true; realStart = performance.now(); last = realStart; setStarted(true); sfx.play("start"); };
     startRef.current = start;
     // relative drag: the face moves as far as your finger does, from wherever you put it down
     let dragFrom: { x: number; px: number } | null = null;
@@ -163,11 +164,11 @@ export default function BeatTheCrash() {
         for (let k = flows.length - 1; k >= 0; k--) { const f = flows[k], use = Math.min(dt, f.left); energy += f.perMs * use; f.left -= use; if (f.left <= 0) flows.splice(k, 1); }
         for (let k = crashes.length - 1; k >= 0; k--) if (gameMs >= crashes[k].at) {
           const c = crashes[k]; flows.push({ perMs: -c.amount / 800, left: 800 }); crashes.splice(k, 1);
-          hearts--; lastSugar = c.food; float(hearts > 0 ? "Sugar Crash!" : "Out Of Hearts", "#e8505b");
+          hearts--; lastSugar = c.food; float(hearts > 0 ? "Sugar Crash!" : "Out Of Hearts", "#e8505b"); if (hearts > 0) sfx.play("crash");
         }
         if (hearts <= 0) { finish("sugar"); }
         const h = hourNow(), p = progress(), slump = h >= 14 && h < 16;
-        if (slump && !slumpShown) { slumpShown = true; float("The 3pm Slump!", "#e8505b", W / 2, HUD + 60, true); }
+        if (slump && !slumpShown) { slumpShown = true; float("The 3pm Slump!", "#e8505b", W / 2, HUD + 60, true); sfx.play("slump"); }
         const drain = (4.2 + 1.6 * p) * (slump ? 1.9 : 1) * (1 + 0.12 * (day - 1)) * (gameMs < hydratedUntil ? 0.55 : 1);
         energy = Math.max(0, Math.min(100, energy - (drain * dt) / 1000));
         const z = zoneOf(energy);
@@ -190,7 +191,7 @@ export default function BeatTheCrash() {
           else {
             day++; gameMs = 0; nextSpawn = 700; slumpShown = false; total += 300; hours = hours.map(() => ({ steady: 0, ok: 0, bad: 0 }));
             const back = hearts < HEARTS; hearts = Math.min(HEARTS, hearts + 1);   // a good night's sleep: one heart back
-            float(`Day ${day}! +300${back ? " · +1 Heart" : ""}`, "#2eaa6e", W / 2, H / 2, true);
+            float(`Day ${day}! +300${back ? " · +1 Heart" : ""}`, "#2eaa6e", W / 2, H / 2, true); sfx.play("level"); if (back) sfx.play("heartUp", { delay: 0.32 });
           }
         }
         if (t - lastHud > 100) { lastHud = t; setHud({ score: Math.floor(total), zone: zoneOf(energy), mult: mult() }); }
@@ -279,6 +280,7 @@ export default function BeatTheCrash() {
         <div className="flex shrink-0 items-center gap-1.5">
           <HudStat label="Best" value={best.toLocaleString()} align="right" />
           <PauseButton shell={shell} active={started && !over} />
+          <SoundButton />
         </div>
       </div>
 

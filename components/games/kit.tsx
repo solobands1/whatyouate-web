@@ -7,14 +7,19 @@
 // The look (KIT_CSS, in ./look) matches Fridge Raid and Kitchen Golf: the Lilita One display face for titles, labels, numbers
 // and buttons, light panels with a navy edge and a chunky lip, and buttons with a darker bottom lip. Geist stays for
 // sentences. Class names are prefixed wk- so a game can restyle a card through a wrapper.
-import { useEffect, useRef, useState, type ReactNode } from "react";
+// Sound: every game plays through ./sfx (one shared on/off setting) and shows the same SoundButton at the right-hand end
+// of its score row. The shell keeps the sound quiet while a popup is open, the PauseButton while paused, and GameOver
+// once the end sting has played.
+import { useCallback, useEffect, useId, useLayoutEffect, useRef, useState, useSyncExternalStore, type ReactNode } from "react";
 import { preload } from "react-dom";
 import { sb } from "@/components/creators/api";
 import { appStoreLink, APP_STORE_ID } from "@/components/site";
 import { tagShareText, track, trackGamePlay } from "@/components/track";
 import { GAME_FONT_CSS, HUD_FONT } from "./gameFont";
 import { KIT_CSS } from "./look";
-import { BackIcon, CheckIcon, CloseIcon, InfoIcon, MedalIcon, PauseIcon, PlayIcon, ReplayIcon, ShareIcon, StarIcon, TrophyIcon } from "./icons";
+import { BackIcon, CheckIcon, CloseIcon, InfoIcon, MedalIcon, PauseIcon, PlayIcon, ReplayIcon, ShareIcon, SoundIcon, StarIcon, TrophyIcon } from "./icons";
+import { sfx } from "./sfx";
+import { drawHint as drawSharedHint, type HintDir } from "./hint";
 
 export type Mode = "daily" | "endless";
 export type Player = { token: string; name: string };
@@ -142,7 +147,8 @@ export function GameScreen({ children }: { children: ReactNode }) {
   useNoScroll();
   preload("/fonts/LilitaOne-Regular.ttf", { as: "font", type: "font/ttf", crossOrigin: "anonymous" });
   return (
-    <main className="fixed inset-0 flex flex-col overflow-hidden bg-gradient-to-b from-[#e3effe] via-[#f0f6fe] to-[#6fa8ff] text-[#101b2e]"
+    <main onContextMenu={e => { const el = e.target as HTMLElement; if (!el.closest("input, textarea, [contenteditable=true]")) e.preventDefault(); }}
+      className="wk-game fixed inset-0 flex flex-col overflow-hidden bg-gradient-to-b from-[#e3effe] via-[#f0f6fe] to-[#6fa8ff] text-[#101b2e]"
       style={{ paddingTop: "max(env(safe-area-inset-top), 10px)", paddingBottom: "max(env(safe-area-inset-bottom), 10px)", paddingLeft: 12, paddingRight: 12 }}>
       <style>{GAME_FONT_CSS + KIT_CSS}</style>
       <div className="mx-auto flex h-full w-full max-w-[440px] flex-col">{children}</div>
@@ -186,10 +192,18 @@ export function HudStat({ label, value, align = "left", tone = "navy", className
 
 /** The middle of a score row: a chunky pill in the game's colour for its status (or light, for plain info). */
 export function HudTag({ children, color, light = false, className = "" }: { children: ReactNode; color?: string; light?: boolean; className?: string }) {
+  // On a narrow phone with big scores the words can run out of room: step the size down a little (to 12px at the least)
+  // before cutting them off. Checked after every render, since the numbers either side change as you play.
+  const ref = useRef<HTMLSpanElement>(null);
+  useLayoutEffect(() => {
+    const el = ref.current; if (!el) return;
+    el.style.fontSize = "";
+    for (let px = 13.5; px >= 12 && el.scrollWidth > el.clientWidth + 0.5; px -= 0.5) el.style.fontSize = `${px}px`;
+  });
   return (
     <div className={`wk-tag ${light ? "wk-tag-light" : ""} flex h-[28px] min-w-0 items-center justify-center truncate px-3 text-[14px] leading-none ${className}`}
       style={light ? undefined : { backgroundColor: color ?? "#3F7FD6" }}>
-      <span className="truncate">{children}</span>
+      <span ref={ref} className="truncate">{children}</span>
     </div>
   );
 }
@@ -211,23 +225,11 @@ export function StartCard({ label, title, how, onStart }: { label: string; title
   );
 }
 
-/** A first-move hint drawn on a game's canvas, like Kitchen Golf's "Drag Back To Putt": a navy pill with the words in the
- *  display face and two yellow chevrons nudging the way to drag. Call loadGameFont() once so the face is ready. */
-export function drawHintPill(c: CanvasRenderingContext2D, cx: number, y: number, label: string, t: number, w = 210) {
-  const h = 38, x = cx - w / 2, a = 0.9 + 0.1 * Math.sin(t / 300), slide = ((t / 700) % 1) * 5;
-  c.save(); c.globalAlpha = a;
-  c.fillStyle = "rgba(4,10,28,0.32)"; c.beginPath(); c.roundRect(x + 1, y + 4, w, h, h / 2); c.fill();
-  const g = c.createLinearGradient(0, y, 0, y + h); g.addColorStop(0, "#2A3852"); g.addColorStop(1, "#101B2E");
-  c.fillStyle = g; c.beginPath(); c.roundRect(x, y, w, h, h / 2); c.fill();
-  c.strokeStyle = "rgba(255,255,255,0.85)"; c.lineWidth = 2; c.beginPath(); c.roundRect(x + 1, y + 1, w - 2, h - 2, h / 2 - 1); c.stroke();
-  c.strokeStyle = "#9CC4FF"; c.lineWidth = 3; c.lineCap = "round"; c.lineJoin = "round";
-  for (let i = 0; i < 2; i++) {
-    const xx = x + 17 + i * 8 - slide; c.globalAlpha = a * (i ? 1 : 0.55);
-    c.beginPath(); c.moveTo(xx + 4, y + h / 2 - 6); c.lineTo(xx - 2, y + h / 2); c.lineTo(xx + 4, y + h / 2 + 6); c.stroke();
-  }
-  c.globalAlpha = a; c.fillStyle = "#ffffff"; c.font = `800 18px ${HUD_FONT}`; c.textAlign = "center"; c.textBaseline = "alphabetic";
-  c.fillText(label, cx + 11, y + h / 2 + 6.5);
-  c.restore();
+/** A first-move hint drawn on a game's canvas ("Drag Back To Throw"): the shared WhatYouAte hint pill (./hint). `w` is
+ *  kept for older callers and ignored: the pill sizes itself to its words. */
+export function drawHintPill(c: CanvasRenderingContext2D, cx: number, y: number, label: string, t: number, _w?: number, dir: HintDir = "left") {
+  void _w;
+  drawSharedHint(c, cx, y, label, t, dir);
 }
 
 /** The board area: fills the space left on screen, keeping room for the fact strip underneath. */
@@ -317,6 +319,7 @@ export function GameOver({ label, headline, score, best, mode, posted, joined, c
   copied: boolean; fact?: Toast | null; extra?: ReactNode; onBoard: () => void; onJoin: () => void; onAgain: () => void; onShare: () => void;
 }) {
   const newBest = score >= best && score > 0;
+  useEffect(() => { sfx.hold("game-over", true, false); return () => sfx.hold("game-over", false); }, []);   // the end sting rings out; nothing new starts
   // Sized to fit a phone's board (about 350 x 530) with every row showing and a fact underneath, without scrolling.
   return (
     <div className="wk-backdrop absolute inset-0 z-10 flex flex-col items-center justify-center gap-2.5 rounded-[22px] p-3">
@@ -480,23 +483,47 @@ export function useGameShell(game: string, mode: Mode) {
   const finishRef = useRef(scores.finish); finishRef.current = scores.finish;   // the game loop always calls the latest
   // Links in the message get ?via=share so visits from them count as shares (components/track.ts). Every tap on Share is counted.
   const share = async (text: string) => { track("share"); if (await shareText(tagShareText(text))) { setCopied(true); setTimeout(() => setCopied(false), 2000); } };
-  // the pause button, plus an automatic pause when you switch apps or lock the phone mid-run (see PauseButton)
+  // the pause button, plus an automatic pause when you switch apps or lock the phone mid-run (see PauseButton). Only while
+  // a Pause button is showing: a game without one (Snack Merge, Food Fling) has no Paused card to get out of.
   const [held, setHeld] = useState(false);
-  useEffect(() => { const f = () => { if (document.hidden) setHeld(true); }; document.addEventListener("visibilitychange", f); return () => document.removeEventListener("visibilitychange", f); }, []);
+  const pausers = useRef(0);   // Pause buttons showing right now, each during a run
+  const countPause = useCallback((d: number) => { pausers.current += d; }, []);
+  useEffect(() => { const f = () => { if (document.hidden && pausers.current > 0) setHeld(true); }; document.addEventListener("visibilitychange", f); return () => document.removeEventListener("visibilitychange", f); }, []);
   const prize = usePrize();
   const paused = help.open || joinOpen || boardOpen || held || prize.step !== null;
-  return { game, player, savePlayer, scores, help, joinOpen, setJoinOpen, boardOpen, setBoardOpen, copied, share, finishRef, paused, held, setHeld, prize };
+  const popup = help.open || joinOpen || boardOpen || prize.step !== null;   // the pause itself is the PauseButton's (it knows when a run is going)
+  useEffect(() => { sfx.hold("popup", popup); }, [popup]);
+  useEffect(() => () => sfx.hold("popup", false), []);
+  return { game, player, savePlayer, scores, help, joinOpen, setJoinOpen, boardOpen, setBoardOpen, copied, share, finishRef, paused, held, setHeld, countPause, prize };
 }
 export type Shell = ReturnType<typeof useGameShell>;
 
 /** A small pause button for real-time games (put it in the score row). `active` = a run is going. */
 export function PauseButton({ shell, active }: { shell: Shell; active: boolean }) {
-  const { held, setHeld } = shell;
+  const { held, setHeld, countPause } = shell;
   useEffect(() => { if (!active && held) setHeld(false); }, [active, held, setHeld]);   // nothing to pause between runs
+  useEffect(() => { if (!active) return; countPause(1); return () => countPause(-1); }, [active, countPause]);   // lets switching apps pause the run
+  const id = useId();
+  useEffect(() => { sfx.hold(`pause${id}`, active && held); return () => sfx.hold(`pause${id}`, false); }, [id, active, held]);   // quiet while paused
   return (
     <button onClick={() => setHeld(true)} aria-label="Pause" disabled={!active}
       className={`wk-round h-[34px] w-[34px] shrink-0 ${active ? "" : "pointer-events-none opacity-0"}`}>
       <PauseIcon size={14} />
+    </button>
+  );
+}
+
+/** Is sound on? The one setting every game shares (./sfx), kept in step across games and tabs. */
+export function useSoundOn() { return useSyncExternalStore(sfx.subscribe, sfx.getOn, () => true); }
+
+/** The speaker button: the same white round button in every game, always the last thing at the right of the score row.
+ *  Sound is on until the player turns it off, and off in one game is off in all of them. */
+export function SoundButton({ className = "" }: { className?: string }) {
+  const on = useSoundOn();
+  return (
+    <button onClick={() => sfx.setOn(!on)} aria-label="Sound" aria-pressed={on} data-sound={on ? "on" : "off"}
+      className={`wk-round h-[34px] w-[34px] shrink-0 ${className}`}>
+      <SoundIcon on={on} size={19} />
     </button>
   );
 }
@@ -507,11 +534,11 @@ export function ReadyCard({ steps, me, friend, ready, onReady, onLeave, title = 
   steps: ReactNode[]; me: string; friend: string; ready: [boolean, boolean]; onReady: () => void; onLeave: () => void; title?: string;
 }) {
   const seat = (name: ReactNode, ok: boolean, color: string, waiting?: boolean) => (
-    <div className="flex h-[36px] items-center gap-2.5 rounded-xl bg-white px-2.5 shadow-[0_2px_0_#d3e0f4]">
+    <div className="flex h-[36px] items-center gap-2.5 rounded-xl bg-white px-2.5 shadow-[0_0_0_1px_#E3EDFB]">
       <span className="h-3.5 w-3.5 shrink-0 rounded-full shadow-[inset_0_-2px_0_rgba(0,0,0,0.18)]" style={{ background: color }} />
       <span className={`wk-f min-w-0 flex-1 truncate text-left text-[16px] leading-tight ${waiting ? "text-[#8a9ab3]" : "text-[#101B2E]"}`}>{name}</span>
-      {ok ? <span className="wk-f flex shrink-0 items-center gap-1 rounded-full bg-[#22A964] py-[3px] pl-1.5 pr-2.5 text-[13px] leading-none text-white shadow-[0_2px_0_#167A45]"><CheckIcon size={12} />Ready</span>
-        : waiting ? <span className="flex shrink-0 gap-1 pr-1">{[0, 1, 2].map(k => <span key={k} className="wk-dot h-1.5 w-1.5 rounded-full bg-[#3F7FD6]" style={{ animationDelay: `${k * 0.2}s` }} />)}</span> : null}
+      {ok ? <span className="wk-tag wk-tag-light flex shrink-0 items-center gap-1 py-[3px] pl-1.5 pr-2.5 text-[13px] leading-none"><CheckIcon size={12} />Ready</span>
+        : waiting ? <span className="flex shrink-0 gap-1 pr-1">{[0, 1, 2].map(k => <span key={k} className="wk-dot h-1.5 w-1.5 rounded-full bg-[#6FA8FF]" style={{ animationDelay: `${k * 0.2}s` }} />)}</span> : null}
     </div>
   );
   return (
@@ -521,9 +548,9 @@ export function ReadyCard({ steps, me, friend, ready, onReady, onLeave, title = 
           <li key={i} className="flex gap-2.5"><span className="wk-step flex h-[21px] w-[21px] shrink-0 items-center justify-center text-[12.5px]">{i + 1}</span><span>{s}</span></li>
         ))}
       </ol>
-      <div className="mt-3 space-y-1.5 rounded-2xl bg-[#e6eefc] p-1.5">
-        {seat(me, ready[0], "#3f7fd6")}
-        {seat(ready[1] ? friend : `Waiting For ${friend}...`, ready[1], "#e8505b", !ready[1])}
+      <div className="mt-3 space-y-1.5 rounded-2xl bg-[#EAF2FF] p-1.5">
+        {seat(me, ready[0], "#6FA8FF")}
+        {seat(ready[1] ? friend : `Waiting For ${friend}...`, ready[1], "#FF7A93", !ready[1])}
       </div>
       <button onClick={onReady} disabled={ready[0]} className={`wk-btn ${ready[0] ? "wk-light" : "wk-go"} mt-3.5 h-[52px] w-full text-[22px] disabled:opacity-100 disabled:[filter:none]`}>
         {ready[0] ? <><CheckIcon size={20} />You&apos;re Ready</> : "I'm Ready"}

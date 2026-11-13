@@ -21,6 +21,7 @@ export default function sitemap(): MetadataRoute.Sitemap {
     { url: `${BASE}/games/pea-tanks`, changeFrequency: "weekly", priority: 0.7 },
     { url: `${BASE}/games/kitchen-golf`, changeFrequency: "weekly", priority: 0.7 },
     { url: `${BASE}/games/blenders-bacon`, changeFrequency: "weekly", priority: 0.7 },
+    { url: `${BASE}/games/berry-pong`, changeFrequency: "weekly", priority: 0.7 },
     { url: `${BASE}/creators`, changeFrequency: "monthly", priority: 0.8 },
     { url: `${BASE}/creators/example`, changeFrequency: "monthly", priority: 0.5 },
     { url: `${BASE}/creators/join`, changeFrequency: "yearly", priority: 0.5 },

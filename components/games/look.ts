@@ -54,5 +54,10 @@ export const KIT_CSS = `@layer components {
 /* a popup's card sits a little above the middle (40% of the free space above it, 60% below), where a centred card looks
    centred to the eye; when the card fills the space the spacers shrink to nothing */
 .wk-raise { flex-direction: column; } .wk-raise::before { content: ""; flex: 2 1 0; min-height: 0; } .wk-raise::after { content: ""; flex: 3 1 0; min-height: 0; }
+/* while playing, a long press must never select text, show the magnifier, or open the copy/paste or image menu;
+   the name and room-code boxes stay typeable */
+.wk-game, .wk-game * { -webkit-user-select: none; user-select: none; -webkit-touch-callout: none; -webkit-tap-highlight-color: transparent; }
+.wk-game img, .wk-game svg, .wk-game canvas { -webkit-user-drag: none; }
+.wk-game input, .wk-game textarea, .wk-game [contenteditable="true"] { -webkit-user-select: text; user-select: text; -webkit-touch-callout: default; }
 .wk-dot { animation: wk-dot 1s ease-in-out infinite; } @keyframes wk-dot { 0%, 100% { opacity: 0.25 } 50% { opacity: 1 } }
 }`;

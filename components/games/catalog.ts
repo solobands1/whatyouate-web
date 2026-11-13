@@ -75,4 +75,11 @@ export const GAMES: Game[] = [
     daily: true,
     multiplayer: true,
   },
+  {
+    slug: "berry-pong",
+    name: "Berry Pong",
+    tagline: "Flick blueberries into the other side's cereal bowls. Sink two in a row and you're on fire. Play the computer or a friend.",
+    daily: true,
+    multiplayer: true,
+  },
 ];

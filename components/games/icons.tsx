@@ -156,3 +156,18 @@ export function ShuffleIcon({ size = 18, className, color = "currentColor" }: P)
     </svg>
   );
 }
+
+/** The sound toggle: a speaker with sound waves when on, with a cross when off. */
+export function SoundIcon({ on, size = 18, className, color = "currentColor" }: P & { on: boolean }) {
+  return (
+    <svg viewBox="0 0 24 24" {...box(size, className)}>
+      <path d="M2.6 9.6c0-.9.7-1.6 1.6-1.6h2.9l4.5-3.8c.9-.8 2.3-.1 2.3 1.1v13.4c0 1.2-1.4 1.9-2.3 1.1L7.1 16H4.2c-.9 0-1.6-.7-1.6-1.6z" fill={color} />
+      {on ? (<>
+        <path d="M16.6 8.9a4.4 4.4 0 0 1 0 6.2" fill="none" stroke={color} strokeWidth="2.4" strokeLinecap="round" />
+        <path d="M19.2 6.2a8.2 8.2 0 0 1 0 11.6" fill="none" stroke={color} strokeWidth="2.4" strokeLinecap="round" />
+      </>) : (
+        <path d="M16.6 9.4l4.8 5.2M21.4 9.4l-4.8 5.2" fill="none" stroke={color} strokeWidth="2.6" strokeLinecap="round" />
+      )}
+    </svg>
+  );
+}

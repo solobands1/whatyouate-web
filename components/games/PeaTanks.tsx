@@ -21,7 +21,8 @@
 import { useEffect, useRef, useState, type ReactNode } from "react";
 import { appStoreLink } from "@/components/site";
 import { type Mode, type Toast, GameScreen, GameHeader, BoardArea, PrizeLogo, GameOver, PauseButton, PausedCard, ReadyCard, HelpModal, ModesHelp, ShellPopups,
-  useGameShell, fitCanvas, dailySeed, dailyNumber, torontoDate, readBest, saveBest, foodPng, HUD_ROW, HudStat, HudTag, OverlayCard, UI } from "./kit";
+  useGameShell, fitCanvas, dailySeed, dailyNumber, torontoDate, readBest, saveBest, foodPng, HUD_ROW, HudStat, HudTag, OverlayCard, UI, SoundButton } from "./kit";
+import { sfx } from "./sfx";
 import { HeartIcon } from "./icons";
 import { AW, AH, TANK_R, PEA_R, DUEL_HP, LIVES, MISSIONS, TODAY_MISSIONS, DAY_BONUS, LIFE_BONUS, WAVE_POINTS, KILL_POINTS, MINE_CAP, KINDS, POWERS, ZONES, SPAWNS,
   type Kind, type TableMap, type Tank, type Pea, type Mine, type Pick, type Input, type World, type Brain, type Level, type Waves, type Ob,
@@ -65,7 +66,7 @@ type CardInfo =
   | { k: "guardOver"; waves: number; kills: number; score: number; best: number }
   | { k: "coopOver"; n: number; cleared: number; score: number; won: boolean };
 type Result = { kind: "won" | "lost"; cleared: number; of: number; lives: number; acc: number; squares: string };
-type Hud = { score: number; label: string; left: string; right: string; lives: number };
+type Hud = { score: number; label: string; short?: string; left: string; right: string; lives: number };   // short: the tag on a narrow phone
 type Stick = { id: number; bx: number; by: number; kx: number; ky: number; moved: boolean };
 type Ctl = { drive: Stick | null; aim: Stick | null; aimAngle: number | null; fc: number; mc: number; keys: Record<string, boolean>; keyFire: boolean; mouse: { x: number; y: number } | null };
 type Snap = { k: number; at: number; ph: number; cl: number; a: number; T: number[][]; P: number[][] };
@@ -225,8 +226,8 @@ export default function PeaTanks() {
     const showCard = (c: CardInfo | null) => { setCard(c); if (host) sendNet({ t: "card", m: matchNo, card: c }, true); };
     const pushHud = () => {
       const left = w.tanks.slice(w.humans).filter(t => t.hp > 0).length;
-      if (game === "missions") setHud({ score: total, label: daily ? `Mission ${mission} Of ${TODAY_MISSIONS} · ${left} Left` : `Mission ${mission} · ${left} Left`, left: String(lives), right: total.toLocaleString(), lives });
-      else if (game === "guard") setHud({ score: guest ? total : waves.cleared * WAVE_POINTS + kills * KILL_POINTS, label: `Wave ${Math.max(1, waves.wave)} · Basket ${w.basket?.hp ?? 0}/${w.basket?.max ?? 0}`, left: String(Math.max(1, waves.wave)), right: total.toLocaleString(), lives: 0 });
+      if (game === "missions") setHud({ score: total, label: daily ? `Mission ${mission} Of ${TODAY_MISSIONS} · ${left} Left` : `Mission ${mission} · ${left} Left`, short: `Mission ${mission} · ${left} Left`, left: String(lives), right: total.toLocaleString(), lives });
+      else if (game === "guard") setHud({ score: guest ? total : waves.cleared * WAVE_POINTS + kills * KILL_POINTS, label: `Wave ${Math.max(1, waves.wave)} · Basket ${w.basket?.hp ?? 0}/${w.basket?.max ?? 0}`, short: `Wave ${Math.max(1, waves.wave)} · Basket ${w.basket?.hp ?? 0}`, left: String(Math.max(1, waves.wave)), right: total.toLocaleString(), lives: 0 });
     };
     setOver(false); setResult(null); setFact(null); setCard(null); resetScores();
     if (!live) { setWins([0, 0]); setMatchEnd(null); }
@@ -273,8 +274,13 @@ export default function PeaTanks() {
       if (live) setLiveOn(true);
       if (game === "missions") introMission(); else startStage();
     }
+    /** The end of a round, a mission or Guard The Lunch, heard from this phone's side. */
+    function endSound(kind: "versus" | "cleared" | "down" | "basket", win: number) {
+      if (kind === "versus") sfx.play(win !== 2 && (!live || win === me) ? "roundWon" : "roundLost");
+      else sfx.play(kind === "cleared" ? "roundWon" : kind === "down" ? "roundLost" : "over");
+    }
     function endStage(kind: "versus" | "cleared" | "down" | "basket", win = -1) {
-      phase = "end"; phaseT = END_MS;
+      phase = "end"; phaseT = END_MS; endSound(kind, win);
       if (kind === "versus") {
         if (win !== 2) mw[win]++;
         endText = win === 2 ? "Tie Round" : live ? (win === me ? "You Win The Round!" : `${said(win)} Wins The Round`) : `${pnames[win]} Wins The Round!`;
@@ -294,6 +300,7 @@ export default function PeaTanks() {
         if (mw[0] >= WINS_TO || mw[1] >= WINS_TO) {
           phase = "over"; matchWinner = mw[0] >= WINS_TO ? 0 : 1;
           if (host) sendNet({ t: "mend", m: matchNo, wins: mw.slice(), win: matchWinner }, true);
+          sfx.play(!live || matchWinner === me ? "win" : "over");
           setMatchEnd({ winner: matchWinner });
         } else startStage();
         return;
@@ -322,6 +329,7 @@ export default function PeaTanks() {
     }
     function endRun(won: boolean) {
       if (won) total += DAY_BONUS + lives * LIFE_BONUS;
+      sfx.play(won ? "win" : "over");
       pushHud();
       if (humans > 1) { phase = "card"; cardNow = null; phaseT = 1e9; showCard({ k: "coopOver", n: mission, cleared, score: total, won }); return; }
       phase = "over";
@@ -393,6 +401,7 @@ export default function PeaTanks() {
       if (m.t === "obs") { if (m.st === stage && (m.ov as number) > gOv) { gOv = m.ov as number; w.map = { ...w.map, obs: m.obs as Ob[] }; tableCache = null; } return; }
       if (m.t === "rend" && m.m === matchNo && m.st === stage) {
         phase = "end"; phaseT = 1e9; predOn = false; endText = m.text as string; endSub = (m.sub as string) ?? "";
+        endSound(m.wins ? "versus" : endText === "Mission Cleared!" ? "cleared" : endText === "The Lunch Is Gone!" ? "basket" : "down", m.win as number);
         if (m.wins) {   // a versus round: word the banner from this phone's side (the host's text says "You" for the host)
           const wv = m.wins as number[], win = m.win as number; mw[0] = wv[0]; mw[1] = wv[1]; setWins(mw.slice());
           endText = win === 2 ? "Tie Round" : win === me ? "You Win The Round!" : `${said(win)} Wins The Round`;
@@ -400,7 +409,7 @@ export default function PeaTanks() {
         }
         return;
       }
-      if (m.t === "mend" && m.m === matchNo) { const wv = m.wins as number[]; mw[0] = wv[0]; mw[1] = wv[1]; setWins(mw.slice()); phase = "over"; setMatchEnd({ winner: m.win as number }); return; }
+      if (m.t === "mend" && m.m === matchNo) { const wv = m.wins as number[]; mw[0] = wv[0]; mw[1] = wv[1]; setWins(mw.slice()); phase = "over"; sfx.play(m.win === me ? "win" : "over"); setMatchEnd({ winner: m.win as number }); return; }
       if (m.t === "s" && m.m === matchNo && m.st === stage) onSnap(m);
     }
     function onSnap(m: NetMsg) {
@@ -445,6 +454,7 @@ export default function PeaTanks() {
     const evc: Record<string, number> = {};   // events seen, by kind (the browser test compares the two screens)
     function showEvent(k: number, x: number, y: number, v: number, n: number) {
       const kind = EVK[k]; evc[kind] = (evc[kind] ?? 0) + 1;
+      playEvent(kind, v);
       if (kind === "hit") {
         flash[v] = 1; shake = Math.max(shake, 1);
         fx.push({ k: "splat", x, y, age: 0, a: Math.random() * 6, col: "#6cbf3c" });
@@ -461,6 +471,15 @@ export default function PeaTanks() {
       else if (kind === "crumble") { fx.push({ k: "crumble", x, y, age: 0, a: Math.random() * 6, col: ["#f2994a", "#e8505b", "#4f9ad8"][n % 3] }); tableCache = null; }
       else if (kind === "block") fx.push({ k: "block", x, y, age: 0, a: 0, col: "" });
       else if (kind === "basket") { basketFlash = 1; shake = Math.max(shake, 2); floats.push({ text: `Basket ${n}`, x, y: y - 26, color: RED, age: 0, life: 1100 }); }
+    }
+
+    // the sounds of the table: a soft pop for each pea (the computer's quieter), a tick off the walls, thumps and pops
+    function playEvent(kind: string, v: number) {
+      if (kind === "fire") { if (!(guest && v === me)) sfx.play("fire", { vol: v < w.humans ? 1 : 0.6 }); }   // a guest hears its own peas as it fires them
+      else if (kind === "spark") sfx.play("ricochet");
+      else if (kind === "splat") sfx.play("plip");
+      else if (kind === "pick") sfx.play("power");
+      else if (kind === "hit" || kind === "ko" || kind === "boom" || kind === "crumble" || kind === "block" || kind === "basket" || kind === "mine") sfx.play(kind);
     }
 
     // ── input ──
@@ -660,7 +679,7 @@ export default function PeaTanks() {
       if (stepTank(pred, inp, w.map, others, predPeas.length, false, w.basket)) {
         const spreads = pred.power === 2 ? [-0.2, 0, 0.2] : [0];
         for (const sa of spreads) predPeas.push(peaFrom(pred, -seq * 10 - predPeas.length, me, seq, sa));
-        predSet.add(seq);
+        predSet.add(seq); sfx.play("fire");
         fx.push({ k: "puff", x: pred.x + Math.cos(pred.ta) * (TANK_R + 8), y: pred.y + Math.sin(pred.ta) * (TANK_R + 8), age: 0, a: pred.ta, col: "" });
       }
       // my peas fly on my screen straight away (bounces too); the host decides what they hit
@@ -706,7 +725,7 @@ export default function PeaTanks() {
     }
 
     // ── loop ──
-    let raf = 0, last = performance.now(), acc = 0;
+    let raf = 0, last = performance.now(), acc = 0, lastCount = -1;
     const loop = (t: number) => {
       const dt = Math.max(0, Math.min(250, t - last)); last = t;
       const frozen = live ? netRef.current.isAway() : pausedRef.current || phase === "idle";
@@ -722,6 +741,9 @@ export default function PeaTanks() {
         for (let i = 0; i < flash.length; i++) flash[i] = Math.max(0, (flash[i] ?? 0) - dt / 220);
         basketFlash = Math.max(0, basketFlash - dt / 300); shake = Math.max(0, shake - dt / 120);
         const decay = Math.exp(-dt / 110); off.x *= decay; off.y *= decay; off.a *= decay;
+        // countdown beeps (3, 2, 1 in versus; one for "Ready..."), and a brighter one for "Go!"
+        const cnt = phase === "count" ? (game === "versus" ? Math.max(1, Math.ceil(phaseT / 1000)) : 1) : phase === "play" ? 0 : -1;
+        if (cnt !== lastCount) { if (cnt > 0) sfx.play("count"); else if (cnt === 0 && lastCount > 0) sfx.play("go"); lastCount = cnt; }
       } else { ctl.forEach(c => { c.drive = null; c.aim = null; c.keyFire = false; }); }
       draw(t);
       raf = requestAnimationFrame(loop);
@@ -1040,23 +1062,25 @@ export default function PeaTanks() {
       <div className={HUD_ROW}>
         {game === "versus" ? (<>
           <HudStat label={isLive ? "You" : pn[0]} value={wins[isLive ? me : 0]} tone="blue" />
-          <HudTag light>{isLive ? `Live · Room ${play.kind === "live" ? play.code : ""}` : `Versus · First To ${WINS_TO}`}</HudTag>
+          <HudTag light><span className="max-[409px]:hidden">{isLive ? "Live · " : "Versus · "}</span>{isLive ? `Room ${play.kind === "live" ? play.code : ""}` : `First To ${WINS_TO}`}</HudTag>
           <div className="flex shrink-0 items-center gap-1.5">
             <HudStat label={isLive ? friendLabel : pn[1]} value={wins[isLive ? 1 - me : 1]} align="right" tone="red" />
             <PauseButton shell={shell} active={playing} />
+            <SoundButton />
           </div>
         </>) : game ? (<>
           <HudStat label="Score" value={hud.score.toLocaleString()} />
-          <HudTag light>{hud.label || (game === "guard" ? "Guard The Lunch" : "Missions")}</HudTag>
+          <HudTag light>{hud.label ? <><span className="max-[409px]:hidden">{hud.label}</span><span className="min-[410px]:hidden">{hud.short ?? hud.label}</span></> : (game === "guard" ? "Guard The Lunch" : "Missions")}</HudTag>
           <div className="flex shrink-0 items-center gap-1.5">
             {isSolo ? <HudStat label="Best" value={(game === "guard" ? guardBest : best).toLocaleString()} align="right" />
               : <HudStat label={isLive ? `Room ${play.kind === "live" ? play.code : ""}` : "Co-op"} value={game === "missions" ? <>{hud.lives}<HeartIcon size={15} /></> : "Team"} align="right" />}
             <PauseButton shell={shell} active={playing} />
+            <SoundButton />
           </div>
         </>) : (<>
           <HudStat label="Best" value={best.toLocaleString()} />
           <HudTag light>{mode === "daily" ? `Today's Challenge #${n}` : `Missions Reached: ${reached}`}</HudTag>
-          <div className="w-[58px] shrink-0" />
+          <div className="flex w-[58px] shrink-0 justify-end"><SoundButton /></div>
         </>)}
       </div>
 

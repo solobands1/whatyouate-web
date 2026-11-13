@@ -12,7 +12,8 @@
 // Everything around the board comes from ./kit.
 import { useEffect, useRef, useState } from "react";
 import { type Mode, type Toast, GameScreen, GameHeader, BoardArea, PrizeLogo, GameOver, PauseButton, PausedCard, HelpModal, ModesHelp, ShellPopups,
-  useGameShell, fitCanvas, loadImages, dailySeed, dailyNumber, torontoDate, mulberry32, readBest, saveBest, foodPng, HUD_ROW, HudStat, HudTag, StartCard } from "./kit";
+  useGameShell, fitCanvas, loadImages, dailySeed, dailyNumber, torontoDate, mulberry32, readBest, saveBest, foodPng, HUD_ROW, HudStat, HudTag, StartCard, SoundButton } from "./kit";
+import { sfx } from "./sfx";
 import { useDuel } from "./duels";
 import { loadGameFont, HUD_FONT } from "./gameFont";
 import { type CartArt, buildCartArt, canStripes, heart, FLOOR_P, SHELF_P } from "./art2/cartArt";
@@ -226,13 +227,17 @@ export default function CartRush() {
       else if (e.type === "recipe") float(`${e.recipe.name} done! +${e.pts}${e.heart ? " · +1 Heart" : ""}`, e.perfect ? "#2eaa6e" : "#3f7fd6", W / 2, H / 2 - 30, true);
       else if (e.type === "hit") { float(e.hazard.hit, "#e8505b"); shakeUntil = performance.now() + 260; }
       else finish();
+      // sounds: a note that climbs as the recipe card fills, a jingle when it's done, a slip or a bump on a hazard
+      if (e.type === "grab") { if (e.listed) sfx.play("grab", { n: game.s.got.filter(Boolean).length - 1 }); else sfx.play("extra"); }
+      else if (e.type === "recipe") { sfx.play("recipe"); if (e.heart) sfx.play("heartUp", { delay: 0.4 }); }
+      else if (e.type === "hit" && e.hearts > 0) { if (e.hazard === HAZARDS[0]) sfx.play("spill"); else sfx.play("bump"); }
     });
     const s = game.s;
     let started = false, ended = false, raf = 0, last = performance.now(), lastHud = 0, realStart = 0;
     setStarted(false); setOver(false); setResult(null); setToast(null); setHud({ score: 0, made: 0 }); resetScores();
 
     const finish = () => {
-      ended = true;
+      ended = true; sfx.play("over");
       // one fact, after the run, about the recipe you were shopping for
       const recipe = RECIPES[s.recipe], last = s.got.some(Boolean) && recipe.items.includes(s.lastGrab);
       const left = recipe.items.filter((_, i) => !s.got[i]), code = last ? s.lastGrab : left[Math.floor(Math.random() * left.length)];
@@ -245,7 +250,8 @@ export default function CartRush() {
       shell.finishRef.current({ score: sc, drops: s.grabs, ms: performance.now() - realStart });
     };
 
-    const start = () => { if (started || ended) return; started = true; realStart = performance.now(); last = realStart; setStarted(true); };
+    const start = () => { if (started || ended) return; started = true; realStart = performance.now(); last = realStart; setStarted(true); sfx.play("start"); };
+    const lane = (f: () => void) => { const was = s.lane; f(); if (s.lane !== was) sfx.play("lane", { n: s.lane }); };   // a soft tick when the cart changes lane
     startRef.current = start;
     // The lane pad under the cart: tap a lane, or slide along it. Elsewhere, tap either side or swipe.
     const toY = (clientY: number) => { const r = canvas.getBoundingClientRect(); return ((clientY - r.top) / r.height) * H; };
@@ -256,14 +262,14 @@ export default function CartRush() {
       if (!started) { start(); return; }
       const x = toLocal(e.clientX), pad = toY(e.clientY) >= PAD_Y - 24;
       down = { x, lane: s.lane, swiped: false, pad };
-      if (pad) game.setLane(padLane(x)); else game.move(x < W / 2 ? -1 : 1);
+      lane(() => { if (pad) game.setLane(padLane(x)); else game.move(x < W / 2 ? -1 : 1); });
     };
     const onMove = (e: PointerEvent) => {
       if (!down || !started || pausedRef.current) return;
-      if (down.pad) { game.setLane(padLane(toLocal(e.clientX))); return; }
+      if (down.pad) { lane(() => game.setLane(padLane(toLocal(e.clientX)))); return; }
       if (down.swiped) return;
       const dx = toLocal(e.clientX) - down.x;
-      if (Math.abs(dx) > 28) { down.swiped = true; game.setLane(down.lane + Math.sign(dx)); }   // the swipe wins over the tap
+      if (Math.abs(dx) > 28) { down.swiped = true; lane(() => game.setLane(down!.lane + Math.sign(dx))); }   // the swipe wins over the tap
     };
     const onUp = () => { down = null; };
     const onKey = (e: KeyboardEvent) => {
@@ -271,7 +277,7 @@ export default function CartRush() {
       const dir = e.key === "ArrowLeft" || e.key === "a" ? -1 : e.key === "ArrowRight" || e.key === "d" ? 1 : 0;
       if (!dir && e.key !== " " && e.key !== "Enter") return;
       e.preventDefault();
-      if (!started) start(); else if (dir) game.move(dir);
+      if (!started) start(); else if (dir) lane(() => game.move(dir));
     };
     wrap.addEventListener("pointerdown", onDown); wrap.addEventListener("pointermove", onMove);
     window.addEventListener("pointerup", onUp); window.addEventListener("pointercancel", onUp); window.addEventListener("keydown", onKey);
@@ -283,7 +289,7 @@ export default function CartRush() {
         const lv = 1 + Math.floor(timeAt(s.d) / LEVEL_SECS);
         if (lv > level && !s.over) {
           const capped = mode === "daily" && game.speed() >= DAILY_CAP; level = lv;
-          float(capped ? `Level ${level}!` : `Level ${level} · Faster!`, "#2eaa6e", W / 2, H / 2 - 80, true);
+          float(capped ? `Level ${level}!` : `Level ${level} · Faster!`, "#2eaa6e", W / 2, H / 2 - 80, true); sfx.play("level");
         }
         if (!ended && t - lastHud > 100) { lastHud = t; setHud({ score: game.score(), made: s.done.length }); }
       }
@@ -450,10 +456,11 @@ export default function CartRush() {
 
       <div className={HUD_ROW}>
         <HudStat label="Score" value={hud.score.toLocaleString()} />
-        <HudTag color="#3F7FD6">{hud.made === 1 ? "1 Recipe Made" : `${hud.made} Recipes Made`}</HudTag>
+        <HudTag color="#3F7FD6">{hud.made === 1 ? "1 Recipe" : `${hud.made} Recipes`}<span className="max-[409px]:hidden"> Made</span></HudTag>
         <div className="flex shrink-0 items-center gap-1.5">
           <HudStat label="Best" value={best.toLocaleString()} align="right" />
           <PauseButton shell={shell} active={started && !over} />
+          <SoundButton />
         </div>
       </div>
 

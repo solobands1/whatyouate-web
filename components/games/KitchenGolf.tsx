@@ -20,7 +20,7 @@ import type { RealtimeChannel } from "@supabase/supabase-js";
 import { sb } from "@/components/creators/api";
 import { appStoreLink } from "@/components/site";
 import { type Mode, type Toast, GameScreen, GameHeader, BoardArea, PrizeLogo, GameOver, PauseButton, PausedCard, ReadyCard, HelpModal, ModesHelp, ShellPopups,
-  useGameShell, fitCanvas, loadImages, dailySeed, dailyNumber, torontoDate, mulberry32, readBest, saveBest } from "./kit";
+  useGameShell, fitCanvas, loadImages, dailySeed, dailyNumber, torontoDate, mulberry32, readBest, saveBest, SoundButton } from "./kit";
 import { type Course, type Roll, type Brain, W, BALL_R, CUP_R, MAX_PULL, MIN_PULL, MAX_STROKES, PICKUP, ROUND_HOLES, STEP, HOLES,
   compile, pickHoles, startRoll, stepRoll, tubePos, partsAt, aiPlan, sharpFor, holePoints, segDist2, WIN_BONUS, TIE_BONUS } from "./golf/sim";
 import { FOOD_IMGS, paintHole, drawLive, drawFlag, drawMeatball, rollQuat, quatIdentity } from "./golf/art";
@@ -31,7 +31,7 @@ import { Sound } from "./golf/sound";
 
 const GAME = "kitchen-golf";
 const LAUNCH = "2026-11-08";   // Today's Challenge #1
-const SOUND = typeof window !== "undefined" ? new Sound() : null;
+const SOUND = typeof window !== "undefined" ? new Sound() : null;   // plays through the shared games sound (./sfx)
 
 const VW = 400, VH = 600;                                // the board on screen; holes are 400 wide and can be taller (the camera pans)
 const GAIN = 1, TURN_MS = 30000, THINK_MS = 1000, THINK_STEPS = 60, SETTLE_MS = 650, HOLE_MS = 3200, INTRO_MS = 1900;
@@ -355,9 +355,6 @@ export default function KitchenGolf() {
   const [code, setCode] = useState("");
   const [names, setNames] = useState(["", ""]);
   const [tour, setTour] = useState<string[]>([]);              // today's holes, for the start card
-  const [muted, setMuted] = useState(true);
-  useEffect(() => { setMuted(SOUND?.muted ?? true); }, []);
-  const toggleSound = () => { const m = !muted; SOUND?.setMuted(m); setMuted(m); if (!m) setTimeout(() => SOUND?.click(), 60); };
   const shell = useGameShell(GAME, mode);
   const { reset: resetScores } = shell.scores;
   const pausedRef = useRef(false); pausedRef.current = shell.paused;
@@ -983,7 +980,8 @@ export default function KitchenGolf() {
       <style>{KG_CSS}</style>
       <GameHeader title="Kitchen Golf" mode={mode} onMode={m => { toCpu(); setMode(m); }} onBoard={() => shell.setBoardOpen(true)} onHelp={shell.help.show} />
 
-      <div className="mt-2 flex items-center justify-between">
+      {/* the kit's score row height, so the sound button sits where it does in every game */}
+      <div className="mt-2 flex h-[40px] shrink-0 items-center justify-between">
         {isCpu ? (<>
           <div><div className="text-[10px] font-semibold uppercase tracking-wide text-[#5a6b85]">Score</div><div className="kg-f text-[28px] leading-none tabular-nums text-[#101B2E]">{hud.score.toLocaleString()}</div></div>
           <div className="kg-f kg-ribbon rounded-full px-3 py-1 text-[13px] text-white">
@@ -996,8 +994,8 @@ export default function KitchenGolf() {
         <div className="flex items-center gap-1.5">
           {isCpu ? <div className="mr-1 text-right"><div className="text-[10px] font-semibold uppercase tracking-wide text-[#5a6b85]">Best</div><div className="kg-f text-[20px] leading-none tabular-nums text-[#101B2E]">{best.toLocaleString()}</div></div>
             : <div className="mr-1 min-w-0 text-right"><div className="max-w-[96px] truncate text-[10px] font-semibold uppercase tracking-wide text-[#5a6b85]">{isLive ? friend : pn[1]}</div><div className="kg-f text-[28px] leading-none tabular-nums text-[#101B2E]">{hud.tot[isLive ? 1 - me : 1]}</div></div>}
-          <button onClick={toggleSound} aria-label={muted ? "Sound On" : "Sound Off"} className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-white/70 text-[#4F88E8]"><SoundIcon muted={muted} /></button>
           <PauseButton shell={shell} active={playing} />
+          <SoundButton />
         </div>
       </div>
 
@@ -1289,9 +1287,6 @@ function MeatballIcon({ size }: { size: number }) {
     tick(); return () => cancelAnimationFrame(raf);
   }, [size]);
   return <canvas ref={ref} style={{ width: size, height: size }} aria-hidden />;
-}
-function SoundIcon({ muted }: { muted: boolean }) {
-  return <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"><path d="M4 9v6h4l5 4V5L8 9z" fill="currentColor" />{muted ? <path d="M17 9l5 5m0-5l-5 5" /> : <><path d="M16.5 8.5a5 5 0 0 1 0 7" /><path d="M19 6a8.5 8.5 0 0 1 0 12" /></>}</svg>;
 }
 
 /** A game panel over the board: a light card with a navy edge and a chunky lip, on a soft navy backdrop. */

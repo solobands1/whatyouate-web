@@ -12,7 +12,8 @@
 // Everything around the board comes from ./kit.
 import { useEffect, useRef, useState } from "react";
 import { type Mode, type Toast, GameScreen, GameHeader, BoardArea, PrizeLogo, GameOver, PauseButton, PausedCard, HelpModal, ModesHelp, ShellPopups,
-  useGameShell, fitCanvas, loadImages, dailySeed, dailyNumber, torontoDate, mulberry32, readBest, saveBest, foodPng, HUD_ROW, HudStat, HudTag, StartCard } from "./kit";
+  useGameShell, fitCanvas, loadImages, dailySeed, dailyNumber, torontoDate, mulberry32, readBest, saveBest, foodPng, HUD_ROW, HudStat, HudTag, StartCard, SoundButton } from "./kit";
+import { sfx } from "./sfx";
 import { useDuel } from "./duels";
 import { drawKitchen, drawLight, counterShadow, reflect, drawPanel, drawHeart, drawTimer, candyGlow, haloText } from "./art/berryDash";
 
@@ -145,6 +146,7 @@ export default function BerryDash() {
     let d = 0, ms = 0, y = 0, vy = 0, onGround = true, fast = false, slideUntil = -1, duckHeld = false, duckOnLand = false, jumpBuf = -1;
     let hearts = HEARTS, invUntil = -1, rushUntil = -1, heavyUntil = -1, pts = 0, picks = 0, berries = 0, lastHit = -1, lastHitSugar = false;
     let started = false, ended = false, raf = 0, last = performance.now(), lastHud = 0, realStart = 0, duckHintShown = false;
+    let berryRun = 0, berryAt = -1e9;   // berries grabbed close together climb the scale
     const segs: ("ok" | "candy" | "hit")[] = [];
     const mark = (s: "candy" | "hit") => { const i = Math.floor(d / PXM / SEG_M); while (segs.length <= i) segs.push("ok"); if (segs[i] !== "hit") segs[i] = s; };
     const floats: { x: number; y: number; text: string; color: string; age: number; big?: boolean }[] = [];
@@ -155,10 +157,10 @@ export default function BerryDash() {
     const status = (): Status => (ms < rushUntil ? "rush" : isHeavy() ? "heavy" : "run");
     const score = () => Math.floor(d / PXM) + pts;
     const jump = () => { jumpBuf = ms; };
-    const duck = () => { if (onGround) slideUntil = ms + SLIDE_MS; else { fast = true; duckOnLand = true; } };
+    const duck = () => { if (onGround) slideUntil = ms + SLIDE_MS; else { fast = true; duckOnLand = true; } sfx.play("duck"); };
 
     const finish = () => {
-      ended = true;
+      ended = true; sfx.play("over");
       const o = lastHit >= 0 ? OBS[lastHit] : null, pickFact = (f: string[]) => f[Math.floor(Math.random() * f.length)];
       // one fact, after the run, about what ended it
       if (lastHitSugar) setToast({ title: isHeavy() ? "Why your legs felt heavy: candy" : "Caught out after candy", body: pickFact(CANDY_FACTS), img: "1f36c" });
@@ -178,12 +180,12 @@ export default function BerryDash() {
       const goal = baseSpeed(d, free); speed += Math.max(-90, Math.min(90, goal - speed)) * Math.min(1, dt / 400);
       if (levelAt(d) > level) {
         const faster = baseSpeed(d, free) > baseSpeed((level - 1) * LEVEL_PX, free); level = levelAt(d);
-        float(faster ? `Level ${level} · Faster!` : `Level ${level}!`, "#2eaa6e", W / 2, HUD + 120, true);
+        float(faster ? `Level ${level} · Faster!` : `Level ${level}!`, "#2eaa6e", W / 2, HUD + 120, true); sfx.play("level");
       }
       const v = speed * (ms < rushUntil ? RUSH : 1), heavy = isHeavy();
       d += (v * dt) / 1000; ms += dt;
       if (jumpBuf >= 0 && ms - jumpBuf > 150) jumpBuf = -1;   // a tap just before landing still counts
-      if (jumpBuf >= 0 && onGround) { vy = JUMP_V * (heavy ? HEAVY_JUMP : 1); onGround = false; slideUntil = -1; jumpBuf = -1; }
+      if (jumpBuf >= 0 && onGround) { vy = JUMP_V * (heavy ? HEAVY_JUMP : 1); onGround = false; slideUntil = -1; jumpBuf = -1; sfx.play("jump"); }
       if (!onGround) {
         vy -= (G * (fast ? FAST_FALL : 1) * dt) / 1000; y += (vy * dt) / 1000;
         if (y <= 0) { y = 0; vy = 0; onGround = true; fast = false; if (duckOnLand) { slideUntil = ms + SLIDE_MS; duckOnLand = false; } }
@@ -199,25 +201,25 @@ export default function BerryDash() {
           const hit = o.air ? y < o.hi! && y + ph > o.lo! : y < o.h!;
           if (hit && ms >= invUntil) {
             e.done = true; e.knocked = ms; hearts--; invUntil = ms + INV_MS; lastHit = e.t; lastHitSugar = ms < heavyUntil; mark("hit");
-            float(hearts > 0 ? "Ouch!" : "Out of hearts", "#e8505b");
+            float(hearts > 0 ? "Ouch!" : "Out of hearts", "#e8505b"); if (hearts > 0) sfx.play("hurt");
             if (hearts <= 0) { finish(); return; }
           }
         } else {
           if (Math.hypot(sx - PX, e.y - (y + ph / 2)) < PICK_R) {
             const p = PICKS[e.t]; e.done = true; picks++; pts += p.pts;
-            if (e.t === 0) { berries++; float(`+${p.pts}`, "#4a5fc1", PX + 10, GY - e.y - 24); }
-            else if (e.t === 1) float(`+${p.pts}`, "#3f7fd6", PX + 10, GY - e.y - 24);
-            else { rushUntil = ms + RUSH_MS; heavyUntil = rushUntil + HEAVY_MS; mark("candy"); float("Sugar rush!", "#b54bd1", W / 2, HUD + 80, true); }
+            if (e.t === 0) { berries++; float(`+${p.pts}`, "#4a5fc1", PX + 10, GY - e.y - 24); berryRun = ms - berryAt < 700 ? berryRun + 1 : 0; berryAt = ms; sfx.play("berry", { n: berryRun }); }
+            else if (e.t === 1) { float(`+${p.pts}`, "#3f7fd6", PX + 10, GY - e.y - 24); sfx.play("water"); }
+            else { rushUntil = ms + RUSH_MS; heavyUntil = rushUntil + HEAVY_MS; mark("candy"); float("Sugar rush!", "#b54bd1", W / 2, HUD + 80, true); sfx.play("sugar"); }
           }
         }
       }
-      if (ms >= rushUntil && ms - dt < rushUntil && heavyUntil > ms) float("Heavy legs...", "#e09a00", W / 2, HUD + 80, true);
+      if (ms >= rushUntil && ms - dt < rushUntil && heavyUntil > ms) { float("Heavy legs...", "#e09a00", W / 2, HUD + 80, true); sfx.play("heavy"); }
       if (!duckHintShown) { const a = ents.find(e => !e.done && e.k === "o" && OBS[e.t].air); if (a && a.wx - d + PX < W - 10) { duckHintShown = true; float("Swipe Down To Duck!", "#3f7fd6", W / 2, HUD + 80, true); } }
     };
 
     // input: tap jumps, a swipe down ducks. A tap fires on release, or after 80ms if the finger hasn't moved down.
     let ptr: { id: number; y0: number; t0: number; jumped: boolean; ducked: boolean } | null = null;
-    const start = () => { if (started || ended) return; started = true; realStart = performance.now(); last = realStart; setStarted(true); };
+    const start = () => { if (started || ended) return; started = true; realStart = performance.now(); last = realStart; setStarted(true); sfx.play("start"); };
     startRef.current = start;
     const live = () => started && !ended && !pausedRef.current;
     const onDown = (e: PointerEvent) => {
@@ -372,6 +374,7 @@ export default function BerryDash() {
         <div className="flex shrink-0 items-center gap-1.5">
           <HudStat label="Best" value={best.toLocaleString()} align="right" />
           <PauseButton shell={shell} active={started && !over} />
+          <SoundButton />
         </div>
       </div>
 
