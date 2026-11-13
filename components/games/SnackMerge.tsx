@@ -8,8 +8,9 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import Matter from "matter-js";
 import { type Mode, type Toast, GameScreen, GameHeader, BoardArea, PrizeLogo, FactStrip, GameOver, HelpModal, ModesHelp, ShellPopups,
-  useGameShell, fitCanvas, loadImages, dailySeed, dailyNumber, torontoDate, mulberry32, readBest, saveBest, foodPng, emoji } from "./kit";
+  useGameShell, fitCanvas, loadImages, dailySeed, dailyNumber, torontoDate, mulberry32, readBest, saveBest, foodPng, emoji, HUD_ROW, HudStat, HudTag } from "./kit";
 import { useDuel } from "./duels";
+import { type Burst, BURST_MS, drawBox, drawShadow, drawFood as paintFood, drawDangerLine, drawAim, drawBurst, warm } from "./art/snackMerge";
 
 const GAME = "snack-merge";
 type Food = { name: string; code: string; r: number; color: string; points: number; facts: string[] };   // 5 facts each, one picked at random
@@ -70,6 +71,7 @@ export default function SnackMerge() {
     const born = new Map<number, number>();          // body id -> time added
     let current = pick(), upcoming = pick(), aimX = W / 2, canDrop = true, total = 0, ended = false;
     let lastMerge = 0, chain = 0, aboveSince = 0, raf = 0, drops = 0; const started = performance.now();
+    const bursts: Burst[] = [], popAt = new Map<number, number>();   // merge bursts, and when each merged food appeared (art only)
     const seen = new Set<number>([0, 1, 2, 3, 4]);   // foods you can drop don't need an introduction
     let reached = 4; setTop(4);
     setNext(upcoming); setScore(0); setOver(false); setCombo(0); setToast(null); resetScores();
@@ -91,8 +93,9 @@ export default function SnackMerge() {
         chain = now - lastMerge < COMBO_WINDOW ? chain + 1 : 0; lastMerge = now; setCombo(chain);
         setTimeout(() => { if (performance.now() - lastMerge >= COMBO_WINDOW) setCombo(0); }, COMBO_WINDOW + 50);   // badge clears when the chain ends
         const mult = 1 + 0.25 * chain;                 // chains of quick merges are worth more
+        bursts.push({ x, y, lv: Math.min(a + 1, FOODS.length - 1), age: 0, seed: (now * 1000) | 0 });
         if (a === FOODS.length - 1) { total += Math.round(200 * mult); setScore(total); continue; }   // two Power Bowls: both clear, big bonus
-        const nb = addFood(a + 1, x, y); Matter.Body.setVelocity(nb, { x: 0, y: -1.5 });
+        const nb = addFood(a + 1, x, y); Matter.Body.setVelocity(nb, { x: 0, y: -1.5 }); popAt.set(nb.id, now);
         if (a + 1 > reached) { reached = a + 1; setTop(reached); }
         total += Math.round(FOODS[a + 1].points * mult); setScore(total);
         if (!seen.has(a + 1)) { seen.add(a + 1); { const fs = FOODS[a + 1].facts; setToast({ title: `New: ${FOODS[a + 1].name}!`, body: fs[Math.floor(Math.random() * fs.length)], img: FOODS[a + 1].code }); } }
@@ -119,27 +122,25 @@ export default function SnackMerge() {
         if (settledAbove) { aboveSince ||= t; if (t - aboveSince > 1500) { ended = true; setOver(true); if (total > readBest(bestKey)) { saveBest(bestKey, total); setBest(total); } shell.finishRef.current({ score: total, drops, ms: t - started }); } }
         else aboveSince = 0;
       }
-      // draw
+      // draw: the bento box, the line, the guide, shadows, then the foods in their cups and any merge bursts
+      warm(ctx, W, H, FOODS, imgs);   // paints the box and every cup up front (and again only on a resize)
       ctx.clearRect(0, 0, W, H);
-      const g = ctx.createLinearGradient(0, 0, 0, H); g.addColorStop(0, "#f4f8ff"); g.addColorStop(1, "#dce9ff");
-      ctx.fillStyle = g; ctx.beginPath(); ctx.roundRect(0, 0, W, H, 22); ctx.fill();
-      ctx.strokeStyle = aboveSince ? "#e8505b" : "#a9c3ef"; ctx.setLineDash([10, 8]); ctx.lineWidth = 2.5;
-      ctx.beginPath(); ctx.moveTo(10, TOP); ctx.lineTo(W - 10, TOP); ctx.stroke(); ctx.setLineDash([]);
-      if (!ended) {                                     // aim guide and the food in hand
-        ctx.strokeStyle = "rgba(63,127,214,0.25)"; ctx.lineWidth = 2; ctx.beginPath(); ctx.moveTo(aimX, TOP - 40); ctx.lineTo(aimX, H); ctx.stroke();
-        if (canDrop) drawFood(current, aimX, TOP - 40, 0, 1);
+      drawBox(ctx, W, H);
+      drawDangerLine(ctx, W, TOP, !!aboveSince, t);
+      if (!ended) drawAim(ctx, aimX, TOP - 40 + FOODS[current].r, H);
+      const foods = engine.world.bodies.filter(b => level.has(b.id));
+      for (const b of foods) drawShadow(ctx, FOODS[level.get(b.id)!], b.position.x, b.position.y);
+      for (const b of foods) {
+        const lv = level.get(b.id)!, p = popAt.get(b.id);
+        let s = 1;
+        if (p !== undefined) { const k = (t - p) / 170; if (k >= 1) popAt.delete(b.id); else s = 0.8 + 0.2 * (1 - (1 - k) * (1 - k)); }   // pops up to size, never past it
+        drawFood(lv, b.position.x, b.position.y, b.angle, 1, s);
       }
-      for (const b of engine.world.bodies) { const lv = level.get(b.id); if (lv !== undefined) drawFood(lv, b.position.x, b.position.y, b.angle, 1); }
+      if (!ended && canDrop) { drawShadow(ctx, FOODS[current], aimX, TOP - 40); drawFood(current, aimX, TOP - 40, 0, 1); }
+      for (let k = bursts.length - 1; k >= 0; k--) { bursts[k].age += dt; if (bursts[k].age >= BURST_MS) bursts.splice(k, 1); else drawBurst(ctx, bursts[k], FOODS[bursts[k].lv].r); }
       raf = requestAnimationFrame(loop);
     };
-    function drawFood(lv: number, x: number, y: number, ang: number, a: number) {
-      const f = FOODS[lv];
-      ctx.save(); ctx.globalAlpha = a; ctx.translate(x, y); ctx.rotate(ang);
-      ctx.fillStyle = f.color; ctx.beginPath(); ctx.arc(0, 0, f.r, 0, Math.PI * 2); ctx.fill();
-      ctx.strokeStyle = "rgba(16,27,46,0.08)"; ctx.lineWidth = 2; ctx.stroke();
-      const s = f.r * 1.55; if (imgs[lv].complete) ctx.drawImage(imgs[lv], -s / 2, -s / 2, s, s);
-      ctx.restore();
-    }
+    function drawFood(lv: number, x: number, y: number, ang: number, a: number, s = 1) { paintFood(ctx, lv, FOODS[lv], imgs[lv], x, y, ang, s, a); }
     raf = requestAnimationFrame(loop);
     return () => {
       cancelAnimationFrame(raf); stop();
@@ -161,17 +162,29 @@ export default function SnackMerge() {
     <GameScreen>
       <GameHeader title="Snack Merge" mode={mode} onMode={m => { setMode(m); setRun(r => r + 1); }} onBoard={() => shell.setBoardOpen(true)} onHelp={shell.help.show} />
 
-      <div className="mt-2 flex items-center justify-between">
-        <div><div className="text-[10px] uppercase tracking-wide text-[#5a6b85]">Score</div><div className="text-2xl font-bold leading-none tabular-nums">{score.toLocaleString()}</div></div>
-        <div className="h-6">{combo > 0 && <div className="rounded-full bg-[#2eaa6e] px-2.5 py-0.5 text-xs font-bold text-white">Combo ×{combo + 1}</div>}</div>
-        <div className="text-right"><div className="text-[10px] uppercase tracking-wide text-[#5a6b85]">Best</div><div className="text-lg font-semibold leading-none tabular-nums">{best.toLocaleString()}</div></div>
-        <div className="ml-3 flex items-center gap-1"><div className="text-[10px] uppercase tracking-wide text-[#5a6b85]">Next</div>
-          {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img src={foodPng(FOODS[next].code)} alt={FOODS[next].name} className="h-8 w-8" /></div>
+      <div className={HUD_ROW}>
+        <HudStat label="Score" value={score.toLocaleString()} />
+        <div className="flex min-w-0 flex-1 justify-center">{combo > 0 && <HudTag color="#22A964">Combo ×{combo + 1}</HudTag>}</div>
+        <div className="flex shrink-0 items-center gap-1.5">
+          <HudStat label="Best" value={best.toLocaleString()} align="right" />
+          <div className="wk-hud flex h-[38px] items-center gap-1.5 pl-2.5 pr-1">
+            <span className="wk-hud-label">Next</span>
+            <span className="flex h-[30px] w-[30px] items-center justify-center rounded-[10px] bg-white shadow-[inset_0_-2px_0_#d3e0f4]">
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img src={foodPng(FOODS[next].code)} alt={FOODS[next].name} className="h-6 w-6" />
+            </span>
+          </div>
+        </div>
       </div>
 
       <BoardArea wrapRef={wrapRef} size={board}>
-        <canvas ref={canvasRef} className="block rounded-[22px] shadow-[0_14px_40px_rgba(16,42,86,0.18)]" />
+        {/* a linen napkin under the lunchbox, peeking out round its bottom edge */}
+        <div aria-hidden className="pointer-events-none absolute -inset-x-[7px] -bottom-[9px] top-[40%] rounded-[24px]"
+          style={{ background: "repeating-linear-gradient(0deg, rgba(120,96,64,0.07) 0 1px, rgba(255,255,255,0) 1px 3px), repeating-linear-gradient(90deg, rgba(120,96,64,0.06) 0 1px, rgba(255,255,255,0.05) 1px 3px), linear-gradient(180deg, #f1e8d8 0%, #e6dac4 100%)",
+            boxShadow: "0 10px 26px -8px rgba(40,28,10,0.4), inset 0 0 0 1px rgba(255,255,255,0.55), inset 0 -3px 0 rgba(150,120,80,0.18)" }}>
+          <div className="absolute inset-[4px] rounded-[20px] border border-dashed border-[#c9584d]/45" />
+        </div>
+        <canvas ref={canvasRef} className="relative block rounded-[22px] shadow-[0_6px_10px_rgba(60,30,6,0.28),0_18px_36px_rgba(40,24,8,0.22)]" />
         <PrizeLogo shell={shell} active={!over && !shell.paused} />
         {over && <GameOver label={mode === "daily" ? `Today's Challenge #${dailyNumber("2026-11-01")}` : "Free Play"} score={score} best={best} mode={mode}
           posted={shell.scores.posted} joined={!!shell.player} campaign={GAME} copied={shell.copied}
@@ -180,10 +193,15 @@ export default function SnackMerge() {
       </BoardArea>
 
       <FactStrip toast={toast} onDismiss={clearToast} width={board.w} idle={
-        <div className="flex items-center gap-0.5">
-          {FOODS.map((f, i) => (<span key={f.code} className="flex items-center gap-0.5">
+        // the food chain on a little oiled-wood shelf; foods you haven't reached yet sit back in the shade
+        <div className="relative flex h-[40px] items-center gap-[1px] rounded-[14px] px-2.5"
+          style={{ background: "linear-gradient(180deg, #f3d7a8 0%, #e2b67b 55%, #c98f52 100%)",
+            boxShadow: "0 2px 0 #8a5426, 0 8px 14px -6px rgba(60,28,4,0.55), inset 0 1px 0 rgba(255,246,228,0.85), inset 0 -2px 3px rgba(120,62,20,0.25)" }}>
+          <span className="pointer-events-none absolute inset-0 rounded-[14px] opacity-60" style={{ background: "repeating-linear-gradient(90deg, rgba(120,66,22,0) 0 7px, rgba(120,66,22,0.09) 7px 8px, rgba(255,240,215,0.08) 8px 10px, rgba(120,66,22,0) 10px 19px)" }} />
+          {FOODS.map((f, i) => (<span key={f.code} className="relative flex items-center gap-[1px]">
             {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img src={foodPng(f.code)} alt={f.name} title={f.name} className="h-[18px] w-[18px]" />{i < FOODS.length - 1 && <span className="text-[10px] text-[#a9c3ef]">›</span>}</span>))}
+            <img src={foodPng(f.code)} alt={f.name} title={f.name} className={`h-[19px] w-[19px] drop-shadow-[1px_2px_1.5px_rgba(70,30,4,0.4)] transition-opacity ${i <= top ? "" : "opacity-40"}`} />
+            {i < FOODS.length - 1 && <svg width="7" height="10" viewBox="0 0 7 10" aria-hidden className="shrink-0"><path d="M1.6 1.6 5 5l-3.4 3.4" fill="none" stroke="#8a5426" strokeOpacity="0.55" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round" /></svg>}</span>))}
         </div>} />
 
       <ShellPopups shell={shell} game={GAME} todayNote="Today's Challenge: same foods for everyone. Resets at midnight." />

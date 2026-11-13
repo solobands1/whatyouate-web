@@ -14,8 +14,11 @@
 import { useEffect, useRef, useState } from "react";
 import Matter from "matter-js";
 import { type Mode, type Toast, GameScreen, GameHeader, BoardArea, PrizeLogo, GameOver, HelpModal, ModesHelp, ShellPopups,
-  useGameShell, fitCanvas, loadImages, dailySeed, dailyNumber, torontoDate, mulberry32, readBest, saveBest, foodPng } from "./kit";
+  useGameShell, fitCanvas, loadImages, dailySeed, dailyNumber, torontoDate, mulberry32, readBest, saveBest, foodPng, HUD_ROW, HudStat, HudTag, OverlayCard, UI, drawHintPill } from "./kit";
 import { useDuel } from "./duels";
+import { loadGameFont } from "./gameFont";
+import { PlayIcon } from "./icons";
+import { drawPark, drawParkLight, drawShelves, dropLevel, drawPieceShadow, drawPiece, drawGroundShadow, drawSlingBack, drawSlingFront, drawBand, drawPouch, drawFruit, drawPoof, haloText } from "./art/foodFling";
 
 const GAME = "food-fling";
 const LAUNCH = "2026-11-08";   // Today's Challenge #1
@@ -242,6 +245,7 @@ const DRAG_GAIN = 1.25;
 const knockPoints = (k: number, dist: number) => 100 * k + Math.min(100, Math.round(dist / 3));
 const clearBonus = (n: number, spare: number) => 250 + 50 * Math.min(n, 20) + 500 * spare;
 const DAY_BONUS = 1000;
+const POOF_MS = 620;   // how long a knocked-off puff of dust hangs in the air
 // share squares: cleared with 1, 2 or 3 fruits, or not cleared
 const SQUARE = ["", "🟩", "🟨", "🟧"];
 
@@ -268,6 +272,7 @@ export default function FoodFling() {
   const nextRef = useRef<() => void>(() => {});
   const bestKey = mode === "daily" ? `foodfling-daily-${torontoDate()}` : "foodfling-endless";
   useEffect(() => { setBest(readBest(bestKey)); }, [bestKey]);
+  useEffect(() => { void loadGameFont(); }, []);   // the display face for the first-throw hint on the canvas
 
   useEffect(() => {
     const canvas = canvasRef.current!, wrap = wrapRef.current!;
@@ -282,7 +287,8 @@ export default function FoodFling() {
     const squares: string[] = [];
     const knockedBy = new Map<number, number>();     // junk type -> times knocked, for the end-of-run fact
     const floats: { x: number; y: number; text: string; color: string; age: number; big?: boolean }[] = [];
-    const poofs: { x: number; y: number; age: number }[] = [];
+    const poofs: { x: number; y: number; age: number; seed: number }[] = [];
+    let lvKey = `${seed}:${level}`;   // which level's shelves are painted
     const pushHud = () => setHud({ score: total, level, left: junkLeft(w) });
     setOver(false); setResult(null); setClear(null); setToast(null); resetScores(); pushHud();
 
@@ -319,6 +325,7 @@ export default function FoodFling() {
       if (phase !== "clear") return;
       Matter.Engine.clear(w.engine);
       level++; w = makeLevel(Matter, seed, level); levelPoints = 0; bannerAge = 0; floats.length = 0; poofs.length = 0;
+      dropLevel(lvKey); lvKey = `${seed}:${level}`;
       phase = "aim"; setClear(null); pushHud();
     };
     nextRef.current = next;
@@ -329,7 +336,7 @@ export default function FoodFling() {
         combo++; const pts = knockPoints(combo, dist); total += pts; levelPoints += pts;
         knockedBy.set(piece.type, (knockedBy.get(piece.type) ?? 0) + 1);
         const x = Math.max(24, Math.min(W - 24, piece.body.position.x)), y = Math.min(FLOOR - 20, piece.body.position.y);
-        poofs.push({ x, y, age: 0 });
+        poofs.push({ x, y, age: 0, seed: (x * 131 + y * 17 + combo) | 0 });
         floats.push({ x, y: y - 14, text: combo > 1 ? `+${pts} combo x${combo}` : `+${pts}`, color: combo > 1 ? "#b54bd1" : "#2eaa6e", age: 0 });
       }
       if (knocked.length) pushHud();
@@ -371,7 +378,7 @@ export default function FoodFling() {
         }
         bannerAge += dt;
         for (let k = floats.length - 1; k >= 0; k--) { floats[k].age += dt; if (floats[k].age > (floats[k].big ? 2200 : 1000)) floats.splice(k, 1); }
-        for (let k = poofs.length - 1; k >= 0; k--) { poofs[k].age += dt; if (poofs[k].age > 450) poofs.splice(k, 1); }
+        for (let k = poofs.length - 1; k >= 0; k--) { poofs[k].age += dt; if (poofs[k].age > POOF_MS) poofs.splice(k, 1); }
       }
       draw(t);
       raf = requestAnimationFrame(loop);
@@ -381,108 +388,74 @@ export default function FoodFling() {
     function draw(t: number) {
       ctx.save(); ctx.clearRect(0, 0, W, H);
       rr(0, 0, W, H, 22); ctx.clip();
-      const g = ctx.createLinearGradient(0, 0, 0, H); g.addColorStop(0, "#eaf4ff"); g.addColorStop(1, "#d3e6ff");
-      ctx.fillStyle = g; ctx.fillRect(0, 0, W, H);
-      ctx.fillStyle = "rgba(255,255,255,0.8)";                                // a couple of clouds
-      for (const [cx, cy, s] of [[70, 90, 1], [300, 60, 0.8], [210, 150, 0.6]]) {
-        ctx.beginPath(); ctx.arc(cx, cy, 18 * s, 0, 7); ctx.arc(cx + 22 * s, cy - 8 * s, 22 * s, 0, 7); ctx.arc(cx + 46 * s, cy, 16 * s, 0, 7); ctx.fill();
-      }
-      ctx.fillStyle = "#cfe5c4"; ctx.beginPath(); ctx.ellipse(110, FLOOR + 10, 190, 60, 0, Math.PI, 0); ctx.fill();
-      ctx.fillStyle = "#c2ddb6"; ctx.beginPath(); ctx.ellipse(340, FLOOR + 10, 170, 44, 0, Math.PI, 0); ctx.fill();
-      ctx.fillStyle = "#8fcf78"; ctx.fillRect(0, FLOOR, W, H - FLOOR);
-      ctx.fillStyle = "#7cbd66"; ctx.fillRect(0, FLOOR, W, 5);
+      drawPark(ctx, W, H, FLOOR, t);
+      // shelves: wooden plinths; the dark line under each top board is the line junk has to fall below
+      if (w.shelves.length) drawShelves(ctx, lvKey, w.shelves, W, H, FLOOR);
 
-      // shelves: the darker top edge is the line junk has to fall below
-      for (const s of w.shelves) {
-        const x = s.x - s.w / 2, hh = s.ledge ? 14 : FLOOR - s.top + 6;
-        if (s.ledge) { ctx.fillStyle = "#9fb3cf"; ctx.beginPath(); ctx.moveTo(W, s.top + 14); ctx.lineTo(W, s.top + 52); ctx.lineTo(W - 34, s.top + 14); ctx.fill(); }
-        ctx.fillStyle = "#dbe5f3"; rr(x, s.top, s.w, hh, 6); ctx.fill();
-        ctx.strokeStyle = "#a9bbd6"; ctx.lineWidth = 2; ctx.stroke();
-        ctx.fillStyle = "#7f95b5"; rr(x, s.top, s.w, 5, 3); ctx.fill();
-      }
-
-      // the sling's back band, then the pieces, so fruit in flight passes in front of the tower
+      // the sling's back half and back band, then the pieces, so fruit in flight passes in front of the tower
       const pull = drag ? { x: drag.px, y: drag.py } : { x: 0, y: 0 };
       const pouch = { x: SLING.x + pull.x, y: SLING.y + pull.y }, loaded = phase === "aim" && w.fruits.length > 0;
       const tipL = { x: SLING.x - 14, y: SLING.y - 6 }, tipR = { x: SLING.x + 14, y: SLING.y - 6 };
-      ctx.lineCap = "round"; ctx.strokeStyle = "#8a5a2b"; ctx.lineWidth = 9;
-      ctx.beginPath(); ctx.moveTo(SLING.x, FLOOR + 2); ctx.lineTo(SLING.x, SLING.y + 34); ctx.lineTo(tipR.x, tipR.y); ctx.stroke();
-      ctx.strokeStyle = "#6b3b1f"; ctx.lineWidth = 4;
-      ctx.beginPath(); ctx.moveTo(tipR.x, tipR.y); ctx.lineTo(loaded ? pouch.x : SLING.x, loaded ? pouch.y : SLING.y + 2); ctx.stroke();
+      const end = loaded ? pouch : { x: SLING.x, y: SLING.y + 2 }, stretch = Math.hypot(pull.x, pull.y) / MAX_PULL;
+      drawSlingBack(ctx, SLING.x, SLING.y, FLOOR);
+      drawBand(ctx, tipR.x, tipR.y, end.x, end.y, stretch);
 
+      for (const p of w.pieces.values()) drawPieceShadow(ctx, p, p.body.position.x, p.body.position.y, p.body.angle);
       for (const p of w.pieces.values()) {
         const b = p.body;
-        ctx.save(); ctx.translate(b.position.x, b.position.y); ctx.rotate(b.angle);
         if (p.kind === "fruit") {
-          const s = p.w * 1.18, img = fruitImg[p.type]; if (img.complete) ctx.drawImage(img, -s / 2, -s / 2, s, s);
-        } else if (p.kind === "junk") {
-          ctx.fillStyle = "#ffe6ea"; rr(-p.w / 2, -p.h / 2, p.w, p.h, 7); ctx.fill();
-          ctx.strokeStyle = "#f2b3bd"; ctx.lineWidth = 1.5; ctx.stroke();
-          const s = p.w * 1.02, img = junkImg[p.type]; if (img.complete) ctx.drawImage(img, -s / 2, -s / 2, s, s);
-        } else if (p.kind === "crate") {
-          ctx.fillStyle = "#e7b877"; rr(-p.w / 2, -p.h / 2, p.w, p.h, 4); ctx.fill();
-          ctx.strokeStyle = "#b07a3c"; ctx.lineWidth = 2; ctx.stroke();
-          ctx.beginPath(); ctx.moveTo(-p.w / 2 + 5, -p.h / 2 + 5); ctx.lineTo(p.w / 2 - 5, p.h / 2 - 5); ctx.moveTo(p.w / 2 - 5, -p.h / 2 + 5); ctx.lineTo(-p.w / 2 + 5, p.h / 2 - 5); ctx.stroke();
+          drawGroundShadow(ctx, b.position.x, p.w / 2, FLOOR - b.position.y, FLOOR);
+          drawFruit(ctx, fruitImg[p.type], b.position.x, b.position.y, p.w * 1.18, b.angle);
         } else {
-          ctx.fillStyle = "#d9a161"; rr(-p.w / 2, -p.h / 2, p.w, p.h, 3); ctx.fill();
-          ctx.strokeStyle = "#a8733a"; ctx.lineWidth = 1.5; ctx.stroke();
+          drawPiece(ctx, p, b.position.x, b.position.y, b.angle);
+          if (p.kind === "junk") drawFruit(ctx, junkImg[p.type], b.position.x, b.position.y, p.w * 1.02, b.angle);
         }
-        ctx.restore();
       }
 
-      // the fruit in the pouch, the front band and fork, and the fruit still to come
+      // the fruit in the pouch, the front band and arm, and the fruit still to come
       if (loaded) {
-        const f = FRUITS[w.fruits[0]], s = f.r * 2 * 1.18, img = fruitImg[w.fruits[0]];
-        if (img.complete) ctx.drawImage(img, pouch.x - s / 2, pouch.y - s / 2, s, s);
+        const f = FRUITS[w.fruits[0]], s = f.r * 2 * 1.18;
+        drawPouch(ctx, pouch.x, pouch.y, f.r, Math.atan2(pull.y, pull.x || 0.0001));
+        drawFruit(ctx, fruitImg[w.fruits[0]], pouch.x, pouch.y, s);
       }
-      ctx.strokeStyle = "#6b3b1f"; ctx.lineWidth = 4;
-      ctx.beginPath(); ctx.moveTo(tipL.x, tipL.y); ctx.lineTo(loaded ? pouch.x : SLING.x, loaded ? pouch.y : SLING.y + 2); ctx.stroke();
-      ctx.strokeStyle = "#9a6633"; ctx.lineWidth = 9;
-      ctx.beginPath(); ctx.moveTo(SLING.x, SLING.y + 34); ctx.lineTo(tipL.x, tipL.y); ctx.stroke();
+      drawBand(ctx, tipL.x, tipL.y, end.x, end.y, stretch);
+      drawSlingFront(ctx, SLING.x, SLING.y);
       const queue = w.fruits.slice(loaded ? 1 : 0);
-      queue.forEach((fi, i) => { const s = 26, img = fruitImg[fi]; if (img.complete) ctx.drawImage(img, 44 - i * 26 - s / 2, FLOOR - s + 2, s, s); });
+      queue.forEach((fi, i) => { const s = 26, x = 44 - i * 26; drawGroundShadow(ctx, x, 11, 0, FLOOR); drawFruit(ctx, fruitImg[fi], x, FLOOR - s / 2 + 2, s); });
 
       // the aim: dots along the first part of the path, so you still have to judge where it lands
       if (drag && Math.hypot(drag.px, drag.py) >= MIN_PULL && loaded) {
         const f = FRUITS[w.fruits[0]], v = launchVelocity(drag.px, drag.py), g1 = 0.001 * STEP * STEP, air = 1 - 0.003;
         let x = pouch.x, y = pouch.y, vx = v.x, vy = v.y, len = 0, i = 0;
-        ctx.fillStyle = "rgba(16,27,46,0.55)";
+        ctx.fillStyle = "rgba(16,27,46,0.62)"; ctx.strokeStyle = "rgba(255,255,255,0.75)"; ctx.lineWidth = 1.2;
         while (len < 200 && y < FLOOR - f.r && i < 200) {
           vx *= air; vy = vy * air + g1; x += vx; y += vy; len += Math.hypot(vx, vy); i++;
-          if (i % 3 === 0) { ctx.globalAlpha = Math.max(0.15, 1 - len / 220); ctx.beginPath(); ctx.arc(x, y, 3.4 - len / 110, 0, 7); ctx.fill(); }
+          if (i % 3 === 0) { ctx.globalAlpha = Math.max(0.15, 1 - len / 220); ctx.beginPath(); ctx.arc(x, y, 3.4 - len / 110, 0, 7); ctx.fill(); ctx.stroke(); }
         }
         ctx.globalAlpha = 1;
       }
+      drawParkLight(ctx, W, H);
 
       // first throw of a run: show where to drag
       if (phase === "aim" && !drag && drops === 0 && level === 1) {
-        const a = 0.55 + 0.25 * Math.sin(t / 300);
-        ctx.globalAlpha = a; ctx.strokeStyle = "#3f7fd6"; ctx.setLineDash([8, 7]); ctx.lineWidth = 2;
-        rr(GRIP.x, GRIP.y, GRIP.w, GRIP.h, 18); ctx.stroke(); ctx.setLineDash([]);
-        ctx.fillStyle = "#3f7fd6"; ctx.font = "700 15px system-ui, -apple-system, sans-serif"; ctx.textAlign = "center";
-        ctx.fillText("Drag Back Anywhere Here", GRIP.x + GRIP.w / 2, GRIP.y + 26);
-        ctx.font = "600 13px system-ui, -apple-system, sans-serif"; ctx.fillText("Then Let Go", GRIP.x + GRIP.w / 2, GRIP.y + 45);
-        ctx.globalAlpha = 1;
+        drawHintPill(ctx, GRIP.x + GRIP.w / 2, GRIP.y + 6, "Drag Back To Fling", t, 192);
       }
 
-      for (const p of poofs) {                              // a little burst where junk was knocked off
-        const k = p.age / 450; ctx.globalAlpha = 1 - k; ctx.fillStyle = "#f2b3bd";
-        for (let i = 0; i < 6; i++) { const a = (i / 6) * Math.PI * 2; ctx.beginPath(); ctx.arc(p.x + Math.cos(a) * (8 + 22 * k), p.y + Math.sin(a) * (8 + 22 * k), 4 * (1 - k) + 1, 0, 7); ctx.fill(); }
-      }
+      for (const p of poofs) drawPoof(ctx, p.x, p.y, p.age / POOF_MS, p.seed);   // dust and splinters where junk was knocked off
       ctx.globalAlpha = 1; ctx.textAlign = "center";
       if (bannerAge < 1600 && phase === "aim") {
-        ctx.globalAlpha = Math.min(1, (1600 - bannerAge) / 400); ctx.fillStyle = "#101b2e";
-        ctx.font = "800 26px system-ui, -apple-system, sans-serif"; ctx.fillText(`Level ${level}`, W / 2, 56);
+        ctx.globalAlpha = Math.min(1, (1600 - bannerAge) / 400);
+        ctx.font = "800 26px system-ui, -apple-system, sans-serif"; haloText(ctx, `Level ${level}`, W / 2, 56, "#101b2e", "rgba(255,255,255,0.8)", 6);
         ctx.globalAlpha = 1;
       }
       if (phase === "aim" && w.fruits.length === 1 && !drag) {
-        ctx.fillStyle = "#e8505b"; ctx.font = "700 13px system-ui, -apple-system, sans-serif"; ctx.fillText("Last fruit!", SLING.x, SLING.y - 32);
+        ctx.font = "700 13px system-ui, -apple-system, sans-serif"; haloText(ctx, "Last fruit!", SLING.x, SLING.y - 32, "#e8505b");
       }
       for (const f of floats) {
         const life = f.big ? 2200 : 1000, a = 1 - f.age / life;
-        ctx.globalAlpha = Math.max(0, Math.min(1, a * 1.6)); ctx.fillStyle = f.color;
+        ctx.globalAlpha = Math.max(0, Math.min(1, a * 1.6));
         ctx.font = `800 ${f.big ? 24 : 15}px system-ui, -apple-system, sans-serif`;
-        ctx.fillText(f.text, Math.max(60, Math.min(W - 60, f.x)), f.y - (f.big ? 0 : f.age * 0.04));
+        haloText(ctx, f.text, Math.max(60, Math.min(W - 60, f.x)), f.y - (f.big ? 0 : f.age * 0.04), f.color);
       }
       ctx.globalAlpha = 1; ctx.restore();
     }
@@ -493,7 +466,7 @@ export default function FoodFling() {
       canvas.removeEventListener("pointerdown", onDown); canvas.removeEventListener("pointermove", onMove);
       canvas.removeEventListener("pointerup", onUp); canvas.removeEventListener("pointercancel", onCancel);
       window.removeEventListener("keydown", onKey);
-      Matter.Engine.clear(w.engine);
+      Matter.Engine.clear(w.engine); dropLevel(lvKey);
     };
   }, [mode, run, bestKey]);
 
@@ -513,26 +486,21 @@ export default function FoodFling() {
     <GameScreen>
       <GameHeader title="Food Fling" mode={mode} onMode={m => { setMode(m); setRun(r => r + 1); }} onBoard={() => shell.setBoardOpen(true)} onHelp={shell.help.show} />
 
-      <div className="mt-2 flex items-center justify-between">
-        <div><div className="text-[10px] uppercase tracking-wide text-[#5a6b85]">Score</div><div className="text-2xl font-bold leading-none tabular-nums">{hud.score.toLocaleString()}</div></div>
-        <div className="rounded-full bg-white/80 px-2.5 py-0.5 text-xs font-bold text-[#3f7fd6]">
-          Level {hud.level}{mode === "daily" ? ` of ${DAILY_LEVELS}` : ""} · {hud.left} junk left
-        </div>
-        <div className="text-right"><div className="text-[10px] uppercase tracking-wide text-[#5a6b85]">Best</div><div className="text-lg font-semibold leading-none tabular-nums">{best.toLocaleString()}</div></div>
+      <div className={HUD_ROW}>
+        <HudStat label="Score" value={hud.score.toLocaleString()} />
+        <HudTag light>Level {hud.level}{mode === "daily" ? ` Of ${DAILY_LEVELS}` : ""} · {hud.left} Junk Left</HudTag>
+        <HudStat label="Best" value={best.toLocaleString()} align="right" />
       </div>
 
       <BoardArea wrapRef={wrapRef} size={board} reserve={0}>
         <canvas ref={canvasRef} className="block rounded-[22px] shadow-[0_14px_40px_rgba(16,42,86,0.18)]" />
         <PrizeLogo shell={shell} active={!over && !shell.paused} />
         {clear && !over && (
-          <div className="absolute inset-0 z-10 flex items-center justify-center rounded-[22px] bg-[#101b2e]/30 p-6">
-            <div className="w-full max-w-[260px] rounded-3xl bg-white p-4 text-center shadow-2xl">
-              <div className="text-sm font-semibold text-[#5a6b85]">Level {clear.level} cleared</div>
-              <div className="mt-0.5 text-3xl font-bold leading-tight tabular-nums">+{clear.points.toLocaleString()}</div>
-              <div className="text-sm text-[#5a6b85]">{clear.spare ? `${clear.spare} fruit to spare` : "Just made it!"}</div>
-              <button onClick={() => nextRef.current()} className="mt-3 w-full rounded-full bg-[#3f7fd6] py-3 font-semibold text-white">Next level</button>
-            </div>
-          </div>
+          <OverlayCard title={`Level ${clear.level} Cleared`} max="max-w-[270px]">
+            <div className={`${UI.big} text-[46px] [text-shadow:0_4px_0_#cfdff8]`}>+{clear.points.toLocaleString()}</div>
+            <div className="mt-1.5 text-sm text-[#5a6b85]">{clear.spare ? `${clear.spare} fruit to spare` : "Just made it!"}</div>
+            <button onClick={() => nextRef.current()} className={`${UI.go} mt-4 h-[52px] w-full text-[21px]`}>Next Level<PlayIcon size={17} /></button>
+          </OverlayCard>
         )}
         {over && <GameOver label={mode === "daily" ? `Today's Challenge #${n}` : "Free Play"} headline={headline} score={hud.score} best={best} mode={mode}
           posted={shell.scores.posted} joined={!!shell.player} campaign={GAME} copied={shell.copied} fact={toast}

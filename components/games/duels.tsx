@@ -8,6 +8,7 @@
 import { useEffect, useRef, useState, type ReactNode } from "react";
 import { sb } from "@/components/creators/api";
 import { Modal, type Mode, type Shell } from "./kit";
+import { SwordsIcon } from "./icons";
 
 type Duel = { code: string; game: string; day: string; today: boolean; a_name: string; a_score: number; b_name: string | null; b_score: number | null };
 type Mine = { code: string; game: string; seen?: boolean };
@@ -94,8 +95,8 @@ export function useDuel(shell: Shell, game: string, title: string, mode: Mode, o
 
   const challenge = () => { if (name) create(name); else setView({ kind: "name", then: "create" }); };
   const button: ReactNode = mode === "daily" && final && final.score > 0 && !incoming ? (
-    <button onClick={challenge} disabled={busy} className="mt-2 w-full rounded-full border-2 border-[#3f7fd6] py-2.5 text-sm font-semibold text-[#3f7fd6] disabled:opacity-60">
-      {busy ? "Saving..." : "⚔️ Challenge Someone"}
+    <button onClick={challenge} disabled={busy} className="wk-btn wk-yellow mt-2.5 h-[42px] w-full text-[16px]">
+      {!busy && <SwordsIcon size={18} />}{busy ? "Saving..." : "Challenge Someone"}
     </button>
   ) : null;
 
@@ -118,18 +119,18 @@ function DuelCard({ view, title, busy, err, defaultName, close, accept, submitNa
   submitName: (n: string) => void; share: (code: string) => void; challengeBack: () => void; copied: boolean;
 }) {
   const [nm, setNm] = useState(defaultName);
-  const btn = "mt-4 w-full rounded-full bg-[#3f7fd6] py-3 font-semibold text-white disabled:opacity-60";
+  const btn = "wk-btn wk-blue mt-4 h-[50px] w-full shrink-0 text-[19px]", quiet = "wk-link mt-2 w-full py-2 text-[15px]";
   return (
     <Modal onClose={close} z="z-30">
-      <div className="text-center text-4xl">⚔️</div>
+      <div className="flex justify-center"><span className="flex h-[58px] w-[58px] items-center justify-center rounded-full bg-[linear-gradient(180deg,#FFE65C,#FFB618)] text-[#0E1F45] shadow-[0_0_0_3px_#B86E00,0_4px_0_3px_#8a5200]"><SwordsIcon size={30} /></span></div>
       {view.kind === "invite" && (<>
-        <div className="mt-1 text-center text-xl font-bold">{view.duel.a_name} Challenged You</div>
+        <div className="wk-f mt-2 text-center text-[24px] leading-tight text-[#0E1F45]">{view.duel.a_name} Challenged You</div>
         <p className="mt-2 text-center text-sm text-[#5a6b85]">Play today&apos;s {title} and beat <b className="text-[#101b2e]">{view.duel.a_score.toLocaleString()}</b>. Same board, one go. Your first finished game counts.</p>
         <button onClick={() => accept(view.duel)} className={btn}>Accept The Challenge</button>
-        <button onClick={close} className="mt-2 w-full py-2 text-sm font-semibold text-[#5a6b85]">Not now</button>
+        <button onClick={close} className={quiet}>Not Now</button>
       </>)}
       {view.kind === "over" && (<>
-        <div className="mt-1 text-center text-xl font-bold">{view.why === "taken" ? "Challenge Already Taken" : view.why === "expired" ? "This Challenge Has Ended" : "Challenge Not Found"}</div>
+        <div className="wk-f mt-2 text-center text-[24px] leading-tight text-[#0E1F45]">{view.why === "taken" ? "Challenge Already Taken" : view.why === "expired" ? "This Challenge Has Ended" : "Challenge Not Found"}</div>
         <p className="mt-2 text-center text-sm text-[#5a6b85]">
           {view.why === "taken" && view.duel ? `${view.duel.b_name} already took ${view.duel.a_name}'s challenge (${view.duel.b_score?.toLocaleString()} vs ${view.duel.a_score.toLocaleString()}).`
             : view.why === "expired" ? "Challenges only last for the day they were made, since the board changes at midnight."
@@ -138,35 +139,35 @@ function DuelCard({ view, title, busy, err, defaultName, close, accept, submitNa
         <button onClick={close} className={btn}>Play Today&apos;s {title}</button>
       </>)}
       {view.kind === "name" && (<>
-        <div className="mt-1 text-center text-xl font-bold">{view.then === "create" ? "Your Name For The Challenge" : "Your Name"}</div>
+        <div className="wk-f mt-2 text-center text-[24px] leading-tight text-[#0E1F45]">{view.then === "create" ? "Your Name For The Challenge" : "Your Name"}</div>
         <p className="mt-1 text-center text-sm text-[#5a6b85]">{view.then === "create" ? "So your friend knows who to beat." : "So they know who took them on."}</p>
         <input value={nm} onChange={e => setNm(e.target.value)} maxLength={20} placeholder="e.g. SnackKing" autoFocus
-          className="mt-4 w-full rounded-xl border border-[#d6e2f5] px-3 py-2.5 text-base outline-none focus:border-[#3f7fd6]" />
+          className="wk-input mt-4 w-full px-3 py-2.5 text-base" />
         {err && <p className="mt-2 text-sm font-semibold text-[#d64545]">{err}</p>}
         <button disabled={busy || nm.trim().length < 2} onClick={() => submitName(nm.trim())} className={btn}>{busy ? "Saving..." : view.then === "create" ? "Make My Challenge" : "See Who Won"}</button>
       </>)}
       {view.kind === "share" && (<>
-        <div className="mt-1 text-center text-xl font-bold">Your Challenge Is Ready</div>
+        <div className="wk-f mt-2 text-center text-[24px] leading-tight text-[#0E1F45]">Your Challenge Is Ready</div>
         <p className="mt-2 text-center text-sm text-[#5a6b85]">Send the link to a friend. They play today&apos;s board, and you&apos;ll see who won next time you open {title}.</p>
         <button onClick={() => share(view.code)} className={btn}>{copied ? "Link Copied!" : "Send The Challenge"}</button>
-        <button onClick={close} className="mt-2 w-full py-2 text-sm font-semibold text-[#5a6b85]">Done</button>
+        <button onClick={close} className={quiet}>Done</button>
       </>)}
       {view.kind === "result" && (() => {
         const d = view.duel, a = d.a_score, b = d.b_score ?? 0, meWon = view.me === "a" ? a > b : b > a, tie = a === b;
         const other = view.me === "a" ? d.b_name : d.a_name;
         return (<>
-          <div className="mt-1 text-center text-xl font-bold">{tie ? "It's A Tie!" : meWon ? "You Won The Duel! 🎉" : `${other} Won This One`}</div>
+          <div className="wk-f mt-2 text-center text-[24px] leading-tight text-[#0E1F45]">{tie ? "It's A Tie!" : meWon ? "You Won The Duel! 🎉" : `${other} Won This One`}</div>
           <p className="mt-1 text-center text-sm text-[#5a6b85]">{view.me === "a" ? `${other} took your ${title} challenge.` : `Today's ${title}, same board.`}</p>
           <div className="mt-4 grid grid-cols-2 gap-2 text-center">
             {[[d.a_name, a, view.me === "a"], [d.b_name ?? "", b, view.me === "b"]].map(([n, sc, me], i) => (
               <div key={i} className={`rounded-2xl px-2 py-3 ${(i === 0 ? a > b : b > a) ? "bg-[#e3f6ea]" : "bg-[#f0f6fe]"}`}>
-                <div className="truncate text-xs font-semibold text-[#5a6b85]">{me ? "You" : String(n)}</div>
-                <div className="text-2xl font-bold tabular-nums">{Number(sc).toLocaleString()}</div>
+                <div className="wk-f truncate text-[13px] text-[#5a6b85]">{me ? "You" : String(n)}</div>
+                <div className="wk-f text-[26px] leading-tight tabular-nums text-[#0E1F45]">{Number(sc).toLocaleString()}</div>
               </div>
             ))}
           </div>
           {view.me === "b" && <button onClick={challengeBack} className={btn}>Challenge Someone Else</button>}
-          <button onClick={close} className={view.me === "b" ? "mt-2 w-full py-2 text-sm font-semibold text-[#5a6b85]" : btn}>{view.me === "b" ? "Done" : "Nice"}</button>
+          <button onClick={close} className={view.me === "b" ? quiet : btn}>{view.me === "b" ? "Done" : "Nice"}</button>
         </>);
       })()}
     </Modal>

@@ -24,6 +24,7 @@ import type { RealtimeChannel } from "@supabase/supabase-js";
 import { sb } from "@/components/creators/api";
 import { type Mode, type Toast, GameScreen, GameHeader, BoardArea, PrizeLogo, GameOver, PauseButton, PausedCard, ReadyCard, HelpModal, ModesHelp, ShellPopups,
   useGameShell, dailySeed, dailyNumber, torontoDate, mulberry32, readBest, saveBest, foodPng, emoji } from "./kit";
+import { GAME_FONT_CSS } from "./gameFont";
 
 const GAME = "fridge-raid";
 const LAUNCH = "2026-11-08";                 // Today's Challenge #1
@@ -257,10 +258,12 @@ const validCode = (s: string) => s.length === 4 && [...s].every(ch => CODE_LETTE
 function storedName() {   // the kit's player record, read straight away so a link-join has the name on the first render
   try { const v = localStorage.getItem("wya-games-player") ?? localStorage.getItem("snackmerge-player"); return v ? (JSON.parse(v).name as string) || "Guest" : "Guest"; } catch { return "Guest"; }
 }
-const SQUARE = { hit: "🟧", miss: "⬜", light: "🔦" };
+const SQUARE = { hit: "🟧", miss: "⬜", light: "💡" };
 const lines = (log: string[]) => { const out: string[] = []; for (let i = 0; i < log.length; i += 10) out.push(log.slice(i, i + 10).join("")); return out.join("\n"); };
 const plural = (n: number, one: string, many: string) => `${n} ${n === 1 ? one : many}`;
-const POWER = { light: { icon: "🔦", name: "Fridge Light", tip: "See A 2×2 Patch" }, blast: { icon: "❄️", name: "Freezer Blast", tip: "Bite 3 In A Row" } };
+const POWER = { light: { name: "Fridge Light", tip: "Peek At 4 Shelves", use: "Shine Here" }, blast: { name: "Freezer Blast", tip: "Hit 3 In A Row", use: "Blast Here" } };
+// each fridge has its own colour, so it's always clear whose is whose: yours blue, theirs red
+const MINE = { hi: "#78b2ff", lo: "#3f7fd6", lip: "#2a5ba8" }, THEIRS = { hi: "#ff8d84", lo: "#e8505b", lip: "#b33a44" };
 
 export default function FridgeRaid() {
   const wrapRef = useRef<HTMLDivElement>(null);
@@ -288,6 +291,7 @@ export default function FridgeRaid() {
   const [armed, setArmed] = useState<"light" | "blast" | null>(null);   // a power-up picked, waiting for where
   const [aimAt, setAimAt] = useState<{ at: number; v: boolean } | null>(null);   // where it would go (tap again to use it)
   const [cpuAim, setCpuAim] = useState<number[] | null>(null);           // the computer's move, shown on your fridge just before it lands
+  const [turnPop, setTurnPop] = useState<{ id: number; mine: boolean } | null>(null);   // "Your Turn!" / "Their Turn" when the turn changes
   const shell = useGameShell(GAME, mode);
   const { reset: resetScores } = shell.scores;
   const aiRng = useRef<() => number>(Math.random);
@@ -327,7 +331,7 @@ export default function FridgeRaid() {
     const el = wrapRef.current!; const f = () => setArea({ w: el.clientWidth, h: el.clientHeight });
     f(); const ro = new ResizeObserver(f); ro.observe(el); return () => ro.disconnect();
   }, []);
-  const FR = 9, HEAD = 18, HANDLE = 7, GAP = 8, BAR = 46, LOWH = 112, SFR = 5, SHEAD = 15;
+  const FR = 9, HEAD = 24, HANDLE = 7, GAP = 8, BAR = 58, LOWH = 128, SFR = 5, SHEAD = 18;
   const maxBig = Math.max(20, Math.floor((area.w - 2 * FR - HANDLE) / N));
   const smallH = (c: number) => N * c + SFR + SHEAD;
   const want = area.h < 600 ? 19 : 29;
@@ -452,7 +456,7 @@ export default function FridgeRaid() {
     if (opp === "cpu" && shell.paused) return;
     let kind: Kind = "shot", v = false;
     if (armed) {
-      if (!aimAt || !coverOf(armed, aimAt.at, aimAt.v).includes(i)) { setAimAt({ at: i, v: aimAt?.v ?? false }); setMsg(`Tap Again To Use The ${POWER[armed].name}.`); return; }
+      if (!aimAt || !coverOf(armed, aimAt.at, aimAt.v).includes(i)) { setAimAt({ at: i, v: aimAt?.v ?? false }); setMsg(`Looks Good? Tap ${POWER[armed].use}.`); return; }
       kind = armed; i = aimAt.at; v = aimAt.v;
     }
     const cells = coverOf(kind, i, v);
@@ -497,6 +501,19 @@ export default function FridgeRaid() {
     return () => { timers.forEach(clearTimeout); setCpuAim(null); };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [opp, phase, paused, locked, g.current.turn, g.current.turnNo]);
+
+  // a big "Your Turn!" (or "Their Turn") over their fridge whenever the turn changes hands, so nobody has to read for it
+  const lastTurn = useRef("");
+  useEffect(() => {
+    if (phase !== "play") { lastTurn.current = ""; setTurnPop(null); return; }
+    const key = `${round}:${g.current.turn}:${opp === "phone" ? holder : 0}`;
+    if (key === lastTurn.current) return;
+    lastTurn.current = key;
+    const id = Date.now(), mine = g.current.turn === (opp === "phone" ? holder : 0);
+    setTurnPop({ id, mine });
+    const t = setTimeout(() => setTurnPop(p => (p && p.id === id ? null : p)), 1200);
+    return () => clearTimeout(t);
+  }, [phase, g.current.turn, round, holder, opp]);
 
   // ── placing your snacks ────────────────────────────────────────────────
   const draft = () => g.current.layout[pov] ?? [];
@@ -846,11 +863,14 @@ export default function FridgeRaid() {
   const theyWantRematch = opp === "live" && phase === "over" && (room.opp?.round ?? 0) > round;
   const preview = armed && aimAt ? coverOf(armed, aimAt.at, aimAt.v) : [];
 
-  /** A fridge: door frame and handle, a cool lit interior with glass shelves, and what's been found in it.
-   *  role: "target" (theirs, tap to play), "own" (yours, snacks showing), "edit" (yours, while hiding snacks). */
+  /** A fridge: a coloured door frame (yours blue, theirs red) with a chrome handle, a cool lit interior with glass
+   *  shelves, and what's been found in it. role: "target" (theirs, tap to play), "own" (yours, snacks showing),
+   *  "edit" (yours, while hiding snacks). While it's your turn their fridge glows; while it's theirs it dims and yours
+   *  glows red, because that's where they're looking. */
   const fridge = (s: Side, c: number, role: "target" | "own" | "edit", small = false) => {
     const own = role !== "target", fr = small ? SFR : FR, head = small ? SHEAD : HEAD, handle = small ? 5 : HANDLE;
     const inner = N * c, w = inner + 2 * fr + handle, h = inner + head + fr;
+    const col = s === pov ? MINE : THEIRS;
     const foundSet = new Set(G.found[s].flatMap(cellsOf));
     const fx = G.fx && G.fx.side === s ? G.fx : null, fxCells = new Set(fx ? fx.cells.map(x => x.i) : []);
     const fresh = (i: number) => fxCells.has(i);
@@ -859,23 +879,26 @@ export default function FridgeRaid() {
     for (let i = 0; i < N * N; i++) {
       const v = G.inc[s][i]; if (!v) continue;
       const key = `${i}-${fresh(i) ? fx!.id : 0}`;
-      if (v === 1) {                                                     // ice: a snowflake, and a little frost puff when it's new
+      if (v === 1) {                                                     // ice: a little ice cube, and a frost puff when it's new
         marks.push(<span key={`m${key}`} className="pointer-events-none absolute" style={at(i, c)}>
           {fresh(i) && <span className="fr-puff absolute inset-0 rounded-full bg-white" />}
+          <span className="absolute rounded-[28%]" style={{ left: c * 0.13, top: c * 0.13, width: c * 0.74, height: c * 0.74,
+            background: "linear-gradient(150deg, rgba(255,255,255,0.97), rgba(200,228,255,0.9))", boxShadow: "inset 0 -2px 0 rgba(110,165,230,0.4), 0 1px 2px rgba(16,42,86,0.18)" }} />
           {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img src={foodPng("2744")} alt="" draggable={false} className="absolute opacity-75" style={{ left: c * 0.25, top: c * 0.25, width: c * 0.5, height: c * 0.5 }} />
+          <img src={foodPng("2744")} alt="" draggable={false} className="absolute opacity-70" style={{ left: c * 0.28, top: c * 0.28, width: c * 0.44, height: c * 0.44 }} />
         </span>);
       } else if (v === 2 && (own || !foundSet.has(i))) {               // a bite: on their fridge, a bitten piece of what's there
         if (own) marks.push(<span key={`m${key}`} className={`pointer-events-none absolute ${fresh(i) ? "fr-shake" : ""}`} style={at(i, c)}><Bite c={c} /></span>);
         else { const sn = SNACKS[Math.max(0, G.seen[s][i])];
-          marks.push(<span key={`m${key}`} className={`pointer-events-none absolute rounded-[28%] ${fresh(i) ? "fr-shake" : ""}`} style={{ ...at(i, c * 0.9), background: sn.color, boxShadow: "inset 0 0 0 1px rgba(16,27,46,0.08)" }}>
+          marks.push(<span key={`m${key}`} className={`pointer-events-none absolute rounded-[28%] ${fresh(i) ? "fr-shake" : ""}`} style={{ ...at(i, c * 0.9),
+            background: `linear-gradient(180deg, rgba(255,255,255,0.5), rgba(255,255,255,0) 55%), ${sn.color}`, boxShadow: "inset 0 0 0 1.5px rgba(232,80,91,0.55), 0 2px 4px rgba(16,42,86,0.16)" }}>
             {/* eslint-disable-next-line @next/next/no-img-element */}
             <img src={foodPng(sn.code)} alt={sn.name} draggable={false} className="absolute" style={{ left: c * 0.08, top: c * 0.12, width: c * 0.68, height: c * 0.68 }} />
             <Bite c={c * 0.9} />
           </span>); }
       } else if (v === 3) {                                              // lit: a snack is here, not bitten yet
         const sn = SNACKS[Math.max(0, G.seen[s][i])];
-        marks.push(<span key={`m${key}`} className={`pointer-events-none absolute rounded-[28%] ${fresh(i) ? "fr-glow" : ""}`} style={{ ...at(i, c * 0.86), boxShadow: "0 0 0 2px rgba(245,180,40,0.85), 0 0 10px 2px rgba(255,214,90,0.55)", background: "rgba(255,246,214,0.6)" }}>
+        marks.push(<span key={`m${key}`} className={`pointer-events-none absolute rounded-[28%] ${fresh(i) ? "fr-glow" : ""}`} style={{ ...at(i, c * 0.86), boxShadow: "0 0 0 2px rgba(245,180,40,0.9), 0 0 12px 3px rgba(255,214,90,0.6)", background: "rgba(255,246,214,0.7)" }}>
           {/* eslint-disable-next-line @next/next/no-img-element */}
           {!own && <img src={foodPng(sn.code)} alt="" draggable={false} className="absolute opacity-50" style={{ left: c * 0.13, top: c * 0.13, width: c * 0.6, height: c * 0.6 }} />}
         </span>);
@@ -886,16 +909,26 @@ export default function FridgeRaid() {
     const pend = role === "target" && awaiting.current ? awaiting.current.cells : [];
     const aim = own && cpuAim && s === 0 && opp === "cpu" ? cpuAim : [];
     const clickable = role === "target" && canAct;
+    const inPlay = phase === "play";
+    const glow = role === "target" ? (inPlay && myTurn ? "go" : null) : (role === "own" && inPlay && !myTurn ? "alert" : null);
+    const dim = role === "target" && inPlay && !myTurn;
+    const tag = role === "target" && inPlay ? (myTurn ? "Tap A Shelf" : "Wait") : role === "own" && inPlay && !myTurn ? "Searching" : null;
+    const r = small ? 11 : 17;
+    const popText = turnPop ? (turnPop.mine ? "Your Turn!" : opp === "cpu" ? "Computer's Turn" : "Their Turn") : "";
     return (
       <div className="relative shrink-0" style={{ width: w, height: h }}>
-        <div className="absolute inset-0 rounded-[14px]" style={{ borderRadius: small ? 10 : 16, background: "linear-gradient(160deg, #ffffff 0%, #eef2f8 55%, #dde5f0 100%)",
-          boxShadow: "0 12px 28px -10px rgba(16,42,86,0.35), inset 0 0 0 1px rgba(16,42,86,0.08), inset -2px -2px 0 rgba(16,42,86,0.04)" }} />
-        <div className="absolute rounded-full" style={{ right: small ? 1.5 : 2, top: h * 0.24, width: small ? 3 : 4, height: h * 0.34, background: "linear-gradient(90deg, #c9d3e1, #f7f9fc 45%, #b9c5d6)", boxShadow: "0 1px 2px rgba(16,42,86,0.25)" }} />
-        <div className="absolute flex items-center gap-1" style={{ left: fr + 2, right: fr + handle, top: 0, height: head }}>
-          <span className={`truncate font-bold uppercase tracking-wide text-[#5a6b85] ${small ? "text-[8px]" : "text-[10px]"}`}>{fridgeName(s)}</span>
+        {glow && <div className={`pointer-events-none absolute ${glow === "go" ? "fr-go" : "fr-alert"}`} style={{ inset: small ? -4 : -6, borderRadius: r + (small ? 4 : 6),
+          border: `${small ? 2.5 : 3.5}px solid ${glow === "go" ? "#3ddc84" : "#ff5d6c"}` }} />}
+        <div className="absolute inset-0" style={{ borderRadius: r, background: `linear-gradient(165deg, ${col.hi} 0%, ${col.lo} 70%)`,
+          boxShadow: `0 ${small ? 3 : 5}px 0 ${col.lip}, 0 14px 26px -10px rgba(16,42,86,0.5), inset 0 2px 0 rgba(255,255,255,0.35), inset 0 -2px 0 rgba(0,0,0,0.08)` }} />
+        <div className="absolute rounded-full" style={{ right: small ? 1.5 : 2, top: h * 0.24, width: small ? 3 : 4.5, height: h * 0.34, background: "linear-gradient(90deg, #c9d3e1, #ffffff 45%, #aab6c8)", boxShadow: "0 1px 2px rgba(16,42,86,0.35)" }} />
+        <div className="absolute flex items-center justify-between gap-1" style={{ left: fr + 2, right: fr + handle, top: 0, height: head }}>
+          <span className={`game-font truncate uppercase text-white ${small ? "text-[10px]" : "text-[14px]"}`} style={{ textShadow: `0 1.5px 0 ${col.lip}` }}>{fridgeName(s)}</span>
+          {tag && <span className={`game-font shrink-0 rounded-full uppercase ${small ? "px-1.5 text-[8px] leading-[13px]" : "px-2 text-[10px] leading-[17px]"} ${tag === "Tap A Shelf" ? "fr-blink bg-[#3ddc84] text-[#0d4d2b]" : tag === "Searching" ? "fr-blink bg-[#ff5d6c] text-white" : "bg-black/20 text-white/90"}`}>{tag}</span>}
         </div>
-        <div data-fridge={role} className={`absolute overflow-hidden ${role === "edit" ? "touch-none" : ""} ${clickable ? "cursor-pointer" : ""}`}
-          style={{ left: fr, top: head, width: inner, height: inner, borderRadius: small ? 5 : 8, background: INTERIOR, boxShadow: "inset 0 3px 12px rgba(16,42,86,0.16), inset 0 0 0 1px rgba(255,255,255,0.7)" }}
+        <div data-fridge={role} className={`absolute overflow-hidden transition-[filter] duration-300 ${role === "edit" ? "touch-none" : ""} ${clickable ? "cursor-pointer" : ""}`}
+          style={{ left: fr, top: head, width: inner, height: inner, borderRadius: small ? 6 : 9, background: INTERIOR, filter: dim ? "saturate(0.55) brightness(0.9)" : undefined,
+            boxShadow: "inset 0 3px 12px rgba(16,42,86,0.2), inset 0 0 0 1.5px rgba(255,255,255,0.75)" }}
           onPointerDown={role === "edit" ? onDown : undefined} onPointerMove={role === "edit" ? onMove : undefined} onPointerUp={role === "edit" ? onUp : undefined} onPointerCancel={role === "edit" ? onUp : undefined}
           onClick={role === "target" ? e => tapTarget(cellAt(e, e.currentTarget)) : undefined}>
           <div className="pointer-events-none absolute inset-x-0 top-0 h-[3px]" style={{ background: "rgba(255,255,240,0.95)", boxShadow: "0 0 14px 5px rgba(255,255,235,0.85)" }} />
@@ -913,26 +946,41 @@ export default function FridgeRaid() {
             <span key={`sp${fx!.id}-${i}`} className="fr-spark pointer-events-none absolute text-center" style={{ ...at(i, c), fontSize: c * 0.45, lineHeight: `${c}px`, animationDelay: `${k * 60}ms` }}>✨</span>
           ))}
           {preview.length > 0 && role === "target" && preview.map(i => (
-            <span key={`pv${i}`} className="pointer-events-none absolute rounded-[22%]" style={{ ...at(i, c * 0.92), boxShadow: armed === "light" ? "0 0 0 2.5px #f0b429, 0 0 12px rgba(255,214,90,0.7)" : "0 0 0 2.5px #4aa3ff, 0 0 12px rgba(120,190,255,0.7)", background: armed === "light" ? "rgba(255,240,180,0.35)" : "rgba(190,225,255,0.35)" }} />
+            <span key={`pv${i}`} className="fr-aim pointer-events-none absolute rounded-[22%]" style={{ ...at(i, c * 0.92), boxShadow: armed === "light" ? "0 0 0 3px #f0b429, 0 0 14px rgba(255,214,90,0.8)" : "0 0 0 3px #4aa3ff, 0 0 14px rgba(120,190,255,0.8)", background: armed === "light" ? "rgba(255,240,180,0.45)" : "rgba(190,225,255,0.45)" }} />
           ))}
           {pend.map(i => <span key={`pe${i}`} className="pointer-events-none absolute animate-pulse rounded-full bg-[#3f7fd6]/40" style={at(i, c * 0.4)} />)}
           {aim.map(i => <span key={`ai${i}`} className="fr-aim pointer-events-none absolute rounded-[24%]" style={{ ...at(i, c * 0.96), border: `${small ? 2 : 3}px solid #e8505b`, boxShadow: "0 0 10px 3px rgba(232,80,91,0.55)", background: "rgba(232,80,91,0.12)" }} />)}
         </div>
+        {role === "target" && turnPop && popText && (
+          <div key={turnPop.id} className="pointer-events-none absolute inset-0 z-[5] flex items-center justify-center">
+            <span className="fr-turnpop game-font whitespace-nowrap uppercase text-white" style={{ fontSize: Math.min(46, (inner * 1.55) / popText.length), textShadow: outline(turnPop.mine ? "#15803f" : "#16264a") }}>
+              {popText}</span>
+          </div>
+        )}
       </div>
     );
   };
 
-  const snackRow = (s: Side, label: string, used: Used) => (
-    <div>
-      <div className="truncate text-[10px] font-semibold uppercase tracking-wide text-[#5a6b85]">{label}</div>
-      <div className="mt-0.5 flex flex-wrap items-center gap-1">
-        {SNACKS.map((sn, k) => { const gone = G.found[s].some(f => f.s === k); return (
-          // eslint-disable-next-line @next/next/no-img-element
-          <img key={k} src={foodPng(sn.code)} alt={sn.name} title={sn.name} className={`h-5 w-5 ${gone ? "opacity-25 grayscale" : ""}`} />); })}
-        <span className="ml-1 text-[11px]" title="Power-ups left">{(["light", "blast"] as const).map(k => <span key={k} className={used[k] ? "opacity-25 grayscale" : ""}>{POWER[k].icon}</span>)}</span>
+  /** One side of the race: whose snacks have been found so far, each one ticked off as it's found. */
+  const raceRow = (s: Side, label: string, col: typeof MINE) => {
+    const n = G.found[s].length;
+    return (
+      <div data-snacks={s === target ? "target" : "own"}>
+        <div className="flex items-baseline justify-between gap-1">
+          <span className="game-font truncate text-[12px] uppercase leading-tight" style={{ color: col.lo }}>{label}</span>
+          <span className="game-font text-[13px] leading-tight tabular-nums text-[#101b2e]">{n}/{SNACKS.length}</span>
+        </div>
+        <div className="mt-1 flex items-center gap-[3px]">
+          {SNACKS.map((sn, k) => { const got = G.found[s].some(f => f.s === k); return (
+            <span key={k} className="relative flex h-6 w-6 items-center justify-center rounded-lg" style={{ background: got ? sn.color : "rgba(255,255,255,0.65)", boxShadow: got ? "inset 0 0 0 1.5px #2eaa6e" : "inset 0 0 0 1px rgba(16,42,86,0.08)" }}>
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img src={foodPng(sn.code)} alt={sn.name} title={sn.name} data-found={got ? "1" : "0"} className={`h-[18px] w-[18px] ${got ? "" : "opacity-30 grayscale"}`} />
+              {got && <span className="absolute -right-1 -top-1 flex h-3.5 w-3.5 items-center justify-center rounded-full bg-[#2eaa6e] text-[8px] font-bold leading-none text-white">✓</span>}
+            </span>); })}
+        </div>
       </div>
-    </div>
-  );
+    );
+  };
 
   const card = (children: ReactNode, solid = false) => (
     <div className={`absolute inset-0 z-10 flex flex-col items-center justify-center gap-2 rounded-[22px] p-3 ${solid ? "bg-[#dce9fc]" : "bg-[#101b2e]/45"}`}>
@@ -940,18 +988,20 @@ export default function FridgeRaid() {
       {fact && (phase === "over") && <FactCard fact={fact} />}
     </div>
   );
-  const btn = "w-full rounded-full bg-[#3f7fd6] py-3 font-semibold text-white disabled:opacity-50";
-  const btn2 = "w-full rounded-full bg-[#e3effe] py-3 font-semibold text-[#3f7fd6]";
+  const btn = "game-font w-full rounded-2xl bg-[linear-gradient(180deg,#5c9bf2,#3f7fd6)] py-3 text-[19px] text-white shadow-[0_4px_0_#2a5ba8] active:translate-y-[2px] active:shadow-[0_2px_0_#2a5ba8] disabled:opacity-50";
+  const btn2 = "game-font w-full rounded-2xl bg-[#e3effe] py-3 text-[19px] text-[#3f7fd6] shadow-[0_4px_0_#c3d7f3] active:translate-y-[2px] active:shadow-[0_2px_0_#c3d7f3]";
+  const btnGo = "game-font w-full rounded-2xl bg-[linear-gradient(180deg,#46d98c,#22a964)] py-3 text-[21px] uppercase text-white shadow-[0_5px_0_#167a45] active:translate-y-[2px] active:shadow-[0_3px_0_#167a45]";
+  const chip = "game-font flex-1 rounded-2xl bg-white py-2.5 text-[16px] text-[#3f7fd6] shadow-[0_4px_0_rgba(16,42,86,0.16)] active:translate-y-[2px] active:shadow-[0_2px_0_rgba(16,42,86,0.16)]";
 
   const liveCard = (): ReactNode => {
     if (opp !== "live" && offer) return card(<>
-      <div className="text-xl font-bold">Rejoin Your Game</div>
+      <div className="game-font text-[24px] leading-tight text-[#101b2e]">Rejoin Your Game</div>
       <p className="mt-1 text-sm text-[#5a6b85]">You were in the middle of a live match in room {offer.code}.</p>
       <button onClick={() => rejoinNow(offer)} className={`mt-4 ${btn}`}>Rejoin</button>
       <button onClick={() => { forgetLive(); setOffer(null); }} className="mt-2 w-full py-2 text-sm font-semibold text-[#5a6b85]">No Thanks</button>
     </>);
     if (opp === "live" && room.status === "away") return card(<>
-      <div className="text-xl font-bold">{nameOf(1)} Stepped Away...</div>
+      <div className="game-font text-[24px] leading-tight text-[#101b2e]">{nameOf(1)} Stepped Away...</div>
       <div className="mt-1 text-sm font-semibold text-[#3f7fd6]">Waiting For {nameOf(1)} To Come Back</div>
       <div className="mt-2 text-4xl font-bold tabular-nums text-[#3f7fd6]">{Math.max(0, Math.ceil(((room.until ?? 0) - now) / 1000))}s</div>
       <p className="mt-2 text-sm text-[#5a6b85]">The game is paused. It picks up right where you left off when they&apos;re back.</p>
@@ -960,7 +1010,7 @@ export default function FridgeRaid() {
     if (opp !== "live" || (room.status === "paired" && phase !== "idle")) return null;
     const code = room.code ?? "";
     if (room.status === "idle") return card(<>
-      <div className="text-xl font-bold">Play A Friend</div>
+      <div className="game-font text-[24px] leading-tight text-[#101b2e]">Play A Friend</div>
       <p className="mt-1 text-sm text-[#5a6b85]">Make a room and send your friend the link, or type their code.</p>
       <button onClick={() => joinRoom(newCode())} className={`mt-4 ${btn}`}>Make A Room</button>
       <div className="mt-4 flex gap-2">
@@ -970,14 +1020,14 @@ export default function FridgeRaid() {
       </div>
       {joinInput.length === 4 && !validCode(joinInput) && <p className="mt-2 text-xs font-semibold text-[#d64545]">That code doesn&apos;t look right. Check it again.</p>}
     </>);
-    if (room.status === "connecting") return card(<><div className="text-xl font-bold">Joining Room {code}</div><p className="mt-2 text-sm text-[#5a6b85]">One moment...</p></>);
+    if (room.status === "connecting") return card(<><div className="game-font text-[24px] leading-tight text-[#101b2e]">Joining Room {code}</div><p className="mt-2 text-sm text-[#5a6b85]">One moment...</p></>);
     if (room.status === "full") return card(<>
-      <div className="text-xl font-bold">Room Full</div>
+      <div className="game-font text-[24px] leading-tight text-[#101b2e]">Room Full</div>
       <p className="mt-1 text-sm text-[#5a6b85]">Room {code} already has two players. Make your own room instead.</p>
       <button onClick={() => { setRoom({ status: "idle" }); setJoinInput(""); }} className={`mt-4 ${btn}`}>Back</button>
     </>);
     if (room.status === "error") return card(<>
-      <div className="text-xl font-bold">Couldn&apos;t Connect</div>
+      <div className="game-font text-[24px] leading-tight text-[#101b2e]">Couldn&apos;t Connect</div>
       <p className="mt-1 text-sm text-[#5a6b85]">Check your connection and try again.</p>
       <button onClick={() => joinRoom(code)} className={`mt-4 ${btn}`}>Try Again</button>
       <button onClick={leaveRoom} className="mt-2 w-full py-2 text-sm font-semibold text-[#5a6b85]">Back</button>
@@ -985,7 +1035,7 @@ export default function FridgeRaid() {
     // waiting: for a first friend, or for one who left to come back
     const left = !!pairedWith.current;
     return card(<>
-      <div className="text-xl font-bold">{left ? "Your Friend Left" : "Your Room"}</div>
+      <div className="game-font text-[24px] leading-tight text-[#101b2e]">{left ? "Your Friend Left" : "Your Room"}</div>
       <p className="mt-1 text-sm text-[#5a6b85]">{left ? "Waiting for them to come back. If they rejoin, you'll start a fresh game." : "Send your friend the link, or have them type this code."}</p>
       <div className="mt-3 font-mono text-4xl font-bold tracking-[0.25em] text-[#101b2e]">{code}</div>
       <button onClick={() => shell.share(`Play Fridge Raid with me! Room ${code}\n${roomLink(code)}`)} className={`mt-4 ${btn}`}>{shell.copied ? "Link Copied!" : "Share The Link"}</button>
@@ -1001,7 +1051,7 @@ export default function FridgeRaid() {
         onLeave={() => { leaveRoom(); setJoinInput(""); go("idle"); }} steps={[
           "First, hide your five snacks in your fridge.",
           "Take turns tapping a shelf in their fridge. A bite earns another shot; ice passes the turn.",
-          "Once a round: 🔦 the Fridge Light shows a 2×2 patch, ❄️ the Freezer Blast bites 3 in a row.",
+          "Once a round: the Fridge Light shows a 2×2 patch, the Freezer Blast bites 3 in a row.",
           "Find all their snacks before they find yours. You get 45 seconds a turn.",
         ]} />
     );
@@ -1016,7 +1066,7 @@ export default function FridgeRaid() {
     }
     if (opp === "cpu" && phase === "doneToday" && final) return card(<>
       <div className="text-sm font-semibold text-[#5a6b85]">Today&apos;s Challenge #{n}</div>
-      <div className="mt-1 text-xl font-bold">Today&apos;s Fridge Is Raided</div>
+      <div className="game-font mt-1 text-[24px] leading-tight text-[#101b2e]">Today&apos;s Fridge Is Raided</div>
       <div className="mt-1 text-4xl font-bold tabular-nums">{final.score.toLocaleString()}</div>
       <p className="text-sm text-[#5a6b85]">{final.won ? `You won in ${final.shots} shots.` : "The computer won this one."} New fridge at midnight.</p>
       <div className="mt-4 flex gap-2">
@@ -1027,14 +1077,14 @@ export default function FridgeRaid() {
     </>);
     if (opp === "cpu" && phase === "roundWon") return card(<>
       <div className="text-sm font-semibold text-[#5a6b85]">Free Play</div>
-      <div className="mt-1 text-xl font-bold">Round {round} Won! 🎉</div>
+      <div className="game-font mt-1 text-[24px] leading-tight text-[#101b2e]">Round {round} Won! 🎉</div>
       <p className="mt-1 text-sm text-[#5a6b85]">Found every snack in {G.shots[0]} shots. +{G.roundScore.toLocaleString()} points.</p>
       <div className="mt-2 text-3xl font-bold tabular-nums">{total.current.toLocaleString()}</div>
       <p className="text-xs text-[#5a6b85]">The computer gets a little sharper next round.</p>
       <button onClick={() => startCpu(G.layout[0], round + 1)} className={`mt-4 ${btn}`}>Next Round</button>
     </>);
     if (opp === "phone" && phase === "names") return card(<>
-      <div className="text-xl font-bold">Same Phone</div>
+      <div className="game-font text-[24px] leading-tight text-[#101b2e]">Same Phone</div>
       <p className="mt-1 text-sm text-[#5a6b85]">Take turns on this phone. Who&apos;s playing?</p>
       {[0, 1].map(k => (
         <input key={k} value={names[k]} maxLength={14} placeholder={k === 0 ? (shell.player?.name || "Player 1") : "Player 2"}
@@ -1047,7 +1097,7 @@ export default function FridgeRaid() {
       const to = nameOf(pass.to), from = nameOf(other(pass.to));
       return card(<>
         <div className="text-4xl">📱</div>
-        <div className="mt-2 text-xl font-bold">Pass The Phone To {to}</div>
+        <div className="game-font mt-2 text-[24px] leading-tight text-[#101b2e]">Pass The Phone To {to}</div>
         <p className="mt-1 text-sm text-[#5a6b85]">{from}, No Peeking!</p>
         <button onClick={takePhone} className={`mt-4 ${btn}`}>I&apos;m {to}, Show Me</button>
       </>, true);
@@ -1057,7 +1107,7 @@ export default function FridgeRaid() {
       const head = opp === "live" ? (winner === 0 ? "You Win! 🎉" : `${w} Wins`) : `${w} Wins! 🎉`;
       return card(<>
         <div className="text-sm font-semibold text-[#5a6b85]">{opp === "phone" ? "Same Phone" : "Play A Friend"}</div>
-        <div className="mt-1 text-2xl font-bold">{head}</div>
+        <div className="game-font mt-1 text-[30px] leading-tight text-[#101b2e]">{head}</div>
         <p className="mt-1 text-sm text-[#5a6b85]">{opp === "live" && winner === 1 ? `${w} found all your snacks in ${G.shots[1]} shots.` : `Found all of ${l}'s snacks in ${G.shots[winner]} shots.`}</p>
         {theyWantRematch && <p className="mt-2 rounded-2xl bg-[#e3effe] px-3 py-2 text-sm font-semibold text-[#3f7fd6]">{nameOf(1)} Wants A Rematch!</p>}
         <div className="mt-4 flex gap-2">
@@ -1071,30 +1121,51 @@ export default function FridgeRaid() {
     return null;
   };
 
-  // the power-ups: two buttons, plus a turn button while the blast is armed
+  // the power-ups: two cards that say what they do (with the shape they cover). Picking one swaps the row for its aim
+  // controls: cancel, turn (the blast), and a big button to use it once it's aimed (tapping the aim again works too).
   const powerBar = () => {
     const used = G.used[pov];
     const pick = (k: "light" | "blast") => {
       if (!canAct || used[k]) return;
       if (armed === k) { clearAim(); setMsg("Tap A Shelf In Their Fridge."); return; }
-      setArmed(k); setAimAt(null); setMsg(k === "light" ? "Tap Where To Shine The Light. Tap Again To Use It." : "Tap Where To Blast. Tap Again To Use It.");
+      setArmed(k); setAimAt(null); setMsg(k === "light" ? "Tap Where To Shine The Light." : "Tap Where To Blast.");
     };
+    if (armed) {
+      const light = armed === "light";
+      return (
+        <div className="flex items-center gap-2" style={{ height: BAR }}>
+          <button onClick={() => { clearAim(); setMsg("Tap A Shelf In Their Fridge."); }} aria-label="Put it back"
+            className="game-font flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-white text-[20px] text-[#5a6b85] shadow-[0_4px_0_rgba(16,42,86,0.16)]">✕</button>
+          {!light && (
+            <button onClick={() => setAimAt(a => (a ? { ...a, v: !a.v } : { at: 3 * N + 3, v: true }))} aria-label="Turn the blast"
+              className="game-font flex h-12 shrink-0 items-center rounded-2xl bg-[#dff0ff] px-3 text-[16px] text-[#1f5fa8] shadow-[0_4px_0_#b8d9f7]">{aimAt?.v ? "↕" : "↔"} Turn</button>
+          )}
+          <button disabled={!aimAt || !canAct} onClick={() => aimAt && tapTarget(aimAt.at)}
+            className={`game-font flex h-12 min-w-0 flex-1 items-center justify-center gap-1.5 rounded-2xl text-[18px] uppercase disabled:opacity-60 ${light ? "bg-[linear-gradient(180deg,#ffe066,#f5b82e)] text-[#6b4300] shadow-[0_4px_0_#c98f12]" : "bg-[linear-gradient(180deg,#8fd0ff,#4aa3ff)] text-white shadow-[0_4px_0_#2f7fcf]"}`}>
+            <ToolIcon k={armed} size={24} />
+            <span className="truncate">{aimAt ? POWER[armed].use : "Tap Their Fridge"}</span>
+          </button>
+        </div>
+      );
+    }
     return (
-      <div className="flex items-center gap-2" style={{ height: BAR }}>
+      <div className="flex items-stretch gap-2" style={{ height: BAR }}>
         {(["light", "blast"] as const).map(k => {
-          const on = armed === k, gone = used[k];
+          const gone = used[k];
           return (
-            <button key={k} onClick={() => pick(k)} disabled={gone || !canAct} aria-pressed={on}
-              className={`flex h-10 min-w-0 flex-1 items-center justify-center gap-1.5 rounded-full px-2 text-[13px] font-semibold transition ${gone ? "bg-white/40 text-[#9aa6b8]" : on ? (k === "light" ? "bg-[#fff1c2] text-[#8a5a00] ring-2 ring-[#f0b429]" : "bg-[#dff0ff] text-[#1f5fa8] ring-2 ring-[#4aa3ff]") : "bg-white/85 text-[#3f7fd6]"} ${!canAct && !gone ? "opacity-60" : ""}`}>
-              <span className={gone ? "grayscale" : ""}>{POWER[k].icon}</span>
-              <span className="truncate">{gone ? "Used" : POWER[k].name}</span>
+            <button key={k} onClick={() => pick(k)} disabled={gone || !canAct}
+              className={`flex min-w-0 flex-1 items-center gap-1.5 rounded-2xl px-2 text-left transition ${gone ? "bg-white/40" : "bg-white shadow-[0_4px_0_rgba(16,42,86,0.16),0_8px_16px_-8px_rgba(16,42,86,0.35)]"} ${!canAct && !gone ? "opacity-60" : ""}`}>
+              <span className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-xl text-[19px] ${gone ? "opacity-40 grayscale" : ""}`}
+                style={{ background: k === "light" ? "linear-gradient(180deg,#fff4c7,#ffe08a)" : "linear-gradient(180deg,#e6f4ff,#bfe2ff)" }}><ToolIcon k={k} size={26} /></span>
+              <span className="min-w-0 flex-1">
+                <span className={`game-font block truncate text-[15px] leading-tight ${gone ? "text-[#9aa6b8]" : "text-[#101b2e]"}`}>{POWER[k].name}</span>
+                <span className="mt-0.5 flex items-center gap-1 text-[11px] font-semibold leading-tight text-[#5a6b85]">
+                  {!gone && <Pattern k={k} />}<span className="truncate">{gone ? "Used This Round" : POWER[k].tip}</span>
+                </span>
+              </span>
             </button>
           );
         })}
-        {armed === "blast" && (
-          <button onClick={() => setAimAt(a => (a ? { ...a, v: !a.v } : { at: 3 * N + 3, v: true }))} aria-label="Turn the blast"
-            className="flex h-10 shrink-0 items-center rounded-full bg-[#dff0ff] px-3 text-[13px] font-semibold text-[#1f5fa8]">{aimAt?.v ? "↕" : "↔"} Turn</button>
-        )}
       </div>
     );
   };
@@ -1103,10 +1174,10 @@ export default function FridgeRaid() {
     <div className="flex flex-col justify-center gap-2" style={{ height: LOWH, width: N * cP + 2 * FR + HANDLE }}>
       <p className="text-center text-xs text-[#5a6b85]">{sel === null ? "Drag A Snack To Move It. Tap It Twice To Turn It." : `${SNACKS[sel].name}: Drag It, Tap An Empty Shelf, Or Tap Turn.`}</p>
       <div className="flex gap-2">
-        <button onClick={shuffle} className="flex-1 rounded-full bg-white/80 py-2 text-sm font-semibold text-[#3f7fd6]">🔀 Shuffle</button>
-        <button onClick={() => sel !== null && turnSnack(sel)} disabled={sel === null} className="flex-1 rounded-full bg-white/80 py-2 text-sm font-semibold text-[#3f7fd6] disabled:opacity-40">↻ Turn</button>
+        <button onClick={shuffle} className={chip}>🔀 Shuffle</button>
+        <button onClick={() => sel !== null && turnSnack(sel)} disabled={sel === null} className={`${chip} disabled:opacity-40`}>↻ Turn</button>
       </div>
-      <button onClick={ready} className={btn}>I&apos;m Ready</button>
+      <button onClick={ready} className={btnGo}>I&apos;m Ready</button>
     </div>
   );
   const liveWaiting = () => (
@@ -1126,17 +1197,18 @@ export default function FridgeRaid() {
       </div>
     );
     if (playing) {
-      const bigW = N * cB + 2 * FR + HANDLE;
+      const bigW = N * cB + 2 * FR + HANDLE, rowW = Math.max(bigW, Math.min(area.w, 400));   // on short phones the fridge narrows; the rows under it don't
+
       return (
         <div className="flex flex-col items-center" style={{ gap: GAP }}>
           {fridge(target, cB, "target")}
-          <div style={{ width: bigW }}>{powerBar()}</div>
-          <div className="flex items-start gap-2.5" style={{ width: bigW }}>
+          <div style={{ width: rowW }}>{powerBar()}</div>
+          <div className="flex items-start gap-3" style={{ width: rowW }}>
             {fridge(pov, cS, "own", true)}
-            <div className="flex min-w-0 flex-1 flex-col gap-1.5 pt-1">
-              {snackRow(target, opp === "cpu" ? "Computer's Snacks" : `${nameOf(target)}'s Snacks`, G.used[target])}
-              {snackRow(pov, "Your Snacks", G.used[pov])}
-              <div className="text-xs font-semibold tabular-nums text-[#101b2e]">Shots {G.shots[pov]} · Bites {G.hits[pov]}</div>
+            <div className="flex min-w-0 flex-1 flex-col gap-2 pt-1">
+              {raceRow(target, "You Found", MINE)}
+              {raceRow(pov, opp === "cpu" ? "Computer Found" : nameOf(target) === "Your Friend" ? "Friend Found" : `${nameOf(target)} Found`, THEIRS)}
+              <div className="text-[11px] font-semibold tabular-nums text-[#5a6b85]">Shots {G.shots[pov]} · Bites {G.hits[pov]}</div>
             </div>
           </div>
         </div>
@@ -1155,6 +1227,34 @@ export default function FridgeRaid() {
         ))}
       </div>
 
+      {phase === "play" || phase === "place" ? (
+        // the turn banner: green while it's yours, dark while it's theirs, blue while hiding snacks
+        <div className="mt-2 flex h-[54px] shrink-0 items-center gap-2 rounded-2xl px-3 transition-colors duration-300"
+          style={{ background: phase === "place" ? "linear-gradient(180deg,#5c9bf2,#3f7fd6)" : myTurn ? "linear-gradient(180deg,#46d98c,#22a964)" : "linear-gradient(180deg,#2c4274,#172a52)",
+            boxShadow: `0 4px 0 ${phase === "place" ? "#2a5ba8" : myTurn ? "#167a45" : "#0b1630"}` }}>
+          <div className="min-w-0 flex-1">
+            <div className="game-font flex items-baseline gap-1 truncate text-[22px] uppercase leading-none text-white" style={{ textShadow: "0 2px 0 rgba(0,0,0,0.18)" }}>
+              <span className="truncate">{phase === "place" ? (placing ? "Hide Your Snacks" : "Get Set") : myTurn ? "Your Turn" : opp === "cpu" ? "Computer's Turn" : `${nameOf(other(pov))}'s Turn`}</span>
+              {phase === "play" && !myTurn && <span className="shrink-0">{[0, 1, 2].map(k => <span key={k} className="fr-dot" style={{ animationDelay: `${k * 0.2}s` }}>.</span>)}</span>}
+            </div>
+            <div className="mt-1 text-[12px] font-semibold leading-tight text-white/90" style={{ display: "-webkit-box", WebkitLineClamp: 1, WebkitBoxOrient: "vertical", overflow: "hidden" }}>
+              {phase === "place" ? (placing && !msg.startsWith("Round") ? "Then Tap I'm Ready To Start." : msg) : msg.replace(/^Your Turn\.\s*/, "")}</div>
+          </div>
+          {opp === "cpu" && phase === "play" && (
+            <div className="shrink-0 text-right">
+              <div className="text-[9px] font-bold uppercase tracking-wide text-white/75">Score</div>
+              <div className="game-font text-[20px] leading-none tabular-nums text-white">{scoreNow.toLocaleString()}</div>
+            </div>
+          )}
+          {opp === "cpu" && <PauseButton shell={shell} active={phase === "play"} />}
+          {opp === "live" && phase === "play" && (
+            <div className="relative flex h-10 w-10 shrink-0 items-center justify-center rounded-full" aria-label={`${secsLeft} seconds left`}
+              style={{ background: `conic-gradient(${secsLeft <= 10 ? "#ff5d6c" : "#ffffff"} ${(secsLeft / (TURN_MS / 1000)) * 360}deg, rgba(255,255,255,0.22) 0)` }}>
+              <div className="game-font flex h-[32px] w-[32px] items-center justify-center rounded-full text-[15px] tabular-nums text-white" style={{ background: myTurn ? "#22a964" : "#172a52" }}>{secsLeft}</div>
+            </div>
+          )}
+        </div>
+      ) : (
       <div className="mt-2 flex h-10 shrink-0 items-center gap-2">
         <div className="w-16 shrink-0">
           {opp === "cpu" ? (<><div className="text-[10px] uppercase tracking-wide text-[#5a6b85]">Score</div><div className="text-xl font-bold leading-none tabular-nums">{scoreNow.toLocaleString()}</div></>)
@@ -1162,13 +1262,10 @@ export default function FridgeRaid() {
         </div>
         <div className="min-w-0 flex-1 text-center text-[13px] font-semibold leading-tight text-[#101b2e]" style={{ display: "-webkit-box", WebkitLineClamp: 2, WebkitBoxOrient: "vertical", overflow: "hidden" }}>{msg}</div>
         <div className="flex min-w-16 shrink-0 justify-end">
-          {opp === "cpu" && <PauseButton shell={shell} active={phase === "play"} />}
-          {opp === "live" && phase === "play" && (
-            <div className={`whitespace-nowrap rounded-full px-2.5 py-1 text-xs font-bold tabular-nums ${secsLeft <= 10 ? "bg-[#e8505b] text-white" : "bg-white/70 text-[#3f7fd6]"}`}>
-              {G.turn === 0 ? "You" : "Them"} {secsLeft}s</div>
-          )}
+          {opp === "cpu" && <PauseButton shell={shell} active={false} />}
         </div>
       </div>
+      )}
 
       <BoardArea wrapRef={wrapRef} size={area} reserve={0}>
         <div className="flex h-full w-full justify-center">{board()}</div>
@@ -1180,7 +1277,7 @@ export default function FridgeRaid() {
             <div className="rounded-full bg-white/95 px-4 py-2 text-sm font-semibold text-[#3f7fd6] shadow-md">Reconnecting...</div>
           </div>
         )}
-        <style>{FX_CSS}</style>
+        <style>{FX_CSS + GAME_FONT_CSS}</style>
       </BoardArea>
 
       <ShellPopups shell={shell} game={GAME} todayNote="Today's Challenge: same computer fridge for everyone. Resets at midnight." />
@@ -1189,7 +1286,7 @@ export default function FridgeRaid() {
         <HelpModal onClose={shell.help.close} steps={[
           "Hide your snacks in your fridge. Drag to move, tap twice to turn, or tap Shuffle.",
           "Take turns tapping a shelf in the other fridge. A bite shows what you hit and earns another shot. Ice passes the turn.",
-          <span key="p">Once a round: <b>🔦 Fridge Light</b> shows a 2×2 patch, <b>❄️ Freezer Blast</b> bites 3 in a row. Tap a shelf to aim, tap again to use it.</span>,
+          <span key="p">Once a round: <ToolIcon k="light" size={16} inline /> <b>Fridge Light</b> shows a 2×2 patch, <ToolIcon k="blast" size={16} inline /> <b>Freezer Blast</b> bites 3 in a row. Tap a shelf to aim, then tap Shine Here or Blast Here.</span>,
           "Find all their snacks before they find yours.",
         ]}>
           <div className="mt-3 flex flex-wrap items-center justify-center gap-1.5 rounded-2xl bg-[#f0f6fe] p-2">
@@ -1232,6 +1329,16 @@ const FX_CSS = `
 .fr-glow { animation: fr-glow 0.8s ease-out }
 @keyframes fr-glow { 0% { transform: scale(0.7); opacity: 0 } 100% { transform: scale(1); opacity: 1 } }
 .fr-aim { animation: fr-aim 0.5s ease-in-out infinite alternate }
+.fr-go { animation: fr-go 1.1s ease-in-out infinite }
+@keyframes fr-go { 0%, 100% { box-shadow: 0 0 0 0 rgba(61,220,132,0.6); opacity: 1 } 50% { box-shadow: 0 0 0 8px rgba(61,220,132,0); opacity: 0.7 } }
+.fr-alert { animation: fr-alert 0.9s ease-in-out infinite }
+@keyframes fr-alert { 0%, 100% { box-shadow: 0 0 0 0 rgba(255,93,108,0.6) } 50% { box-shadow: 0 0 0 6px rgba(255,93,108,0) } }
+.fr-blink { animation: fr-blink 1.1s ease-in-out infinite }
+@keyframes fr-blink { 0%, 100% { opacity: 1 } 50% { opacity: 0.55 } }
+.fr-dot { animation: fr-dot 1s ease-in-out infinite }
+@keyframes fr-dot { 0%, 100% { opacity: 0.25 } 50% { opacity: 1 } }
+.fr-turnpop { display: inline-block; animation: fr-turnpop 1.2s cubic-bezier(.2,.9,.3,1) forwards }
+@keyframes fr-turnpop { 0% { transform: scale(0.4) rotate(-4deg); opacity: 0 } 18% { transform: scale(1.12) rotate(-3deg); opacity: 1 } 28% { transform: scale(1) rotate(-3deg) } 78% { transform: scale(1) rotate(-3deg); opacity: 1 } 100% { transform: scale(1.06) rotate(-3deg); opacity: 0 } }
 @keyframes fr-aim { 0% { transform: scale(0.85); opacity: 0.6 } 100% { transform: scale(1.02); opacity: 1 } }
 `;
 
@@ -1240,7 +1347,7 @@ function Pill({ p, c, found, pop, sel, ghost, bad, faded }: { p: Placed; c: numb
   return (
     <div className={`pointer-events-none absolute flex items-center justify-around rounded-full ${pop ? "fr-pop" : ""}`}
       style={{ left: p.c * c + ins, top: p.r * c + ins, width: (p.v ? 1 : L) * c - 2 * ins, height: (p.v ? L : 1) * c - 2 * ins, flexDirection: p.v ? "column" : "row",
-        background: bad ? "#ffd9dc" : s.color, opacity: found ? 0.5 : ghost ? 0.75 : faded ? 0.35 : 1, filter: found ? "grayscale(0.6)" : undefined,
+        background: bad ? "#ffd9dc" : `linear-gradient(180deg, rgba(255,255,255,0.5), rgba(255,255,255,0) 55%), ${s.color}`, opacity: found ? 0.5 : ghost ? 0.75 : faded ? 0.35 : 1, filter: found ? "grayscale(0.6)" : undefined,
         boxShadow: sel ? "0 0 0 2.5px #3f7fd6" : bad ? "0 0 0 2px #e8505b" : ghost ? "0 0 0 2px #2eaa6e" : pop ? "0 0 0 2px #2eaa6e, 0 4px 12px rgba(46,170,110,0.35)" : "inset 0 0 0 1px rgba(16,27,46,0.10), 0 2px 4px rgba(16,42,86,0.12)" }}>
       {Array.from({ length: L }, (_, k) => (
         // eslint-disable-next-line @next/next/no-img-element
@@ -1268,5 +1375,54 @@ function FactCard({ fact }: { fact: Toast }) {
       <img src={foodPng(fact.img)} alt="" className="mt-0.5 h-7 w-7" />
       <div className="min-w-0 flex-1"><div className="text-xs font-bold text-[#3f7fd6]">{fact.title}</div><div className="text-[13px] leading-snug">{fact.body}</div></div>
     </div>
+  );
+}
+
+/** The cells a power-up covers, as a tiny diagram: 2x2 for the light, 3 in a row for the blast. */
+function Pattern({ k }: { k: "light" | "blast" }) {
+  const cols = k === "light" ? 2 : 3, rows = k === "light" ? 2 : 1, col = k === "light" ? "#f0b429" : "#4aa3ff";
+  return (
+    <span className="grid shrink-0 gap-[2px]" style={{ gridTemplateColumns: `repeat(${cols}, 5px)` }} aria-hidden>
+      {Array.from({ length: cols * rows }, (_, i) => <span key={i} className="h-[5px] w-[5px] rounded-[1.5px]" style={{ background: col }} />)}
+    </span>
+  );
+}
+
+/** A chunky outline for display text (text-shadow in eight directions, plus a drop). */
+function outline(c: string, o = 2.5) {
+  const d = o * 0.7;
+  return [`${o}px 0 0 ${c}`, `-${o}px 0 0 ${c}`, `0 ${o}px 0 ${c}`, `0 -${o}px 0 ${c}`, `${d}px ${d}px 0 ${c}`, `-${d}px ${d}px 0 ${c}`, `${d}px -${d}px 0 ${c}`, `-${d}px -${d}px 0 ${c}`, `0 ${o + 3}px 0 ${c}`].join(", ");
+}
+
+/** The two tools, drawn: the fridge's own light bulb, glowing, and a burst of frost. */
+function ToolIcon({ k, size, inline }: { k: "light" | "blast"; size: number; inline?: boolean }) {
+  const cls = inline ? "inline-block align-[-3px]" : "block";
+  if (k === "light") return (
+    <svg viewBox="0 0 32 32" width={size} height={size} className={cls} aria-hidden>
+      <defs>
+        <radialGradient id="frBulb" cx="0.4" cy="0.35" r="0.7"><stop offset="0" stopColor="#fffbe6" /><stop offset="0.55" stopColor="#ffe066" /><stop offset="1" stopColor="#f5b100" /></radialGradient>
+      </defs>
+      <g stroke="#f5b100" strokeWidth="2" strokeLinecap="round" opacity="0.9">
+        <path d="M16 1.8v2.6M5.6 6.2l1.9 1.8M26.4 6.2l-1.9 1.8M2 15.4h2.6M27.4 15.4H30" />
+      </g>
+      <path d="M16 6.2c-5 0-8.6 3.8-8.6 8.4 0 3.1 1.6 5.2 3.3 6.9.9.9 1.4 2 1.4 3.2v.5h7.8v-.5c0-1.2.5-2.3 1.4-3.2 1.7-1.7 3.3-3.8 3.3-6.9 0-4.6-3.6-8.4-8.6-8.4z" fill="url(#frBulb)" stroke="#c98a00" strokeWidth="1.2" />
+      <path d="M12.6 12.4c.6-1.8 2.2-3 4-3.2" stroke="#ffffff" strokeWidth="1.8" strokeLinecap="round" fill="none" opacity="0.9" />
+      <rect x="11.9" y="25.6" width="8.2" height="2.6" rx="1.2" fill="#9aa6b8" />
+      <rect x="12.6" y="28" width="6.8" height="2.4" rx="1.2" fill="#7c889c" />
+    </svg>
+  );
+  return (
+    <svg viewBox="0 0 32 32" width={size} height={size} className={cls} aria-hidden>
+      <circle cx="16" cy="16" r="13" fill="#e9f6ff" stroke="#9fd2ff" strokeWidth="1.4" strokeDasharray="2.6 2.4" />
+      <g stroke="#2f8de4" strokeWidth="2.3" strokeLinecap="round" fill="none">
+        {[0, 60, 120].map(a => (
+          <g key={a} transform={`rotate(${a} 16 16)`}>
+            <path d="M16 5.5v21" />
+            <path d="M12.8 8.2 16 10.6l3.2-2.4M12.8 23.8 16 21.4l3.2 2.4" />
+          </g>
+        ))}
+      </g>
+      <circle cx="16" cy="16" r="2.4" fill="#ffffff" stroke="#2f8de4" strokeWidth="1.6" />
+    </svg>
   );
 }

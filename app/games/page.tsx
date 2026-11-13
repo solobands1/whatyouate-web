@@ -3,10 +3,16 @@ import Link from "next/link";
 import Menu from "../../components/Menu";
 import Social from "../../components/Social";
 import Logo from "../../components/Logo";
-import { INK, BODY, FAINT, DownloadButton, appStoreLink } from "../../components/site";
+import { INK, BODY, DownloadButton, appStoreLink } from "../../components/site";
 import { GAMES, type Game } from "../../components/games/catalog";
+import type { ReactNode } from "react";
+import { preload } from "react-dom";
+import { GAME_FONT_CSS } from "../../components/games/gameFont";
+import { KIT_CSS } from "../../components/games/look";
+import { CalendarIcon, PlayersIcon, PlayIcon, SparkleIcon } from "../../components/games/icons";
 
-// "Choose Your Game": one card per game in components/games/catalog.ts. Tapping a card opens that game full screen.
+// "Choose Your Game": a game launcher, one poster tile per game in components/games/catalog.ts. Tapping a tile opens that
+// game full screen. The tiles, badges and Play buttons use the games' own frame look (components/games/look.ts).
 // No Safari App Store banner (two banners looked cluttered): a small Get App button sits in the header instead.
 export const metadata: Metadata = {
   title: "Food Games | WhatYouAte",
@@ -28,50 +34,68 @@ export const metadata: Metadata = {
   },
 };
 
+// A tile in the launcher: the game's poster, a badge on its bottom edge, the name in the display face, and a chunky Play.
+const HUB_CSS = `
+.hub-tile { background: linear-gradient(180deg, #ffffff 0%, #eef4ff 100%); border-radius: 24px;
+  box-shadow: 0 0 0 2.5px #16336C, 0 6px 0 2.5px #0E1F45, 0 20px 32px -16px rgba(14,31,69,0.6); transition: transform 120ms ease-out, box-shadow 120ms ease-out; }
+.hub-tile:active { transform: translateY(4px); box-shadow: 0 0 0 2.5px #16336C, 0 2px 0 2.5px #0E1F45, 0 10px 20px -14px rgba(14,31,69,0.6); }
+.hub-tile:active .wk-go { transform: translateY(3px); box-shadow: 0 1px 0 #167A45; }
+@media (hover: hover) { .hub-tile:hover { transform: translateY(-3px); } .hub-tile:hover img { transform: scale(1.04); } }
+.hub-tile:focus-visible { outline: 4px solid #FFC21F; outline-offset: 5px; }
+`;
+
 function GameCard({ g }: { g: Game }) {
   return (
-    <Link
-      href={`/games/${g.slug}`}
-      className="group flex items-center gap-5 rounded-[28px] bg-white p-5 ring-1 ring-[#16233B]/[0.06] transition duration-200 hover:-translate-y-0.5 sm:gap-7 sm:p-6"
-      style={{ boxShadow: "0 30px 60px -30px rgba(16,42,86,0.40)" }}
-    >
-      {/* eslint-disable-next-line @next/next/no-img-element */}
-      <img src={`/games/cards/${g.slug}.jpg`} alt={`${g.name} game`} width={124} height={124}
-        className="h-[104px] w-[104px] shrink-0 rounded-[22px] object-cover ring-1 ring-[#16233B]/[0.06] sm:h-[124px] sm:w-[124px]" />
-      <div className="min-w-0 flex-1">
-        <div className="flex flex-wrap items-center gap-2">
-          <h3 className="text-[22px] font-bold tracking-[-0.02em]" style={{ color: INK }}>{g.name}</h3>
-          {g.multiplayer ? (
-            <span className="rounded-full bg-[#e3effe] px-2.5 py-0.5 text-[12px] font-semibold text-[#3f7fd6]">Play with a friend</span>
-          ) : g.daily ? (
-            <span className="rounded-full bg-[#fff4d6] px-2.5 py-0.5 text-[12px] font-semibold text-[#8a5a00]">New challenge daily</span>
-          ) : null}
+    <Link href={`/games/${g.slug}`} className="hub-tile group flex flex-col p-2 pb-3 sm:p-2.5 sm:pb-3.5">
+      <div className="relative">
+        <div className="overflow-hidden rounded-[17px] shadow-[inset_0_0_0_1px_rgba(14,31,69,0.08)]">
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img src={`/games/cards/${g.slug}.jpg`} alt={`${g.name} game`} width={480} height={480}
+            className="block aspect-square w-full object-cover transition-transform duration-300" />
         </div>
-        <p className="mt-1.5 text-[15px] leading-[1.55]" style={{ color: BODY }}>{g.tagline}</p>
-        <span className="mt-3 inline-flex items-center gap-1.5 rounded-full px-5 py-2 text-[14px] font-semibold text-white transition group-hover:opacity-90" style={{ background: "#3f7fd6" }}>
-          Play ▸
-        </span>
+        {g.multiplayer ? (
+          <span className="wk-tag absolute -bottom-3 left-1/2 flex h-[26px] -translate-x-1/2 items-center gap-1.5 bg-[#E8505B] px-3 text-[13px] leading-none">
+            <PlayersIcon size={15} />2 Player
+          </span>
+        ) : g.daily ? (
+          <span className="wk-tag absolute -bottom-3 left-1/2 flex h-[26px] -translate-x-1/2 items-center gap-1 bg-[#FFC21F] px-2.5 text-[11.5px] leading-none text-[#0E1F45] [text-shadow:none] sm:text-[13px]">
+            <CalendarIcon size={13} />New Challenge Daily
+          </span>
+        ) : null}
       </div>
+      <h3 className="wk-f mt-5 px-1 text-[20px] leading-[1.05] text-[#0E1F45] sm:text-[23px]">{g.name}</h3>
+      <p className="mt-1.5 line-clamp-3 px-1 text-[12.5px] leading-snug text-[#5A6B85] sm:line-clamp-none sm:text-[14px]">{g.tagline}</p>
+      <span className="mt-auto block pt-3">
+        <span className="wk-btn wk-go h-[42px] text-[18px] sm:h-[46px] sm:text-[20px]"><PlayIcon size={15} />Play</span>
+      </span>
     </Link>
   );
 }
 
-function Section({ title, body, games }: { title: string; body: string; games: Game[] }) {
+function Section({ title, body, icon, games, children }: { title: string; body: string; icon: ReactNode; games: Game[]; children?: ReactNode }) {
   if (!games.length) return null;
   return (
-    <section className="mt-12">
-      <h2 className="text-[clamp(22px,3vw,28px)] font-bold tracking-[-0.03em]" style={{ color: INK }}>{title}</h2>
-      <p className="mt-1 text-[15px]" style={{ color: BODY }}>{body}</p>
-      <div className="mt-5 grid gap-5">
+    <section className="mt-12 sm:mt-16">
+      <div className="flex items-center gap-3">
+        <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-[linear-gradient(180deg,#2c58ab,#16336C)] text-[#FFE65C] shadow-[0_4px_0_#0b1a3a]">{icon}</span>
+        <div className="min-w-0">
+          <h2 className="wk-f text-[28px] leading-none text-[#0E1F45] sm:text-[32px]">{title}</h2>
+          <p className="mt-1 text-[14px] leading-snug" style={{ color: BODY }}>{body}</p>
+        </div>
+      </div>
+      <div className="mt-6 grid grid-cols-2 gap-x-3 gap-y-5 sm:gap-x-5 sm:gap-y-7 lg:grid-cols-4">
         {games.map((g) => <GameCard key={g.slug} g={g} />)}
+        {children}
       </div>
     </section>
   );
 }
 
 export default function Games() {
+  preload("/fonts/LilitaOne-Regular.ttf", { as: "font", type: "font/ttf", crossOrigin: "anonymous" });
   return (
     <div className="min-h-screen overflow-x-clip">
+      <style>{GAME_FONT_CSS + KIT_CSS + HUB_CSS}</style>
       <header className="absolute inset-x-0 top-0 z-30">
         <div className="mx-auto flex max-w-[68rem] items-center justify-between px-6 py-6">
           <Link href="/">
@@ -93,27 +117,32 @@ export default function Games() {
         </div>
       </header>
 
-      <main className="px-6 pt-32 sm:pt-36">
-        <div className="mx-auto max-w-[44rem]">
-          <p className="text-center text-[12px] font-semibold uppercase tracking-[0.18em]" style={{ color: FAINT }}>
-            Free food games
+      <main className="px-4 pt-28 sm:px-6 sm:pt-36">
+        <div className="mx-auto max-w-[44rem] text-center">
+          <p className="wk-f inline-flex items-center gap-1.5 rounded-full bg-[linear-gradient(180deg,#2c58ab,#16336C)] px-3.5 py-1.5 text-[13px] tracking-[0.06em] text-[#FFE65C] shadow-[0_3px_0_#0b1a3a]">
+            <SparkleIcon size={14} />Free Food Games
           </p>
-          <h1 className="mt-5 text-balance text-center text-[clamp(34px,5.4vw,56px)] font-bold leading-[1.06] tracking-[-0.04em]">
+          <h1 className="wk-f mt-5 text-balance text-[clamp(42px,11vw,76px)] leading-[0.95] text-[#0E1F45] [text-shadow:0_5px_0_#c3d7f5]">
             Choose Your Game
           </h1>
-          <p className="mx-auto mt-5 max-w-[40ch] text-balance text-center text-[17px] leading-[1.65]" style={{ color: BODY }}>
+          <p className="mx-auto mt-5 max-w-[36ch] text-balance text-[16px] leading-[1.6] sm:text-[17px]" style={{ color: BODY }}>
             Quick food games with a new challenge every day. Can you top the scoreboard?
           </p>
+        </div>
 
-          <Section title="Multiplayer" body="Play a friend live with a room code, or pass one phone back and forth." games={GAMES.filter((g) => g.multiplayer)} />
-          <Section title="Play Solo" body="A new challenge every day, and a scoreboard to climb." games={GAMES.filter((g) => !g.multiplayer)} />
-
-          <div className="mt-5 grid gap-5">
-            <div className="flex items-center justify-center rounded-[28px] border-2 border-dashed border-[#16233B]/[0.10] px-6 py-8 text-center">
-              <p className="text-[15px] font-medium" style={{ color: FAINT }}>More games coming soon</p>
+        <div className="mx-auto max-w-[68rem]">
+          <Section title="Multiplayer" body="Play a friend live with a room code, or pass one phone back and forth."
+            icon={<PlayersIcon size={24} />} games={GAMES.filter((g) => g.multiplayer)} />
+          <Section title="Play Solo" body="A new challenge every day, and a scoreboard to climb."
+            icon={<CalendarIcon size={22} />} games={GAMES.filter((g) => !g.multiplayer)}>
+            <div className="flex min-h-[180px] flex-col items-center justify-center rounded-[24px] border-[2.5px] border-dashed border-[#16336C]/25 bg-white/40 px-4 py-8 text-center lg:col-span-3">
+              <span className="flex h-12 w-12 items-center justify-center rounded-2xl bg-[#e3edfc] text-[#3F7FD6]"><SparkleIcon size={26} /></span>
+              <p className="wk-f mt-3 text-[18px] leading-tight text-[#16336C] sm:text-[20px]">More Games Coming Soon</p>
             </div>
-          </div>
+          </Section>
+        </div>
 
+        <div className="mx-auto max-w-[44rem]">
           <div className="mt-20 text-center">
             <h2 className="text-balance text-[clamp(24px,3.4vw,32px)] font-bold leading-[1.2] tracking-[-0.03em]">
               Ever wonder why some meals leave you tired?

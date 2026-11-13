@@ -19,7 +19,10 @@ import type { RealtimeChannel } from "@supabase/supabase-js";
 import { sb } from "@/components/creators/api";
 import { appStoreLink } from "@/components/site";
 import { type Mode, type Toast, GameScreen, GameHeader, BoardArea, PrizeLogo, GameOver, PauseButton, PausedCard, ReadyCard, HelpModal, ModesHelp, ShellPopups,
-  useGameShell, fitCanvas, loadImages, dailySeed, dailyNumber, torontoDate, mulberry32, readBest, saveBest, foodPng } from "./kit";
+  useGameShell, fitCanvas, loadImages, dailySeed, dailyNumber, torontoDate, mulberry32, readBest, saveBest, foodPng, HUD_ROW, HudStat, HudTag, OverlayCard, UI, drawHintPill } from "./kit";
+import { GAME_FONT, loadGameFont } from "./gameFont";
+import { type FightArt, buildFightArt, basketSprite, paintGround, drawImpact, drawTrail } from "./art2/fightArt";
+import { layer, textStamps } from "./art2/paint";
 
 const GAME = "food-fight";
 const LAUNCH = "2026-11-08";   // Today's Challenge #1
@@ -491,6 +494,7 @@ export default function FoodFight() {
   useEffect(() => { if (!room.away) return; const t = setInterval(() => setTick(x => x + 1), 500); return () => clearInterval(t); }, [room.away]);
   const bestKey = mode === "daily" ? `foodfight-daily-${torontoDate()}` : "foodfight-endless";
   useEffect(() => { setBest(readBest(bestKey)); }, [bestKey]);
+  useEffect(() => { void loadGameFont(); }, []);   // the display face for the first-throw hint on the canvas
 
   // a shared link (?room=ABCD) joins that room straight away, or picks a saved match back up. Minimising or reloading the
   // page doesn't leave the room (the friend sees "Stepped Away"); only Leave, or leaving the game for another page, does.
@@ -769,71 +773,82 @@ export default function FoodFight() {
     const text = (s: string, x: number, y: number, size: number, color: string, weight = 700, align: CanvasTextAlign = "center") => {
       ctx.font = `${weight} ${size}px ${FONT}`; ctx.fillStyle = color; ctx.textAlign = align; ctx.fillText(s, x, y);
     };
-    function drawFort(i: number) {
-      const b = fortBox(w, i), cx = vx(FORT_X[i]) + (shake[i] > 0 ? Math.sin(shake[i] / 18) * 3 : 0), by = b.b;
-      const col = cpu || live ? (i === me ? "#3f7fd6" : "#e8505b") : i === 0 ? "#3f7fd6" : "#e8505b";
-      ctx.fillStyle = "rgba(16,27,46,0.18)"; ctx.beginPath(); ctx.ellipse(cx, by + 1, 28, 4, 0, 0, 7); ctx.fill();
-      ctx.strokeStyle = "#a8733a"; ctx.lineWidth = 4; ctx.beginPath(); ctx.arc(cx, by - 29, 14, Math.PI, 0); ctx.stroke();   // handle
-      const fx = cx + (vx(FORT_X[i]) < W / 2 ? 14 : -14);
-      ctx.strokeStyle = "#5a6b85"; ctx.lineWidth = 2; ctx.beginPath(); ctx.moveTo(fx, by - 29); ctx.lineTo(fx, by - 52); ctx.stroke();   // flag
-      ctx.fillStyle = col; ctx.beginPath(); ctx.moveTo(fx, by - 52); ctx.lineTo(fx + (vx(FORT_X[i]) < W / 2 ? 14 : -14), by - 47); ctx.lineTo(fx, by - 42); ctx.fill();
-      ctx.fillStyle = "#d9a35f"; rr(cx - 24, by - 22, 48, 22, 5); ctx.fill();
-      ctx.strokeStyle = "#a8733a"; ctx.lineWidth = 1.5; ctx.stroke();
-      ctx.beginPath(); for (const y of [by - 15, by - 8]) { ctx.moveTo(cx - 22, y); ctx.lineTo(cx + 22, y); }
-      for (let x = -16; x <= 16; x += 8) { ctx.moveTo(cx + x, by - 21); ctx.lineTo(cx + x, by - 1); }
-      ctx.stroke();
-      for (let k = 0; k < 8; k++) for (let j = 0; j < 2; j++) {   // gingham cloth on top
-        ctx.fillStyle = (k + j) % 2 ? "#fff" : col; ctx.fillRect(cx - 26 + k * 6.5, by - 30 + j * 4.5, 6.5, 4.5);
+    /** Text with a soft edge, so it reads over the sky, the hills and the soil. */
+    const stamp = textStamps();
+    const say = (s: string, x: number, y: number, size: number, color: string, weight = 700, align: CanvasTextAlign = "center", edge = "rgba(255,255,255,0.9)", ew = 3) => {
+      stamp(ctx, s, x, y, `${weight} ${size}px ${FONT}`, color, edge, ew, "", align);
+    };
+    // The still art (sky, soil, sunlight, tray chips, baskets) is painted once per screen density in ./art2/fightArt; the
+    // ground is repainted only when a throw changes it (or the view flips for the other player).
+    let art: FightArt | null = null, groundCv: HTMLCanvasElement | null = null, groundKey = "";
+    const ensureArt = () => { const k = canvas.width / W; if (!art || Math.abs(art.k - k) > 1e-6) { art = buildFightArt(k, W, H, CHIP); groundCv = null; } return art; };
+    const teamCol = (i: number) => (cpu || live ? (i === me ? "#3f7fd6" : "#e8505b") : i === 0 ? "#3f7fd6" : "#e8505b");
+    function groundLayer(A: FightArt) {
+      const g = w.ground; let sum = 0, sum0 = 0;
+      for (let x = 0; x <= W; x++) { sum += g[x] * (1 + (x % 7)); sum0 += g0[x] * (1 + (x % 5)); }
+      const key = `${viewer}|${sum.toFixed(3)}|${sum0.toFixed(3)}`;
+      if (!groundCv || key !== groundKey) {   // the whole still scene in one canvas: sky, ground, and the sunlight over both
+        const L = layer(W, H, A.k);
+        L.c.drawImage(A.sky, 0, 0, W, H);
+        paintGround(L.c, W, H, A.soil, g, g0, vx, [0, 1].map(i => ({ x: FORT_X[i], col: teamCol(i) })));
+        L.c.drawImage(A.light, 0, 0, W, H);
+        groundCv = L.cv; groundKey = key;
       }
-      // health, small, right above the basket
-      const hp = w.hp[i], bw = 46, hy = by - 64;
-      ctx.fillStyle = "rgba(255,255,255,0.85)"; rr(cx - bw / 2 - 2, hy - 2, bw + 4, 10, 5); ctx.fill();
-      ctx.fillStyle = hp > 50 ? "#2eaa6e" : hp > 25 ? "#e09a00" : "#e8505b"; rr(cx - bw / 2, hy, (bw * hp) / HP, 6, 3); ctx.fill();
-      text(`${label(i)} · ${hp}`, cx, hy - 6, 12, "#101b2e");
+      return groundCv;
+    }
+    function fortX(i: number) { return vx(FORT_X[i]) + (shake[i] > 0 ? Math.sin(shake[i] / 18) * 3 : 0); }
+    function drawFort(i: number, A: FightArt) {
+      const b = fortBox(w, i), cx = fortX(i), by = b.b;
+      ctx.drawImage(basketSprite(A, teamCol(i), vx(FORT_X[i]) < W / 2 ? 1 : -1), cx - 45, by - 62, 90, 70);
+    }
+    function drawHealth(i: number) {   // health, small, right above the basket
+      const b = fortBox(w, i), cx = fortX(i), hp = w.hp[i], bw = 46, hy = b.b - 64;
+      ctx.fillStyle = "rgba(14,31,69,0.3)"; rr(cx - bw / 2 - 2.5, hy - 0.5, bw + 5, 10, 5); ctx.fill();
+      ctx.fillStyle = "#16336C"; rr(cx - bw / 2 - 2.5, hy - 2, bw + 5, 10, 5); ctx.fill();
+      ctx.strokeStyle = "rgba(255,255,255,0.9)"; ctx.lineWidth = 1.2; ctx.stroke();
+      if (hp > 0) {
+        const [c0, c1] = hp > 50 ? ["#6ff0ad", "#22a964"] : hp > 25 ? ["#ffdc7a", "#e09a00"] : ["#ff9aa1", "#e8505b"];
+        const gr = ctx.createLinearGradient(0, hy, 0, hy + 6); gr.addColorStop(0, c0); gr.addColorStop(1, c1);
+        ctx.fillStyle = gr; rr(cx - bw / 2, hy, (bw * hp) / HP, 6, 3); ctx.fill();
+        ctx.fillStyle = "rgba(255,255,255,0.45)"; rr(cx - bw / 2 + 1.5, hy + 0.8, Math.max(0, (bw * hp) / HP - 3), 1.6, 0.8); ctx.fill();
+      }
+      say(`${label(i)} · ${hp}`, cx, hy - 6, 12, "#101b2e", 700);
+    }
+    function pillAt(x: number, top: number, s: string, strong: boolean) {   // angle and power in a little glossy pill
+      ctx.fillStyle = "rgba(14,31,69,0.32)"; rr(x - 46, top + 2.5, 92, 24, 12); ctx.fill();
+      const gr = ctx.createLinearGradient(0, top, 0, top + 24); gr.addColorStop(0, "#ffffff"); gr.addColorStop(1, "#e6eefb");
+      ctx.fillStyle = gr; rr(x - 46, top, 92, 24, 12); ctx.fill();
+      ctx.strokeStyle = strong ? "#3f7fd6" : "#e8505b"; ctx.lineWidth = 2; ctx.stroke();
+      text(s, x, top + 17, 15, "#101b2e", 800);
     }
 
     function draw(t: number) {
+      const A = ensureArt();
       ctx.save(); ctx.clearRect(0, 0, W, H);
       rr(0, 0, W, H, 22); ctx.clip();
-      const sky = ctx.createLinearGradient(0, 0, 0, H); sky.addColorStop(0, "#d6ecff"); sky.addColorStop(1, "#eef6ff");
-      ctx.fillStyle = sky; ctx.fillRect(0, 0, W, H);
-      ctx.fillStyle = "rgba(255,255,255,0.9)";
-      for (const [cx, cy, s] of [[60, 120, 1], [300, 170, 0.8], [190, 230, 0.6]]) {
-        ctx.beginPath(); ctx.arc(cx, cy, 18 * s, 0, 7); ctx.arc(cx + 22 * s, cy - 8 * s, 22 * s, 0, 7); ctx.arc(cx + 46 * s, cy, 16 * s, 0, 7); ctx.fill();
-      }
 
-      // the hills: dirt, with grass wherever nothing has been dug out
+      // the sky and the hills: soil, with grass wherever nothing has been dug out, a blanket under each basket, the late
+      // sun from the top left and a soft vignette (one canvas, repainted only when the ground changes)
       const g = w.ground;
-      ctx.beginPath(); ctx.moveTo(vx(0), H);
-      for (let x = 0; x <= W; x += 2) ctx.lineTo(vx(x), g[x]);
-      ctx.lineTo(vx(W), H); ctx.closePath();
-      const dirt = ctx.createLinearGradient(0, TOP, 0, H); dirt.addColorStop(0, "#c99560"); dirt.addColorStop(1, "#a06d3f");
-      ctx.fillStyle = dirt; ctx.fill();
-      ctx.strokeStyle = "#79c25b"; ctx.lineWidth = 8; ctx.lineCap = "round"; ctx.lineJoin = "round"; ctx.beginPath();
-      let on = false;
-      for (let x = 0; x <= W; x += 2) {
-        if (g[x] <= g0[x] + 1.5) { if (on) ctx.lineTo(vx(x), g[x] + 2); else ctx.moveTo(vx(x), g[x] + 2); on = true; } else on = false;
-      }
-      ctx.stroke();
-      ctx.strokeStyle = "#8a5a30"; ctx.lineWidth = 4; ctx.beginPath(); on = false;   // a darker rim where food dug in
-      for (let x = 0; x <= W; x += 2) {
-        if (g[x] > g0[x] + 1.5) { if (on) ctx.lineTo(vx(x), g[x] + 1); else ctx.moveTo(vx(x), g[x] + 1); on = true; } else on = false;
-      }
-      ctx.stroke();
-      for (let i = 0; i < 2; i++) drawFort(i);
+      ctx.drawImage(groundLayer(A), 0, 0, W, H);
+      for (let i = 0; i < 2; i++) drawFort(i, A);
+      for (let i = 0; i < 2; i++) drawHealth(i);
 
       // aim: the dotted line (wind not included), and the angle and power by your basket
       const aimer = local ? shooter : me, ab = fortBox(w, aimer), ax = vx(FORT_X[aimer]);
       const pill = (s: number, px: number, py: number, strong: boolean) => {   // angle and power above a basket, from a board pull
         const b = fortBox(w, s), x = vx(FORT_X[s]), ux = s === 0 ? -px : px;
         const deg = Math.round((Math.atan2(py, ux) * 180) / Math.PI), pw = Math.round((Math.hypot(px, py) / MAX_PULL) * 100);
-        ctx.fillStyle = "#fff"; rr(x - 46, b.t - 108, 92, 24, 12); ctx.fill();
-        ctx.strokeStyle = strong ? "#3f7fd6" : "#e8505b"; ctx.lineWidth = 2; ctx.stroke();
-        text(`${deg}°  ${pw}%`, x, b.t - 91, 15, "#101b2e", 800);
+        pillAt(x, b.t - 108, `${deg}°  ${pw}%`, strong);
       };
       const sling = (s: number, px: number, py: number, f: number) => {      // the food pulled back over a basket, on two bands
         const b = fortBox(w, s), x = vx(FORT_X[s]), fx = x + (viewer === 1 ? -px : px) * 0.4, fy = b.t - 8 + py * 0.4, sz = FOODS[f].r * 2.4;
-        ctx.strokeStyle = "#6b3b1f"; ctx.lineWidth = 2.5; ctx.beginPath(); ctx.moveTo(x - 13, b.t - 4); ctx.lineTo(fx, fy); ctx.lineTo(x + 13, b.t - 4); ctx.stroke();
+        ctx.lineCap = "round"; ctx.lineJoin = "round";
+        const band = () => { ctx.beginPath(); ctx.moveTo(x - 13, b.t - 4); ctx.lineTo(fx, fy); ctx.lineTo(x + 13, b.t - 4); };
+        band(); ctx.strokeStyle = "#4a2412"; ctx.lineWidth = 3.4; ctx.stroke();
+        band(); ctx.strokeStyle = "#a35a32"; ctx.lineWidth = 2; ctx.stroke();
+        band(); ctx.strokeStyle = "rgba(255,214,176,0.55)"; ctx.lineWidth = 0.6; ctx.stroke();
+        ctx.fillStyle = "#5a3418"; ctx.beginPath(); ctx.ellipse(fx, fy + sz * 0.12, sz * 0.52, sz * 0.3, 0, 0, Math.PI * 2); ctx.fill();
         if (imgs[f].complete) ctx.drawImage(imgs[f], fx - sz / 2, fy - sz / 2, sz, sz);
       };
       // the other side aiming (live friend, or the computer): their food in the sling and the pill, never the dotted line
@@ -847,43 +862,52 @@ export default function FoodFight() {
         if (Math.hypot(p.x, p.y) >= MIN_PULL) {
           const bpx = viewer === 1 ? -p.x : p.x, [pr] = makeProjs(w, aimer, bpx, p.y, food);
           const vxx = pr.vx; let x = pr.x, y = pr.y, vy = pr.vy, len = 0, i = 0;
-          ctx.fillStyle = "rgba(16,27,46,0.6)";
           while (len < f.aim && i < 400 && y < groundAt(g, x)) {
             vy += G; x += vxx; y += vy; len += Math.hypot(vxx, vy); i++;
-            if (i % 3 === 0) { ctx.globalAlpha = Math.max(0.2, 1 - len / (f.aim * 1.1)); ctx.beginPath(); ctx.arc(vx(x), y, 3.2, 0, 7); ctx.fill(); }
+            if (i % 3 === 0) {
+              const k = len / (f.aim * 1.1), r = 3.7 - 1.5 * Math.min(1, k), dx = vx(x);
+              ctx.globalAlpha = Math.max(0.2, 1 - k);
+              ctx.fillStyle = "rgba(14,31,69,0.3)"; ctx.beginPath(); ctx.arc(dx + 0.6, y + 1.2, r, 0, 7); ctx.fill();
+              ctx.fillStyle = "#ffffff"; ctx.beginPath(); ctx.arc(dx, y, r, 0, 7); ctx.fill();
+              ctx.strokeStyle = "#16336C"; ctx.lineWidth = 1.3; ctx.stroke();
+            }
           }
           ctx.globalAlpha = 1;
         }
         const deg = Math.round((Math.atan2(p.y, -p.x) * 180) / Math.PI);
-        ctx.fillStyle = "#fff"; rr(ax - 46, ab.t - 108, 92, 24, 12); ctx.fill();
-        ctx.strokeStyle = "#3f7fd6"; ctx.lineWidth = 2; ctx.stroke();
-        text(`${deg}°  ${pw}%`, ax, ab.t - 91, 15, "#101b2e", 800);
+        pillAt(ax, ab.t - 108, `${deg}°  ${pw}%`, true);
       } else if (myTurn() && started && lastAim[aimer]) {
         const la = lastAim[aimer]!;
-        text(`Last: ${la.deg}°  ${la.pow}%`, ax, ab.t - 92, 12, "#5a6b85", 600);
+        say(`Last: ${la.deg}°  ${la.pow}%`, ax, ab.t - 92, 12, "#41526e", 600);
       }
 
-      // food in the air, with a short trail; an arrow at the top when it's above the board
+      // food in the air, with a streak behind it and its shadow on the ground; an arrow at the top when it's above the board
       w.projs.forEach((p, k) => {
         if (!p.alive) return;
-        const f = FOODS[p.f], s = f.r * 2.4;
-        ctx.fillStyle = "rgba(16,27,46,0.18)";
-        trails[k]?.forEach((q, j) => { if (j % 2 === 0) { ctx.beginPath(); ctx.arc(vx(q.x), q.y, 1.6, 0, 7); ctx.fill(); } });
+        const f = FOODS[p.f], s = f.r * 2.4, px = vx(p.x), gy = groundAt(g, p.x);
+        if (p.y < gy && p.x >= 0 && p.x <= W) {
+          const a = Math.max(0, 1 - (gy - p.y) / 240) * 0.32, sw = s * (0.5 + 0.5 * Math.max(0, 1 - (gy - p.y) / 240));
+          if (a > 0.01) { ctx.fillStyle = `rgba(30,18,6,${a})`; ctx.beginPath(); ctx.ellipse(px + 2, gy + 1, sw * 0.6, sw * 0.16, 0, 0, Math.PI * 2); ctx.fill(); }
+        }
+        const tr = trails[k]; if (tr && tr.length > 1) drawTrail(ctx, tr.map(q => ({ x: vx(q.x), y: q.y })), f.color);
         if (p.y < -s / 2) {
-          ctx.fillStyle = "#3f7fd6"; ctx.beginPath(); ctx.moveTo(vx(p.x), 4); ctx.lineTo(vx(p.x) - 7, 16); ctx.lineTo(vx(p.x) + 7, 16); ctx.fill();
+          const ex = vx(p.x);
+          ctx.fillStyle = "rgba(14,31,69,0.3)"; ctx.beginPath(); ctx.moveTo(ex, 6); ctx.lineTo(ex - 8.5, 19); ctx.lineTo(ex + 8.5, 19); ctx.closePath(); ctx.fill();
+          ctx.fillStyle = "#3f7fd6"; ctx.beginPath(); ctx.moveTo(ex, 4); ctx.lineTo(ex - 8, 16); ctx.lineTo(ex + 8, 16); ctx.closePath(); ctx.fill();
+          ctx.strokeStyle = "#fff"; ctx.lineWidth = 1.6; ctx.lineJoin = "round"; ctx.stroke();
         } else {
-          ctx.save(); ctx.translate(vx(p.x), p.y); ctx.rotate(p.age * 0.15 * (viewer === 1 ? -1 : 1));
+          ctx.save(); ctx.translate(px, p.y); ctx.rotate(p.age * 0.15 * (viewer === 1 ? -1 : 1));
           if (imgs[p.f].complete) ctx.drawImage(imgs[p.f], -s / 2, -s / 2, s, s);
           ctx.restore();
         }
       });
-      for (const p of poofs) {
-        const k = p.age / 500; ctx.globalAlpha = 1 - k; ctx.fillStyle = p.color;
-        for (let i = 0; i < 8; i++) { const a = (i / 8) * Math.PI * 2, d = 6 + p.r * 0.8 * k; ctx.beginPath(); ctx.arc(vx(p.x) + Math.cos(a) * d, p.y - Math.abs(Math.sin(a)) * d, 4 * (1 - k) + 1.5, 0, 7); ctx.fill(); }
-      }
+      for (const p of poofs) drawImpact(ctx, vx(p.x), p.y, Math.min(1, p.age / 500), p.color, p.r);
       ctx.globalAlpha = 1;
 
-      // top: wind, whose turn, and the turn clock in a live match
+      // top: wind on a glass plate, whose turn, and the turn clock in a live match
+      ctx.fillStyle = "rgba(14,31,69,0.12)"; rr(W / 2 - 62, 8, 124, 42, 14); ctx.fill();
+      ctx.fillStyle = "rgba(255,255,255,0.62)"; rr(W / 2 - 62, 6, 124, 42, 14); ctx.fill();
+      ctx.strokeStyle = "rgba(255,255,255,0.95)"; ctx.lineWidth = 1.2; ctx.stroke();
       text("WIND", W / 2, 20, 10, "#5a6b85", 700);
       const wd = viewer === 1 ? -w.wind : w.wind, ws = Math.round(Math.abs(w.wind) * 10);
       if (ws === 0) text("Calm", W / 2, 40, 14, "#3f7fd6", 700);
@@ -898,52 +922,51 @@ export default function FoodFight() {
         const aiming = !local && shooter !== me && seen.on && Math.hypot(seen.tx, seen.ty) >= MIN_PULL && (phase === "aim" || phase === "think");
         const whose = aiming ? `${pnames[shooter]} Is Aiming...` : cpu ? (shooter === 0 ? "Your Turn" : "Computer's Turn") : live ? (shooter === me ? "Your Turn" : `${pnames[shooter]}'s Turn`) : `${pnames[shooter]}'s Turn`;
         const left = Math.max(0, Math.ceil(turnLeft / 1000));
-        text(live && phase === "aim" ? `${whose} · ${left}s` : whose, W / 2, 66, 15, shooter === me || local ? "#101b2e" : "#5a6b85", 800);
+        say(live && phase === "aim" ? `${whose} · ${left}s` : whose, W / 2, 68, 15, shooter === me || local ? "#101b2e" : "#5a6b85", 800, "center", "rgba(255,255,255,0.92)", 3.6);
         if (live && phase === "aim") {
-          ctx.fillStyle = "rgba(16,27,46,0.1)"; rr(W / 2 - 60, 74, 120, 5, 2.5); ctx.fill();
-          ctx.fillStyle = left <= 5 ? "#e8505b" : "#3f7fd6"; rr(W / 2 - 60, 74, (120 * Math.max(0, turnLeft)) / TURN_MS, 5, 2.5); ctx.fill();
-          if (turnLeft <= 0 && shooter !== me) text(`Waiting For ${pnames[shooter]}...`, W / 2, 96, 12, "#5a6b85", 600);
+          ctx.fillStyle = "rgba(255,255,255,0.75)"; rr(W / 2 - 61.5, 74.5, 123, 8, 4); ctx.fill();
+          ctx.fillStyle = "rgba(16,27,46,0.12)"; rr(W / 2 - 60, 76, 120, 5, 2.5); ctx.fill();
+          ctx.fillStyle = left <= 5 ? "#e8505b" : "#3f7fd6"; rr(W / 2 - 60, 76, (120 * Math.max(0, turnLeft)) / TURN_MS, 5, 2.5); ctx.fill();
+          if (turnLeft <= 0 && shooter !== me) say(`Waiting For ${pnames[shooter]}...`, W / 2, 98, 12, "#41526e", 600);
         }
       }
       if (cpu && roundAge < 1600 && started && phase !== "over") {
         ctx.globalAlpha = Math.min(1, (1600 - roundAge) / 400);
-        text(mode === "daily" ? `Round ${round} Of ${TODAY_ROUNDS}` : `Round ${round}`, W / 2, 132, 26, "#101b2e", 800);
+        stamp(ctx, mode === "daily" ? `Round ${round} Of ${TODAY_ROUNDS}` : `Round ${round}`, W / 2, 134, `30px ${GAME_FONT}`, "#0E1F45", "#ffffff", 6, "rgba(14,31,69,0.28)");
         ctx.globalAlpha = 1;
       }
 
       // the food tray, bottom left, and what the chosen food does
-      const mine = myTurn() && started, owner = local ? shooter : me;
-      ctx.globalAlpha = mine ? 1 : 0.45;
+      const mine = myTurn() && started, owner = local ? shooter : me, CS = (CHIP + 8) * 2;
       FOODS.forEach((f, i) => {
-        const x = TRAY[i], none = i === 1 && w.melons[owner] <= 0;
+        const x = TRAY[i], none = i === 1 && w.melons[owner] <= 0, on = i === food;
         ctx.globalAlpha = (mine ? 1 : 0.45) * (none ? 0.35 : 1);
-        ctx.fillStyle = "#fff"; ctx.beginPath(); ctx.arc(x, TRAY_Y, CHIP, 0, 7); ctx.fill();
-        ctx.strokeStyle = i === food ? "#3f7fd6" : "rgba(16,27,46,0.15)"; ctx.lineWidth = i === food ? 3.5 : 1.5; ctx.stroke();
+        if (on) { ctx.fillStyle = "rgba(120,180,255,0.35)"; ctx.beginPath(); ctx.arc(x, TRAY_Y, CHIP + 6, 0, 7); ctx.fill(); }
+        ctx.drawImage(A.chip, x - CS / 2, TRAY_Y - CS / 2, CS, CS);
+        if (on) { ctx.strokeStyle = "#3f7fd6"; ctx.lineWidth = 3.5; ctx.beginPath(); ctx.arc(x, TRAY_Y, CHIP, 0, 7); ctx.stroke(); ctx.strokeStyle = "rgba(255,255,255,0.9)"; ctx.lineWidth = 1; ctx.beginPath(); ctx.arc(x, TRAY_Y, CHIP + 2.2, 0, 7); ctx.stroke(); }
         if (imgs[i].complete) ctx.drawImage(imgs[i], x - 14, TRAY_Y - 14, 28, 28);
         if (i === 1) {
-          ctx.fillStyle = none ? "#9aa6b8" : "#e8505b"; ctx.beginPath(); ctx.arc(x + 15, TRAY_Y - 15, 8, 0, 7); ctx.fill();
+          ctx.fillStyle = "rgba(60,10,20,0.35)"; ctx.beginPath(); ctx.arc(x + 15.5, TRAY_Y - 14, 8.5, 0, 7); ctx.fill();
+          const bg = ctx.createLinearGradient(0, TRAY_Y - 23, 0, TRAY_Y - 7); bg.addColorStop(0, none ? "#b8c2d0" : "#ff7c84"); bg.addColorStop(1, none ? "#8d98a8" : "#d63b47");
+          ctx.fillStyle = bg; ctx.beginPath(); ctx.arc(x + 15, TRAY_Y - 15, 8, 0, 7); ctx.fill(); ctx.strokeStyle = "#fff"; ctx.lineWidth = 1.4; ctx.stroke();
           text(String(w.melons[owner]), x + 15, TRAY_Y - 11, 11, "#fff", 800);
         }
       });
       ctx.globalAlpha = mine ? 1 : 0.6;
-      text(FOODS[food].name, 152, TRAY_Y - 3, 13, "#fff", 800, "left");
-      text(FOODS[food].tip, 152, TRAY_Y + 14, 12, "rgba(255,255,255,0.9)", 600, "left");
+      say(FOODS[food].name, 152, TRAY_Y - 3, 13, "#fff", 800, "left", "rgba(40,20,6,0.55)", 3);
+      say(FOODS[food].tip, 152, TRAY_Y + 14, 12, "rgba(255,255,255,0.92)", 600, "left", "rgba(40,20,6,0.55)", 3);
       ctx.globalAlpha = 1;
-      if (mine && !drag && w.shots[owner] >= SHOT_CAP - 3 && w.shots[owner] < SHOT_CAP) text(`${SHOT_CAP - w.shots[owner]} Throws Left`, W - 12, TRAY_Y + 14, 12, "#fff", 700, "right");
+      if (mine && !drag && w.shots[owner] >= SHOT_CAP - 3 && w.shots[owner] < SHOT_CAP) say(`${SHOT_CAP - w.shots[owner]} Throws Left`, W - 12, TRAY_Y + 14, 12, "#fff", 700, "right", "rgba(40,20,6,0.55)", 3);
 
       // the first throw: show where to drag
       if (mine && !drag && w.shots[owner] === 0 && thrown.every(n => n === 0) && (!cpu || round === 1)) {
-        ctx.globalAlpha = 0.6 + 0.25 * Math.sin(t / 300);
-        ctx.strokeStyle = "#fff"; ctx.setLineDash([8, 7]); ctx.lineWidth = 2; rr(HINT.x, HINT.y, HINT.w, HINT.h, 16); ctx.stroke(); ctx.setLineDash([]);
-        text("Drag Back Anywhere Here", HINT.x + HINT.w / 2, HINT.y + 28, 15, "#fff", 800);
-        text("Then Let Go To Throw", HINT.x + HINT.w / 2, HINT.y + 48, 13, "#fff", 600);
-        ctx.globalAlpha = 1;
+        drawHintPill(ctx, HINT.x + HINT.w / 2, HINT.y + 14, "Drag Back To Throw", t, 206);
       }
 
       for (const f of floats) {
         const life = f.big ? 2200 : 1100, a = 1 - f.age / life;
         ctx.globalAlpha = Math.max(0, Math.min(1, a * 1.6));
-        text(f.text, Math.max(50, Math.min(W - 50, vx(f.x))), f.y - (f.big ? 0 : f.age * 0.03), f.big ? 24 : 16, f.color, 800);
+        stamp(ctx, f.text, Math.max(50, Math.min(W - 50, vx(f.x))), f.y - (f.big ? 0 : f.age * 0.03), `${f.big ? 26 : 19}px ${GAME_FONT}`, f.color, "#ffffff", f.big ? 5 : 4.2, "rgba(14,31,69,0.25)");
       }
       ctx.globalAlpha = 1; ctx.restore();
     }
@@ -994,19 +1017,17 @@ export default function FoodFight() {
     <GameScreen>
       <GameHeader title="Food Fight" mode={mode} onMode={m => { toCpu(); setMode(m); }} onBoard={() => shell.setBoardOpen(true)} onHelp={shell.help.show} />
 
-      <div className="mt-2 flex items-center justify-between">
+      <div className={HUD_ROW}>
         {isCpu ? (<>
-          <div><div className="text-[10px] uppercase tracking-wide text-[#5a6b85]">Score</div><div className="text-2xl font-bold leading-none tabular-nums">{hud.score.toLocaleString()}</div></div>
-          <div className="rounded-full bg-white/80 px-2.5 py-0.5 text-xs font-bold text-[#3f7fd6]">
-            Round {hud.round}{mode === "daily" ? ` of ${TODAY_ROUNDS}` : ""} · {hud.won}-{hud.lost}
-          </div>
+          <HudStat label="Score" value={hud.score.toLocaleString()} />
+          <HudTag light>Round {hud.round}{mode === "daily" ? ` Of ${TODAY_ROUNDS}` : ""} · {hud.won}-{hud.lost}</HudTag>
         </>) : (<>
-          <div className="min-w-0"><div className="truncate text-[10px] uppercase tracking-wide text-[#5a6b85]">{isLive ? "You" : pn[0]}</div><div className="text-2xl font-bold leading-none tabular-nums">{wins[isLive ? me : 0]}</div></div>
-          <div className="rounded-full bg-white/80 px-2.5 py-0.5 text-xs font-bold text-[#3f7fd6]">{play.kind === "live" ? `Live · Room ${play.code}` : "Same Phone"}</div>
+          <HudStat label={isLive ? "You" : pn[0]} value={wins[isLive ? me : 0]} tone="blue" />
+          <HudTag light>{play.kind === "live" ? `Live · Room ${play.code}` : "Same Phone"}</HudTag>
         </>)}
-        <div className="flex items-center gap-2">
-          {isCpu ? <div className="text-right"><div className="text-[10px] uppercase tracking-wide text-[#5a6b85]">Best</div><div className="text-lg font-semibold leading-none tabular-nums">{best.toLocaleString()}</div></div>
-            : <div className="min-w-0 text-right"><div className="max-w-[110px] truncate text-[10px] uppercase tracking-wide text-[#5a6b85]">{isLive ? friend : pn[1]}</div><div className="text-2xl font-bold leading-none tabular-nums">{wins[isLive ? 1 - me : 1]}</div></div>}
+        <div className="flex shrink-0 items-center gap-1.5">
+          {isCpu ? <HudStat label="Best" value={best.toLocaleString()} align="right" />
+            : <HudStat label={isLive ? friend : pn[1]} value={wins[isLive ? 1 - me : 1]} align="right" tone="red" />}
           <PauseButton shell={shell} active={playing} />
         </div>
       </div>
@@ -1017,72 +1038,72 @@ export default function FoodFight() {
         <PausedCard shell={shell} active={playing} />
 
         {isCpu && !started && !over && !menu && !rui && (
-          <Card>
-            <div className="text-lg font-bold">{mode === "daily" ? `Today's Challenge #${n}` : "Free Play"}</div>
-            <p className="mt-1 text-sm text-[#5a6b85]">{mode === "daily" ? "Best of 3 rounds against the computer." : "Win round after round against the computer."}</p>
-            <button onClick={() => startRef.current()} className="mt-4 w-full rounded-full bg-[#3f7fd6] py-3 font-semibold text-white">Play The Computer</button>
-            <div className="mt-2 flex gap-2">
-              <button onClick={() => setMenu("friend")} className="flex-1 rounded-full bg-[#e3effe] py-3 text-sm font-semibold text-[#3f7fd6]">Play A Friend</button>
-              <button onClick={() => setMenu("local")} className="flex-1 rounded-full bg-[#e3effe] py-3 text-sm font-semibold text-[#3f7fd6]">Same Phone</button>
+          <OverlayCard soft title={mode === "daily" ? `Today's Challenge #${n}` : "Free Play"} max="max-w-[300px]">
+            <div className="wk-f text-[32px] leading-none text-[#0E1F45] [text-shadow:0_3px_0_#d6e4fa]">Food Fight</div>
+            <p className="mt-2 text-sm text-[#5a6b85]">{mode === "daily" ? "Best of 3 rounds against the computer." : "Win round after round against the computer."}</p>
+            <button onClick={() => startRef.current()} className={`${UI.go} mt-4 h-[54px] w-full text-[21px]`}>Play The Computer</button>
+            <div className="mt-3 flex gap-2.5">
+              <button onClick={() => setMenu("friend")} className={`${UI.btn2} h-[46px] flex-1 text-[16px]`}>Play A Friend</button>
+              <button onClick={() => setMenu("local")} className={`${UI.btn2} h-[46px] flex-1 text-[16px]`}>Same Phone</button>
             </div>
-          </Card>
+          </OverlayCard>
         )}
 
         {menu === "friend" && !rui && (
           <Card>
-            <div className="text-xl font-bold">Play A Friend</div>
+            <div className="wk-f text-[25px] leading-tight text-[#0E1F45]">Play A Friend</div>
             <p className="mt-1 text-sm text-[#5a6b85]">Play live on two phones. Make a room and send your friend the link.</p>
-            <button onClick={openRoom} className="mt-4 w-full rounded-full bg-[#3f7fd6] py-3 font-semibold text-white">Make A Room</button>
-            <div className="mt-4 text-xs font-semibold uppercase tracking-wide text-[#5a6b85]">Got A Code?</div>
+            <button onClick={openRoom} className="mt-4 w-full wk-btn wk-blue h-[50px] text-[19px]">Make A Room</button>
+            <div className="wk-f mt-4 text-[14px] tracking-[0.03em] text-[#16336C]">Got A Code?</div>
             <div className="mt-1 flex gap-2">
               <input value={code} onChange={e => setCode(e.target.value.toUpperCase().replace(/[^A-Z]/g, "").slice(0, 4))} placeholder="ABCD" autoCapitalize="characters" autoComplete="off" spellCheck={false}
                 onKeyDown={e => { if (e.key === "Enter") joinRoom(); }}
-                className="w-0 min-w-0 flex-1 rounded-xl border border-[#d6e2f5] px-3 py-2.5 text-center font-mono text-lg font-bold tracking-[0.3em] outline-none focus:border-[#3f7fd6]" />
-              <button onClick={joinRoom} disabled={code.length !== 4} className="rounded-full bg-[#e3effe] px-5 font-semibold text-[#3f7fd6] disabled:opacity-50">Join</button>
+                className="wk-input wk-f w-0 min-w-0 flex-1 px-3 py-2 text-center text-[22px] tracking-[0.3em]" />
+              <button onClick={joinRoom} disabled={code.length !== 4} className="wk-btn wk-light px-5 text-[18px]">Join</button>
             </div>
-            <button onClick={() => setMenu(null)} className="mt-3 w-full py-2 text-sm font-semibold text-[#5a6b85]">Back</button>
+            <button onClick={() => setMenu(null)} className="mt-3 w-full py-2 wk-link text-[15px]">Back</button>
           </Card>
         )}
 
         {menu === "local" && (
           <Card>
-            <div className="text-xl font-bold">Same Phone</div>
+            <div className="wk-f text-[25px] leading-tight text-[#0E1F45]">Same Phone</div>
             <p className="mt-1 text-sm text-[#5a6b85]">Two players, one phone. Pass it over after each throw.</p>
             {[0, 1].map(i => (
               <input key={i} value={names[i]} maxLength={12} placeholder={`Player ${i + 1}`} autoComplete="off"
                 onChange={e => setNames(v => v.map((x, j) => (j === i ? e.target.value : x)))}
-                className="mt-3 w-full rounded-xl border border-[#d6e2f5] px-3 py-2.5 text-base outline-none focus:border-[#3f7fd6]" />
+                className="wk-input mt-3 w-full px-3 py-2.5 text-base" />
             ))}
-            <button onClick={startLocal} className="mt-4 w-full rounded-full bg-[#3f7fd6] py-3 font-semibold text-white">Start</button>
-            <button onClick={() => setMenu(null)} className="mt-2 w-full py-2 text-sm font-semibold text-[#5a6b85]">Back</button>
+            <button onClick={startLocal} className="mt-4 w-full wk-btn wk-blue h-[50px] text-[19px]">Start</button>
+            <button onClick={() => setMenu(null)} className="mt-2 w-full py-2 wk-link text-[15px]">Back</button>
           </Card>
         )}
 
         {offer && !rui && !isLive && (
           <Card>
-            <div className="text-xl font-bold">Rejoin Your Game</div>
+            <div className="wk-f text-[25px] leading-tight text-[#0E1F45]">Rejoin Your Game</div>
             <p className="mt-1 text-sm text-[#5a6b85]">You were in the middle of a match in room {offer.saved.code}.</p>
-            <button onClick={() => rejoinNow(offer.saved, offer.live)} className="mt-4 w-full rounded-full bg-[#3f7fd6] py-3 font-semibold text-white">Rejoin</button>
-            <button onClick={() => { room.forget(); try { localStorage.removeItem(LIVE_KEY); } catch {} setOffer(null); }} className="mt-2 w-full py-2 text-sm font-semibold text-[#5a6b85]">No Thanks</button>
+            <button onClick={() => rejoinNow(offer.saved, offer.live)} className="mt-4 w-full wk-btn wk-blue h-[50px] text-[19px]">Rejoin</button>
+            <button onClick={() => { room.forget(); try { localStorage.removeItem(LIVE_KEY); } catch {} setOffer(null); }} className="mt-2 w-full py-2 wk-link text-[15px]">No Thanks</button>
           </Card>
         )}
 
         {isLive && room.away && !rui && liveMine && !matchEnd && (
           <div className="pointer-events-none absolute inset-x-0 top-[88px] z-10 flex justify-center">
-            <div className="rounded-full bg-white/95 px-4 py-2 text-sm font-semibold text-[#3f7fd6] shadow-md">{friend} Stepped Away... {Math.max(0, Math.ceil((room.away - Date.now()) / 1000) + tick * 0)}s · Your Throw</div>
+            <div className="wk-tag wk-tag-light px-4 py-2 text-[15px]">{friend} Stepped Away... {Math.max(0, Math.ceil((room.away - Date.now()) / 1000) + tick * 0)}s · Your Throw</div>
           </div>
         )}
         {isLive && room.away && !rui && (!liveMine || !!matchEnd) && (
           <Card>
-            <div className="text-xl font-bold">{friend} Stepped Away...</div>
-            <div className="mt-2 text-4xl font-bold tabular-nums text-[#3f7fd6]">{Math.max(0, Math.ceil((room.away - Date.now()) / 1000) + tick * 0)}s</div>
+            <div className="wk-f text-[25px] leading-tight text-[#0E1F45]">{friend} Stepped Away...</div>
+            <div className="wk-f mt-2 text-[46px] leading-none tabular-nums text-[#3f7fd6]">{Math.max(0, Math.ceil((room.away - Date.now()) / 1000) + tick * 0)}s</div>
             <p className="mt-2 text-sm text-[#5a6b85]">The game is paused. It picks up right where you left off when they&apos;re back.</p>
-            <button onClick={toCpu} className="mt-3 w-full py-2 text-sm font-semibold text-[#5a6b85]">Leave</button>
+            <button onClick={toCpu} className="mt-3 w-full py-2 wk-link text-[15px]">Leave</button>
           </Card>
         )}
         {isLive && room.reconnecting && !room.away && !rui && (
           <div className="pointer-events-none absolute inset-x-0 top-3 z-10 flex justify-center">
-            <div className="rounded-full bg-white/95 px-4 py-2 text-sm font-semibold text-[#3f7fd6] shadow-md">Reconnecting...</div>
+            <div className="wk-tag wk-tag-light px-4 py-2 text-[15px]">Reconnecting...</div>
           </div>
         )}
 
@@ -1099,74 +1120,76 @@ export default function FoodFight() {
         {rui && rui.s !== "lobby" && (
           <Card>
             {rui.s === "waiting" && (<>
-              <div className="text-sm font-semibold text-[#5a6b85]">Your Room Code</div>
-              <div className="mt-1 font-mono text-4xl font-bold tracking-[0.2em]">{rui.code}</div>
+              <div className="wk-f text-[15px] tracking-[0.03em] text-[#3F7FD6]">Your Room Code</div>
+              <div className="wk-f mt-1 text-[46px] leading-none tracking-[0.14em] text-[#0E1F45]">{rui.code}</div>
               <p className="mt-2 text-sm text-[#5a6b85]">Send your friend the link. The game starts as soon as they join.</p>
-              <button onClick={() => shareRoom(rui.code)} className="mt-4 w-full rounded-full bg-[#3f7fd6] py-3 font-semibold text-white">{shell.copied ? "Link Copied!" : "Share Link"}</button>
-              <p className="mt-3 text-sm font-semibold text-[#3f7fd6]">Waiting For Your Friend...</p>
-              <button onClick={toCpu} className="mt-1 w-full py-2 text-sm font-semibold text-[#5a6b85]">Cancel</button>
+              <button onClick={() => shareRoom(rui.code)} className="mt-4 w-full wk-btn wk-blue h-[50px] text-[19px]">{shell.copied ? "Link Copied!" : "Share Link"}</button>
+              <p className="wk-f mt-3 text-[16px] text-[#3f7fd6]">Waiting For Your Friend...</p>
+              <button onClick={toCpu} className="mt-1 w-full py-2 wk-link text-[15px]">Cancel</button>
             </>)}
             {rui.s === "joining" && (<>
-              <div className="text-xl font-bold">Joining Room {rui.code}</div>
-              <p className="mt-2 text-sm font-semibold text-[#3f7fd6]">Connecting...</p>
-              <button onClick={toCpu} className="mt-3 w-full py-2 text-sm font-semibold text-[#5a6b85]">Cancel</button>
+              <div className="wk-f text-[25px] leading-tight text-[#0E1F45]">Joining Room {rui.code}</div>
+              <p className="wk-f mt-2 text-[16px] text-[#3f7fd6]">Connecting...</p>
+              <button onClick={toCpu} className="mt-3 w-full py-2 wk-link text-[15px]">Cancel</button>
             </>)}
             {(rui.s === "full" || rui.s === "empty" || rui.s === "error") && (<>
-              <div className="text-xl font-bold">{rui.s === "full" ? "Room Full" : rui.s === "empty" ? "No One's Here" : "Can't Connect"}</div>
+              <div className="wk-f text-[25px] leading-tight text-[#0E1F45]">{rui.s === "full" ? "Room Full" : rui.s === "empty" ? "No One's Here" : "Can't Connect"}</div>
               <p className="mt-2 text-sm text-[#5a6b85]">{rui.s === "full" ? `Room ${rui.code} already has two players.` : rui.s === "empty" ? `Nobody is in room ${rui.code} right now. Ask your friend to make a room and send you the link.` : "We couldn't reach the game. Check your connection and try again."}</p>
-              <button onClick={() => { room.dismiss(); setMenu("friend"); }} className="mt-4 w-full rounded-full bg-[#3f7fd6] py-3 font-semibold text-white">Back</button>
-              <button onClick={toCpu} className="mt-2 w-full py-2 text-sm font-semibold text-[#5a6b85]">Play The Computer</button>
+              <button onClick={() => { room.dismiss(); setMenu("friend"); }} className="mt-4 w-full wk-btn wk-blue h-[50px] text-[19px]">Back</button>
+              <button onClick={toCpu} className="mt-2 w-full py-2 wk-link text-[15px]">Play The Computer</button>
             </>)}
             {rui.s === "left" && (<>
-              <div className="text-xl font-bold">Your Friend Left</div>
+              <div className="wk-f text-[25px] leading-tight text-[#0E1F45]">Your Friend Left</div>
               <p className="mt-2 text-sm text-[#5a6b85]">That match is over.</p>
-              <button onClick={openRoom} className="mt-4 w-full rounded-full bg-[#3f7fd6] py-3 font-semibold text-white">Make A New Room</button>
-              <button onClick={toCpu} className="mt-2 w-full rounded-full bg-[#e3effe] py-3 font-semibold text-[#3f7fd6]">Play The Computer</button>
+              <button onClick={openRoom} className="mt-4 w-full wk-btn wk-blue h-[50px] text-[19px]">Make A New Room</button>
+              <button onClick={toCpu} className="mt-2 w-full wk-btn wk-light h-[48px] text-[18px]">Play The Computer</button>
             </>)}
           </Card>
         )}
 
         {isLocal && passTo && !matchEnd && !shell.held && (
-          <button onClick={() => passRef.current()} className="absolute inset-0 z-10 flex items-center justify-center rounded-[22px] bg-[#101b2e]/45 p-6">
-            <span className="w-full max-w-[260px] rounded-3xl bg-white px-6 py-5 text-center shadow-2xl">
-              <span className="block text-sm font-semibold text-[#5a6b85]">Pass To {passTo}</span>
-              <span className="mt-0.5 block text-2xl font-bold">{passTo}&apos;s Turn</span>
-              <span className="mt-3 block rounded-full bg-[#3f7fd6] py-3 font-semibold text-white">Tap To Start</span>
+          <button onClick={() => passRef.current()} className="wk-backdrop absolute inset-0 z-10 flex items-center justify-center rounded-[22px] p-6">
+            <span className="wk-panel wk-pop flex w-full max-w-[270px] flex-col overflow-hidden text-center">
+              <span className="wk-plate block px-4 py-2 text-[17px] leading-tight">Pass To {passTo}</span>
+              <span className="flex flex-col items-center px-5 pb-5 pt-3.5">
+                <span className="wk-f block text-[30px] leading-tight text-[#0E1F45]">{passTo}&apos;s Turn</span>
+                <span className="wk-btn wk-go wk-pulse mt-4 h-[54px] w-full text-[22px]">Tap To Start</span>
+              </span>
             </span>
           </button>
         )}
 
         {matchEnd && !rui && (isLive || isLocal) && (
           <Card>
-            <div className="text-sm font-semibold text-[#5a6b85]">{play.kind === "live" ? `Room ${play.code}` : "Same Phone"}</div>
-            <div className="mt-1 text-2xl font-bold">
+            <div className="wk-f text-[15px] tracking-[0.03em] text-[#3F7FD6]">{play.kind === "live" ? `Room ${play.code}` : "Same Phone"}</div>
+            <div className="wk-f mt-1 text-[30px] leading-tight text-[#0E1F45]">
               {matchEnd.winner < 0 ? "It's A Tie" : isLive ? (matchEnd.winner === me ? "You Won! 🎉" : `${friend} Won`) : `${pn[matchEnd.winner]} Wins! 🎉`}
             </div>
             <div className="mt-1 text-sm text-[#5a6b85]">
               {isLive ? `You ${wins[me]} · ${friend} ${wins[1 - me]}` : `${pn[0]} ${wins[0]} · ${pn[1]} ${wins[1]}`}
             </div>
-            {isLive && room.again.them && !room.again.me && <div className="mt-2 text-sm font-semibold text-[#2eaa6e]">{friend} Wants A Rematch!</div>}
-            <button onClick={isLive ? room.rematch : localRematch} disabled={isLive && room.again.me} className="mt-4 w-full rounded-full bg-[#3f7fd6] py-3 font-semibold text-white disabled:opacity-70">
+            {isLive && room.again.them && !room.again.me && <div className="wk-f mt-2 text-[16px] text-[#22A964]">{friend} Wants A Rematch!</div>}
+            <button onClick={isLive ? room.rematch : localRematch} disabled={isLive && room.again.me} className="mt-4 w-full wk-btn wk-blue h-[50px] text-[19px] disabled:opacity-70">
               {isLive && room.again.me ? `Waiting For ${friend}...` : "Rematch"}
             </button>
-            <button onClick={toCpu} className="mt-2 w-full rounded-full bg-[#e3effe] py-3 font-semibold text-[#3f7fd6]">{isLive ? "Leave" : "Done"}</button>
-            <a href={appStoreLink(GAME)} className="mt-3 inline-block text-xs font-semibold text-[#5a6b85] underline">Get WhatYouAte For iPhone</a>
+            <button onClick={toCpu} className="mt-2 w-full wk-btn wk-light h-[48px] text-[18px]">{isLive ? "Leave" : "Done"}</button>
+            <a href={appStoreLink(GAME)} className="wk-link mt-3 inline-block text-[14px] underline">Get WhatYouAte For iPhone</a>
           </Card>
         )}
 
         {roundCard && !over && (
           <Card>
-            <div className="text-sm font-semibold text-[#5a6b85]">Round {roundCard.round} {roundCard.won ? "Won" : "Lost"}</div>
-            <div className="mt-0.5 text-3xl font-bold leading-tight tabular-nums">+{roundCard.points.toLocaleString()}</div>
+            <div className="wk-f text-[24px] leading-tight text-[#0E1F45]">Round {roundCard.round} {roundCard.won ? "Won" : "Lost"}</div>
+            <div className="wk-f mt-1 text-[44px] leading-none tabular-nums text-[#0E1F45] [text-shadow:0_4px_0_#cfdff8]">+{roundCard.points.toLocaleString()}</div>
             <div className="text-sm text-[#5a6b85]">{roundCard.tie ? "Tied on health, so you take it" : roundCard.won ? "Nice Throwing!" : "The computer took this one"}</div>
-            <button onClick={() => nextRef.current()} className="mt-3 w-full rounded-full bg-[#3f7fd6] py-3 font-semibold text-white">Next Round</button>
+            <button onClick={() => nextRef.current()} className={`${UI.go} mt-4 h-[52px] w-full text-[21px]`}>Next Round</button>
           </Card>
         )}
 
         {over && isCpu && !menu && !rui && <GameOver label={mode === "daily" ? `Today's Challenge #${n}` : "Free Play"} headline={headline} score={hud.score} best={best} mode={mode}
           posted={shell.scores.posted} joined={!!shell.player} campaign={GAME} copied={shell.copied} fact={toast}
           pitch="Good aim takes practice. So do good habits. WhatYouAte helps with the second one."
-          extra={<button onClick={() => setMenu("friend")} className="mt-2 text-sm font-semibold text-[#3f7fd6]">Play A Friend Instead →</button>}
+          extra={<button onClick={() => setMenu("friend")} className="wk-link mt-3 text-[16px] text-[#3F7FD6]">Play A Friend Instead</button>}
           onBoard={() => shell.setBoardOpen(true)} onJoin={() => shell.setJoinOpen(true)} onAgain={() => setRun(r => r + 1)} onShare={share} />}
       </BoardArea>
 
@@ -1196,9 +1219,5 @@ export default function FoodFight() {
 }
 
 function Card({ children }: { children: ReactNode }) {
-  return (
-    <div className="absolute inset-0 z-10 flex items-center justify-center rounded-[22px] bg-[#101b2e]/35 p-5">
-      <div className="w-full max-w-[290px] rounded-3xl bg-white p-5 text-center shadow-2xl">{children}</div>
-    </div>
-  );
+  return <OverlayCard max="max-w-[300px]">{children}</OverlayCard>;
 }

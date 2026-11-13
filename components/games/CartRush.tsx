@@ -12,8 +12,11 @@
 // Everything around the board comes from ./kit.
 import { useEffect, useRef, useState } from "react";
 import { type Mode, type Toast, GameScreen, GameHeader, BoardArea, PrizeLogo, GameOver, PauseButton, PausedCard, HelpModal, ModesHelp, ShellPopups,
-  useGameShell, fitCanvas, loadImages, dailySeed, dailyNumber, torontoDate, mulberry32, readBest, saveBest, foodPng } from "./kit";
+  useGameShell, fitCanvas, loadImages, dailySeed, dailyNumber, torontoDate, mulberry32, readBest, saveBest, foodPng, HUD_ROW, HudStat, HudTag, StartCard } from "./kit";
 import { useDuel } from "./duels";
+import { GAME_FONT, loadGameFont } from "./gameFont";
+import { type CartArt, buildCartArt, canStripes, heart, FLOOR_P, SHELF_P } from "./art2/cartArt";
+import { layer, textStamps, warmText } from "./art2/paint";
 
 const GAME = "cart-rush";
 const LAUNCH = "2026-11-08";   // Today's Challenge #1
@@ -178,7 +181,7 @@ const SHELF = 32, LANE_W = (W - 2 * SHELF) / LANES;
 const laneX = (l: number) => SHELF + LANE_W * (l + 0.5);
 const CART_Y = H - 132, CART = 70, IR = 27;       // cart position and size, item radius
 const PAD_Y = H - 52, PAD_H = 42;                 // the lane pad under the cart: tap or slide here to pick a lane
-const SHELF_COLORS = ["#f6b8b0", "#ffd98a", "#b9e4c3", "#a9cdf6", "#d9c3f2", "#ffc49b", "#f2f2f2"];
+const PAD = { x: SHELF + 4, y: PAD_Y, w: W - 2 * SHELF - 8, h: PAD_H };
 const font = (w: number, px: number) => `${w} ${px}px system-ui, -apple-system, sans-serif`;
 
 type Result = { done: { dish: string; perfect: boolean }[]; hearts: number };
@@ -199,6 +202,7 @@ export default function CartRush() {
   const shell = useGameShell(GAME, mode);
   const duel = useDuel(shell, GAME, "Cart Rush", mode, () => { if (mode !== "daily") { setMode("daily"); setRun(r => r + 1); } });   // Friend Duels
   const { reset: resetScores } = shell.scores;
+  // eslint-disable-next-line react-hooks/refs -- the canvas loop reads the latest pause state (same pattern as the other games)
   const pausedRef = useRef(false); pausedRef.current = shell.paused;   // popups pause the shop
   const startRef = useRef<() => void>(() => {});
   const bestKey = mode === "daily" ? `cartrush-daily-${torontoDate()}` : "cartrush-endless";
@@ -207,6 +211,7 @@ export default function CartRush() {
   useEffect(() => {
     const canvas = canvasRef.current!, wrap = wrapRef.current!;
     const { ctx, toLocal, stop } = fitCanvas(canvas, wrap, W, H, setBoard, 0);   // no fact strip: the board gets the room
+    void loadGameFont();   // the display face for the recipe card and pop-up scores on the canvas
     const codes = [...ALL_ITEMS, ...HAZARDS.map(h => h.code), "1f6d2", "2764"];
     const list = loadImages(codes), imgs = new Map(codes.map((c, i) => [c, list[i]] as const));
     const img = (c: string) => imgs.get(c)!;
@@ -288,107 +293,99 @@ export default function CartRush() {
       raf = requestAnimationFrame(loop);
     };
 
-    // the cart seen from behind the handle: a silver wire basket with groceries poking out, the folding child seat,
+    // The aisle's still art (floor, shelves, light, the cart, sprites) is painted once per screen density in ./art2/cartArt;
+    // each frame scrolls and stamps it, then draws what moves.
+    let art: CartArt | null = null;
+    const stamp = textStamps();
+    const ensureArt = () => {
+      const k = canvas.width / W;
+      if (!art || Math.abs(art.k - k) > 1e-6) { art = buildCartArt(k, W, H, SHELF, LANE_W, IR, HUD, PAD); warmText([`17px ${GAME_FONT}`, `25px ${GAME_FONT}`], "💔 ❤️ +20 Level"); }
+      return art;
+    };
+    function scroll(im: HTMLCanvasElement, dx: number, dw: number, P: number, k: number) {   // a strip that repeats every P, moved by the distance
+      const off = Math.round((((s.d % P) + P) % P) * k), sy = Math.max(0, Math.round(P * k) - off), sh = Math.min(Math.round(H * k), im.height - sy);
+      ctx.drawImage(im, 0, sy, im.width, sh, dx, 0, dw, sh / k);
+    }
+    // the cart seen from behind the handle: a chrome wire basket with groceries poking out, the folded child seat,
     // a red handle and your hands on it
-    function trapezoid(x: number, top: number, bot: number, tw: number, bw: number, r: number) {
-      ctx.beginPath();
-      ctx.moveTo(x - tw + r, top); ctx.lineTo(x + tw - r, top); ctx.arcTo(x + tw, top, x + bw, bot, r);
-      ctx.lineTo(x + bw, bot - r); ctx.arcTo(x + bw, bot, x - bw, bot, r); ctx.lineTo(x - bw + r, bot);
-      ctx.arcTo(x - bw, bot, x - tw, top, r); ctx.lineTo(x - tw, top + r); ctx.arcTo(x - tw, top, x + tw, top, r); ctx.closePath();
-    }
-    function drawCart(x: number, y: number) {
-      const top = y - 46, bot = y + 14, tw = 37, bw = 30;
-      ctx.fillStyle = "rgba(16,27,46,0.12)"; ctx.beginPath(); ctx.ellipse(x, bot + 30, 46, 9, 0, 0, Math.PI * 2); ctx.fill();
-      ctx.fillStyle = "#2f3747";                                          // wheels
-      for (const [wx, wy] of [[x - tw - 3, top + 2], [x + tw - 4, top + 2], [x - bw - 4, bot - 4], [x + bw - 3, bot - 4]]) { ctx.beginPath(); ctx.roundRect(wx, wy, 7, 13, 3.5); ctx.fill(); }
-      trapezoid(x, top, bot, tw, bw, 7);
-      const g = ctx.createLinearGradient(0, top, 0, bot); g.addColorStop(0, "#f6f8fc"); g.addColorStop(1, "#dbe3ee");
-      ctx.fillStyle = g; ctx.fill();
-      ctx.save(); trapezoid(x, top, bot, tw, bw, 7); ctx.clip();          // the wire mesh
-      ctx.strokeStyle = "rgba(118,138,168,0.38)"; ctx.lineWidth = 1.2;
-      for (let k = -4; k <= 4; k++) { ctx.beginPath(); ctx.moveTo(x + k * 8.5, top); ctx.lineTo(x + k * 7, bot); ctx.stroke(); }
-      for (let yy = top + 9; yy < bot; yy += 9) { ctx.beginPath(); ctx.moveTo(x - tw, yy); ctx.lineTo(x + tw, yy); ctx.stroke(); }
-      ctx.fillStyle = "rgba(63,127,214,0.85)"; ctx.beginPath(); ctx.roundRect(x - bw + 4, bot - 14, (bw - 4) * 2, 11, 4); ctx.fill();   // folded child seat
-      ctx.restore();
-      trapezoid(x, top, bot, tw, bw, 7);
-      ctx.strokeStyle = "#8d9fb9"; ctx.lineWidth = 3.5; ctx.stroke();
-      ctx.strokeStyle = "rgba(255,255,255,0.9)"; ctx.lineWidth = 1.2;     // rim highlight
-      ctx.beginPath(); ctx.moveTo(x - tw + 6, top + 2.5); ctx.lineTo(x + tw - 6, top + 2.5); ctx.stroke();
-      const spots = [[-15, 8], [15, 6], [-6, 22], [16, 24]];               // groceries, poking up over the rim
-      basket.forEach((c, k) => { const [dx, dy] = spots[k]; drawIcon(c, x + dx, top + dy, 30); });
-      ctx.strokeStyle = "#8d9fb9"; ctx.lineWidth = 3;                     // frame down to the handle
-      ctx.beginPath(); ctx.moveTo(x - bw + 4, bot); ctx.lineTo(x - bw + 2, bot + 13); ctx.moveTo(x + bw - 4, bot); ctx.lineTo(x + bw - 2, bot + 13); ctx.stroke();
-      for (const side of [-1, 1]) {                                       // sleeves fading toward you
-        const hx = x + side * 24, sg = ctx.createLinearGradient(0, bot + 18, 0, bot + 40);
-        sg.addColorStop(0, "rgba(78,94,128,1)"); sg.addColorStop(1, "rgba(78,94,128,0)");
-        ctx.fillStyle = sg; ctx.beginPath(); ctx.roundRect(hx - 8, bot + 18, 16, 22, 7); ctx.fill();
-      }
-      ctx.fillStyle = "#e8505b"; ctx.beginPath(); ctx.roundRect(x - 41, bot + 11, 82, 10, 5); ctx.fill();   // red handle
-      ctx.fillStyle = "rgba(255,255,255,0.45)"; ctx.beginPath(); ctx.roundRect(x - 37, bot + 12.5, 74, 2.5, 1.25); ctx.fill();
-      for (const side of [-1, 1]) {                                       // hands gripping it
-        const hx = x + side * 24;
-        ctx.fillStyle = "#f2c9a0"; ctx.beginPath(); ctx.roundRect(hx - 8, bot + 9, 16, 13, 6); ctx.fill();
-        ctx.strokeStyle = "rgba(150,100,70,0.35)"; ctx.lineWidth = 1; ctx.stroke();
-        ctx.strokeStyle = "rgba(150,100,70,0.3)";
-        for (const fx of [-3, 1, 5]) { ctx.beginPath(); ctx.moveTo(hx + fx - 1, bot + 10); ctx.lineTo(hx + fx - 1, bot + 15); ctx.stroke(); }
-      }
-    }
-    function drawHeart(x: number, y: number, s: number, full: boolean) {
-      ctx.beginPath(); ctx.moveTo(x, y + s * 0.3);
-      ctx.bezierCurveTo(x, y, x - s / 2, y, x - s / 2, y + s * 0.3);
-      ctx.bezierCurveTo(x - s / 2, y + s * 0.6, x, y + s * 0.8, x, y + s);
-      ctx.bezierCurveTo(x, y + s * 0.8, x + s / 2, y + s * 0.6, x + s / 2, y + s * 0.3);
-      ctx.bezierCurveTo(x + s / 2, y, x, y, x, y + s * 0.3); ctx.closePath();
-      if (full) { ctx.fillStyle = "#e8505b"; ctx.fill(); }
-      else { ctx.fillStyle = "rgba(255,255,255,0.7)"; ctx.fill(); ctx.strokeStyle = "rgba(16,27,46,0.25)"; ctx.lineWidth = 1.5; ctx.stroke(); }
+    function drawCart(x: number, y: number, A: CartArt) {
+      ctx.drawImage(A.cartBack, x - 60, y - 60, 120, 120);
+      const top = y - 46, spots = [[-15, 8], [15, 6], [-6, 22], [16, 24]];   // groceries, poking up over the rim
+      basket.forEach((c, k) => { const [dx, dy] = spots[k]; ctx.fillStyle = "rgba(40,52,72,0.22)"; ctx.beginPath(); ctx.ellipse(x + dx + 2, top + dy + 11, 10, 3.6, 0, 0, Math.PI * 2); ctx.fill(); drawIcon(c, x + dx, top + dy, 30); });
+      ctx.drawImage(A.cartFront, x - 60, y - 60, 120, 120);
     }
     function drawIcon(code: string, x: number, y: number, size: number) { const i = img(code); if (i.complete && i.naturalWidth) ctx.drawImage(i, x - size / 2, y - size / 2, size, size); }
+    let cardCv: HTMLCanvasElement | null = null, cardKeyNow = "", buttonCv: HTMLCanvasElement | null = null, buttonK = 0;
+    function paintRecipeCard(A: CartArt, recipe: Recipe) {
+      const L = layer(W, HUD + 12, A.k), c = L.c;
+      c.drawImage(A.card, 0, 0, W, HUD + 12);
+      c.textAlign = "left"; c.textBaseline = "alphabetic"; c.fillStyle = "#0E1F45"; c.font = `19px ${GAME_FONT}`;
+      c.fillText(recipe.name, 16, 27);
+      recipe.items.forEach((code, i) => {
+        const ix = 14 + i * 46 + 18, iy = 52, im = img(code);
+        c.fillStyle = "rgba(90,60,30,0.14)"; c.beginPath(); c.ellipse(ix + 2, iy + 15, 13, 3.4, 0, 0, Math.PI * 2); c.fill();
+        c.globalAlpha = s.got[i] ? 0.35 : 1; if (im.complete && im.naturalWidth) c.drawImage(im, ix - 17, iy - 17, 34, 34); c.globalAlpha = 1;
+        if (s.got[i]) check(c, ix + 12, iy + 10);
+      });
+      c.textAlign = "right"; c.font = font(600, 13); c.fillStyle = s.perfect ? "#1f9a5a" : "#7d8798";
+      c.fillText(s.perfect ? "No extras: ×2 bonus" : "Extras: no ×2 this time", W - 15, 26);
+      const lv = `Level ${level}`; c.font = `15px ${GAME_FONT}`; const lw = c.measureText(lv).width + 18, lx = W - 15 - lw, ly = 45;
+      c.fillStyle = "#167A45"; c.beginPath(); c.roundRect(lx, ly + 2, lw, 21, 10.5); c.fill();
+      const lg = c.createLinearGradient(0, ly, 0, ly + 21); lg.addColorStop(0, "#46D98C"); lg.addColorStop(1, "#22A964");
+      c.fillStyle = lg; c.beginPath(); c.roundRect(lx, ly, lw, 21, 10.5); c.fill();
+      c.fillStyle = "rgba(255,255,255,0.3)"; c.beginPath(); c.roundRect(lx + 5, ly + 1.5, lw - 10, 7, 3.5); c.fill();
+      c.textAlign = "center"; c.fillStyle = "rgba(10,90,50,0.45)"; c.fillText(lv, lx + lw / 2, ly + 16.5); c.fillStyle = "#fff"; c.fillText(lv, lx + lw / 2, ly + 15.5);
+      return L.cv;
+    }
+    function litButton(A: CartArt, bw: number, bh: number) {   // the lane pad's lit button: brand blue, a lip under it, a shine on top
+      if (buttonCv && buttonK === A.k) return buttonCv;
+      const L = layer(bw, bh + 3, A.k), c = L.c;
+      c.fillStyle = "#2A5BA8"; c.beginPath(); c.roundRect(0, 2.5, bw, bh, 11); c.fill();
+      const bg = c.createLinearGradient(0, 0, 0, bh); bg.addColorStop(0, "#74adf7"); bg.addColorStop(0.5, "#4f8fe6"); bg.addColorStop(1, "#3F7FD6");
+      c.fillStyle = bg; c.beginPath(); c.roundRect(0, 0, bw, bh, 11); c.fill();
+      const sh = c.createLinearGradient(0, 0, 0, bh * 0.5); sh.addColorStop(0, "rgba(255,255,255,0.42)"); sh.addColorStop(1, "rgba(255,255,255,0)");
+      c.fillStyle = sh; c.beginPath(); c.roundRect(5, 2, bw - 10, bh * 0.45, [8, 8, 5, 5]); c.fill();
+      buttonCv = L.cv; buttonK = A.k; return buttonCv;
+    }
+    function check(ctx: CanvasRenderingContext2D, x: number, y: number) {   // a ticked-off item on the card
+      ctx.fillStyle = "rgba(20,60,30,0.25)"; ctx.beginPath(); ctx.arc(x + 0.6, y + 1.4, 9, 0, Math.PI * 2); ctx.fill();
+      const g = ctx.createLinearGradient(x - 9, y - 9, x + 9, y + 9); g.addColorStop(0, "#5fe3a0"); g.addColorStop(1, "#1e9a5a");
+      ctx.fillStyle = g; ctx.beginPath(); ctx.arc(x, y, 9, 0, Math.PI * 2); ctx.fill();
+      ctx.strokeStyle = "rgba(255,255,255,0.9)"; ctx.lineWidth = 1.2; ctx.stroke();
+      ctx.strokeStyle = "#fff"; ctx.lineWidth = 2.5; ctx.lineCap = "round"; ctx.lineJoin = "round"; ctx.beginPath(); ctx.moveTo(x - 4.5, y); ctx.lineTo(x - 1, y + 3.5); ctx.lineTo(x + 4.5, y - 3.5); ctx.stroke();
+    }
 
     function draw(t: number) {
+      const A = ensureArt();
       ctx.save(); ctx.clearRect(0, 0, W, H);
       ctx.beginPath(); ctx.roundRect(0, 0, W, H, 22); ctx.clip();
       if (t < shakeUntil) ctx.translate((Math.random() - 0.5) * 8, (Math.random() - 0.5) * 6);
 
-      // the aisle: tiled floor, dashed lane lines and shelves, all scrolling with the distance travelled
-      ctx.fillStyle = "#f7f3ec"; ctx.fillRect(0, 0, W, H);
-      const off = s.d % 64;
-      ctx.strokeStyle = "rgba(16,27,46,0.05)"; ctx.lineWidth = 2;
-      for (let y = HUD - 64 + off; y < H; y += 64) { ctx.beginPath(); ctx.moveTo(SHELF, y); ctx.lineTo(W - SHELF, y); ctx.stroke(); }
-      ctx.strokeStyle = "rgba(16,27,46,0.13)"; ctx.lineWidth = 3; ctx.setLineDash([22, 22]); ctx.lineDashOffset = -s.d % 44;
-      for (let l = 1; l < LANES; l++) { const x = SHELF + LANE_W * l; ctx.beginPath(); ctx.moveTo(x, HUD); ctx.lineTo(x, H); ctx.stroke(); }
-      ctx.setLineDash([]);
-      for (const side of [0, W - SHELF]) {
-        ctx.fillStyle = "#dfe6f0"; ctx.fillRect(side, 0, SHELF, H);
-        const sOff = s.d % 36;
-        for (let y = -36 + sOff, n = Math.floor(s.d / 36); y < H; y += 36, n--) {
-          const c = SHELF_COLORS[(((n * 7 + (side ? 3 : 0)) % SHELF_COLORS.length) + SHELF_COLORS.length) % SHELF_COLORS.length];
-          ctx.fillStyle = c; ctx.beginPath(); ctx.roundRect(side + 5, y + 4, SHELF - 10, 28, 4); ctx.fill();
-        }
-        ctx.fillStyle = "rgba(16,27,46,0.08)"; ctx.fillRect(side ? side : SHELF - 3, 0, 3, H);
-      }
+      // the aisle: polished tiles with lane lines, and the stocked shelves, all scrolling with the distance travelled
+      scroll(A.floor, SHELF, W - 2 * SHELF, FLOOR_P, A.k);
+      scroll(A.left, 0, SHELF, SHELF_P, A.k); scroll(A.right, W - SHELF, SHELF, SHELF_P, A.k);
 
       // items and hazards
-      const need = new Set(game.needed());
+      const need = new Set(game.needed()), S = (IR + 12) * 2;
       for (const th of s.things) {
         const y = CART_Y - (th.d - s.d), x = laneX(th.lane);
         if (y < HUD - 40 || y > H + 40) continue;
         if (th.hazard < 0) {
           if (th.gone) continue;
           const listed = need.has(th.code);
-          ctx.fillStyle = "rgba(255,255,255,0.96)"; ctx.beginPath(); ctx.arc(x, y, IR, 0, Math.PI * 2); ctx.fill();
-          ctx.lineWidth = listed ? 4 : 2; ctx.strokeStyle = listed ? "#2eaa6e" : "rgba(16,27,46,0.10)"; ctx.stroke();
-          if (listed) { ctx.globalAlpha = 0.35 + 0.25 * Math.sin(t / 180); ctx.beginPath(); ctx.arc(x, y, IR + 6, 0, Math.PI * 2); ctx.strokeStyle = "#2eaa6e"; ctx.lineWidth = 3; ctx.stroke(); ctx.globalAlpha = 1; }
-          drawIcon(th.code, x, y, IR * 1.55);
+          ctx.drawImage(listed ? A.plateOn : A.plate, x - S / 2, y - S / 2, S, S);
+          if (listed) {
+            const p = 0.35 + 0.25 * Math.sin(t / 180);
+            ctx.globalAlpha = p * 0.45; ctx.strokeStyle = "#5fe3a0"; ctx.lineWidth = 7; ctx.beginPath(); ctx.arc(x, y, IR + 6, 0, Math.PI * 2); ctx.stroke();
+            ctx.globalAlpha = p * 1.4; ctx.strokeStyle = "#22a964"; ctx.lineWidth = 2.4; ctx.stroke(); ctx.globalAlpha = 1;
+          }
+          drawIcon(th.code, x, y - 1, IR * 1.55);
         } else {
           ctx.globalAlpha = th.hit ? 0.35 : 1;
-          if (th.hazard === 0) {         // a puddle with a wet floor sign
-            ctx.fillStyle = "rgba(90,160,235,0.45)"; ctx.beginPath(); ctx.ellipse(x, y + 6, 46, 22, 0, 0, Math.PI * 2); ctx.fill();
-            ctx.fillStyle = "rgba(255,255,255,0.5)"; ctx.beginPath(); ctx.ellipse(x - 16, y + 1, 12, 5, -0.3, 0, Math.PI * 2); ctx.fill();
-            drawIcon("26a0", x, y - 4, 38);
-          } else if (th.hazard === 1) {  // a stack of boxes
-            drawIcon("1f4e6", x - 10, y + 8, 40); drawIcon("1f4e6", x + 12, y + 6, 40); drawIcon("1f4e6", x + 1, y - 14, 40);
-          } else {                       // a can rolling toward you
-            ctx.save(); ctx.translate(x, y); ctx.rotate(s.d / 40); drawIcon("1f96b", 0, 0, 42); ctx.restore();
+          if (th.hazard === 0) ctx.drawImage(A.spill, x - 50, y - 40, 100, 84);          // a puddle with a wet floor sign
+          else if (th.hazard === 1) ctx.drawImage(A.boxes, x - 50, y - 46, 100, 92);   // a stack of boxes
+          else {                                                                         // a can rolling toward you
+            ctx.drawImage(A.canBase, x - 30, y - 24, 60, 52); canStripes(ctx, x, y, (s.d / 75) % 1, "#c8443a"); ctx.drawImage(A.canShade, x - 30, y - 24, 60, 52);
           }
           ctx.globalAlpha = 1;
         }
@@ -396,47 +393,34 @@ export default function CartRush() {
 
       // the cart (blinks for a moment after a bump)
       const hurt = s.ms < s.hurtUntil && Math.floor(t / 110) % 2 === 0;
-      ctx.globalAlpha = hurt ? 0.35 : 1; drawCart(cx, CART_Y); ctx.globalAlpha = 1;
-      for (let k = 0; k < HEARTS; k++) drawHeart(cx + (k - 1) * 17, CART_Y + 62, 13, k < s.hearts);   // hearts ride under the cart
+      ctx.globalAlpha = hurt ? 0.35 : 1; drawCart(cx, CART_Y, A); ctx.globalAlpha = 1;
+      for (let k = 0; k < HEARTS; k++) heart(ctx, cx + (k - 1) * 17, CART_Y + 62, 13, k < s.hearts);   // hearts ride under the cart
+      ctx.drawImage(A.light, 0, 0, W, H);   // the store's light: warm from the top left, a soft vignette
 
-      // the lane pad: where your finger goes
-      ctx.fillStyle = "rgba(255,255,255,0.85)"; ctx.beginPath(); ctx.roundRect(SHELF + 4, PAD_Y, W - 2 * SHELF - 8, PAD_H, 14); ctx.fill();
-      ctx.strokeStyle = "rgba(63,127,214,0.35)"; ctx.lineWidth = 2; ctx.stroke();
-      const px = SHELF + 4 + s.lane * ((W - 2 * SHELF - 8) / LANES);
-      ctx.fillStyle = "rgba(63,127,214,0.9)"; ctx.beginPath(); ctx.roundRect(px + 4, PAD_Y + 4, (W - 2 * SHELF - 8) / LANES - 8, PAD_H - 8, 10); ctx.fill();
+      // the lane pad: where your finger goes (the lit button slides with the cart)
+      ctx.drawImage(A.track, PAD.x - 10, PAD.y - 6, PAD.w + 20, PAD.h + 20);
+      const segW = PAD.w / LANES, px = PAD.x + ((cx - laneX(0)) / LANE_W) * segW, bx = px + 4, bw = segW - 8, by = PAD_Y + 4, bh = PAD_H - 9;
+      ctx.drawImage(litButton(A, bw, bh), bx, by, bw, bh + 3);
       for (let l = 0; l < LANES; l++) {                  // ◀ left lane, • middle, ▶ right lane
-        const mx = SHELF + 4 + (l + 0.5) * ((W - 2 * SHELF - 8) / LANES), my = PAD_Y + PAD_H / 2;
-        ctx.fillStyle = l === s.lane ? "#fff" : "rgba(63,127,214,0.65)";
+        const mx = PAD.x + (l + 0.5) * segW, my = PAD_Y + PAD_H / 2 - 1, on = l === s.lane;
+        ctx.fillStyle = on ? "#fff" : "rgba(170,198,245,0.7)";
+        if (on) { ctx.shadowColor = "rgba(20,50,110,0.45)"; ctx.shadowBlur = 0; ctx.shadowOffsetY = 1.5 * A.k; }
         ctx.beginPath();
         if (l === 1) ctx.arc(mx, my, 5, 0, Math.PI * 2);
         else { const d = l === 0 ? -1 : 1; ctx.moveTo(mx + d * 7, my); ctx.lineTo(mx - d * 5, my - 8); ctx.lineTo(mx - d * 5, my + 8); ctx.closePath(); }
-        ctx.fill();
+        ctx.fill(); ctx.shadowColor = "transparent"; ctx.shadowOffsetY = 0;
       }
 
-      // HUD: the recipe card and hearts
-      ctx.fillStyle = "rgba(255,255,255,0.94)"; ctx.fillRect(0, 0, W, HUD);
-      ctx.fillStyle = "rgba(16,27,46,0.08)"; ctx.fillRect(0, HUD - 1, W, 1);
-      const recipe = RECIPES[s.recipe];
-      ctx.textAlign = "left"; ctx.textBaseline = "alphabetic"; ctx.fillStyle = "#101b2e"; ctx.font = font(700, 17);
-      ctx.fillText(recipe.name, 14, 24);
-      recipe.items.forEach((c, i) => {
-        const ix = 14 + i * 46 + 18, iy = 52;
-        ctx.globalAlpha = s.got[i] ? 0.35 : 1; drawIcon(c, ix, iy, 34); ctx.globalAlpha = 1;
-        if (s.got[i]) {
-          ctx.fillStyle = "#2eaa6e"; ctx.beginPath(); ctx.arc(ix + 12, iy + 10, 9, 0, Math.PI * 2); ctx.fill();
-          ctx.strokeStyle = "#fff"; ctx.lineWidth = 2.5; ctx.beginPath(); ctx.moveTo(ix + 7.5, iy + 10); ctx.lineTo(ix + 11, iy + 13.5); ctx.lineTo(ix + 16.5, iy + 6.5); ctx.stroke();
-        }
-      });
-      ctx.textAlign = "right"; ctx.font = font(600, 13); ctx.fillStyle = s.perfect ? "#2eaa6e" : "#8a96a8";
-      ctx.fillText(s.perfect ? "No extras: ×2 bonus" : "Extras: no ×2 this time", W - 14, 24);
-      ctx.font = font(800, 15); ctx.fillStyle = "#2eaa6e"; ctx.fillText(`Level ${level}`, W - 14, 58);
+      // the recipe card along the top (repainted only when something on it changes)
+      const recipe = RECIPES[s.recipe], cardKey = `${A.k}|${s.recipe}|${s.got.join()}|${s.perfect}|${level}|${recipe.items.map(c => +(img(c).complete && img(c).naturalWidth > 0)).join("")}`;
+      if (!cardCv || cardKey !== cardKeyNow) { cardCv = paintRecipeCard(A, recipe); cardKeyNow = cardKey; }
+      ctx.drawImage(cardCv, 0, 0, W, HUD + 12);
 
       ctx.textAlign = "center";
       for (const f of floats) {
         const life = f.big ? 1800 : 800, a = 1 - f.age / life;
-        ctx.globalAlpha = Math.max(0, Math.min(1, a * 1.6)); ctx.fillStyle = f.color;
-        ctx.font = font(800, f.big ? 24 : 16);
-        ctx.fillText(f.text, Math.max(W * 0.3, Math.min(W * 0.7, f.x)), f.y - (f.big ? 0 : f.age * 0.05));
+        ctx.globalAlpha = Math.max(0, Math.min(1, a * 1.6));
+        stamp(ctx, f.text, Math.max(W * 0.3, Math.min(W * 0.7, f.x)), f.y - (f.big ? 0 : f.age * 0.05), `${f.big ? 25 : 17}px ${GAME_FONT}`, f.color, "rgba(255,255,255,0.95)", f.big ? 5 : 4);
       }
       ctx.globalAlpha = 1; ctx.restore();
     }
@@ -467,13 +451,11 @@ export default function CartRush() {
     <GameScreen>
       <GameHeader title="Cart Rush" mode={mode} onMode={m => { setMode(m); setRun(r => r + 1); }} onBoard={() => shell.setBoardOpen(true)} onHelp={shell.help.show} />
 
-      <div className="mt-2 flex items-center justify-between">
-        <div><div className="text-[10px] uppercase tracking-wide text-[#5a6b85]">Score</div><div className="text-2xl font-bold leading-none tabular-nums">{hud.score.toLocaleString()}</div></div>
-        <div className="rounded-full bg-[#3f7fd6] px-2.5 py-0.5 text-xs font-bold text-white">
-          {hud.made === 1 ? "1 recipe made" : `${hud.made} recipes made`}
-        </div>
-        <div className="flex items-center gap-2">
-          <div className="text-right"><div className="text-[10px] uppercase tracking-wide text-[#5a6b85]">Best</div><div className="text-lg font-semibold leading-none tabular-nums">{best.toLocaleString()}</div></div>
+      <div className={HUD_ROW}>
+        <HudStat label="Score" value={hud.score.toLocaleString()} />
+        <HudTag color="#3F7FD6">{hud.made === 1 ? "1 Recipe Made" : `${hud.made} Recipes Made`}</HudTag>
+        <div className="flex shrink-0 items-center gap-1.5">
+          <HudStat label="Best" value={best.toLocaleString()} align="right" />
           <PauseButton shell={shell} active={started && !over} />
         </div>
       </div>
@@ -483,12 +465,7 @@ export default function CartRush() {
         <PrizeLogo shell={shell} active={started && !over && !shell.paused} />
         <PausedCard shell={shell} active={started && !over} />
         {!started && !over && (
-          <button onClick={() => startRef.current()} className="absolute inset-0 flex items-center justify-center rounded-[22px] bg-[#101b2e]/25">
-            <span className="rounded-3xl bg-white px-6 py-4 text-center shadow-2xl">
-              <span className="block text-lg font-bold">Tap To Start</span>
-              <span className="mt-1 block text-sm text-[#5a6b85]">Use the pad under your cart to switch lanes</span>
-            </span>
-          </button>
+          <StartCard label={mode === "daily" ? `Today's Challenge #${n}` : "Free Play"} title="Cart Rush" how="Use the pad under your cart to switch lanes" onStart={() => startRef.current()} />
         )}
         {over && <GameOver label={mode === "daily" ? `Today's Challenge #${n}` : "Free Play"} headline={headline} score={hud.score} best={best} mode={mode}
           posted={shell.scores.posted} joined={!!shell.player} campaign={GAME} copied={shell.copied} fact={toast}

@@ -21,14 +21,17 @@
 import { useEffect, useRef, useState, type ReactNode } from "react";
 import { appStoreLink } from "@/components/site";
 import { type Mode, type Toast, GameScreen, GameHeader, BoardArea, PrizeLogo, GameOver, PauseButton, PausedCard, ReadyCard, HelpModal, ModesHelp, ShellPopups,
-  useGameShell, fitCanvas, dailySeed, dailyNumber, torontoDate, readBest, saveBest, foodPng } from "./kit";
+  useGameShell, fitCanvas, dailySeed, dailyNumber, torontoDate, readBest, saveBest, foodPng, HUD_ROW, HudStat, HudTag, OverlayCard, UI } from "./kit";
+import { HeartIcon } from "./icons";
 import { AW, AH, TANK_R, PEA_R, DUEL_HP, LIVES, MISSIONS, TODAY_MISSIONS, DAY_BONUS, LIFE_BONUS, WAVE_POINTS, KILL_POINTS, MINE_CAP, KINDS, POWERS, ZONES, SPAWNS,
   type Kind, type TableMap, type Tank, type Pea, type Mine, type Pick, type Input, type World, type Brain, type Level, type Waves, type Ob,
   makeMap, missionLevel, dailyLevels, newDuel, newMission, newGuard, newWaves, stepWaves, guardRespawn, newTank, newBrain, aiInput, stepWorld, stepOneTank, stepTank,
   stepPea, peaFrom, duelWinner, missionState, missionPoints, sharpFor, waveSharp, wrapAngle, tracePath, zoneAt, NO_INPUT, mulberry32 } from "./tankSim";
-import { drawFloor, drawZone, drawHerbs, drawShadow, drawCover, drawLunchbox, previewLunchbox, drawPea, drawMine, drawPick, drawBasket, drawFx, drawMarks,
+import { drawFloor, drawTableLight, drawZone, drawHerbs, drawShadow, drawCover, drawLunchbox, previewLunchbox, drawPea, drawMine, drawPick, drawBasket, drawFx, drawMarks,
   LOOKS, PLAYER_LOOKS, FX_LIFE, type Imgs, type Fx, type Mark, type Look } from "./tankArt";
 import { useTankRoom, savedSession, AWAY_MS, type RoomState, type Saved } from "./tankNet";
+import { GAME_FONT, loadGameFont } from "./gameFont";
+import { textStamps } from "./art2/paint";
 
 const GAME = "pea-tanks";
 const LAUNCH = "2026-11-08";   // Today's Challenge #1
@@ -37,7 +40,7 @@ const WINS_TO = 3;
 const STEP_MS = 1000 / 60, COUNT_MS = 1800, VS_COUNT_MS = 3000, END_MS = 1400, GO_MS = 700, LABEL_MS = 3000, LIVE_CARD_MS = 3500;
 const CH = 132, CHL = 112;     // the control strip under the table (one strip, or one at each end on Same Phone)
 const FONT = "system-ui, -apple-system, sans-serif";
-const BLUE = "#3f7fd6", RED = "#e8505b", GREEN = "#2eaa6e", INK = "#101b2e", GREY = "#5a6b85";
+const BLUE = "#3f7fd6", RED = "#e8505b", GREEN = "#2eaa6e", GREY = "#5a6b85";
 const ICONS = ["1f34e", "1f34a", "1f34c", "1f347", "1f350", "1f34b", "1f963", ...POWERS.map(p => p.icon)];
 const FRUIT = [["1f34e", "1f34a", "1f34c"], ["1f347", "1f350", "1f34e"], ["1f34a", "1f34b", "1f34c"]];
 const KIND_LIST: Kind[] = ["player", "crouton", "meatball", "chili", "jelly", "popcorn", "bagel", "pretzel", "coconut"];
@@ -188,6 +191,7 @@ export default function PeaTanks() {
     const TW = AW, TH = local ? AH + 2 * CHL : AH + CH, arenaY = local ? CHL : 0;
     const canvas = canvasRef.current!, wrap = wrapRef.current!;
     const { ctx, stop } = fitCanvas(canvas, wrap, TW, TH, setBoard, 0);
+    void loadGameFont();   // the display face for the banners on the table
     const imgs: Imgs = {}; for (const c of ICONS) { const i = new Image(); i.src = foodPng(c); imgs[c] = i; }
     const daily = solo && P.daily, dbg = isDebug();
     const pnames = P.kind === "live" ? P.names.map((v, i) => (i === me ? "You" : v)) : P.kind === "local" ? P.names : ["You", "Partner"];
@@ -729,6 +733,7 @@ export default function PeaTanks() {
       ctx.font = `${weight} ${size}px ${FONT}`; ctx.fillStyle = color; ctx.textAlign = align; ctx.textBaseline = "alphabetic"; ctx.fillText(s, x, y);
     };
     const scr = (x: number, y: number) => ({ x: rot ? AW - x : x, y: (rot ? AH - y : y) + arenaY });
+    const stamp = textStamps();
     function buildTable(): HTMLCanvasElement {
       const k = canvas.width / TW, c = document.createElement("canvas");
       c.width = Math.round(AW * k); c.height = Math.round(AH * k);
@@ -737,6 +742,7 @@ export default function PeaTanks() {
       for (const z of w.map.zones) drawZone(g, z);
       for (const o of w.map.obs) if (o.ttl === undefined) drawShadow(g, o);
       for (const o of w.map.obs) if (o.ttl === undefined) drawCover(g, o, imgs, FRUIT);
+      drawTableLight(g);
       return c;
     }
     function tankShown(i: number): Tank | null {
@@ -774,27 +780,25 @@ export default function PeaTanks() {
       const F = (x: number, y: number) => (z.flip ? { x: AW - x, y: 2 * cy - y } : { x, y });
       // drive stick (floating)
       const ds = F(z.sx, z.sy), dst = cl.drive, db = dst ? F(dst.bx, dst.by) : ds, dk = dst ? (z.flip ? { x: -dst.kx, y: -dst.ky } : { x: dst.kx, y: dst.ky }) : { x: 0, y: 0 };
-      ctx.fillStyle = "rgba(255,255,255,0.55)"; ctx.beginPath(); ctx.arc(db.x, db.y, z.r, 0, 7); ctx.fill();
-      ctx.strokeStyle = "rgba(63,127,214,0.3)"; ctx.lineWidth = 2; ctx.stroke();
-      ctx.fillStyle = dst ? BLUE : "rgba(63,127,214,0.85)"; ctx.beginPath(); ctx.arc(db.x + dk.x, db.y + dk.y, z.r * 0.44, 0, 7); ctx.fill();
-      ctx.fillStyle = "rgba(255,255,255,0.85)"; ctx.beginPath(); ctx.arc(db.x + dk.x - 3, db.y + dk.y - 3, z.r * 0.12, 0, 7); ctx.fill();
+      well(db.x, db.y, z.r, "rgba(63,127,214,0.32)", 2);
+      knob(db.x + dk.x, db.y + dk.y, z.r * 0.44, dst ? "#3a78d0" : BLUE);
       text("Drive", ds.x, z.flip ? 2 * cy - z.y0 - 8 : z.y1 - 8, 11, GREY, 700);
       // aim stick: a ring with a straw; drag to aim, let go to fire
       const as = F(z.ax, z.ay), ast = cl.aim, ak = ast ? (z.flip ? { x: -ast.kx, y: -ast.ky } : { x: ast.kx, y: ast.ky }) : { x: 0, y: 0 };
       const ready = !t || t.cd <= 0;
-      ctx.fillStyle = "rgba(255,255,255,0.55)"; ctx.beginPath(); ctx.arc(as.x, as.y, z.r, 0, 7); ctx.fill();
-      ctx.strokeStyle = t && t.power === 1 ? "#d64545" : t && t.power === 2 ? GREEN : "rgba(95,174,52,0.55)"; ctx.lineWidth = t && t.power > 0 ? 3.5 : 2; ctx.stroke();
-      if (t && t.cd > 0) { ctx.strokeStyle = "rgba(95,174,52,0.9)"; ctx.lineWidth = 3; ctx.beginPath(); ctx.arc(as.x, as.y, z.r - 3, -Math.PI / 2, -Math.PI / 2 + Math.PI * 2 * (1 - t.cd / KINDS.player.cd)); ctx.stroke(); }
-      const kb = { x: as.x + ak.x, y: as.y + ak.y };
-      ctx.fillStyle = ast ? "#4f9a2a" : ready ? "#66b53b" : "#8fbf6f"; ctx.beginPath(); ctx.arc(kb.x, kb.y, z.r * 0.46, 0, 7); ctx.fill();
-      ctx.fillStyle = "#b6e58a"; ctx.beginPath(); ctx.arc(kb.x - 1, kb.y - 1, z.r * 0.18, 0, 7); ctx.fill();
+      well(as.x, as.y, z.r, t && t.power === 1 ? "#d64545" : t && t.power === 2 ? GREEN : "rgba(95,174,52,0.55)", t && t.power > 0 ? 3.5 : 2);
+      if (t && t.cd > 0) { ctx.strokeStyle = "rgba(95,174,52,0.9)"; ctx.lineWidth = 3; ctx.lineCap = "round"; ctx.beginPath(); ctx.arc(as.x, as.y, z.r - 3, -Math.PI / 2, -Math.PI / 2 + Math.PI * 2 * (1 - t.cd / KINDS.player.cd)); ctx.stroke(); }
+      knob(as.x + ak.x, as.y + ak.y, z.r * 0.46, ast ? "#4f9a2a" : ready ? "#5fb434" : "#93c27a");
       text(ast ? "Let Go To Fire" : "Aim + Fire", as.x, z.flip ? 2 * cy - z.y0 - 8 : z.y1 - 8, 11, GREY, 700);
       // mine button
       const mb = F(z.mx, z.my), mineOut = t ? (guest ? gMines : w.mines).filter(m => m.o === (guest ? me : mine(c))).length : 0, left = MINE_CAP - mineOut;
       ctx.globalAlpha = left > 0 ? 1 : 0.45;
-      ctx.fillStyle = "#fff"; ctx.beginPath(); ctx.arc(mb.x, mb.y, z.mr, 0, 7); ctx.fill(); ctx.strokeStyle = "#e2456b"; ctx.lineWidth = 2; ctx.stroke();
-      ctx.fillStyle = "#e2456b"; ctx.beginPath(); ctx.ellipse(mb.x, mb.y - 1, z.mr * 0.45, z.mr * 0.34, 0.4, 0, 7); ctx.fill();
-      ctx.fillStyle = "rgba(255,255,255,0.7)"; ctx.beginPath(); ctx.ellipse(mb.x - 2, mb.y - 3, 2.5, 1.2, -0.5, 0, 7); ctx.fill();
+      ctx.fillStyle = "rgba(14,31,69,0.22)"; ctx.beginPath(); ctx.arc(mb.x + 0.6, mb.y + 2, z.mr, 0, 7); ctx.fill();
+      const mg = ctx.createLinearGradient(0, mb.y - z.mr, 0, mb.y + z.mr); mg.addColorStop(0, "#ffffff"); mg.addColorStop(1, "#ffe3ea");
+      ctx.fillStyle = mg; ctx.beginPath(); ctx.arc(mb.x, mb.y, z.mr, 0, 7); ctx.fill(); ctx.strokeStyle = "#e2456b"; ctx.lineWidth = 2; ctx.stroke();
+      const bg2 = ctx.createRadialGradient(mb.x - 2.5, mb.y - 3, 0.5, mb.x, mb.y - 1, z.mr * 0.5); bg2.addColorStop(0, "#ff9fb4"); bg2.addColorStop(1, "#c92f56");
+      ctx.fillStyle = bg2; ctx.beginPath(); ctx.ellipse(mb.x, mb.y - 1, z.mr * 0.45, z.mr * 0.34, 0.4, 0, 7); ctx.fill();
+      ctx.fillStyle = "rgba(255,255,255,0.75)"; ctx.beginPath(); ctx.ellipse(mb.x - 2, mb.y - 3, 2.5, 1.2, -0.5, 0, 7); ctx.fill();
       text(`Mine ${left}`, mb.x, mb.y + z.mr + 11, 10, GREY, 700);
       ctx.globalAlpha = 1;
       // the middle of the strip: whose controls (Same Phone), or a quiet note when the connection is slow
@@ -802,11 +806,30 @@ export default function PeaTanks() {
       else if (live && netRef.current.netMode() === "relay") { text("Slow Connection", cx, cy - 22, 10, GREY, 700); text("Mode", cx, cy - 10, 10, GREY, 700); }
       ctx.restore();
     }
+    // the control strip's pieces: a soft recessed well, and a glossy knob that sits in it
+    function well(x: number, y: number, r: number, ring: string, rw: number) {
+      const g = ctx.createLinearGradient(0, y - r, 0, y + r); g.addColorStop(0, "rgba(176,196,230,0.55)"); g.addColorStop(1, "rgba(255,255,255,0.8)");
+      ctx.fillStyle = g; ctx.beginPath(); ctx.arc(x, y, r, 0, 7); ctx.fill();
+      ctx.strokeStyle = "rgba(14,31,69,0.1)"; ctx.lineWidth = 3; ctx.beginPath(); ctx.arc(x, y + 1, r - 2, Math.PI * 1.1, Math.PI * 1.9); ctx.stroke();
+      ctx.strokeStyle = ring; ctx.lineWidth = rw; ctx.beginPath(); ctx.arc(x, y, r, 0, 7); ctx.stroke();
+    }
+    function knob(x: number, y: number, r: number, col: string) {
+      ctx.fillStyle = "rgba(14,31,69,0.25)"; ctx.beginPath(); ctx.ellipse(x + 1, y + 3, r, r * 0.92, 0, 0, 7); ctx.fill();
+      const g = ctx.createRadialGradient(x - r * 0.35, y - r * 0.4, r * 0.1, x, y, r); g.addColorStop(0, "rgba(255,255,255,0.55)"); g.addColorStop(0.35, "rgba(255,255,255,0)"); g.addColorStop(1, "rgba(0,0,0,0.22)");
+      ctx.fillStyle = col; ctx.beginPath(); ctx.arc(x, y, r, 0, 7); ctx.fill(); ctx.fillStyle = g; ctx.fill();
+      ctx.strokeStyle = "rgba(255,255,255,0.9)"; ctx.lineWidth = 1.4; ctx.stroke();
+      ctx.fillStyle = "rgba(255,255,255,0.85)"; ctx.beginPath(); ctx.ellipse(x - r * 0.32, y - r * 0.4, r * 0.28, r * 0.15, -0.6, 0, 7); ctx.fill();
+    }
+    function panel(x: number, y: number, w2: number, h2: number) {
+      const g = ctx.createLinearGradient(0, y, 0, y + h2); g.addColorStop(0, "rgba(255,255,255,0.62)"); g.addColorStop(1, "rgba(226,236,252,0.42)");
+      ctx.fillStyle = "rgba(14,31,69,0.08)"; rr(x, y + 3, w2, h2, 18); ctx.fill();
+      ctx.fillStyle = g; rr(x, y, w2, h2, 18); ctx.fill();
+      ctx.strokeStyle = "rgba(255,255,255,0.9)"; ctx.lineWidth = 1.2; ctx.stroke();
+    }
     function draw(t: number) {
       ctx.save(); ctx.clearRect(0, 0, TW, TH);
-      ctx.fillStyle = "rgba(255,255,255,0.35)";
-      if (local) { rr(0, 0, AW, CHL - 6, 18); ctx.fill(); rr(0, CHL + AH + 6, AW, CHL - 6, 18); ctx.fill(); }
-      else { rr(0, AH + 8, AW, CH - 8, 18); ctx.fill(); }
+      if (local) { panel(0, 0, AW, CHL - 6); panel(0, CHL + AH + 6, AW, CHL - 6); }
+      else panel(0, AH + 8, AW, CH - 8);
       if (!none) for (let c = 0; c < controls; c++) drawStrip(c);
 
       // the table
@@ -874,17 +897,18 @@ export default function PeaTanks() {
         ctx.save();
         if (flipLabel) { ctx.translate(p.x, hy); ctx.rotate(Math.PI); ctx.translate(-p.x, -hy); }
         if (game === "versus") {   // three health pips
-          for (let k = 0; k < DUEL_HP; k++) { ctx.fillStyle = k < s.hp ? (s.hp === 1 ? RED : GREEN) : "rgba(16,27,46,0.18)"; ctx.beginPath(); ctx.arc(p.x - 8 + k * 8, hy, 3, 0, 7); ctx.fill(); }
+          for (let k = 0; k < DUEL_HP; k++) { ctx.fillStyle = "rgba(255,255,255,0.9)"; ctx.beginPath(); ctx.arc(p.x - 8 + k * 8, hy, 4.1, 0, 7); ctx.fill(); ctx.fillStyle = k < s.hp ? (s.hp === 1 ? RED : GREEN) : "rgba(16,27,46,0.18)"; ctx.beginPath(); ctx.arc(p.x - 8 + k * 8, hy, 3, 0, 7); ctx.fill(); }
         } else if (i < w.humans && game === "missions") {   // lives as little hearts
-          for (let k = 0; k < Math.min(lives, 6); k++) heart(p.x - (Math.min(lives, 6) - 1) * 4.5 + k * 9, hy, 3.4, RED);
+          for (let k = 0; k < Math.min(lives, 6); k++) { heart(p.x - (Math.min(lives, 6) - 1) * 4.5 + k * 9, hy, 4.5, "rgba(255,255,255,0.92)", 0.5); heart(p.x - (Math.min(lives, 6) - 1) * 4.5 + k * 9, hy, 3.4, RED); }
         } else if (s.kind === "coconut" && s.hp > 1) { ctx.fillStyle = "rgba(255,255,255,0.9)"; ctx.beginPath(); ctx.arc(p.x, hy, 3, 0, 7); ctx.fill(); }
-        if (labelT > 0 && i < w.humans && (humans > 1 || game === "versus")) { ctx.globalAlpha = Math.min(1, labelT / 600); text(pnames[i], p.x, hy - 7, 11, i === 0 ? BLUE : game === "versus" ? RED : GREEN, 800); ctx.globalAlpha = 1; }
+        if (labelT > 0 && i < w.humans && (humans > 1 || game === "versus")) { ctx.globalAlpha = Math.min(1, labelT / 600); stamp(ctx, pnames[i], p.x, hy - 7, `800 11px ${FONT}`, i === 0 ? BLUE : game === "versus" ? RED : GREEN, "rgba(255,255,255,0.92)", 3); ctx.globalAlpha = 1; }
         ctx.restore();
       }
-      if (w.basket) { const p = scr(w.basket.x, w.basket.y); for (let k = 0; k < w.basket.max; k++) { ctx.fillStyle = k < w.basket.hp ? "#e8963a" : "rgba(16,27,46,0.18)"; rr(p.x - w.basket.max * 4 + k * 8, p.y - 34, 6, 5, 2); ctx.fill(); } }
+      if (w.basket) { const p = scr(w.basket.x, w.basket.y); for (let k = 0; k < w.basket.max; k++) { ctx.fillStyle = "rgba(255,255,255,0.9)"; rr(p.x - w.basket.max * 4 + k * 8 - 1, p.y - 35, 8, 7, 3); ctx.fill(); ctx.fillStyle = k < w.basket.hp ? "#e8963a" : "rgba(16,27,46,0.18)"; rr(p.x - w.basket.max * 4 + k * 8, p.y - 34, 6, 5, 2); ctx.fill(); } }
       for (const f of floats) {
         const p = scr(f.x, f.y), a = 1 - f.age / f.life;
-        ctx.globalAlpha = Math.max(0, Math.min(1, a * 1.6)); text(f.text, p.x, p.y - 30 - f.age * 0.02, 13, f.color, 800);
+        ctx.globalAlpha = Math.max(0, Math.min(1, a * 1.6));
+        stamp(ctx, f.text, p.x, p.y - 30 - f.age * 0.02, `15px ${GAME_FONT}`, f.color, "#ffffff", 3.6, "rgba(14,31,69,0.22)");
       }
       ctx.globalAlpha = 1;
 
@@ -899,17 +923,25 @@ export default function PeaTanks() {
         for (const [yy, flip] of spots) {
           ctx.save(); const cy = arenaY + yy;
           if (flip) { ctx.translate(AW / 2, cy); ctx.rotate(Math.PI); ctx.translate(-AW / 2, -cy); }
-          const isNum = /^\d$/.test(big), bh = isNum ? 64 : 44, bwid = isNum ? 84 : Math.min(AW - 30, 40 + big.length * 12.5);
-          ctx.fillStyle = "rgba(255,255,255,0.93)"; rr(AW / 2 - bwid / 2, cy - bh / 2 - (small ? 8 : 0), bwid, bh + (small ? 18 : 0), 18); ctx.fill();
-          text(big, AW / 2, cy + (isNum ? 14 : 8) - (small ? 8 : 0), isNum ? 40 : 21, INK, 800);
+          const isNum = /^\d$/.test(big), bh = isNum ? 64 : 44;
+          ctx.font = `${isNum ? 44 : 23}px ${GAME_FONT}`; const bwid = isNum ? 84 : Math.min(AW - 30, Math.max(40 + big.length * 11, ctx.measureText(big).width + 44));
+          const bx = AW / 2 - bwid / 2, by = cy - bh / 2 - (small ? 8 : 0), bhh = bh + (small ? 18 : 0);   // a panel like the kit's cards: navy edge, a lip under it
+          ctx.fillStyle = "rgba(4,10,30,0.25)"; rr(bx - 2, by + 6, bwid + 4, bhh, 20); ctx.fill();
+          ctx.fillStyle = "#0E1F45"; rr(bx - 2.5, by + 1.5, bwid + 5, bhh + 3, 20); ctx.fill();
+          ctx.fillStyle = "#16336C"; rr(bx - 2.5, by - 2.5, bwid + 5, bhh + 5, 20); ctx.fill();
+          const pg = ctx.createLinearGradient(0, by, 0, by + bhh); pg.addColorStop(0, "#ffffff"); pg.addColorStop(1, "#eaf1fe");
+          ctx.fillStyle = pg; rr(bx, by, bwid, bhh, 18); ctx.fill();
+          ctx.textAlign = "center"; ctx.textBaseline = "alphabetic";
+          ctx.fillStyle = "#d6e4fa"; ctx.fillText(big, AW / 2, cy + (isNum ? 16 : 10) - (small ? 8 : 0) + 2.5);
+          ctx.fillStyle = "#0E1F45"; ctx.fillText(big, AW / 2, cy + (isNum ? 16 : 10) - (small ? 8 : 0));
           if (small) text(small, AW / 2, cy + bh / 2 + 4, 12, GREY, 700);
           ctx.restore();
         }
       }
       ctx.restore();
     }
-    function heart(x: number, y: number, s: number, col: string) {
-      ctx.fillStyle = col; ctx.beginPath(); ctx.moveTo(x, y + s * 0.9);
+    function heart(x: number, y: number, s: number, col: string, dy = 0) {
+      y += dy; ctx.fillStyle = col; ctx.beginPath(); ctx.moveTo(x, y + s * 0.9);
       ctx.bezierCurveTo(x - s * 1.6, y - s * 0.3, x - s * 0.7, y - s * 1.5, x, y - s * 0.5);
       ctx.bezierCurveTo(x + s * 0.7, y - s * 1.5, x + s * 1.6, y - s * 0.3, x, y + s * 0.9); ctx.fill();
     }
@@ -1010,26 +1042,26 @@ export default function PeaTanks() {
     <GameScreen>
       <GameHeader title="Pea Tanks" mode={mode} onMode={m => { toMenu(); setMode(m); }} onBoard={() => shell.setBoardOpen(true)} onHelp={shell.help.show} />
 
-      <div className="mt-2 flex items-center justify-between">
+      <div className={HUD_ROW}>
         {game === "versus" ? (<>
-          <div className="min-w-0"><div className="truncate text-[10px] uppercase tracking-wide text-[#5a6b85]">{isLive ? "You" : pn[0]}</div><div className="text-2xl font-bold leading-none tabular-nums text-[#3f7fd6]">{wins[isLive ? me : 0]}</div></div>
-          <div className="rounded-full bg-white/80 px-2.5 py-0.5 text-xs font-bold text-[#3f7fd6]">{isLive ? `Live · Room ${play.kind === "live" ? play.code : ""}` : `Versus · First To ${WINS_TO}`}</div>
-          <div className="flex items-center gap-2">
-            <div className="min-w-0 text-right"><div className="max-w-[110px] truncate text-[10px] uppercase tracking-wide text-[#5a6b85]">{isLive ? friendLabel : pn[1]}</div><div className="text-2xl font-bold leading-none tabular-nums text-[#e8505b]">{wins[isLive ? 1 - me : 1]}</div></div>
+          <HudStat label={isLive ? "You" : pn[0]} value={wins[isLive ? me : 0]} tone="blue" />
+          <HudTag light>{isLive ? `Live · Room ${play.kind === "live" ? play.code : ""}` : `Versus · First To ${WINS_TO}`}</HudTag>
+          <div className="flex shrink-0 items-center gap-1.5">
+            <HudStat label={isLive ? friendLabel : pn[1]} value={wins[isLive ? 1 - me : 1]} align="right" tone="red" />
             <PauseButton shell={shell} active={playing} />
           </div>
         </>) : game ? (<>
-          <div><div className="text-[10px] uppercase tracking-wide text-[#5a6b85]">Score</div><div className="text-2xl font-bold leading-none tabular-nums">{hud.score.toLocaleString()}</div></div>
-          <div className="rounded-full bg-white/80 px-2.5 py-0.5 text-xs font-bold text-[#3f7fd6]">{hud.label || (game === "guard" ? "Guard The Lunch" : "Missions")}</div>
-          <div className="flex items-center gap-2">
-            {isSolo ? <div className="text-right"><div className="text-[10px] uppercase tracking-wide text-[#5a6b85]">Best</div><div className="text-lg font-semibold leading-none tabular-nums">{(game === "guard" ? guardBest : best).toLocaleString()}</div></div>
-              : <div className="text-right"><div className="text-[10px] uppercase tracking-wide text-[#5a6b85]">{isLive ? `Room ${play.kind === "live" ? play.code : ""}` : "Co-op"}</div><div className="text-lg font-semibold leading-none">{game === "missions" ? `${hud.lives} ❤️` : "Team"}</div></div>}
+          <HudStat label="Score" value={hud.score.toLocaleString()} />
+          <HudTag light>{hud.label || (game === "guard" ? "Guard The Lunch" : "Missions")}</HudTag>
+          <div className="flex shrink-0 items-center gap-1.5">
+            {isSolo ? <HudStat label="Best" value={(game === "guard" ? guardBest : best).toLocaleString()} align="right" />
+              : <HudStat label={isLive ? `Room ${play.kind === "live" ? play.code : ""}` : "Co-op"} value={game === "missions" ? <>{hud.lives}<HeartIcon size={15} /></> : "Team"} align="right" />}
             <PauseButton shell={shell} active={playing} />
           </div>
         </>) : (<>
-          <div><div className="text-[10px] uppercase tracking-wide text-[#5a6b85]">Best</div><div className="text-2xl font-bold leading-none tabular-nums">{best.toLocaleString()}</div></div>
-          <div className="rounded-full bg-white/80 px-2.5 py-0.5 text-xs font-bold text-[#3f7fd6]">{mode === "daily" ? `Today's Challenge #${n}` : `Missions Reached: ${reached}`}</div>
-          <div className="w-8" />
+          <HudStat label="Best" value={best.toLocaleString()} />
+          <HudTag light>{mode === "daily" ? `Today's Challenge #${n}` : `Missions Reached: ${reached}`}</HudTag>
+          <div className="w-[58px] shrink-0" />
         </>)}
       </div>
 
@@ -1039,73 +1071,72 @@ export default function PeaTanks() {
         <PausedCard shell={shell} active={playing} />
 
         {play.kind === "none" && !over && !menu && !rui && !rejoin && (mode === "daily" ? (
-          <Card>
-            <div className="text-lg font-bold">Today&apos;s Challenge #{n}</div>
-            <p className="mt-1 text-sm text-[#5a6b85]">5 missions, 3 lives. The same tables and enemies for everyone today.</p>
-            <button onClick={() => startSolo("missions", true)} className="mt-4 w-full rounded-full bg-[#3f7fd6] py-3 font-semibold text-white">Play Today&apos;s Missions</button>
-            <button onClick={() => { setMode("endless"); }} className="mt-2 w-full rounded-full bg-[#e3effe] py-3 text-sm font-semibold text-[#3f7fd6]">More Ways To Play</button>
-            <p className="mt-2 text-xs text-[#5a6b85]">Free Play has the 20-mission campaign, Guard The Lunch, co-op and versus.</p>
-          </Card>
+          <OverlayCard soft title={<>Today&apos;s Challenge #{n}</>} max="max-w-[300px]">
+            <div className="wk-f text-[32px] leading-none text-[#0E1F45] [text-shadow:0_3px_0_#d6e4fa]">Pea Tanks</div>
+            <p className="mt-2 text-sm text-[#5a6b85]">5 missions, 3 lives. The same tables and enemies for everyone today.</p>
+            <button onClick={() => startSolo("missions", true)} className={`${UI.go} mt-4 h-[54px] w-full text-[20px]`}>Play Today&apos;s Missions</button>
+            <button onClick={() => { setMode("endless"); }} className={`${UI.btn2} mt-3 h-[46px] w-full text-[17px]`}>More Ways To Play</button>
+            <p className="mt-2.5 text-xs text-[#5a6b85]">Free Play has the 20-mission campaign, Guard The Lunch, co-op and versus.</p>
+          </OverlayCard>
         ) : (
-          <Card wide>
-            <div className="text-lg font-bold">Free Play</div>
-            {([["missions", "Missions", "20 kitchen tables. New enemies as you go."], ["guard", "Guard The Lunch", "Keep the waves off your picnic basket."], ["versus", "Versus", "One on one. First to 3 rounds."]] as [Game, string, string][]).map(([g, title, blurb]) => (
-              <div key={g} className="mt-3 rounded-2xl bg-[#f0f6fe] p-2.5 text-left">
-                <div className="text-sm font-bold">{title}</div>
+          <OverlayCard soft title="Free Play" max="max-w-[340px]" className="pt-3!">
+            {([["missions", "Missions", "20 kitchen tables. New enemies as you go."], ["guard", "Guard The Lunch", "Keep the waves off your picnic basket."], ["versus", "Versus", "One on one. First to 3 rounds."]] as [Game, string, string][]).map(([g, title, blurb], i) => (
+              <div key={g} className={`${i ? "mt-2.5" : ""} rounded-2xl bg-[#e6eefc] p-2.5 text-left shadow-[inset_0_-2px_0_#d0ddf3]`}>
+                <div className="wk-f text-[18px] leading-tight text-[#0E1F45]">{title}</div>
                 <div className="text-xs text-[#5a6b85]">{blurb}</div>
                 <div className="mt-2 flex gap-1.5">
-                  {g !== "versus" && <button onClick={() => pickGame(g, "solo")} className="flex-1 rounded-full bg-[#3f7fd6] py-2 text-xs font-semibold text-white">Solo</button>}
-                  <button onClick={() => pickGame(g, "local")} className="flex-1 rounded-full bg-white py-2 text-xs font-semibold text-[#3f7fd6]">Same Phone</button>
-                  <button onClick={() => pickGame(g, "friend")} className="flex-1 rounded-full bg-white py-2 text-xs font-semibold text-[#3f7fd6]">Play A Friend</button>
+                  {g !== "versus" && <button onClick={() => pickGame(g, "solo")} className={`${UI.go} h-[36px] flex-1 rounded-xl text-[14px]`}>Solo</button>}
+                  <button onClick={() => pickGame(g, "local")} className={`${UI.btn2} h-[36px] flex-1 rounded-xl text-[14px]`}>Same Phone</button>
+                  <button onClick={() => pickGame(g, "friend")} className={`${UI.btn2} h-[36px] flex-1 rounded-xl text-[14px]`}>Play A Friend</button>
                 </div>
               </div>
             ))}
-          </Card>
+          </OverlayCard>
         ))}
 
         {menu === "missions" && (
           <Card wide>
-            <div className="text-xl font-bold">Pick A Mission</div>
+            <div className="wk-f text-[25px] leading-tight text-[#0E1F45]">Pick A Mission</div>
             <p className="mt-1 text-xs text-[#5a6b85]">{pendingHow === "solo" || menuGame !== "missions" ? "3 lives, and a bonus life every 5 missions." : "Co-op: you share 3 lives."} Clear a mission to unlock the next.</p>
             <div className="mt-3 grid grid-cols-5 gap-1.5">
               {Array.from({ length: MISSIONS }, (_, i) => i + 1).map(k => (
                 <button key={k} disabled={k > reached} onClick={() => setStartAt(k)}
-                  className={`rounded-xl py-2 text-sm font-bold tabular-nums ${k === startAt ? "bg-[#3f7fd6] text-white" : k <= reached ? "bg-[#e3effe] text-[#3f7fd6]" : "bg-[#f3f5f8] text-[#b6bfcc]"}`}>{k}</button>
+                  className={`wk-f h-[40px] rounded-xl text-[17px] leading-none tabular-nums transition active:translate-y-[2px] ${k === startAt ? "bg-[linear-gradient(180deg,#5C9BF2,#3F7FD6)] text-white shadow-[0_3px_0_#2A5BA8]" : k <= reached ? "bg-white text-[#2A62C4] shadow-[0_3px_0_#a9c1e8,inset_0_0_0_1.5px_rgba(63,127,214,0.2)]" : "bg-[#e9edf3] text-[#b6bfcc]"}`}>{k}</button>
               ))}
             </div>
             <button onClick={() => { if (pendingHow === "local") { setMenu("local"); } else if (pendingHow === "friend") { setMenu("friend"); } else startSolo("missions", false, startAt); }}
-              className="mt-4 w-full rounded-full bg-[#3f7fd6] py-3 font-semibold text-white">{pendingHow === "solo" ? `Start Mission ${startAt}` : "Next"}</button>
-            <button onClick={() => { setMenu(null); setPendingHow("solo"); }} className="mt-1 w-full py-2 text-sm font-semibold text-[#5a6b85]">Back</button>
+              className="mt-4 w-full wk-btn wk-go h-[52px] text-[20px]">{pendingHow === "solo" ? `Start Mission ${startAt}` : "Next"}</button>
+            <button onClick={() => { setMenu(null); setPendingHow("solo"); }} className="mt-1 w-full py-2 wk-link text-[15px]">Back</button>
           </Card>
         )}
 
         {menu === "friend" && !rui && (
           <Card>
-            <div className="text-xl font-bold">Play A Friend</div>
+            <div className="wk-f text-[25px] leading-tight text-[#0E1F45]">Play A Friend</div>
             <p className="mt-1 text-sm text-[#5a6b85]">{menuGame === "versus" ? "Versus, live on two phones." : menuGame === "guard" ? "Guard The Lunch together, live on two phones." : `Co-op missions from mission ${startAt}, live on two phones.`} Make a room and send your friend the link.</p>
-            <button onClick={openRoom} className="mt-4 w-full rounded-full bg-[#3f7fd6] py-3 font-semibold text-white">Make A Room</button>
-            <div className="mt-4 text-xs font-semibold uppercase tracking-wide text-[#5a6b85]">Got A Code?</div>
+            <button onClick={openRoom} className="mt-4 w-full wk-btn wk-blue h-[50px] text-[19px]">Make A Room</button>
+            <div className="wk-f mt-4 text-[14px] tracking-[0.03em] text-[#16336C]">Got A Code?</div>
             <div className="mt-1 flex gap-2">
               <input value={code} onChange={e => setCode(e.target.value.toUpperCase().replace(/[^A-Z]/g, "").slice(0, 4))} placeholder="ABCD" autoCapitalize="characters" autoComplete="off" spellCheck={false}
                 onKeyDown={e => { if (e.key === "Enter") joinRoom(); }}
-                className="w-0 min-w-0 flex-1 rounded-xl border border-[#d6e2f5] px-3 py-2.5 text-center font-mono text-lg font-bold tracking-[0.3em] outline-none focus:border-[#3f7fd6]" />
-              <button onClick={joinRoom} disabled={code.length !== 4} className="rounded-full bg-[#e3effe] px-5 font-semibold text-[#3f7fd6] disabled:opacity-50">Join</button>
+                className="wk-input wk-f w-0 min-w-0 flex-1 px-3 py-2 text-center text-[22px] tracking-[0.3em]" />
+              <button onClick={joinRoom} disabled={code.length !== 4} className="wk-btn wk-light px-5 text-[18px]">Join</button>
             </div>
-            <button onClick={() => { setMenu(null); setPendingHow("solo"); }} className="mt-3 w-full py-2 text-sm font-semibold text-[#5a6b85]">Back</button>
+            <button onClick={() => { setMenu(null); setPendingHow("solo"); }} className="mt-3 w-full py-2 wk-link text-[15px]">Back</button>
           </Card>
         )}
 
         {menu === "local" && (
           <Card>
-            <div className="text-xl font-bold">Same Phone</div>
+            <div className="wk-f text-[25px] leading-tight text-[#0E1F45]">Same Phone</div>
             <p className="mt-1 text-sm text-[#5a6b85]">Lay the phone flat between you. Player 2 plays from the top end. {menuGame === "versus" ? `First to ${WINS_TO} rounds.` : menuGame === "guard" ? "Guard the basket together." : `Co-op from mission ${startAt}.`}</p>
             {[0, 1].map(i => (
               <input key={i} value={names[i]} maxLength={12} placeholder={i === 0 ? "Player 1 (Bottom)" : "Player 2 (Top)"} autoComplete="off"
                 onChange={e => setNames(v => v.map((x, j) => (j === i ? e.target.value : x)))}
-                className="mt-3 w-full rounded-xl border border-[#d6e2f5] px-3 py-2.5 text-base outline-none focus:border-[#3f7fd6]" />
+                className="wk-input mt-3 w-full px-3 py-2.5 text-base" />
             ))}
-            <button onClick={startLocal} className="mt-4 w-full rounded-full bg-[#3f7fd6] py-3 font-semibold text-white">Start</button>
-            <button onClick={() => { setMenu(null); setPendingHow("solo"); }} className="mt-2 w-full py-2 text-sm font-semibold text-[#5a6b85]">Back</button>
+            <button onClick={startLocal} className="mt-4 w-full wk-btn wk-blue h-[50px] text-[19px]">Start</button>
+            <button onClick={() => { setMenu(null); setPendingHow("solo"); }} className="mt-2 w-full py-2 wk-link text-[15px]">Back</button>
           </Card>
         )}
 
@@ -1113,20 +1144,20 @@ export default function PeaTanks() {
 
         {rejoin && !rui && !menu && (
           <Card>
-            <div className="text-xl font-bold">Rejoin Your Game?</div>
+            <div className="wk-f text-[25px] leading-tight text-[#0E1F45]">Rejoin Your Game?</div>
             <p className="mt-2 text-sm text-[#5a6b85]">You were playing {rejoin.friendName === "Guest" ? "your friend" : rejoin.friendName} in room {rejoin.code}.</p>
-            <button onClick={() => { const r = rejoin; setRejoin(null); if (savedSession(GAME)) net.resume(r); }} className="mt-4 w-full rounded-full bg-[#3f7fd6] py-3 font-semibold text-white">Rejoin Your Game</button>
-            <button onClick={() => { setRejoin(null); try { localStorage.removeItem(`${GAME}-live`); sessionStorage.removeItem(`${GAME}-live`); } catch {} }} className="mt-2 w-full py-2 text-sm font-semibold text-[#5a6b85]">Not Now</button>
+            <button onClick={() => { const r = rejoin; setRejoin(null); if (savedSession(GAME)) net.resume(r); }} className="mt-4 w-full wk-btn wk-blue h-[50px] text-[19px]">Rejoin Your Game</button>
+            <button onClick={() => { setRejoin(null); try { localStorage.removeItem(`${GAME}-live`); sessionStorage.removeItem(`${GAME}-live`); } catch {} }} className="mt-2 w-full py-2 wk-link text-[15px]">Not Now</button>
           </Card>
         )}
 
         {isLive && paired && net.away && (
           <Card>
-            <div className="text-xl font-bold">{net.away.who === "friend" ? `${friend} Stepped Away...` : "Reconnecting..."}</div>
+            <div className="wk-f text-[25px] leading-tight text-[#0E1F45]">{net.away.who === "friend" ? `${friend} Stepped Away...` : "Reconnecting..."}</div>
             <p className="mt-2 text-sm text-[#5a6b85]">{net.away.who === "friend" ? "The game is paused. It carries on as soon as they're back." : "The game is paused while we get you back in."}</p>
-            <div className="mt-3 text-4xl font-bold tabular-nums text-[#3f7fd6]">{awaySecs}</div>
-            <div className="text-xs font-semibold uppercase tracking-wide text-[#5a6b85]">Seconds Left To Come Back</div>
-            <button onClick={toMenu} className="mt-4 w-full rounded-full bg-[#e3effe] py-3 font-semibold text-[#3f7fd6]">Leave</button>
+            <div className="wk-f mt-3 text-[46px] leading-none tabular-nums text-[#3f7fd6]">{awaySecs}</div>
+            <div className="wk-f text-[13px] tracking-[0.03em] text-[#5a6b85]">Seconds Left To Come Back</div>
+            <button onClick={toMenu} className="mt-4 w-full wk-btn wk-light h-[48px] text-[18px]">Leave</button>
           </Card>
         )}
 
@@ -1134,7 +1165,7 @@ export default function PeaTanks() {
           <ReadyCard title={liveGameNow === "versus" ? "Get Ready: Versus" : liveGameNow === "guard" ? "Get Ready: Guard The Lunch" : "Get Ready: Co-op Missions"}
             me={nameRef.current === "Guest" ? "You" : nameRef.current} friend={friend} ready={[ready.me, ready.them]} onReady={imReady} onLeave={toMenu} steps={readySteps} />
         ) : (
-          <Card><div className="text-lg font-bold">Joining...</div><p className="mt-2 text-sm text-[#5a6b85]">Finding out what {friend} wants to play.</p></Card>
+          <Card><div className="wk-f text-[25px] leading-tight text-[#0E1F45]">Joining...</div><p className="mt-2 text-sm text-[#5a6b85]">Finding out what {friend} wants to play.</p></Card>
         ))}
 
         {card && !over && !(isLive && net.away) && <MissionCard card={card} live={isLive} host={me === 0} friend={friend} again={again}
@@ -1142,22 +1173,22 @@ export default function PeaTanks() {
 
         {matchEnd && !showRoomCard && !(isLive && net.away) && (
           <Card>
-            <div className="text-sm font-semibold text-[#5a6b85]">{play.kind === "live" ? `Room ${play.code}` : "Same Phone"}</div>
-            <div className="mt-1 text-2xl font-bold">{isLive ? (matchEnd.winner === me ? "You Won! 🎉" : `${friend} Won`) : `${pn[matchEnd.winner]} Wins! 🎉`}</div>
+            <div className="wk-f text-[15px] tracking-[0.03em] text-[#3F7FD6]">{play.kind === "live" ? `Room ${play.code}` : "Same Phone"}</div>
+            <div className="wk-f mt-1 text-[30px] leading-tight text-[#0E1F45]">{isLive ? (matchEnd.winner === me ? "You Won! 🎉" : `${friend} Won`) : `${pn[matchEnd.winner]} Wins! 🎉`}</div>
             <div className="mt-1 text-sm text-[#5a6b85]">{isLive ? `You ${wins[me]} · ${friendLabel} ${wins[1 - me]}` : `${pn[0]} ${wins[0]} · ${pn[1]} ${wins[1]}`}</div>
-            {isLive && again.them && !again.me && <div className="mt-2 text-sm font-semibold text-[#2eaa6e]">{friend} Wants A Rematch!</div>}
-            <button onClick={isLive ? liveRematch : localRematch} disabled={isLive && again.me} className="mt-4 w-full rounded-full bg-[#3f7fd6] py-3 font-semibold text-white disabled:opacity-70">
+            {isLive && again.them && !again.me && <div className="wk-f mt-2 text-[16px] text-[#22A964]">{friend} Wants A Rematch!</div>}
+            <button onClick={isLive ? liveRematch : localRematch} disabled={isLive && again.me} className="mt-4 w-full wk-btn wk-blue h-[50px] text-[19px] disabled:opacity-70">
               {isLive && again.me ? `Waiting For ${friend}...` : "Rematch"}
             </button>
-            <button onClick={toMenu} className="mt-2 w-full rounded-full bg-[#e3effe] py-3 font-semibold text-[#3f7fd6]">{isLive ? "Leave" : "Done"}</button>
-            <a href={appStoreLink(GAME)} className="mt-3 inline-block text-xs font-semibold text-[#5a6b85] underline">Get WhatYouAte For iPhone</a>
+            <button onClick={toMenu} className="mt-2 w-full wk-btn wk-light h-[48px] text-[18px]">{isLive ? "Leave" : "Done"}</button>
+            <a href={appStoreLink(GAME)} className="wk-link mt-3 inline-block text-[14px] underline">Get WhatYouAte For iPhone</a>
           </Card>
         )}
 
         {over && isSolo && !menu && !rui && <GameOver label={mode === "daily" ? `Today's Challenge #${n}` : "Free Play Missions"} headline={headline} score={hud.score} best={best} mode={mode}
           posted={shell.scores.posted} joined={!!shell.player} campaign={GAME} copied={shell.copied} fact={fact}
           pitch="Quick reflexes are fun. Steady energy is better. WhatYouAte helps with the second one."
-          extra={<button onClick={() => { setOver(false); setMenuGame("missions"); setPendingHow("friend"); setPlay({ kind: "none" }); setMode("endless"); setMenu("friend"); }} className="mt-2 text-sm font-semibold text-[#3f7fd6]">Play A Friend Instead →</button>}
+          extra={<button onClick={() => { setOver(false); setMenuGame("missions"); setPendingHow("friend"); setPlay({ kind: "none" }); setMode("endless"); setMenu("friend"); }} className="wk-link mt-3 text-[16px] text-[#3F7FD6]">Play A Friend Instead</button>}
           onBoard={() => shell.setBoardOpen(true)} onJoin={() => shell.setJoinOpen(true)} onAgain={() => { setOver(false); setPlay(p => (p.kind === "solo" ? { ...p, key: Date.now() } : p)); }} onShare={share} />}
       </BoardArea>
 
@@ -1192,55 +1223,55 @@ function MissionCard({ card, live, host, friend, again, onNext, onAgain, onMenu 
     const counts = new Map<Kind, number>(); for (const k of card.foes) counts.set(k, (counts.get(k) ?? 0) + 1);
     return (
       <Card>
-        <div className="text-sm font-semibold text-[#5a6b85]">Mission {card.n}{card.of ? ` Of ${card.of}` : ""} · {card.foes.length} {card.foes.length === 1 ? "Enemy" : "Enemies"}</div>
-        <div className="mt-0.5 text-xl font-bold">{card.name}</div>
+        <div className="wk-f text-[15px] tracking-[0.03em] text-[#3F7FD6]">Mission {card.n}{card.of ? ` Of ${card.of}` : ""} · {card.foes.length} {card.foes.length === 1 ? "Enemy" : "Enemies"}</div>
+        <div className="wk-f mt-0.5 text-[25px] leading-tight text-[#0E1F45]">{card.name}</div>
         {card.isNew && (
           <div className="mt-3 flex items-center gap-2 rounded-2xl bg-[#fff4d6] p-2 text-left">
             <KindPreview look={LOOKS[card.isNew as Exclude<Kind, "player">]} />
-            <div><div className="text-xs font-bold uppercase tracking-wide text-[#8a5a00]">New Enemy: {KINDS[card.isNew].name}</div><div className="text-sm leading-snug">{KINDS[card.isNew].blurb}</div></div>
+            <div><div className="wk-f text-[14px] leading-tight text-[#8a5a00]">New Enemy: {KINDS[card.isNew].name}</div><div className="text-sm leading-snug">{KINDS[card.isNew].blurb}</div></div>
           </div>
         )}
         {card.newZone !== null && (
-          <div className="mt-2 rounded-2xl bg-[#e3f5e9] p-2 text-left"><div className="text-xs font-bold uppercase tracking-wide text-[#1f7a4c]">New: {ZONES[card.newZone].name}</div><div className="text-sm">{ZONES[card.newZone].blurb}</div></div>
+          <div className="mt-2 rounded-2xl bg-[#e3f5e9] p-2 text-left"><div className="wk-f text-[14px] leading-tight text-[#1f7a4c]">New: {ZONES[card.newZone].name}</div><div className="text-sm">{ZONES[card.newZone].blurb}</div></div>
         )}
         <div className="mt-3 flex flex-wrap justify-center gap-1.5">
-          {[...counts.entries()].map(([k, c]) => (<span key={k} className="rounded-full bg-[#f0f6fe] px-2.5 py-1 text-xs font-semibold text-[#3f5f8a]">{c > 1 ? `${c} × ` : ""}{KINDS[k].name}</span>))}
+          {[...counts.entries()].map(([k, c]) => (<span key={k} className="wk-f rounded-full bg-[#e6eefc] px-2.5 py-1 text-[13px] text-[#16336C] shadow-[inset_0_-2px_0_#d0ddf3]">{c > 1 ? `${c} × ` : ""}{KINDS[k].name}</span>))}
         </div>
         <div className="mt-2 text-sm text-[#5a6b85]">{card.lives} {card.lives === 1 ? "Life" : "Lives"} {card.coop ? "(Shared)" : "Left"}</div>
-        {auto ? <div className="mt-3 text-sm font-semibold text-[#3f7fd6]">Starting...</div> : <button onClick={onNext} className="mt-4 w-full rounded-full bg-[#3f7fd6] py-3 font-semibold text-white">Start Mission</button>}
+        {auto ? <div className="wk-f mt-3 text-[16px] text-[#3f7fd6]">Starting...</div> : <button onClick={onNext} className="mt-4 w-full wk-btn wk-go h-[52px] text-[20px]">Start Mission</button>}
       </Card>
     );
   }
   if (card.k === "result") return (
     <Card>
-      <div className="text-sm font-semibold text-[#5a6b85]">Mission {card.n} Cleared</div>
-      <div className="mt-0.5 text-3xl font-bold leading-tight tabular-nums">+{card.pts.toLocaleString()}</div>
+      <div className="wk-f text-[15px] tracking-[0.03em] text-[#3F7FD6]">Mission {card.n} Cleared</div>
+      <div className="wk-f mt-1 text-[44px] leading-none tabular-nums text-[#0E1F45] [text-shadow:0_4px_0_#cfdff8]">+{card.pts.toLocaleString()}</div>
       <div className="mt-2 grid grid-cols-2 gap-2 text-sm">
-        <div className="rounded-2xl bg-[#f0f6fe] py-2"><div className="text-[10px] font-semibold uppercase tracking-wide text-[#5a6b85]">Time</div><div className="font-bold tabular-nums">{card.secs}s</div></div>
-        <div className="rounded-2xl bg-[#f0f6fe] py-2"><div className="text-[10px] font-semibold uppercase tracking-wide text-[#5a6b85]">Aim</div><div className="font-bold tabular-nums">{card.acc}%</div></div>
+        <div className="wk-hud py-2"><div className="wk-hud-label">Time</div><div className="wk-f mt-1 text-[20px] leading-none tabular-nums">{card.secs}s</div></div>
+        <div className="wk-hud py-2"><div className="wk-hud-label">Aim</div><div className="wk-f mt-1 text-[20px] leading-none tabular-nums">{card.acc}%</div></div>
       </div>
-      {card.bonus && <div className="mt-2 text-sm font-semibold text-[#2eaa6e]">Bonus Life! ❤️</div>}
+      {card.bonus && <div className="wk-f mt-2 flex items-center justify-center gap-1 text-[16px] text-[#22A964]">Bonus Life!<HeartIcon size={16} /></div>}
       <div className="mt-2 text-sm text-[#5a6b85]">Total {card.total.toLocaleString()}</div>
-      {auto ? <div className="mt-3 text-sm font-semibold text-[#3f7fd6]">Next Mission Coming...</div> : <button onClick={onNext} className="mt-4 w-full rounded-full bg-[#3f7fd6] py-3 font-semibold text-white">{card.last ? "See Results" : "Next Mission"}</button>}
+      {auto ? <div className="wk-f mt-3 text-[16px] text-[#3f7fd6]">Next Mission Coming...</div> : <button onClick={onNext} className="mt-4 w-full wk-btn wk-go h-[52px] text-[20px]">{card.last ? "See Results" : "Next Mission"}</button>}
     </Card>
   );
   if (card.k === "retry") return (
     <Card>
-      <div className="text-xl font-bold">Knocked Out</div>
+      <div className="wk-f text-[25px] leading-tight text-[#0E1F45]">Knocked Out</div>
       <p className="mt-1 text-sm text-[#5a6b85]">Mission {card.n} starts again. {card.lives} {card.lives === 1 ? "life" : "lives"} left.</p>
-      {auto ? <div className="mt-3 text-sm font-semibold text-[#3f7fd6]">Trying Again...</div> : <button onClick={onNext} className="mt-4 w-full rounded-full bg-[#3f7fd6] py-3 font-semibold text-white">Try Again</button>}
+      {auto ? <div className="wk-f mt-3 text-[16px] text-[#3f7fd6]">Trying Again...</div> : <button onClick={onNext} className="mt-4 w-full wk-btn wk-go h-[52px] text-[20px]">Try Again</button>}
     </Card>
   );
   const isGuard = card.k === "guardOver";
   return (
     <Card>
-      <div className="text-sm font-semibold text-[#5a6b85]">{isGuard ? "Guard The Lunch" : "Co-op Missions"}</div>
-      <div className="mt-1 text-2xl font-bold">{isGuard ? `${card.waves} ${card.waves === 1 ? "Wave" : "Waves"} Held` : card.won ? "Campaign Complete! 🎉" : `${card.cleared} ${card.cleared === 1 ? "Mission" : "Missions"} Cleared`}</div>
-      <div className="mt-1 text-3xl font-bold tabular-nums">{card.score.toLocaleString()}</div>
+      <div className="wk-f text-[15px] tracking-[0.03em] text-[#3F7FD6]">{isGuard ? "Guard The Lunch" : "Co-op Missions"}</div>
+      <div className="wk-f mt-1 text-[30px] leading-tight text-[#0E1F45]">{isGuard ? `${card.waves} ${card.waves === 1 ? "Wave" : "Waves"} Held` : card.won ? "Campaign Complete! 🎉" : `${card.cleared} ${card.cleared === 1 ? "Mission" : "Missions"} Cleared`}</div>
+      <div className="wk-f mt-1 text-[44px] leading-none tabular-nums text-[#0E1F45] [text-shadow:0_4px_0_#cfdff8]">{card.score.toLocaleString()}</div>
       {isGuard && <div className="text-sm text-[#5a6b85]">{card.score >= card.best ? "New Best!" : `Best: ${card.best.toLocaleString()}`} · {card.kills} knocked out</div>}
-      {live && again.them && !again.me && <div className="mt-2 text-sm font-semibold text-[#2eaa6e]">{friend} Wants To Go Again!</div>}
-      <button onClick={onAgain} disabled={live && again.me} className="mt-4 w-full rounded-full bg-[#3f7fd6] py-3 font-semibold text-white disabled:opacity-70">{live && again.me ? `Waiting For ${friend}...` : "Play Again"}</button>
-      <button onClick={onMenu} className="mt-2 w-full rounded-full bg-[#e3effe] py-3 font-semibold text-[#3f7fd6]">{live ? "Leave" : "Done"}</button>
+      {live && again.them && !again.me && <div className="wk-f mt-2 text-[16px] text-[#22A964]">{friend} Wants To Go Again!</div>}
+      <button onClick={onAgain} disabled={live && again.me} className="mt-4 w-full wk-btn wk-blue h-[50px] text-[19px] disabled:opacity-70">{live && again.me ? `Waiting For ${friend}...` : "Play Again"}</button>
+      <button onClick={onMenu} className="mt-2 w-full wk-btn wk-light h-[48px] text-[18px]">{live ? "Leave" : "Done"}</button>
       {!host && null}
     </Card>
   );
@@ -1250,44 +1281,40 @@ function RoomCard({ rui, copied, onShare, onCancel, onBack, onNew }: { rui: Room
   return (
     <Card>
       {rui.s === "waiting" && (<>
-        <div className="text-sm font-semibold text-[#5a6b85]">Your Room Code</div>
-        <div className="mt-1 font-mono text-4xl font-bold tracking-[0.2em]">{rui.code}</div>
+        <div className="wk-f text-[15px] tracking-[0.03em] text-[#3F7FD6]">Your Room Code</div>
+        <div className="wk-f mt-1 text-[46px] leading-none tracking-[0.14em] text-[#0E1F45]">{rui.code}</div>
         <p className="mt-2 text-sm text-[#5a6b85]">Send your friend the link. You&apos;ll both get a quick how-to, then the game starts.</p>
-        <button onClick={onShare} className="mt-4 w-full rounded-full bg-[#3f7fd6] py-3 font-semibold text-white">{copied ? "Link Copied!" : "Share Link"}</button>
-        <p className="mt-3 text-sm font-semibold text-[#3f7fd6]">Waiting For Your Friend...</p>
-        <button onClick={onCancel} className="mt-1 w-full py-2 text-sm font-semibold text-[#5a6b85]">Cancel</button>
+        <button onClick={onShare} className="mt-4 w-full wk-btn wk-blue h-[50px] text-[19px]">{copied ? "Link Copied!" : "Share Link"}</button>
+        <p className="wk-f mt-3 text-[16px] text-[#3f7fd6]">Waiting For Your Friend...</p>
+        <button onClick={onCancel} className="mt-1 w-full py-2 wk-link text-[15px]">Cancel</button>
       </>)}
       {rui.s === "joining" && (<>
-        <div className="text-xl font-bold">Joining Room {rui.code}</div>
-        <p className="mt-2 text-sm font-semibold text-[#3f7fd6]">Connecting...</p>
-        <button onClick={onCancel} className="mt-3 w-full py-2 text-sm font-semibold text-[#5a6b85]">Cancel</button>
+        <div className="wk-f text-[25px] leading-tight text-[#0E1F45]">Joining Room {rui.code}</div>
+        <p className="wk-f mt-2 text-[16px] text-[#3f7fd6]">Connecting...</p>
+        <button onClick={onCancel} className="mt-3 w-full py-2 wk-link text-[15px]">Cancel</button>
       </>)}
       {(rui.s === "full" || rui.s === "empty" || rui.s === "error") && (<>
-        <div className="text-xl font-bold">{rui.s === "full" ? "Room Full" : rui.s === "empty" ? "No One's Here" : "Can't Connect"}</div>
+        <div className="wk-f text-[25px] leading-tight text-[#0E1F45]">{rui.s === "full" ? "Room Full" : rui.s === "empty" ? "No One's Here" : "Can't Connect"}</div>
         <p className="mt-2 text-sm text-[#5a6b85]">{rui.s === "full" ? `Room ${rui.code} already has two players.` : rui.s === "empty" ? `Nobody is in room ${rui.code} right now. Ask your friend to make a room and send you the link.` : "We couldn't reach the game. Check your connection and try again."}</p>
-        <button onClick={onBack} className="mt-4 w-full rounded-full bg-[#3f7fd6] py-3 font-semibold text-white">Back</button>
-        <button onClick={onCancel} className="mt-2 w-full py-2 text-sm font-semibold text-[#5a6b85]">Back To Menu</button>
+        <button onClick={onBack} className="mt-4 w-full wk-btn wk-blue h-[50px] text-[19px]">Back</button>
+        <button onClick={onCancel} className="mt-2 w-full py-2 wk-link text-[15px]">Back To Menu</button>
       </>)}
       {rui.s === "lost" && (<>
-        <div className="text-xl font-bold">Connection Lost</div>
+        <div className="wk-f text-[25px] leading-tight text-[#0E1F45]">Connection Lost</div>
         <p className="mt-2 text-sm text-[#5a6b85]">We couldn&apos;t get you back into room {rui.code} in time.</p>
-        <button onClick={onNew} className="mt-4 w-full rounded-full bg-[#3f7fd6] py-3 font-semibold text-white">Make A New Room</button>
-        <button onClick={onCancel} className="mt-2 w-full rounded-full bg-[#e3effe] py-3 font-semibold text-[#3f7fd6]">Back To Menu</button>
+        <button onClick={onNew} className="mt-4 w-full wk-btn wk-blue h-[50px] text-[19px]">Make A New Room</button>
+        <button onClick={onCancel} className="mt-2 w-full wk-btn wk-light h-[48px] text-[18px]">Back To Menu</button>
       </>)}
       {rui.s === "left" && (<>
-        <div className="text-xl font-bold">Your Friend Left</div>
+        <div className="wk-f text-[25px] leading-tight text-[#0E1F45]">Your Friend Left</div>
         <p className="mt-2 text-sm text-[#5a6b85]">That game is over.</p>
-        <button onClick={onNew} className="mt-4 w-full rounded-full bg-[#3f7fd6] py-3 font-semibold text-white">Make A New Room</button>
-        <button onClick={onCancel} className="mt-2 w-full rounded-full bg-[#e3effe] py-3 font-semibold text-[#3f7fd6]">Back To Menu</button>
+        <button onClick={onNew} className="mt-4 w-full wk-btn wk-blue h-[50px] text-[19px]">Make A New Room</button>
+        <button onClick={onCancel} className="mt-2 w-full wk-btn wk-light h-[48px] text-[18px]">Back To Menu</button>
       </>)}
     </Card>
   );
 }
 
 function Card({ children, wide = false }: { children: ReactNode; wide?: boolean }) {
-  return (
-    <div className="absolute inset-0 z-10 flex items-center justify-center rounded-[22px] bg-[#101b2e]/35 p-3">
-      <div className={`max-h-full w-full ${wide ? "max-w-[330px]" : "max-w-[300px]"} overflow-y-auto rounded-3xl bg-white p-5 text-center shadow-2xl [@media(max-height:700px)]:p-4`}>{children}</div>
-    </div>
-  );
+  return <OverlayCard max={wide ? "max-w-[340px]" : "max-w-[300px]"}>{children}</OverlayCard>;
 }

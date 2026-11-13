@@ -11,8 +11,9 @@
 // ends at 10pm; Free Play keeps going day after day, faster each time. Everything around the board comes from ./kit.
 import { useEffect, useRef, useState } from "react";
 import { type Mode, type Toast, GameScreen, GameHeader, BoardArea, PrizeLogo, GameOver, PauseButton, PausedCard, HelpModal, ModesHelp, ShellPopups,
-  useGameShell, fitCanvas, loadImages, dailySeed, dailyNumber, torontoDate, mulberry32, readBest, saveBest, foodPng } from "./kit";
+  useGameShell, fitCanvas, loadImages, dailySeed, dailyNumber, torontoDate, mulberry32, readBest, saveBest, foodPng, HUD_ROW, HudStat, HudTag, StartCard } from "./kit";
 import { useDuel } from "./duels";
+import { lightAt, drawView, drawRoom, drawPanel, drawKnob, drawFood, drawFace, drawHeart, drawGrip, haloText, warm } from "./art/beatTheCrash";
 
 const GAME = "beat-the-crash";
 const LAUNCH = "2026-11-08";   // Today's Challenge #1
@@ -50,20 +51,9 @@ const HEARTS = 3, SUGAR = 0.28;            // sugar's share of the food (eased i
 const START = 7, END = 22, HOUR_MS = 5000; // the day runs 7am to 10pm, five seconds an hour
 type Zone = "crash" | "low" | "steady" | "wired" | "high";
 const zoneOf = (e: number): Zone => (e < 20 ? "crash" : e < 40 ? "low" : e <= 80 ? "steady" : e < 92 ? "wired" : "high");
-const ZONE_LABEL: Record<Zone, string> = { crash: "Crashing!", low: "Running low", steady: "Steady", wired: "Wired", high: "Sugar high!" };
+const ZONE_LABEL: Record<Zone, string> = { crash: "Crashing!", low: "Running Low", steady: "Steady", wired: "Wired", high: "Sugar High!" };
 const ZONE_COLOR: Record<Zone, string> = { crash: "#e8505b", low: "#e09a00", steady: "#2eaa6e", wired: "#e09a00", high: "#b54bd1" };
-const BAR: [number, number, string][] = [[0, 20, "#f9cfd2"], [20, 40, "#fde9b8"], [40, 80, "#c9eed6"], [80, 92, "#fde9b8"], [92, 100, "#efd0f5"]];
-const SKY: [number, string, string][] = [[7, "#fff1dc", "#e8f1ff"], [11, "#eef5ff", "#d6e7ff"], [14, "#fff0e6", "#ffdcc9"], [16, "#eef5ff", "#d6e7ff"], [19, "#ffe3cf", "#c6d3f3"], [22, "#4a5c92", "#26315c"]];
 function clock(h: number) { const hh = Math.floor(h), mm = Math.floor((h - hh) * 60); return `${((hh + 11) % 12) + 1}:${String(mm).padStart(2, "0")} ${hh < 12 ? "AM" : "PM"}`; }
-function mix(a: string, b: string, t: number) {
-  const p = (s: string) => [1, 3, 5].map(i => parseInt(s.slice(i, i + 2), 16)), x = p(a), y = p(b);
-  return `rgb(${x.map((v, i) => Math.round(v + (y[i] - v) * t)).join(",")})`;
-}
-function sky(h: number) {
-  let i = 0; while (i < SKY.length - 2 && h >= SKY[i + 1][0]) i++;
-  const [h0, a0, b0] = SKY[i], [h1, a1, b1] = SKY[i + 1], t = Math.max(0, Math.min(1, (h - h0) / (h1 - h0)));
-  return [mix(a0, a1, t), mix(b0, b1, t)];
-}
 
 type Result = { kind: "done" | "asleep" | "sugar"; at: string; day: number; squares: string };
 type Hud = { score: number; zone: Zone; mult: number };
@@ -211,71 +201,48 @@ export default function BeatTheCrash() {
     };
 
     function draw(t: number) {
-      const h = Math.min(hourNow(), END), night = h >= 19.5, z = zoneOf(energy);
+      const h = Math.min(hourNow(), END), night = h >= 19.5, z = zoneOf(energy), L = lightAt(h);
+      warm(ctx, W, H, HUD, GRIP_Y, FR, PR, imgs[0]);   // paints the whole day's art before play starts (and again only on a resize)
       ctx.save(); ctx.clearRect(0, 0, W, H);
       ctx.beginPath(); ctx.roundRect(0, 0, W, H, 22); ctx.clip();
-      const [top, bottom] = sky(h), g = ctx.createLinearGradient(0, 0, 0, H); g.addColorStop(0, top); g.addColorStop(1, bottom);
-      ctx.fillStyle = g; ctx.fillRect(0, 0, W, H);
+      // the kitchen: the sky through the window for this hour, then the room round it, lit for the time of day
+      drawView(ctx, h);
+      drawRoom(ctx, W, H, HUD, GRIP_Y, h);
 
-      for (const f of foods) {
-        ctx.save(); ctx.translate(f.x, f.y); ctx.rotate(Math.sin(f.spin) * 0.25);
-        ctx.fillStyle = "rgba(255,255,255,0.92)"; ctx.beginPath(); ctx.arc(0, 0, FR, 0, Math.PI * 2); ctx.fill();
-        ctx.strokeStyle = "rgba(16,27,46,0.08)"; ctx.lineWidth = 2; ctx.stroke();
-        const s = FR * 1.6; if (imgs[f.i].complete) ctx.drawImage(imgs[f.i], -s / 2, -s / 2, s, s);
-        ctx.restore();
-      }
+      for (const f of foods) drawFood(ctx, imgs[f.i], f.x, f.y, FR, Math.sin(f.spin) * 0.25, L.night);
 
       // HUD: clock, day or goal, and the energy bar with its zones
-      ctx.fillStyle = "rgba(255,255,255,0.82)"; ctx.fillRect(0, 0, W, HUD);
+      drawPanel(ctx, W, HUD, h, START, END);
       ctx.fillStyle = "#101b2e"; ctx.font = "700 20px system-ui, -apple-system, sans-serif"; ctx.textAlign = "left"; ctx.textBaseline = "alphabetic";
       ctx.fillText(clock(h), 16, 27);
       const slump = h >= 14 && h < 16;
       ctx.font = "600 13px system-ui, -apple-system, sans-serif"; ctx.textAlign = "right"; ctx.fillStyle = slump ? "#e8505b" : "#5a6b85";
       ctx.fillText(slump ? "😩 Afternoon slump" : mode === "daily" ? "Make it to 10pm" : `Day ${day}`, W - 16, 25);
       const bx = 16, bw = W - 32, by = 38, bh = 14;
-      for (const [a, b, c] of BAR) { ctx.fillStyle = c; ctx.fillRect(bx + (a / 100) * bw, by, ((b - a) / 100) * bw, bh); }
-      ctx.strokeStyle = "rgba(16,27,46,0.12)"; ctx.lineWidth = 1; ctx.beginPath(); ctx.roundRect(bx, by, bw, bh, 7); ctx.stroke();
       const kx = bx + (energy / 100) * bw, warn = crashes.some(c => c.at - gameMs < 1500);
-      ctx.fillStyle = "#fff"; ctx.strokeStyle = warn && Math.floor(t / 150) % 2 ? "#e8505b" : ZONE_COLOR[z]; ctx.lineWidth = 3;
-      ctx.beginPath(); ctx.arc(kx, by + bh / 2, 9, 0, Math.PI * 2); ctx.fill(); ctx.stroke();
+      drawKnob(ctx, kx, by + bh / 2, warn && Math.floor(t / 150) % 2 ? "#e8505b" : ZONE_COLOR[z]);
 
       const jx = z === "high" ? Math.sin(t / 35) * 6 : 0;   // a sugar high makes you jittery
       const face = faces[energy <= 0 || z === "crash" ? 0 : z === "low" ? 1 : z === "high" || z === "wired" ? 3 : 2];
-      ctx.fillStyle = "#fff"; ctx.strokeStyle = ZONE_COLOR[z]; ctx.lineWidth = 4;
-      ctx.beginPath(); ctx.arc(px + jx, PLAYER_Y, PR, 0, Math.PI * 2); ctx.fill(); ctx.stroke();
-      const fs = PR * 1.55; if (face.complete) ctx.drawImage(face, px + jx - fs / 2, PLAYER_Y - fs / 2, fs, fs);
+      drawFace(ctx, face, px + jx, PLAYER_Y, PR, ZONE_COLOR[z]);
       const next = crashes.reduce<number | null>((m, c) => (m === null || c.at < m ? c.at : m), null);
       if (next !== null) {                               // a sugar crash is coming: a red ring runs out around the face
         const left = Math.max(0, Math.min(1, (next - gameMs) / 2500));
-        ctx.strokeStyle = "#e8505b"; ctx.lineWidth = 5; ctx.beginPath();
+        ctx.strokeStyle = "#e8505b"; ctx.lineWidth = 5; ctx.lineCap = "butt"; ctx.beginPath();
         ctx.arc(px + jx, PLAYER_Y, PR + 7, -Math.PI / 2, -Math.PI / 2 + left * Math.PI * 2); ctx.stroke();
       }
       // hearts ride just under the face, where your eyes already are
-      for (let k = 0; k < HEARTS; k++) drawHeart(px + jx + (k - 1) * 17, PLAYER_Y + PR + 8, 13, k < hearts);
-      ctx.fillStyle = "rgba(16,27,46,0.08)"; ctx.beginPath(); ctx.roundRect(14, GRIP_Y - 9, W - 28, 18, 9); ctx.fill();
-      ctx.fillStyle = "#fff"; ctx.strokeStyle = "rgba(63,127,214,0.55)"; ctx.lineWidth = 2;
-      ctx.beginPath(); ctx.roundRect(px - 34, GRIP_Y - 15, 68, 30, 15); ctx.fill(); ctx.stroke();
-      ctx.fillStyle = "rgba(63,127,214,0.6)";
-      for (const dx of [-8, 0, 8]) { ctx.beginPath(); ctx.arc(px + dx, GRIP_Y, 2.5, 0, Math.PI * 2); ctx.fill(); }
+      for (let k = 0; k < HEARTS; k++) drawHeart(ctx, px + jx + (k - 1) * 17, PLAYER_Y + PR + 8, 13, k < hearts);
+      drawGrip(ctx, px, GRIP_Y);
 
       ctx.textAlign = "center";
       for (const f of floats) {
         const life = f.big ? 2200 : 900, a = 1 - f.age / life;
-        ctx.globalAlpha = Math.max(0, Math.min(1, a * 1.6)); ctx.fillStyle = f.big && night ? "#fff" : f.color;
+        ctx.globalAlpha = Math.max(0, Math.min(1, a * 1.6));
         ctx.font = `800 ${f.big ? 26 : 17}px system-ui, -apple-system, sans-serif`;
-        ctx.fillText(f.text, f.x, f.y - (f.big ? 0 : f.age * 0.05));
+        haloText(ctx, f.text, f.x, f.y - (f.big ? 0 : f.age * 0.05), f.big && night ? "#fff" : f.color, night);
       }
       ctx.globalAlpha = 1; ctx.restore();
-    }
-
-    function drawHeart(x: number, y: number, s: number, full: boolean) {
-      ctx.beginPath(); ctx.moveTo(x, y + s * 0.3);
-      ctx.bezierCurveTo(x, y, x - s / 2, y, x - s / 2, y + s * 0.3);
-      ctx.bezierCurveTo(x - s / 2, y + s * 0.6, x, y + s * 0.8, x, y + s);
-      ctx.bezierCurveTo(x, y + s * 0.8, x + s / 2, y + s * 0.6, x + s / 2, y + s * 0.3);
-      ctx.bezierCurveTo(x + s / 2, y, x, y, x, y + s * 0.3); ctx.closePath();
-      if (full) { ctx.fillStyle = "#e8505b"; ctx.fill(); }
-      else { ctx.fillStyle = "rgba(255,255,255,0.7)"; ctx.fill(); ctx.strokeStyle = "rgba(16,27,46,0.25)"; ctx.lineWidth = 1.5; ctx.stroke(); }
     }
 
     raf = requestAnimationFrame(loop);
@@ -304,13 +271,13 @@ export default function BeatTheCrash() {
     <GameScreen>
       <GameHeader title="Beat The Crash" mode={mode} onMode={m => { setMode(m); setRun(r => r + 1); }} onBoard={() => shell.setBoardOpen(true)} onHelp={shell.help.show} />
 
-      <div className="mt-2 flex items-center justify-between">
-        <div><div className="text-[10px] uppercase tracking-wide text-[#5a6b85]">Score</div><div className="text-2xl font-bold leading-none tabular-nums">{hud.score.toLocaleString()}</div></div>
-        <div className="rounded-full px-2.5 py-0.5 text-xs font-bold text-white" style={{ background: ZONE_COLOR[hud.zone] }}>
+      <div className={HUD_ROW}>
+        <HudStat label="Score" value={hud.score.toLocaleString()} />
+        <HudTag color={ZONE_COLOR[hud.zone]}>
           {ZONE_LABEL[hud.zone]}{hud.zone === "steady" && hud.mult > 1 ? ` ×${hud.mult.toFixed(1)}` : ""}
-        </div>
-        <div className="flex items-center gap-2">
-          <div className="text-right"><div className="text-[10px] uppercase tracking-wide text-[#5a6b85]">Best</div><div className="text-lg font-semibold leading-none tabular-nums">{best.toLocaleString()}</div></div>
+        </HudTag>
+        <div className="flex shrink-0 items-center gap-1.5">
+          <HudStat label="Best" value={best.toLocaleString()} align="right" />
           <PauseButton shell={shell} active={started && !over} />
         </div>
       </div>
@@ -320,12 +287,7 @@ export default function BeatTheCrash() {
         <PrizeLogo shell={shell} active={started && !over && !shell.paused} />
         <PausedCard shell={shell} active={started && !over} />
         {!started && !over && (
-          <button onClick={() => startRef.current()} className="absolute inset-0 flex items-center justify-center rounded-[22px] bg-[#101b2e]/25">
-            <span className="rounded-3xl bg-white px-6 py-4 text-center shadow-2xl">
-              <span className="block text-lg font-bold">Tap To Start</span>
-              <span className="mt-1 block text-sm text-[#5a6b85]">Drag the bar at the bottom to move</span>
-            </span>
-          </button>
+          <StartCard label={mode === "daily" ? `Today's Challenge #${n}` : "Free Play"} title="Beat The Crash" how="Drag the bar at the bottom to move" onStart={() => startRef.current()} />
         )}
         {over && <GameOver label={mode === "daily" ? `Today's Challenge #${n}` : "Free Play"} headline={headline} score={hud.score} best={best} mode={mode}
           posted={shell.scores.posted} joined={!!shell.player} campaign={GAME} copied={shell.copied} fact={toast}

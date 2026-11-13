@@ -12,8 +12,9 @@
 // Everything around the board comes from ./kit.
 import { useEffect, useRef, useState } from "react";
 import { type Mode, type Toast, GameScreen, GameHeader, BoardArea, PrizeLogo, GameOver, PauseButton, PausedCard, HelpModal, ModesHelp, ShellPopups,
-  useGameShell, fitCanvas, loadImages, dailySeed, dailyNumber, torontoDate, mulberry32, readBest, saveBest, foodPng } from "./kit";
+  useGameShell, fitCanvas, loadImages, dailySeed, dailyNumber, torontoDate, mulberry32, readBest, saveBest, foodPng, HUD_ROW, HudStat, HudTag, StartCard } from "./kit";
 import { useDuel } from "./duels";
+import { drawKitchen, drawLight, counterShadow, reflect, drawPanel, drawHeart, drawTimer, candyGlow, haloText } from "./art/berryDash";
 
 const GAME = "berry-dash";
 const LAUNCH = "2026-11-08";   // Today's Challenge #1
@@ -77,15 +78,6 @@ type Result = { meters: number; berries: number; squares: string; level: number 
 type Hud = { score: number; status: Status };
 const STATUS_LABEL: Record<Status, string> = { run: "Running", rush: "Sugar rush!", heavy: "Heavy legs" };
 const STATUS_COLOR: Record<Status, string> = { run: "#2eaa6e", rush: "#b54bd1", heavy: "#e09a00" };
-
-function heart(ctx: CanvasRenderingContext2D, x: number, y: number, s: number, full: boolean) {
-  ctx.beginPath(); ctx.moveTo(x, y + s * 0.3);
-  ctx.bezierCurveTo(x, y, x - s * 0.5, y, x - s * 0.5, y + s * 0.3);
-  ctx.bezierCurveTo(x - s * 0.5, y + s * 0.6, x, y + s * 0.8, x, y + s);
-  ctx.bezierCurveTo(x, y + s * 0.8, x + s * 0.5, y + s * 0.6, x + s * 0.5, y + s * 0.3);
-  ctx.bezierCurveTo(x + s * 0.5, y, x, y, x, y + s * 0.3);
-  ctx.fillStyle = full ? "#e8505b" : "rgba(16,27,46,0.15)"; ctx.fill();
-}
 
 const Row = ({ codes, label }: { codes: string[]; label: string }) => (
   <div className="flex items-center gap-1">
@@ -267,31 +259,11 @@ export default function BerryDash() {
       ctx.beginPath(); ctx.roundRect(0, 0, W, H, 22); ctx.clip();
       const st = status();
 
-      // the kitchen: wall, a window, tiles, then the counter and cupboards
-      const g = ctx.createLinearGradient(0, 0, 0, GY); g.addColorStop(0, "#fff8ee"); g.addColorStop(1, "#ffefdc");
-      ctx.fillStyle = g; ctx.fillRect(0, 0, W, GY);
-      const wp = 700, wx0 = -((d * 0.25) % wp) + 260;
-      for (let x = wx0 - wp; x < W + wp; x += wp) {
-        ctx.fillStyle = "#ffffff"; ctx.beginPath(); ctx.roundRect(x - 6, 96, 142, 132, 10); ctx.fill();
-        ctx.fillStyle = "#dcebff"; ctx.beginPath(); ctx.roundRect(x, 102, 130, 120, 6); ctx.fill();
-        ctx.fillStyle = "#ffffff"; ctx.fillRect(x + 62, 102, 6, 120); ctx.fillRect(x, 159, 130, 6);
-      }
-      const ty = GY - 150, ts = 36, tx0 = -((d * 0.6) % ts);
-      ctx.fillStyle = "#fbe6cf"; ctx.fillRect(0, ty, W, GY - ty);
-      ctx.strokeStyle = "rgba(16,27,46,0.06)"; ctx.lineWidth = 1.5; ctx.beginPath();
-      for (let x = tx0; x < W; x += ts) { ctx.moveTo(x, ty); ctx.lineTo(x, GY); }
-      for (let yy = ty; yy < GY; yy += ts) { ctx.moveTo(0, yy); ctx.lineTo(W, yy); }
-      ctx.stroke();
-      ctx.fillStyle = "#d9a46c"; ctx.fillRect(0, GY, W, 14);
-      ctx.fillStyle = "#e9bd8a"; ctx.fillRect(0, GY, W, 3);
-      ctx.fillStyle = "#f6e3c8"; ctx.fillRect(0, GY + 14, W, H - GY - 14);
-      const dp = 130, dx0 = -(d % dp);
-      for (let x = dx0; x < W + dp; x += dp) {
-        ctx.strokeStyle = "rgba(16,27,46,0.10)"; ctx.lineWidth = 2; ctx.beginPath(); ctx.roundRect(x + 8, GY + 26, dp - 16, H - GY - 18, 8); ctx.stroke();
-        ctx.fillStyle = "#c79a68"; ctx.beginPath(); ctx.arc(x + dp - 22, GY + 58, 4, 0, Math.PI * 2); ctx.fill();
-      }
+      // the kitchen: a garden through the windows, the wall and its tiles, then the marble counter and oak cupboards,
+      // each sliding past at its own speed
+      drawKitchen(ctx, W, H, HUD, GY, d);
 
-      // things on the counter and in the air
+      // things on the counter and in the air, with soft shadows (and reflections in the marble under the ones standing)
       for (const e of ents) {
         const sx = e.wx - d + PX;
         if (sx > W + 100) break;
@@ -305,27 +277,32 @@ export default function BerryDash() {
           } else if (e.done) continue;
           if (o.code === "1f41d") cy += Math.sin(t / 120 + e.wx) * 2;
           if (o.code === "1f944") rot += -Math.PI / 4 + Math.sin(t / 140) * 0.15;   // the spoon flies flat, bowl first
-          if (!o.air && e.knocked === undefined) { ctx.fillStyle = "rgba(16,27,46,0.10)"; ctx.beginPath(); ctx.ellipse(sx, GY + 2, o.hw + 6, 4, 0, 0, Math.PI * 2); ctx.fill(); }
+          if (e.knocked === undefined) {
+            if (!o.air) { counterShadow(ctx, sx - 2, GY, o.hw + 6, 0); reflect(ctx, img, sx, GY + 3, o.size, GY, 0.2); }
+            else counterShadow(ctx, sx + 4, GY, o.hw, GY - cy);
+          }
           ctx.save(); ctx.globalAlpha = alpha; ctx.translate(sx, cy); ctx.rotate(rot);
           if (img.complete) ctx.drawImage(img, -o.size / 2, -o.size / 2, o.size, o.size);
           ctx.restore();
         } else if (!e.done) {
           const p = PICKS[e.t], img = pickImg[e.t], cy = GY - e.y + (e.t === 0 ? 0 : Math.sin(t / 200 + e.wx) * 3);
-          if (e.t === 2) { ctx.fillStyle = "rgba(181,75,209,0.16)"; ctx.beginPath(); ctx.arc(sx, cy, p.size * 0.62, 0, Math.PI * 2); ctx.fill(); }
+          counterShadow(ctx, sx, GY, p.size * 0.32, GY - cy);
+          if (e.t === 2) candyGlow(ctx, sx, cy, p.size * 0.72, t);
           if (img.complete) ctx.drawImage(img, sx - p.size / 2, cy - p.size / 2, p.size, p.size);
         }
       }
 
       // the strawberry
       const ducking = onGround && (ms < slideUntil || duckHeld), blink = ms < invUntil && Math.floor(t / 90) % 2 === 0;
-      ctx.fillStyle = "rgba(16,27,46,0.13)"; ctx.beginPath(); ctx.ellipse(PX, GY + 2, Math.max(8, 20 - y * 0.08), 4, 0, 0, Math.PI * 2); ctx.fill();
+      counterShadow(ctx, PX - 2, GY, ducking ? 22 : 17, y);
       if (st === "rush" && started && !ended) {
         ctx.strokeStyle = "rgba(181,75,209,0.45)"; ctx.lineWidth = 3; ctx.lineCap = "round"; ctx.beginPath();
         for (let i = 0; i < 3; i++) { const ly = GY - y - 14 - i * 13, off = (t / 3 + i * 23) % 30; ctx.moveTo(PX - 30 - off, ly); ctx.lineTo(PX - 52 - off, ly); }
         ctx.stroke();
       }
-      ctx.save(); ctx.globalAlpha = blink ? 0.35 : 1;
       const S = 58, bob = onGround && !ducking && started && !ended ? Math.abs(Math.sin(t / 90)) * 2.5 : 0;
+      if (y < 40 && !blink) reflect(ctx, berryImg, PX, GY + 4 + y + bob, S, GY, 0.2 * (1 - y / 40), ducking ? 1.25 : 1, ducking ? 0.55 : 1);
+      ctx.save(); ctx.globalAlpha = blink ? 0.35 : 1;
       ctx.translate(PX, GY - y - bob);
       if (ducking) ctx.scale(1.25, 0.55);
       else if (!onGround) ctx.rotate(Math.max(-0.3, Math.min(0.3, -vy / 2600)));
@@ -333,31 +310,34 @@ export default function BerryDash() {
       if (berryImg.complete) ctx.drawImage(berryImg, -S / 2, -S + 4, S, S);
       ctx.restore();
       if (st === "heavy") {                            // heavy legs: little sweat drops
-        ctx.fillStyle = "#7fb2ef";
-        for (let i = 0; i < 2; i++) { const a = ((t / 500 + i * 0.5) % 1); ctx.globalAlpha = 1 - a; ctx.beginPath(); ctx.arc(PX + 22 + i * 6, GY - y - 48 + a * 18, 3, 0, Math.PI * 2); ctx.fill(); }
+        for (let i = 0; i < 2; i++) {
+          const a = ((t / 500 + i * 0.5) % 1), dx = PX + 22 + i * 6, dy = GY - y - 48 + a * 18; ctx.globalAlpha = 1 - a;
+          ctx.fillStyle = "#7fb2ef"; ctx.beginPath(); ctx.arc(dx, dy, 3, 0, Math.PI * 2); ctx.fill();
+          ctx.fillStyle = "rgba(255,255,255,0.8)"; ctx.beginPath(); ctx.arc(dx - 1, dy - 1, 1, 0, Math.PI * 2); ctx.fill();
+        }
         ctx.globalAlpha = 1;
       }
+      drawLight(ctx, W, H, HUD);
 
       // HUD: hearts, the rush or heavy timer, distance
-      ctx.fillStyle = "rgba(255,255,255,0.85)"; ctx.fillRect(0, 0, W, HUD);
-      for (let i = 0; i < HEARTS; i++) heart(ctx, 26 + i * 26, 12, 20, i < hearts);
+      drawPanel(ctx, W, HUD);
+      for (let i = 0; i < HEARTS; i++) drawHeart(ctx, 26 + i * 26, 12, 20, i < hearts);
       ctx.fillStyle = "#101b2e"; ctx.font = "700 20px system-ui, -apple-system, sans-serif"; ctx.textAlign = "right"; ctx.textBaseline = "alphabetic";
       ctx.fillText(`${Math.floor(d / PXM).toLocaleString()} m`, W - 16, 29);
       const mw = ctx.measureText(`${Math.floor(d / PXM).toLocaleString()} m`).width;
       ctx.font = "700 14px system-ui, -apple-system, sans-serif"; ctx.fillStyle = "#2eaa6e"; ctx.fillText(`Lv ${level}`, W - 26 - mw, 28);
       if (st !== "run") {
         const left = st === "rush" ? (rushUntil - ms) / RUSH_MS : (heavyUntil - ms) / HEAVY_MS, bx = 120, bw = 140;
-        ctx.fillStyle = "rgba(16,27,46,0.08)"; ctx.beginPath(); ctx.roundRect(bx, 26, bw, 8, 4); ctx.fill();
-        ctx.fillStyle = STATUS_COLOR[st]; ctx.beginPath(); ctx.roundRect(bx, 26, Math.max(8, bw * left), 8, 4); ctx.fill();
-        ctx.font = "700 12px system-ui, -apple-system, sans-serif"; ctx.textAlign = "center"; ctx.fillText(STATUS_LABEL[st], bx + bw / 2, 20);
+        drawTimer(ctx, bx, 26, bw, left, STATUS_COLOR[st]);
+        ctx.fillStyle = STATUS_COLOR[st]; ctx.font = "700 12px system-ui, -apple-system, sans-serif"; ctx.textAlign = "center"; ctx.fillText(STATUS_LABEL[st], bx + bw / 2, 20);
       }
 
       ctx.textAlign = "center";
       for (const f of floats) {
         const life = f.big ? 1600 : 700, a = 1 - f.age / life;
-        ctx.globalAlpha = Math.max(0, Math.min(1, a * 1.6)); ctx.fillStyle = f.color;
+        ctx.globalAlpha = Math.max(0, Math.min(1, a * 1.6));
         ctx.font = `800 ${f.big ? 24 : 16}px system-ui, -apple-system, sans-serif`;
-        ctx.fillText(f.text, f.x, f.y - (f.big ? 0 : f.age * 0.05));
+        haloText(ctx, f.text, f.x, f.y - (f.big ? 0 : f.age * 0.05), f.color);
       }
       ctx.globalAlpha = 1; ctx.restore();
     }
@@ -386,11 +366,11 @@ export default function BerryDash() {
     <GameScreen>
       <GameHeader title="Berry Dash" mode={mode} onMode={m => { setMode(m); setRun(r => r + 1); }} onBoard={() => shell.setBoardOpen(true)} onHelp={shell.help.show} />
 
-      <div className="mt-2 flex items-center justify-between">
-        <div><div className="text-[10px] uppercase tracking-wide text-[#5a6b85]">Score</div><div className="text-2xl font-bold leading-none tabular-nums">{hud.score.toLocaleString()}</div></div>
-        <div className="rounded-full px-2.5 py-0.5 text-xs font-bold text-white" style={{ background: STATUS_COLOR[hud.status] }}>{STATUS_LABEL[hud.status]}</div>
-        <div className="flex items-center gap-2">
-          <div className="text-right"><div className="text-[10px] uppercase tracking-wide text-[#5a6b85]">Best</div><div className="text-lg font-semibold leading-none tabular-nums">{best.toLocaleString()}</div></div>
+      <div className={HUD_ROW}>
+        <HudStat label="Score" value={hud.score.toLocaleString()} />
+        <HudTag color={STATUS_COLOR[hud.status]}>{STATUS_LABEL[hud.status].replace(/\b\w/g, c => c.toUpperCase())}</HudTag>
+        <div className="flex shrink-0 items-center gap-1.5">
+          <HudStat label="Best" value={best.toLocaleString()} align="right" />
           <PauseButton shell={shell} active={started && !over} />
         </div>
       </div>
@@ -400,12 +380,7 @@ export default function BerryDash() {
         <PrizeLogo shell={shell} active={started && !over && !shell.paused} />
         <PausedCard shell={shell} active={started && !over} />
         {!started && !over && (
-          <button onClick={() => startRef.current()} className="absolute inset-0 flex items-center justify-center rounded-[22px] bg-[#101b2e]/25">
-            <span className="rounded-3xl bg-white px-6 py-4 text-center shadow-2xl">
-              <span className="block text-lg font-bold">Tap To Start</span>
-              <span className="mt-1 block text-sm text-[#5a6b85]">Tap to jump, swipe down to duck</span>
-            </span>
-          </button>
+          <StartCard label={mode === "daily" ? `Today's Challenge #${n}` : "Free Play"} title="Berry Dash" how="Tap to jump, swipe down to duck" onStart={() => startRef.current()} />
         )}
         {over && <GameOver label={mode === "daily" ? `Today's Challenge #${n}` : "Free Play"} headline={headline} score={hud.score} best={best} mode={mode}
           posted={shell.scores.posted} joined={!!shell.player} campaign={GAME} copied={shell.copied} fact={toast}

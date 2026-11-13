@@ -21,9 +21,12 @@ import { sb } from "@/components/creators/api";
 import { appStoreLink } from "@/components/site";
 import { type Mode, type Toast, GameScreen, GameHeader, BoardArea, PrizeLogo, GameOver, PauseButton, PausedCard, ReadyCard, HelpModal, ModesHelp, ShellPopups,
   useGameShell, fitCanvas, loadImages, dailySeed, dailyNumber, torontoDate, mulberry32, readBest, saveBest } from "./kit";
-import { type Course, type Roll, type Brain, W, BALL_R, MAX_PULL, MIN_PULL, MAX_STROKES, PICKUP, ROUND_HOLES, STEP, HOLES,
+import { type Course, type Roll, type Brain, W, BALL_R, CUP_R, MAX_PULL, MIN_PULL, MAX_STROKES, PICKUP, ROUND_HOLES, STEP, HOLES,
   compile, pickHoles, startRoll, stepRoll, tubePos, partsAt, aiPlan, sharpFor, holePoints, segDist2, WIN_BONUS, TIE_BONUS } from "./golf/sim";
 import { FOOD_IMGS, paintHole, drawLive, drawFlag, drawMeatball, rollQuat, quatIdentity } from "./golf/art";
+import { type Band, type Tab, type Tone, NAVY, Layer, TAB_W, TAB_H, bandKey, tabKey, paintBand, paintTab, makeBanner, makeFloat, drawRays, drawSparkle, drawHint, makeVignette } from "./golf/hud";
+import { KG_CSS } from "./golf/skin";
+import { GAME_FONT, loadGameFont } from "./gameFont";
 import { Sound } from "./golf/sound";
 
 const GAME = "kitchen-golf";
@@ -32,8 +35,8 @@ const SOUND = typeof window !== "undefined" ? new Sound() : null;
 
 const VW = 400, VH = 600;                                // the board on screen; holes are 400 wide and can be taller (the camera pans)
 const GAIN = 1, TURN_MS = 30000, THINK_MS = 1000, THINK_STEPS = 60, SETTLE_MS = 650, HOLE_MS = 3200, INTRO_MS = 1900;
+const BANNER_MS = 1700;                                  // how long a score banner ("Birdie!") stays up
 const TOP = 58;                                          // the band at the top of the board: hole, par, strokes, whose turn
-const FONT = "system-ui, -apple-system, sans-serif";
 const FACTS: Toast[] = [
   { title: "Kitchen Fact", body: "It takes about 40 litres of maple sap to make 1 litre of maple syrup.", img: "1f95e" },
   { title: "Kitchen Fact", body: "Butter sold in Canada and the US has to be at least 80% milk fat.", img: "1f35e" },
@@ -453,9 +456,18 @@ export default function KitchenGolf() {
     const seen = { x: 0, y: 0, tx: 0, ty: 0, on: false };   // the other player's pull, as last heard (live) or planned (computer)
     let aimSent = "", aimAt = 0, bumpAt = 0, sizzleAt = 0;
     const firstPutt = [true, true];
-    const floats: { x: number; y: number; text: string; color: string; age: number; big?: boolean }[] = [];
+    const floats: { x: number; y: number; text: string; color: string; age: number; img?: ReturnType<typeof makeFloat> }[] = [];
     const ripples: { x: number; y: number; age: number }[] = [];
-    const confetti: { x: number; y: number; vx: number; vy: number; c: string; age: number; r: number }[] = [];
+    const confetti: { x: number; y: number; vx: number; vy: number; c: string; age: number; r: number; star: boolean }[] = [];
+    const puffs: { x: number; y: number; vx: number; vy: number; age: number; r: number }[] = [];   // dust off a wall the ball hits
+    const rings: { x: number; y: number; age: number }[] = [];                                      // the plop as a ball drops in
+    let banner: { text: string; tone: Tone; age: number; rays: boolean; img: ReturnType<typeof makeBanner> | null } | null = null;   // "Birdie!"
+    // the HUD: the band and the turn tab are painted into small canvases only when they change (see ./golf/hud)
+    const bandL = new Layer(VW, TOP + 12), tabL = new Layer(TAB_W, TAB_H);
+    let tabShape = "", tabAt = -1e9, vignette: HTMLCanvasElement | null = null, ballIcon: { cv: HTMLCanvasElement; px: number } | null = null;
+    const pxNow = () => Math.min(3, Math.max(1, scale * (window.devicePixelRatio || 1)));
+    let fontOn = false;
+    void loadGameFont().then(() => { fontOn = true; bandL.reset(); tabL.reset(); floats.forEach(f => { f.img = undefined; }); });
     let drop: { x: number; y: number; age: number; who: number } | null = null;
     const trail: { x: number; y: number }[] = [];
     // each meatball's turn (for drawing) and where it was last frame
@@ -466,7 +478,9 @@ export default function KitchenGolf() {
 
     const myTurn = () => phase === "aim" && ended === null && human(st.shooter) && (live ? st.shooter === me : true);
     const canAim = () => started && myTurn() && !(pausedRef.current && !live) && !(live && reconRef.current);
-    const float = (x: number, y: number, text: string, color: string, big = false) => floats.push({ x, y, text, color, age: 0, big });
+    const float = (x: number, y: number, text: string, color: string) => floats.push({ x, y, text, color, age: 0 });
+    // a score banner, a moment after the ball drops (so you see it go in first)
+    const showBanner = (text: string, tone: Tone, rays: boolean) => { banner = { text, tone, age: -260, rays, img: null }; };
     const send = (msg: Msg) => { if (live) roomRef.current.send(msg); };
     function persist() {
       if (P.kind !== "live") return;
@@ -516,10 +530,10 @@ export default function KitchenGolf() {
     }
     function celebrate(s: number, strokes: number, par: number) {
       const [x, y] = course.cup, d = strokes - par;
-      float(x, y - 34, scoreName(strokes, par), strokes === 1 || d < 0 ? "#2eaa6e" : d === 0 ? BLUE : "#5a6b85", true);
+      showBanner(scoreName(strokes, par), strokes === 1 || d < 0 ? "gold" : d === 0 ? "blue" : "plain", strokes === 1 || d <= -2);
       if (strokes === 1 || d < 0) {
-        const cols = ["#e8505b", "#f2c230", "#3f7fd6", "#2eaa6e", "#f2994a", "#ffffff"], n = strokes === 1 ? 70 : 34;
-        for (let i = 0; i < n; i++) { const a = Math.random() * Math.PI * 2, v = 1.5 + Math.random() * (strokes === 1 ? 5 : 3.5); confetti.push({ x, y, vx: Math.cos(a) * v, vy: Math.sin(a) * v - 2.5, c: cols[i % cols.length], age: 0, r: 2 + Math.random() * 2.5 }); }
+        const cols = ["#e8505b", "#FFD93D", "#3f7fd6", "#2eaa6e", "#FF9A2E", "#ffffff"], n = strokes === 1 ? 56 : 28;
+        for (let i = 0; i < n; i++) { const a = Math.random() * Math.PI * 2, v = 1.5 + Math.random() * (strokes === 1 ? 4.5 : 3.2); confetti.push({ x, y, vx: Math.cos(a) * v, vy: Math.sin(a) * v - 2.5, c: cols[i % cols.length], age: 0, r: 2 + Math.random() * 2.5, star: i % 5 === 0 }); }
         SOUND?.cheer(strokes === 1 || d <= -2);
       } else if (d >= 2 && human(s)) SOUND?.meh();
     }
@@ -527,19 +541,19 @@ export default function KitchenGolf() {
     function applyResult(res: { x: number; y: number; r: number; c: number }) {
       const s = st.shooter; roll = null; pending = null;
       const [bx, by] = st.balls[s];
-      if (res.r === 3) { st.strokes[s] += 2; float(bx, by - 26, "Splash! +1 Stroke", BLUE); }
+      if (res.r === 3) { st.strokes[s] += 2; float(bx, by - 26, "Splash! +1 Stroke", "#cfe6ff"); }
       else {
         st.strokes[s] += 1;
         if (res.r === 2) { st.done[s] = true; st.balls[s] = course.cup.slice(); celebrate(s, st.strokes[s], course.par); }
         else st.balls[s] = [res.x, res.y];
       }
-      if (!st.done[s] && st.strokes[s] >= MAX_STROKES) { st.done[s] = true; st.strokes[s] = PICKUP; float(st.balls[s][0], st.balls[s][1] - 26, "Picked Up", "#5a6b85"); }
+      if (!st.done[s] && st.strokes[s] >= MAX_STROKES) { st.done[s] = true; st.strokes[s] = PICKUP; float(st.balls[s][0], st.balls[s][1] - 26, "Picked Up", "#ffffff"); }
       st.clock = res.c;
       advance(s);
     }
     function doPass() {
       const s = st.shooter; st.strokes[s] += 1; drag = null;
-      float(st.balls[s][0], st.balls[s][1] - 26, "Time's Up! +1", "#e09a00");
+      float(st.balls[s][0], st.balls[s][1] - 26, "Time's Up! +1", "#FFE65C");
       if (st.strokes[s] >= MAX_STROKES) { st.done[s] = true; st.strokes[s] = PICKUP; }
       advance(s);
     }
@@ -588,7 +602,7 @@ export default function KitchenGolf() {
     function nextRound() {
       if (phase !== "between") return;
       allStrokes += sum(st.cards[0]); round++; holes = pickHoles(roundSeed(round)); brain.sharp = sharpFor(mode, round); roundPts = 0;
-      st.cards = [[], []]; setupHole(0, 0); floats.length = 0; setRoundCard(null); beginTurn(); pushHud();
+      st.cards = [[], []]; setupHole(0, 0); floats.length = 0; banner = null; setRoundCard(null); beginTurn(); pushHud();
     }
     nextRef.current = nextRound;
     function finish(kind: Result["kind"]) {
@@ -699,7 +713,7 @@ export default function KitchenGolf() {
           acc += dt; let n = 0;
           while (acc >= STEP && n < 8 && roll && !roll.done) {
             acc -= STEP; n++; stepRoll(course, roll); st.clock = roll.clock;
-            if (roll.ev & 1 && t - bumpAt > 70) { SOUND?.bump(roll.hit); bumpAt = t; }
+            if (roll.ev & 1 && t - bumpAt > 70) { SOUND?.bump(roll.hit); bumpAt = t; if (roll.hit > 1.1) puff(roll); }
             if (roll.ev & 2) SOUND?.tube();
             if (roll.ev & 8 && t - sizzleAt > 500) { SOUND?.sizzle(); sizzleAt = t; }
             if (!roll.tube && roll.steps % 2 === 0) { trail.push({ x: roll.x, y: roll.y }); if (trail.length > 12) trail.shift(); }
@@ -725,10 +739,13 @@ export default function KitchenGolf() {
           } else if (phase === "await") pendingAge += dt;
         }
         const ease = Math.min(1, dt / 110); seen.x += (seen.tx - seen.x) * ease; seen.y += (seen.ty - seen.y) * ease;
-        for (let k = floats.length - 1; k >= 0; k--) { floats[k].age += dt; if (floats[k].age > (floats[k].big ? 2000 : 1300)) floats.splice(k, 1); }
+        for (let k = floats.length - 1; k >= 0; k--) { floats[k].age += dt; if (floats[k].age > 1300) floats.splice(k, 1); }
         for (let k = ripples.length - 1; k >= 0; k--) { ripples[k].age += dt; if (ripples[k].age > 800) ripples.splice(k, 1); }
         for (let k = confetti.length - 1; k >= 0; k--) { const p = confetti[k]; p.age += dt; p.x += p.vx * dt / 16; p.y += p.vy * dt / 16; p.vy += 0.12 * dt / 16; p.vx *= 0.985; if (p.age > 1600) confetti.splice(k, 1); }
-        if (drop) { drop.age += dt; if (drop.age > 420) drop = null; }
+        for (let k = puffs.length - 1; k >= 0; k--) { const p = puffs[k]; p.age += dt; p.x += p.vx * dt / 16; p.y += p.vy * dt / 16; p.vx *= 0.9; p.vy *= 0.9; if (p.age > 380) puffs.splice(k, 1); }
+        for (let k = rings.length - 1; k >= 0; k--) { rings[k].age += dt; if (rings[k].age > 480) rings.splice(k, 1); }
+        if (banner) { banner.age += dt; if (banner.age > BANNER_MS) banner = null; }
+        if (drop) { drop.age += dt; if (drop.age > 420) { rings.push({ x: drop.x, y: drop.y, age: 0 }); drop = null; } }
       }
       // the camera: the whole hole while it's introduced, then following the play (only tall holes move)
       const c = shown ? shown.course : course;
@@ -748,32 +765,41 @@ export default function KitchenGolf() {
 
     // ── drawing ──
     const rr = (x: number, y: number, ww: number, hh: number, r: number) => { ctx.beginPath(); ctx.roundRect(x, y, ww, hh, r); };
-    const text = (s: string, x: number, y: number, size: number, color: string, weight = 700, align: CanvasTextAlign = "center") => {
-      ctx.font = `${weight} ${size}px ${FONT}`; ctx.fillStyle = color; ctx.textAlign = align; ctx.fillText(s, x, y);
-    };
+    // a little dust where the ball meets a wall (it has already bounced, so it's heading away from the wall)
+    function puff(r: Roll) {
+      if (puffs.length > 36) return;
+      const sp = Math.hypot(r.vx, r.vy) || 1, ux = r.vx / sp, uy = r.vy / sp, cx = r.x - ux * BALL_R, cy = r.y - uy * BALL_R, base = Math.atan2(uy, ux), n = r.hit > 4 ? 6 : 4;
+      for (let j = 0; j < n; j++) { const a = base + (Math.random() - 0.5) * 2.6, v = 0.35 + Math.random() * 0.9 * Math.min(1, r.hit / 5); puffs.push({ x: cx, y: cy, vx: Math.cos(a) * v, vy: Math.sin(a) * v, age: 0, r: 1.8 + Math.random() * 2 }); }
+    }
     function drawPutter(x: number, y: number, px: number, py: number, alpha: number) {
       const l = Math.hypot(px, py); if (l < 2) return;
-      const dx = -px / l, dy = -py / l, pw = Math.min(1, l / MAX_PULL), back = BALL_R + 6 + 26 * pw, hx = x - dx * back, hy = y - dy * back;
+      const dx = -px / l, dy = -py / l, pw = Math.min(1, l / MAX_PULL), back = BALL_R + 6 + 26 * pw, hx = x - dx * back, hy = y - dy * back, k = pxNow();
       ctx.globalAlpha = alpha; ctx.lineCap = "round";
-      ctx.shadowColor = "rgba(30,20,10,0.3)"; ctx.shadowBlur = 4; ctx.shadowOffsetX = 2; ctx.shadowOffsetY = 3;
-      ctx.strokeStyle = "#b9c1ca"; ctx.lineWidth = 3; ctx.beginPath(); ctx.moveTo(hx, hy); ctx.lineTo(hx - dx * 34 - dy * 14, hy - dy * 34 + dx * 14); ctx.stroke();
-      ctx.strokeStyle = "#2b2f35"; ctx.lineWidth = 3.5; ctx.beginPath(); ctx.moveTo(hx - dx * 26 - dy * 11, hy - dy * 26 + dx * 11); ctx.lineTo(hx - dx * 34 - dy * 14, hy - dy * 34 + dx * 14); ctx.stroke();
-      ctx.strokeStyle = "#4a5260"; ctx.lineWidth = 7; ctx.beginPath(); ctx.moveTo(hx - dy * 10, hy + dx * 10); ctx.lineTo(hx + dy * 10, hy - dx * 10); ctx.stroke();
-      ctx.shadowColor = "transparent"; ctx.shadowBlur = 0; ctx.shadowOffsetX = 0; ctx.shadowOffsetY = 0; ctx.globalAlpha = 1;
+      ctx.shadowColor = "rgba(30,20,10,0.32)"; ctx.shadowBlur = 4 * k; ctx.shadowOffsetX = 3 * k; ctx.shadowOffsetY = 4 * k;
+      ctx.strokeStyle = "#c9d0d8"; ctx.lineWidth = 3.4; ctx.beginPath(); ctx.moveTo(hx, hy); ctx.lineTo(hx - dx * 34 - dy * 14, hy - dy * 34 + dx * 14); ctx.stroke();
+      ctx.strokeStyle = NAVY; ctx.lineWidth = 4.2; ctx.beginPath(); ctx.moveTo(hx - dx * 25 - dy * 10.5, hy - dy * 25 + dx * 10.5); ctx.lineTo(hx - dx * 34 - dy * 14, hy - dy * 34 + dx * 14); ctx.stroke();
+      ctx.strokeStyle = "#3a4250"; ctx.lineWidth = 8; ctx.beginPath(); ctx.moveTo(hx - dy * 10, hy + dx * 10); ctx.lineTo(hx + dy * 10, hy - dx * 10); ctx.stroke();
+      ctx.shadowColor = "transparent"; ctx.shadowBlur = 0; ctx.shadowOffsetX = 0; ctx.shadowOffsetY = 0;
+      ctx.strokeStyle = "#8d97a6"; ctx.lineWidth = 2.2; ctx.beginPath(); ctx.moveTo(hx - dy * 8.5 - dx * 1.6, hy + dx * 8.5 - dy * 1.6); ctx.lineTo(hx + dy * 8.5 - dx * 1.6, hy - dx * 8.5 - dy * 1.6); ctx.stroke();
+      ctx.globalAlpha = 1;
     }
+    // the aim guide: dots that shrink as they go, stopping at the first wall
     function aimDots(c: Course, x: number, y: number, px: number, py: number) {
       const l = Math.hypot(px, py); if (l < MIN_PULL) return;
-      const dx = -px / l, dy = -py / l, len = 30 + 92 * Math.min(1, l / MAX_PULL);
-      for (let s = BALL_R + 8; s < len; s += 9) {
+      const dx = -px / l, dy = -py / l, len = 30 + 92 * Math.min(1, l / MAX_PULL), s0 = BALL_R + 8;
+      ctx.strokeStyle = "rgba(14,31,69,0.55)"; ctx.lineWidth = 1.3; ctx.fillStyle = "#ffffff";
+      for (let s = s0; s < len; s += 9) {
         const qx = x + dx * s, qy = y + dy * s;
         if (c.segs.some(g => segDist2(qx, qy, g) < 12) || c.bumps.some(u => (qx - u.x) * (qx - u.x) + (qy - u.y) * (qy - u.y) < u.r * u.r)) break;   // stops at the first wall
-        ctx.globalAlpha = Math.max(0.25, 1 - s / (len * 1.15)); ctx.fillStyle = "#ffffff"; ctx.beginPath(); ctx.arc(qx, qy, 3.2, 0, 7); ctx.fill();
-        ctx.strokeStyle = "rgba(16,27,46,0.45)"; ctx.lineWidth = 1.2; ctx.stroke();
+        const u = (s - s0) / Math.max(1, len - s0);
+        ctx.globalAlpha = 1 - 0.55 * u; ctx.beginPath(); ctx.arc(qx, qy, 4.3 - 2.5 * u, 0, 7); ctx.fill(); ctx.stroke();
       }
       ctx.globalAlpha = 1;
     }
+    const backOut = (k: number) => { const c1 = 1.4, c3 = c1 + 1, q = k - 1; return 1 + c3 * q * q * q + c1 * q * q; };
 
     function draw(t: number, c: Course) {
+      const px = pxNow();
       ctx.save(); ctx.clearRect(0, 0, VW, VH);
       rr(0, 0, VW, VH, 22); ctx.clip();
       ctx.fillStyle = "#2b2f35"; ctx.fillRect(0, 0, VW, VH);
@@ -783,9 +809,17 @@ export default function KitchenGolf() {
       ctx.drawImage(p.under, 0, 0, W, c.h);
       drawLive(ctx, c, partsAt(c, clock), clock, t);
       for (const r of ripples) { const k = r.age / 800; ctx.strokeStyle = `rgba(255,255,255,${1 - k})`; ctx.lineWidth = 2.5; for (const f of [1, 0.6]) { ctx.beginPath(); ctx.arc(r.x, r.y, 4 + k * 30 * f, 0, 7); ctx.stroke(); } }
+      for (const r of rings) { const k = r.age / 480; ctx.strokeStyle = `rgba(255,255,255,${0.85 * (1 - k)})`; ctx.lineWidth = 3 * (1 - k) + 0.5; ctx.beginPath(); ctx.arc(r.x, r.y, CUP_R + 2 + k * 16, 0, 7); ctx.stroke(); }
+      for (const q of puffs) { const k = q.age / 380; ctx.fillStyle = `rgba(255,250,238,${0.7 * (1 - k)})`; ctx.beginPath(); ctx.arc(q.x, q.y, q.r * (1 + k * 1.6), 0, 7); ctx.fill(); }
       const ballAt = (i: number) => (roll && i === st.shooter && !shown ? [roll.x, roll.y] : viewB.balls[i]);
       const near = [0, 1].some(i => !viewB.done[i] && Math.hypot(ballAt(i)[0] - c.cup[0], ballAt(i)[1] - c.cup[1] + 20) < 32);
-      if (drop) { const k = drop.age / 420; drawMeatball(ctx, c.cup[0] + (drop.x - c.cup[0]) * (1 - k), c.cup[1] + (drop.y - c.cup[1]) * (1 - k), BALL_R * (1 - k * 0.55), quats[drop.who], 1 - k * 0.5); }
+      if (drop) {   // dropping into the cup: shrinking and going dark, inside the hole
+        const k = Math.min(1, drop.age / 420), e = k * k;
+        ctx.save(); ctx.beginPath(); ctx.arc(c.cup[0], c.cup[1], CUP_R - 0.6, 0, 7); ctx.clip();
+        drawMeatball(ctx, c.cup[0] + (drop.x - c.cup[0]) * (1 - k), c.cup[1] + (drop.y - c.cup[1]) * (1 - k) + e * 1.5, BALL_R * (1 - e * 0.45), quats[drop.who], 1);
+        ctx.fillStyle = `rgba(0,0,0,${0.8 * e})`; ctx.fillRect(c.cup[0] - CUP_R, c.cup[1] - CUP_R, CUP_R * 2, CUP_R * 2);
+        ctx.restore();
+      }
       // the waiting ball first, faded; the one putting on top
       const active = shown ? -1 : st.shooter, order = active === 0 ? [1, 0] : [0, 1];
       for (const i of order) {
@@ -796,7 +830,18 @@ export default function KitchenGolf() {
           const [tx, ty] = tubePos(c, roll); ctx.fillStyle = "rgba(255,240,215,0.45)"; ctx.beginPath(); ctx.ellipse(tx, ty, 9, 9, 0, 0, 7); ctx.fill(); continue;
         }
         const [x, y] = ballAt(i);
-        if (mine && roll) { trail.forEach((q, j) => { ctx.globalAlpha = (j / trail.length) * 0.5; ctx.fillStyle = "rgba(255,255,255,0.8)"; ctx.beginPath(); ctx.arc(q.x, q.y, 2.2, 0, 7); ctx.fill(); }); ctx.globalAlpha = 1; }
+        if (mine && roll && trail.length > 1) {                         // a short streak behind it when it's going fast
+          const sp = Math.hypot(roll.vx, roll.vy), f = Math.min(1, (sp - 3) / 4);
+          if (f > 0) {                                                  // one tapered shape from the tail up to the ball, fading out behind
+            const pts = [...trail.slice(-5), { x, y }], n = pts.length, L: number[][] = [], R: number[][] = [];
+            pts.forEach((q, j) => {
+              const a = pts[Math.max(0, j - 1)], b = pts[Math.min(n - 1, j + 1)], dx = b.x - a.x, dy = b.y - a.y, d = Math.hypot(dx, dy) || 1, w = BALL_R * 0.92 * (j / (n - 1));
+              L.push([q.x - (dy / d) * w, q.y + (dx / d) * w]); R.push([q.x + (dy / d) * w, q.y - (dx / d) * w]);
+            });
+            const g = ctx.createLinearGradient(pts[0].x, pts[0].y, x, y); g.addColorStop(0, "rgba(255,243,223,0)"); g.addColorStop(1, `rgba(255,243,223,${0.42 * f})`);
+            ctx.fillStyle = g; ctx.beginPath(); L.forEach(([px2, py2], j) => (j ? ctx.lineTo(px2, py2) : ctx.moveTo(px2, py2))); for (let j = n - 1; j >= 0; j--) ctx.lineTo(R[j][0], R[j][1]); ctx.closePath(); ctx.fill();
+          }
+        }
         drawMeatball(ctx, x, y, BALL_R, quats[i], mine || shown ? 1 : 0.55, colorOf(i));
       }
       // aiming: yours (dots, putter and power), or theirs (putter only, never the line)
@@ -806,55 +851,81 @@ export default function KitchenGolf() {
         else if (!local && seen.on && st.shooter !== me && (phase === "aim" || phase === "think")) drawPutter(bx, by, seen.x, seen.y, 0.9);
       }
       if (p.over) ctx.drawImage(p.over, 0, 0, W, c.h);
-      drawFlag(ctx, c, near, t);
-      for (const q of confetti) { ctx.globalAlpha = Math.max(0, 1 - q.age / 1600); ctx.fillStyle = q.c; ctx.save(); ctx.translate(q.x, q.y); ctx.rotate(q.age / 120 + q.r); ctx.fillRect(-q.r, -q.r * 0.5, q.r * 2, q.r); ctx.restore(); }
+      drawFlag(ctx, c, near, t, viewB.hole, GAME_FONT);
+      for (const q of confetti) {
+        const a = Math.max(0, 1 - q.age / 1600);
+        if (q.star) { drawSparkle(ctx, q.x, q.y, q.r * 1.6, a, "#FFF3A0"); continue; }
+        ctx.globalAlpha = a; ctx.fillStyle = q.c; ctx.save(); ctx.translate(q.x, q.y); ctx.rotate(q.age / 120 + q.r); rr(-q.r, -q.r * 0.5, q.r * 2, q.r, q.r * 0.3); ctx.fill(); ctx.restore();
+      }
       ctx.globalAlpha = 1;
-      for (const f of floats) {
-        const life = f.big ? 2000 : 1300, a = 1 - f.age / life, pop = f.big ? Math.min(1, f.age / 160) : 1, sz = (f.big ? 26 : 16) * (0.6 + 0.4 * pop);
-        ctx.globalAlpha = Math.max(0, Math.min(1, a * 1.6));
-        const fx = Math.max(80, Math.min(VW - 80, f.x)), fy = f.y - (f.big ? 0 : f.age * 0.025);
-        ctx.font = `800 ${sz}px ${FONT}`; const tw = ctx.measureText(f.text).width;
-        ctx.fillStyle = "rgba(255,255,255,0.92)"; rr(fx - tw / 2 - 10, fy - sz * 0.92, tw + 20, sz * 1.3, sz * 0.6); ctx.fill();
-        text(f.text, fx, fy, sz, f.color, 800);
+      for (const f of floats) {                                         // little words float up and fade
+        if (!f.img) f.img = makeFloat(f.text, f.color, px);
+        const a = Math.max(0, Math.min(1, (1 - f.age / 1300) * 1.6)), pop = Math.min(1, f.age / 140), s = 0.7 + 0.3 * backOut(pop);
+        const fx = Math.max(f.img.w / 2 + 6, Math.min(VW - f.img.w / 2 - 6, f.x)), fy = f.y - f.age * 0.025;
+        ctx.globalAlpha = a; ctx.save(); ctx.translate(fx, fy); ctx.scale(s, s); ctx.drawImage(f.img.cv, -f.img.w / 2, -f.img.h * 0.68, f.img.w, f.img.h); ctx.restore();
       }
       ctx.globalAlpha = 1;
       ctx.restore();
 
-      // the band at the top: hole and par, each player's strokes, whose turn (or your power while you drag)
-      ctx.fillStyle = "rgba(255,255,255,0.93)"; ctx.fillRect(0, 0, VW, TOP); ctx.fillStyle = "rgba(16,27,46,0.08)"; ctx.fillRect(0, TOP - 1, VW, 1);
-      text(`Hole ${viewB.hole} · Par ${c.par}`, 14, 23, 15, "#101b2e", 800, "left");
-      text(c.name, VW - 14, 23, 13, "#5a6b85", 700, "right");
+      // the vignette, so the course pops
+      if (!vignette) vignette = makeVignette(VW, VH);
+      ctx.drawImage(vignette, 0, 0, VW, VH);
+
+      // the score banner: pops in under the band, calmly, then fades (below the scorecard when that's showing)
+      if (banner && banner.age >= 0) {
+        if (!banner.img) banner.img = makeBanner(banner.text, banner.tone, px);
+        const a = banner.age, k = Math.min(1, a / 240), s = a < 240 ? 0.3 + 0.7 * backOut(k) : 1, fade = a > BANNER_MS - 380 ? Math.max(0, (BANNER_MS - a) / 380) : 1;
+        const cy = c.cup[1] * view.s + view.ty, y = shown ? VH * 0.8 : Math.max(TOP + 92, Math.min(VH - 96, cy + 78));
+        if (banner.rays) drawRays(ctx, VW / 2, y - 14, 160, a / 2400, 0.45 * fade * k);
+        if (banner.tone === "gold") for (let i = 0; i < 6; i++) {
+          const ang = (i / 6) * Math.PI * 2 + 0.4, d = (banner.img.w * 0.42 + 14) * (0.6 + 0.4 * k), tw = 0.5 + 0.5 * Math.sin(a / 140 + i * 1.7);
+          drawSparkle(ctx, VW / 2 + Math.cos(ang) * d, y - 14 + Math.sin(ang) * d * 0.45, (4 + 3 * tw) * k, fade * (0.5 + 0.5 * tw));
+        }
+        ctx.save(); ctx.globalAlpha = fade; ctx.translate(VW / 2, y - (1 - fade) * 10); ctx.scale(s, s);
+        ctx.drawImage(banner.img.cv, -banner.img.w / 2, -banner.img.h * 0.66, banner.img.w, banner.img.h); ctx.restore();
+      }
+
+      // the band at the top: hole and par, each player's chip and strokes, and the tab underneath for whose turn it is
+      // (or your power while you drag)
       const sides = cpu || live ? [me, other] : [0, 1], vs = viewB.strokes;
-      sides.forEach((i, k) => {
-        const x = k === 0 ? 14 : VW - 14, nm = label(i).length > 9 ? label(i).slice(0, 8) + "." : label(i);
-        const s = viewB.done[i] ? (vs[i] >= PICKUP ? "Picked Up" : `${vs[i]} ✓`) : String(vs[i]);
-        ctx.fillStyle = colorOf(i); ctx.beginPath(); ctx.arc(k === 0 ? x + 4 : x - 4, 41, 4, 0, 7); ctx.fill();
-        text(`${nm} ${s}`, k === 0 ? x + 12 : x - 12, 46, 13, "#101b2e", 700, k === 0 ? "left" : "right");
-      });
-      if (drag && canAim()) {
-        const pw = Math.min(1, Math.hypot(drag.px, drag.py) / MAX_PULL), bw = 96, x0 = VW / 2 - bw / 2;
-        ctx.fillStyle = "rgba(16,27,46,0.1)"; rr(x0, 37, bw, 10, 5); ctx.fill();
-        ctx.fillStyle = pw > 0.85 ? RED : pw > 0.6 ? "#e09a00" : "#2eaa6e"; rr(x0, 37, Math.max(10, bw * pw), 10, 5); ctx.fill();
-        text(`${Math.round(pw * 100)}%`, x0 + bw + 6, 46, 12, "#101b2e", 800, "left");
-      } else if (started && !shown && phase !== "over" && phase !== "between" && phase !== "intro") {
+      const inPlay = started && !shown && phase !== "over" && phase !== "between" && phase !== "intro";
+      const band: Band = { hole: viewB.hole, par: c.par, place: c.name, chips: sides.map(i => ({
+        name: label(i), strokes: vs[i], done: viewB.done[i], picked: viewB.done[i] && vs[i] >= PICKUP, color: colorOf(i), active: inPlay && st.shooter === i && !st.done[i] })) };
+      ctx.drawImage(bandL.get(px, bandKey(band) + (fontOn ? "" : "~"), g => paintBand(g, band, TOP, VW, px, ballSprite(px))), 0, 0, VW, TOP + 12);
+      let tab: Tab | null = null;
+      if (drag && canAim()) tab = { kind: "power", text: "", color: "", power: Math.min(1, Math.hypot(drag.px, drag.py) / MAX_PULL) };
+      else if (inPlay) {
         const s = st.shooter, aiming = !local && s !== me && (phase === "think" || (seen.on && Math.hypot(seen.tx, seen.ty) >= MIN_PULL && phase === "aim"));
         const nm = (cpu ? "Computer" : pnames[s]).slice(0, 9);
-        const whose = aiming ? `${nm} Aiming...` : st.done[me] && !local && s !== me ? `Waiting For ${nm}` : human(s) && !local ? "Your Turn" : `${nm}'s Turn`;
-        const left = Math.max(0, Math.ceil(turnLeft / 1000));
-        text(live && phase === "aim" ? `${whose} · ${left}s` : whose, VW / 2, 46, 13, s === me || local ? BLUE : "#5a6b85", 800);
-        if (live && phase === "aim") { ctx.fillStyle = left <= 5 ? RED : BLUE; rr(VW / 2 - 50, 51, (100 * Math.max(0, turnLeft)) / TURN_MS, 3, 1.5); ctx.fill(); }
+        const yours = human(s) && !local, waiting = st.done[me] && !local && s !== me;
+        const whose = aiming ? `${nm} Aiming...` : waiting ? `Waiting For ${nm}` : yours ? "Your Turn" : `${nm}'s Turn`;
+        tab = { kind: !aiming && !waiting && yours ? "you" : waiting && !aiming ? "wait" : "them", text: whose, color: colorOf(s),
+          ...(live && phase === "aim" ? { secs: Math.max(0, Math.ceil(turnLeft / 1000)), frac: Math.max(0, turnLeft) / TURN_MS } : {}) };
       }
-      // the first putt: show where to drag (away from the ball)
+      if (tab) {
+        const shape = tab.kind === "power" ? "power" : `${tab.kind}|${tab.text}`;
+        if (shape !== tabShape) { if (shape !== "power" && tabShape !== "power") tabAt = t; tabShape = shape; }
+        const k = Math.min(1, (t - tabAt) / 280), s = k < 1 ? 0.55 + 0.45 * backOut(k) : 1, tb = tab;
+        const img = tabL.get(px, tabKey(tb) + (fontOn ? "" : "~"), g => paintTab(g, tb, px));
+        ctx.save(); ctx.translate(VW / 2, TOP + 10); ctx.scale(s, s); ctx.drawImage(img, -TAB_W / 2, -19, TAB_W, TAB_H); ctx.restore();
+      } else tabShape = "";
+      // the first putt: show what to do
       if (myTurn() && started && !drag && firstPutt[local ? st.shooter : me] && st.hole === 0 && (!cpu || round === 1)) {
-        const by = st.balls[st.shooter][1] * view.s + view.ty, y0 = by > 400 ? by - 175 : Math.min(VH - 90, by + 50);
-        ctx.globalAlpha = 0.7 + 0.25 * Math.sin(t / 300);
-        ctx.fillStyle = "rgba(16,27,46,0.45)"; rr(VW / 2 - 113, y0 + 2, 226, 66, 15); ctx.fill();
-        ctx.strokeStyle = "#fff"; ctx.setLineDash([8, 7]); ctx.lineWidth = 2; rr(VW / 2 - 115, y0, 230, 70, 16); ctx.stroke(); ctx.setLineDash([]);
-        text("Drag Back Anywhere", VW / 2, y0 + 30, 16, "#fff", 800);
-        text("Then Let Go To Putt", VW / 2, y0 + 52, 13, "#fff", 600);
-        ctx.globalAlpha = 1;
+        const by = st.balls[st.shooter][1] * view.s + view.ty, y0 = by > 400 ? by - 175 : Math.min(VH - 100, by + 50);
+        drawHint(ctx, VW / 2, y0, t);
       }
       ctx.restore();
+      // a navy edge round the whole board, the same as the band
+      ctx.strokeStyle = NAVY; ctx.lineWidth = 3; rr(1.5, 1.5, VW - 3, VH - 3, 20.5); ctx.stroke();
+    }
+    // the players' little meatball, for their chips in the band (drawn once)
+    function ballSprite(px: number) {
+      if (!ballIcon || ballIcon.px !== px) {
+        const cv = document.createElement("canvas"); cv.width = Math.ceil(22 * px); cv.height = Math.ceil(22 * px);
+        const g = cv.getContext("2d")!; g.scale(px, px); drawMeatball(g, 10.5, 10.5, 8.4, rollQuat(quatIdentity(), 4, 7), 1);
+        ballIcon = { cv, px };
+      }
+      return ballIcon.cv;
     }
 
     raf = requestAnimationFrame(loop);
@@ -909,218 +980,237 @@ export default function KitchenGolf() {
 
   return (
     <GameScreen>
+      <style>{KG_CSS}</style>
       <GameHeader title="Kitchen Golf" mode={mode} onMode={m => { toCpu(); setMode(m); }} onBoard={() => shell.setBoardOpen(true)} onHelp={shell.help.show} />
 
       <div className="mt-2 flex items-center justify-between">
         {isCpu ? (<>
-          <div><div className="text-[10px] uppercase tracking-wide text-[#5a6b85]">Score</div><div className="text-2xl font-bold leading-none tabular-nums">{hud.score.toLocaleString()}</div></div>
-          <div className="rounded-full bg-white/80 px-2.5 py-0.5 text-xs font-bold text-[#3f7fd6]">
-            {mode === "daily" ? `Hole ${hud.hole} of 9` : `Round ${hud.round} · Hole ${hud.hole}`} · {hud.tot[0]}-{hud.tot[1]}
+          <div><div className="text-[10px] font-semibold uppercase tracking-wide text-[#5a6b85]">Score</div><div className="kg-f text-[28px] leading-none tabular-nums text-[#0E1F45]">{hud.score.toLocaleString()}</div></div>
+          <div className="kg-f kg-ribbon rounded-full px-3 py-1 text-[13px] text-white">
+            {mode === "daily" ? `Hole ${hud.hole} Of 9` : `Round ${hud.round} · Hole ${hud.hole}`} <span className="text-[#FFE65C]">· {hud.tot[0]}-{hud.tot[1]}</span>
           </div>
         </>) : (<>
-          <div className="min-w-0"><div className="truncate text-[10px] uppercase tracking-wide text-[#5a6b85]">{isLive ? "You" : pn[0]}</div><div className="text-2xl font-bold leading-none tabular-nums">{hud.tot[isLive ? me : 0]}</div></div>
-          <div className="rounded-full bg-white/80 px-2.5 py-0.5 text-xs font-bold text-[#3f7fd6]">{play.kind === "live" ? `Live · Room ${play.code}` : "Same Phone"}</div>
+          <div className="min-w-0"><div className="truncate text-[10px] font-semibold uppercase tracking-wide text-[#5a6b85]">{isLive ? "You" : pn[0]}</div><div className="kg-f text-[28px] leading-none tabular-nums text-[#0E1F45]">{hud.tot[isLive ? me : 0]}</div></div>
+          <div className="kg-f kg-ribbon rounded-full px-3 py-1 text-[13px] text-white">{play.kind === "live" ? <>Live <span className="text-[#FFE65C]">· Room {play.code}</span></> : "Same Phone"}</div>
         </>)}
         <div className="flex items-center gap-1.5">
-          {isCpu ? <div className="mr-1 text-right"><div className="text-[10px] uppercase tracking-wide text-[#5a6b85]">Best</div><div className="text-lg font-semibold leading-none tabular-nums">{best.toLocaleString()}</div></div>
-            : <div className="mr-1 min-w-0 text-right"><div className="max-w-[96px] truncate text-[10px] uppercase tracking-wide text-[#5a6b85]">{isLive ? friend : pn[1]}</div><div className="text-2xl font-bold leading-none tabular-nums">{hud.tot[isLive ? 1 - me : 1]}</div></div>}
+          {isCpu ? <div className="mr-1 text-right"><div className="text-[10px] font-semibold uppercase tracking-wide text-[#5a6b85]">Best</div><div className="kg-f text-[20px] leading-none tabular-nums text-[#0E1F45]">{best.toLocaleString()}</div></div>
+            : <div className="mr-1 min-w-0 text-right"><div className="max-w-[96px] truncate text-[10px] font-semibold uppercase tracking-wide text-[#5a6b85]">{isLive ? friend : pn[1]}</div><div className="kg-f text-[28px] leading-none tabular-nums text-[#0E1F45]">{hud.tot[isLive ? 1 - me : 1]}</div></div>}
           <button onClick={toggleSound} aria-label={muted ? "Sound On" : "Sound Off"} className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-white/70 text-[#3f7fd6]"><SoundIcon muted={muted} /></button>
           <PauseButton shell={shell} active={playing} />
         </div>
       </div>
 
       <BoardArea wrapRef={wrapRef} size={board} reserve={0}>
-        <canvas ref={canvasRef} className="block rounded-[22px] shadow-[0_14px_40px_rgba(16,42,86,0.18)]" />
+        <canvas ref={canvasRef} className="block rounded-[22px] shadow-[0_16px_40px_rgba(14,31,69,0.32)]" />
         <PrizeLogo shell={shell} active={isCpu && started && !over && !roundCard && !shell.paused && !menu && !rui} />
-        <PausedCard shell={shell} active={playing} />
+        <div className="kg-skin contents"><PausedCard shell={shell} active={playing} /></div>
 
         {intro && !holeCard && (
-          <button onClick={() => skipRef.current()} className="kg-intro absolute inset-x-0 top-[22%] z-[6] mx-auto flex w-[80%] max-w-[300px] flex-col items-center rounded-3xl bg-white/95 px-4 py-4 text-center shadow-2xl">
-            <style>{`@keyframes kg-in { 0% { opacity: 0; transform: translateY(-14px) scale(0.94) } 14% { opacity: 1; transform: none } 62% { opacity: 1; transform: none } 85%, 100% { opacity: 0; transform: translateY(8px) scale(0.97) } } .kg-intro { animation: kg-in ${INTRO_MS}ms ease-out forwards }`}</style>
-            <span className="text-xs font-bold uppercase tracking-[0.18em] text-[#c8463c]">Hole {intro.n} Of 9</span>
-            <span className="mt-1 text-[26px] font-black leading-tight tracking-tight text-[#101b2e]">{intro.name}</span>
-            <span className="mt-1.5 rounded-full bg-[#e3effe] px-3 py-0.5 text-sm font-bold text-[#3f7fd6]">Par {intro.par}</span>
+          <button onClick={() => skipRef.current()} className="kg-intro absolute inset-x-0 top-[24%] z-[6] mx-auto flex w-[80%] max-w-[296px] flex-col items-stretch">
+            <style>{`@keyframes kg-in { 0% { opacity: 0; transform: translateY(-14px) scale(0.9) } 12% { opacity: 1; transform: scale(1.04) } 20% { transform: none } 62% { opacity: 1; transform: none } 85%, 100% { opacity: 0; transform: translateY(8px) scale(0.97) } } .kg-intro { animation: kg-in ${INTRO_MS}ms ease-out forwards }`}</style>
+            <span className="kg-panel relative flex w-full flex-col items-center px-4 pb-4 pt-7 text-center">
+              <span className="kg-f kg-ribbon absolute -top-4 rounded-full px-4 py-1 text-[16px] text-[#FFE65C]">Hole {intro.n} Of 9</span>
+              <span className="kg-f text-[31px] leading-[1.05] text-[#0E1F45]">{intro.name}</span>
+              <span className="kg-f mt-2.5 rounded-full bg-gradient-to-b from-[#FFF07A] to-[#FFB618] px-4 py-0.5 text-[18px] text-[#0E1F45] shadow-[0_3px_0_#B86E00]">Par {intro.par}</span>
+            </span>
           </button>
         )}
 
         {holeCard && !matchEnd && (
-          <button onClick={() => skipRef.current()} className="absolute inset-x-0 top-[9%] z-[6] mx-auto flex w-[90%] max-w-[330px] flex-col items-center rounded-3xl bg-white/96 px-3 pb-3 pt-2.5 text-center shadow-2xl">
-            <span className="text-sm font-semibold text-[#5a6b85]">Hole {holeCard.hole} · {holeCard.name}</span>
-            <span className="mt-1 flex w-full flex-col gap-1">
-              {holeCard.results.map((r, i) => (
-                <span key={i} className="flex w-full items-center justify-between px-1 text-[15px]">
-                  <span className="flex items-center gap-1.5 font-bold"><span className="h-2.5 w-2.5 rounded-full" style={{ background: r.color }} />{r.name}</span>
-                  <span className={`rounded-full px-2 py-0.5 text-[13px] font-bold ${r.strokes < holeCard.par || r.strokes === 1 ? "bg-[#dff5e8] text-[#1f8a52]" : r.strokes === holeCard.par ? "bg-[#e3effe] text-[#3f7fd6]" : "bg-[#f1f3f6] text-[#5a6b85]"}`}>{scoreName(r.strokes, holeCard.par)}</span>
-                </span>
-              ))}
+          <button onClick={() => skipRef.current()} className="kg-pop absolute inset-x-0 top-[13%] z-[6] mx-auto flex w-[90%] max-w-[330px] flex-col items-stretch">
+            <span className="kg-panel relative flex w-full flex-col items-center px-3 pb-3 pt-7 text-center">
+              <span className="kg-f kg-ribbon absolute -top-4 max-w-[92%] truncate rounded-full px-4 py-1 text-[15px] text-white">Hole {holeCard.hole} <span className="text-[#FFE65C]">·</span> {holeCard.name}</span>
+              <span className="flex w-full flex-col gap-1.5">
+                {holeCard.results.map((r, i) => (
+                  <span key={i} className="flex w-full items-center justify-between px-1">
+                    <span className="kg-f flex min-w-0 items-center gap-2 text-[19px] text-[#0E1F45]"><span className="h-3.5 w-3.5 shrink-0 rounded-full shadow-[0_0_0_2px_#fff,0_1px_3px_rgba(14,31,69,0.4)]" style={{ background: r.color }} /><span className="truncate">{r.name}</span></span>
+                    <span className={`kg-f shrink-0 rounded-full px-3 py-0.5 text-[15px] ${chipTone(r.strokes, holeCard.par)}`}>{scoreName(r.strokes, holeCard.par)}</span>
+                  </span>
+                ))}
+              </span>
+              <Scorecard pars={holeCard.pars} rows={holeCard.rows} cur={holeCard.hole - 1} />
+              {holeCard.pts !== null && <span className="kg-f mt-2.5 text-[24px] leading-none text-[#22a861]">+{holeCard.pts.toLocaleString()} Points</span>}
             </span>
-            <Scorecard pars={holeCard.pars} rows={holeCard.rows} cur={holeCard.hole - 1} />
-            {holeCard.pts !== null && <span className="mt-1.5 text-xl font-bold tabular-nums text-[#2eaa6e]">+{holeCard.pts.toLocaleString()} Points</span>}
           </button>
         )}
 
         {isCpu && !started && !over && !menu && !rui && !offer && (
           <Card>
             <div className="flex items-center justify-center gap-2.5">
-              <MeatballIcon size={46} />
-              <div className="text-left"><div className="text-2xl font-black leading-none tracking-tight">Kitchen Golf</div><div className="mt-1 text-xs font-bold uppercase tracking-wide text-[#c8463c]">{mode === "daily" ? `Today's Challenge #${n}` : "Free Play"}</div></div>
+              <MeatballIcon size={52} />
+              <div className="text-left">
+                <div className="kg-f text-[32px] leading-none text-[#0E1F45]">Kitchen Golf</div>
+                <div className="kg-f kg-ribbon mt-1.5 inline-block rounded-full px-2.5 py-0.5 text-[12px] text-[#FFE65C]">{mode === "daily" ? `Today's Challenge #${n}` : "Free Play"}</div>
+              </div>
             </div>
-            <p className="mt-2.5 text-sm text-[#5a6b85]">{mode === "daily" ? "A 9-hole tour of the kitchen against the computer. Fewest strokes wins." : "Beat the computer round after round. New holes every round."}</p>
+            <p className="mt-3 text-sm leading-snug text-[#4a5b77]">{mode === "daily" ? "A 9-hole tour of the kitchen against the computer. Fewest strokes wins." : "Beat the computer round after round. New holes every round."}</p>
             {mode === "daily" && tour.length > 0 && (
-              <div className="mt-2 flex flex-wrap justify-center gap-1">
-                {tour.map((t, i) => <span key={i} className="rounded-full bg-[#f3efe6] px-2 py-0.5 text-[11px] font-semibold text-[#6b5a3e]">{i + 1}. {t}</span>)}
+              <div className="mt-2.5 flex flex-wrap justify-center gap-1">
+                {tour.map((t, i) => (
+                  <span key={i} className="kg-f flex items-center gap-1 rounded-full bg-[#eef3fb] py-[2px] pl-[2px] pr-2 text-[11.5px] text-[#2c4470] shadow-[inset_0_0_0_1px_#d5e1f5]">
+                    <span className="flex h-[17px] w-[17px] items-center justify-center rounded-full bg-[#16336C] text-[10px] text-[#FFE65C]">{i + 1}</span>{t}
+                  </span>
+                ))}
               </div>
             )}
-            <button onClick={() => startRef.current()} className="mt-3 w-full rounded-full bg-[#3f7fd6] py-3 font-semibold text-white">Play The Computer</button>
-            <div className="mt-2 flex gap-2">
-              <button onClick={() => setMenu("friend")} className="flex-1 rounded-full bg-[#e3effe] py-3 text-sm font-semibold text-[#3f7fd6]">Play A Friend</button>
-              <button onClick={() => setMenu("local")} className="flex-1 rounded-full bg-[#e3effe] py-3 text-sm font-semibold text-[#3f7fd6]">Same Phone</button>
+            <button onClick={() => startRef.current()} className="kg-btn mt-4 w-full py-3.5 text-[20px]">Play The Computer</button>
+            <div className="mt-3 flex gap-2.5">
+              <button onClick={() => setMenu("friend")} className="kg-btn-2 flex-1 py-3 text-[16px]">Play A Friend</button>
+              <button onClick={() => setMenu("local")} className="kg-btn-2 flex-1 py-3 text-[16px]">Same Phone</button>
             </div>
           </Card>
         )}
 
         {menu === "friend" && !rui && (
           <Card>
-            <div className="text-xl font-bold">Play A Friend</div>
-            <p className="mt-1 text-sm text-[#5a6b85]">Play live on two phones. Make a room and send your friend the link.</p>
-            <button onClick={openRoom} className="mt-4 w-full rounded-full bg-[#3f7fd6] py-3 font-semibold text-white">Make A Room</button>
-            <div className="mt-4 text-xs font-semibold uppercase tracking-wide text-[#5a6b85]">Got A Code?</div>
-            <div className="mt-1 flex gap-2">
+            <div className="kg-f text-[27px] leading-tight text-[#0E1F45]">Play A Friend</div>
+            <p className="mt-1 text-sm leading-snug text-[#4a5b77]">Play live on two phones. Make a room and send your friend the link.</p>
+            <button onClick={openRoom} className="kg-btn mt-4 w-full py-3 text-[19px]">Make A Room</button>
+            <div className="kg-f mt-4 text-[14px] text-[#5a6b85]">Got A Code?</div>
+            <div className="mt-1.5 flex gap-2">
               <input value={code} onChange={e => setCode(e.target.value.toUpperCase().replace(/[^A-Z]/g, "").slice(0, 4))} placeholder="ABCD" autoCapitalize="characters" autoComplete="off" spellCheck={false}
                 onKeyDown={e => { if (e.key === "Enter") joinRoom(); }}
-                className="w-0 min-w-0 flex-1 rounded-xl border border-[#d6e2f5] px-3 py-2.5 text-center font-mono text-lg font-bold tracking-[0.3em] outline-none focus:border-[#3f7fd6]" />
-              <button onClick={joinRoom} disabled={code.length !== 4} className="rounded-full bg-[#e3effe] px-5 font-semibold text-[#3f7fd6] disabled:opacity-50">Join</button>
+                className="kg-input w-0 min-w-0 flex-1 px-3 py-2.5 text-center font-mono text-lg font-bold tracking-[0.3em] text-[#0E1F45]" />
+              <button onClick={joinRoom} disabled={code.length !== 4} className="kg-btn-2 px-5 text-[17px]">Join</button>
             </div>
-            <button onClick={() => setMenu(null)} className="mt-3 w-full py-2 text-sm font-semibold text-[#5a6b85]">Back</button>
+            <button onClick={() => setMenu(null)} className="kg-link mt-3 w-full py-2 text-[15px]">Back</button>
           </Card>
         )}
 
         {menu === "local" && (
           <Card>
-            <div className="text-xl font-bold">Same Phone</div>
-            <p className="mt-1 text-sm text-[#5a6b85]">Two players, one phone. Pass it over when it&apos;s the other player&apos;s putt.</p>
+            <div className="kg-f text-[27px] leading-tight text-[#0E1F45]">Same Phone</div>
+            <p className="mt-1 text-sm leading-snug text-[#4a5b77]">Two players, one phone. Pass it over when it&apos;s the other player&apos;s putt.</p>
             {[0, 1].map(i => (
-              <input key={i} value={names[i]} maxLength={12} placeholder={`Player ${i + 1}`} autoComplete="off"
-                onChange={e => setNames(v => v.map((x, j) => (j === i ? e.target.value : x)))}
-                className="mt-3 w-full rounded-xl border border-[#d6e2f5] px-3 py-2.5 text-base outline-none focus:border-[#3f7fd6]" />
+              <div key={i} className="relative mt-3">
+                <span className="absolute left-3 top-1/2 h-3 w-3 -translate-y-1/2 rounded-full" style={{ background: i === 0 ? BLUE : RED }} />
+                <input value={names[i]} maxLength={12} placeholder={`Player ${i + 1}`} autoComplete="off"
+                  onChange={e => setNames(v => v.map((x, j) => (j === i ? e.target.value : x)))}
+                  className="kg-input w-full py-2.5 pl-8 pr-3 text-base text-[#0E1F45]" />
+              </div>
             ))}
-            <button onClick={startLocal} className="mt-4 w-full rounded-full bg-[#3f7fd6] py-3 font-semibold text-white">Start</button>
-            <button onClick={() => setMenu(null)} className="mt-2 w-full py-2 text-sm font-semibold text-[#5a6b85]">Back</button>
+            <button onClick={startLocal} className="kg-btn mt-4 w-full py-3 text-[19px]">Start</button>
+            <button onClick={() => setMenu(null)} className="kg-link mt-2 w-full py-2 text-[15px]">Back</button>
           </Card>
         )}
 
         {offer && !rui && !isLive && (
           <Card>
-            <div className="text-xl font-bold">Rejoin Your Game</div>
-            <p className="mt-1 text-sm text-[#5a6b85]">You were in the middle of a match in room {offer.saved.code}.</p>
-            <button onClick={() => rejoinNow(offer.saved, offer.live)} className="mt-4 w-full rounded-full bg-[#3f7fd6] py-3 font-semibold text-white">Rejoin</button>
-            <button onClick={() => { room.forget(); forgetLive(); setOffer(null); }} className="mt-2 w-full py-2 text-sm font-semibold text-[#5a6b85]">No Thanks</button>
+            <div className="kg-f text-[26px] leading-tight text-[#0E1F45]">Rejoin Your Game</div>
+            <p className="mt-1 text-sm leading-snug text-[#4a5b77]">You were in the middle of a match in room {offer.saved.code}.</p>
+            <button onClick={() => rejoinNow(offer.saved, offer.live)} className="kg-btn mt-4 w-full py-3 text-[19px]">Rejoin</button>
+            <button onClick={() => { room.forget(); forgetLive(); setOffer(null); }} className="kg-link mt-2 w-full py-2 text-[15px]">No Thanks</button>
           </Card>
         )}
 
         {isLive && room.away && !rui && (theirTurn ? (
           <Card>
-            <div className="text-xl font-bold">{friend} Stepped Away...</div>
-            <div className="mt-2 text-4xl font-bold tabular-nums text-[#3f7fd6]">{awayLeft}s</div>
-            <p className="mt-2 text-sm text-[#5a6b85]">It&apos;s their putt, so the game waits. It picks up right where you left off when they&apos;re back.</p>
-            <button onClick={toCpu} className="mt-3 w-full py-2 text-sm font-semibold text-[#5a6b85]">Leave</button>
+            <div className="kg-f text-[24px] leading-tight text-[#0E1F45]">{friend} Stepped Away...</div>
+            <div className="kg-f mx-auto mt-3 flex h-[76px] w-[76px] items-center justify-center rounded-full bg-gradient-to-b from-[#66A6FF] to-[#3170DC] text-[34px] tabular-nums text-white shadow-[0_5px_0_#19429A,inset_0_2px_0_rgba(255,255,255,0.35)]">{awayLeft}s</div>
+            <p className="mt-3 text-sm leading-snug text-[#4a5b77]">It&apos;s their putt, so the game waits. It picks up right where you left off when they&apos;re back.</p>
+            <button onClick={toCpu} className="kg-link mt-3 w-full py-2 text-[15px]">Leave</button>
           </Card>
         ) : (
-          <div className="pointer-events-none absolute inset-x-0 top-1.5 z-10 flex justify-center px-3">
-            <div className="truncate rounded-full bg-[#fff4d6] px-3 py-1 text-xs font-bold text-[#8a5a00] shadow-md">{friend} Stepped Away · {awayLeft}s · Your Putt</div>
+          <div className="pointer-events-none absolute inset-x-0 top-[66px] z-10 flex justify-center px-3">
+            <div className="kg-f truncate rounded-full bg-gradient-to-b from-[#FFF07A] to-[#FFB618] px-3.5 py-1 text-[13px] text-[#0E1F45] shadow-[0_3px_0_#B86E00,0_6px_14px_rgba(14,31,69,0.3)]">{friend} Stepped Away · {awayLeft}s · Your Putt</div>
           </div>
         ))}
         {isLive && room.reconnecting && !room.away && !rui && (
-          <div className="pointer-events-none absolute inset-x-0 top-1.5 z-10 flex justify-center">
-            <div className="rounded-full bg-[#e3effe] px-3 py-1 text-xs font-bold text-[#3f7fd6] shadow-md">Reconnecting...</div>
+          <div className="pointer-events-none absolute inset-x-0 top-[66px] z-10 flex justify-center">
+            <div className="kg-f kg-ribbon rounded-full px-3.5 py-1 text-[13px] text-white">Reconnecting...</div>
           </div>
         )}
 
         {rui?.s === "lobby" && (
-          <ReadyCard me={nameRef.current === "Guest" ? "You" : nameRef.current} friend={room.friendName === "Guest" ? "Your Friend" : room.friendName}
-            ready={[room.ready.me, room.ready.them]} onReady={() => { SOUND?.unlock(); room.markReady(); }} onLeave={toCpu} steps={[
-              "Drag back anywhere on the board and let go to putt. The dots show the way.",
-              "Pull further for more power. Walls bounce, rugs and suds slow you, ice is slippery.",
-              "You take turns. Water costs a stroke. After 6 strokes you pick up and take a 7.",
-              "30 seconds a putt. Fewest strokes over 9 holes wins.",
-            ]} />
+          <div className="kg-skin contents">
+            <ReadyCard me={nameRef.current === "Guest" ? "You" : nameRef.current} friend={room.friendName === "Guest" ? "Your Friend" : room.friendName}
+              ready={[room.ready.me, room.ready.them]} onReady={() => { SOUND?.unlock(); room.markReady(); }} onLeave={toCpu} steps={[
+                "Drag back anywhere on the board and let go to putt. The dots show the way.",
+                "Pull further for more power. Walls bounce, rugs and suds slow you, ice is slippery.",
+                "You take turns. Water costs a stroke. After 6 strokes you pick up and take a 7.",
+                "30 seconds a putt. Fewest strokes over 9 holes wins.",
+              ]} />
+          </div>
         )}
 
         {rui && rui.s !== "lobby" && (
           <Card>
             {rui.s === "waiting" && (<>
-              <div className="text-sm font-semibold text-[#5a6b85]">Your Room Code</div>
-              <div className="mt-1 font-mono text-4xl font-bold tracking-[0.2em]">{rui.code}</div>
-              <p className="mt-2 text-sm text-[#5a6b85]">Send your friend the link. The game starts when you&apos;re both ready.</p>
-              <button onClick={() => shareRoom(rui.code)} className="mt-4 w-full rounded-full bg-[#3f7fd6] py-3 font-semibold text-white">{shell.copied ? "Link Copied!" : "Share Link"}</button>
-              <p className="mt-3 text-sm font-semibold text-[#3f7fd6]">Waiting For Your Friend...</p>
-              <button onClick={toCpu} className="mt-1 w-full py-2 text-sm font-semibold text-[#5a6b85]">Cancel</button>
+              <div className="kg-f text-[16px] text-[#5a6b85]">Your Room Code</div>
+              <div className="mt-1.5 flex justify-center gap-1.5">
+                {rui.code.split("").map((ch, i) => <span key={i} className="kg-f flex h-[52px] w-[44px] items-center justify-center rounded-xl bg-gradient-to-b from-[#21468c] to-[#0E1F45] text-[30px] text-[#FFE65C] shadow-[0_4px_0_#050c1f,inset_0_1px_0_rgba(255,255,255,0.2)]">{ch}</span>)}
+              </div>
+              <p className="mt-3 text-sm leading-snug text-[#4a5b77]">Send your friend the link. The game starts when you&apos;re both ready.</p>
+              <button onClick={() => shareRoom(rui.code)} className="kg-btn mt-4 w-full py-3 text-[19px]">{shell.copied ? "Link Copied!" : "Share Link"}</button>
+              <p className="kg-f mt-3 animate-pulse text-[15px] text-[#3f7fd6]">Waiting For Your Friend...</p>
+              <button onClick={toCpu} className="kg-link mt-1 w-full py-2 text-[15px]">Cancel</button>
             </>)}
             {rui.s === "joining" && (<>
-              <div className="text-xl font-bold">Joining Room {rui.code}</div>
-              <p className="mt-2 text-sm font-semibold text-[#3f7fd6]">Connecting...</p>
-              <button onClick={toCpu} className="mt-3 w-full py-2 text-sm font-semibold text-[#5a6b85]">Cancel</button>
+              <div className="kg-f text-[26px] leading-tight text-[#0E1F45]">Joining Room {rui.code}</div>
+              <p className="kg-f mt-2 animate-pulse text-[15px] text-[#3f7fd6]">Connecting...</p>
+              <button onClick={toCpu} className="kg-link mt-3 w-full py-2 text-[15px]">Cancel</button>
             </>)}
             {(rui.s === "full" || rui.s === "empty" || rui.s === "error") && (<>
-              <div className="text-xl font-bold">{rui.s === "full" ? "Room Full" : rui.s === "empty" ? "No One's Here" : "Can't Connect"}</div>
-              <p className="mt-2 text-sm text-[#5a6b85]">{rui.s === "full" ? `Room ${rui.code} already has two players.` : rui.s === "empty" ? `Nobody is in room ${rui.code} right now. Ask your friend to make a room and send you the link.` : "We couldn't reach the game. Check your connection and try again."}</p>
-              <button onClick={() => { room.dismiss(); setMenu("friend"); }} className="mt-4 w-full rounded-full bg-[#3f7fd6] py-3 font-semibold text-white">Back</button>
-              <button onClick={toCpu} className="mt-2 w-full py-2 text-sm font-semibold text-[#5a6b85]">Play The Computer</button>
+              <div className="kg-f text-[26px] leading-tight text-[#0E1F45]">{rui.s === "full" ? "Room Full" : rui.s === "empty" ? "No One's Here" : "Can't Connect"}</div>
+              <p className="mt-2 text-sm leading-snug text-[#4a5b77]">{rui.s === "full" ? `Room ${rui.code} already has two players.` : rui.s === "empty" ? `Nobody is in room ${rui.code} right now. Ask your friend to make a room and send you the link.` : "We couldn't reach the game. Check your connection and try again."}</p>
+              <button onClick={() => { room.dismiss(); setMenu("friend"); }} className="kg-btn mt-4 w-full py-3 text-[19px]">Back</button>
+              <button onClick={toCpu} className="kg-link mt-2 w-full py-2 text-[15px]">Play The Computer</button>
             </>)}
             {rui.s === "left" && (<>
-              <div className="text-xl font-bold">Your Friend Left</div>
-              <p className="mt-2 text-sm text-[#5a6b85]">That match is over.</p>
-              <button onClick={openRoom} className="mt-4 w-full rounded-full bg-[#3f7fd6] py-3 font-semibold text-white">Make A New Room</button>
-              <button onClick={toCpu} className="mt-2 w-full rounded-full bg-[#e3effe] py-3 font-semibold text-[#3f7fd6]">Play The Computer</button>
+              <div className="kg-f text-[26px] leading-tight text-[#0E1F45]">Your Friend Left</div>
+              <p className="mt-2 text-sm leading-snug text-[#4a5b77]">That match is over.</p>
+              <button onClick={openRoom} className="kg-btn mt-4 w-full py-3 text-[19px]">Make A New Room</button>
+              <button onClick={toCpu} className="kg-btn-2 mt-3 w-full py-3 text-[17px]">Play The Computer</button>
             </>)}
           </Card>
         )}
 
         {isLocal && passTo && !matchEnd && !shell.held && !intro && !holeCard && (
-          <button onClick={() => passRef.current()} className="absolute inset-0 z-10 flex items-center justify-center rounded-[22px] bg-[#101b2e]/45 p-6">
-            <span className="w-full max-w-[260px] rounded-3xl bg-white px-6 py-5 text-center shadow-2xl">
-              <span className="block text-sm font-semibold text-[#5a6b85]">Pass To {passTo}</span>
-              <span className="mt-0.5 block text-2xl font-bold">{passTo}&apos;s Putt</span>
-              <span className="mt-3 block rounded-full bg-[#3f7fd6] py-3 font-semibold text-white">Tap To Start</span>
+          <button onClick={() => passRef.current()} className="kg-backdrop absolute inset-0 z-10 flex items-center justify-center rounded-[22px] p-6">
+            <span className="kg-panel kg-pop w-full max-w-[264px] px-6 pb-5 pt-5 text-center">
+              <span className="kg-f block text-[15px] text-[#5a6b85]">Pass To {passTo}</span>
+              <span className="kg-f mt-0.5 block text-[28px] leading-tight text-[#0E1F45]">{passTo}&apos;s Putt</span>
+              <span className="kg-btn mt-4 block py-3 text-[19px]">Tap To Start</span>
             </span>
           </button>
         )}
 
         {matchEnd && !rui && (isLive || isLocal) && (
           <Card>
-            <div className="text-sm font-semibold text-[#5a6b85]">{play.kind === "live" ? `Room ${play.code}` : "Same Phone"}</div>
-            <div className="mt-1 text-2xl font-bold">
+            <div className="kg-f text-[14px] text-[#3f7fd6]">{play.kind === "live" ? `Room ${play.code}` : "Same Phone"}</div>
+            <div className="kg-f mt-0.5 text-[28px] leading-tight text-[#0E1F45]">
               {matchEnd.winner < 0 ? "It's A Tie" : isLive ? (matchEnd.winner === me ? "You Won! 🎉" : `${friend} Won`) : `${pn[matchEnd.winner]} Wins! 🎉`}
             </div>
             <Scorecard pars={matchEnd.pars} rows={(isLive ? [me, 1 - me] : [0, 1]).map(i => ({ name: cardNames(i), card: matchEnd.cards[i], color: (isLive ? i === me : i === 0) ? BLUE : RED }))} />
-            {(wins[0] + wins[1] > 1) && <div className="mt-1 text-xs text-[#5a6b85]">{isLive ? `Matches: You ${wins[me]} · ${friend} ${wins[1 - me]}` : `Matches: ${pn[0]} ${wins[0]} · ${pn[1]} ${wins[1]}`}</div>}
-            {isLive && room.again.them && !room.again.me && <div className="mt-2 text-sm font-semibold text-[#2eaa6e]">{friend} Wants A Rematch!</div>}
-            <button onClick={isLive ? room.rematch : localRematch} disabled={isLive && room.again.me} className="mt-3 w-full rounded-full bg-[#3f7fd6] py-3 font-semibold text-white disabled:opacity-70">
+            {(wins[0] + wins[1] > 1) && <div className="kg-f mt-2 text-[13px] text-[#5a6b85]">{isLive ? `Matches: You ${wins[me]} · ${friend} ${wins[1 - me]}` : `Matches: ${pn[0]} ${wins[0]} · ${pn[1]} ${wins[1]}`}</div>}
+            {isLive && room.again.them && !room.again.me && <div className="kg-f mt-2 text-[15px] text-[#22a861]">{friend} Wants A Rematch!</div>}
+            <button onClick={isLive ? room.rematch : localRematch} disabled={isLive && room.again.me} className="kg-btn mt-4 w-full py-3 text-[19px]">
               {isLive && room.again.me ? `Waiting For ${friend}...` : "Rematch"}
             </button>
-            <button onClick={toCpu} className="mt-2 w-full rounded-full bg-[#e3effe] py-3 font-semibold text-[#3f7fd6]">{isLive ? "Leave" : "Done"}</button>
+            <button onClick={toCpu} className="kg-btn-2 mt-3 w-full py-3 text-[17px]">{isLive ? "Leave" : "Done"}</button>
             <a href={appStoreLink(GAME)} className="mt-3 inline-block text-xs font-semibold text-[#5a6b85] underline">Get WhatYouAte For iPhone</a>
           </Card>
         )}
 
         {roundCard && !over && (
           <Card>
-            <div className="text-sm font-semibold text-[#5a6b85]">Round {roundCard.round} {roundCard.tie ? "Tied" : "Won"} · {roundCard.you} To {roundCard.cpu}</div>
-            <div className="mt-0.5 text-3xl font-bold leading-tight tabular-nums">+{roundCard.points.toLocaleString()}</div>
-            <div className="text-sm text-[#5a6b85]">{roundCard.tie ? "A tie keeps you going" : "Nice Putting!"}</div>
-            <button onClick={() => nextRef.current()} className="mt-3 w-full rounded-full bg-[#3f7fd6] py-3 font-semibold text-white">Next Round</button>
+            <div className="kg-f text-[15px] text-[#3f7fd6]">Round {roundCard.round} {roundCard.tie ? "Tied" : "Won"} · {roundCard.you} To {roundCard.cpu}</div>
+            <div className="kg-f mt-1 text-[44px] leading-none tabular-nums text-[#22a861]">+{roundCard.points.toLocaleString()}</div>
+            <div className="kg-f mt-1 text-[16px] text-[#5a6b85]">{roundCard.tie ? "A Tie Keeps You Going" : "Nice Putting!"}</div>
+            <button onClick={() => nextRef.current()} className="kg-btn mt-4 w-full py-3 text-[19px]">Next Round</button>
           </Card>
         )}
 
-        {over && isCpu && !menu && !rui && result && <GameOver label={mode === "daily" ? `Today's Challenge #${n}` : "Free Play"} headline={headline} score={hud.score} best={best} mode={mode}
+        {over && isCpu && !menu && !rui && result && <div className="kg-skin contents"><GameOver label={mode === "daily" ? `Today's Challenge #${n}` : "Free Play"} headline={headline} score={hud.score} best={best} mode={mode}
           posted={shell.scores.posted} joined={!!shell.player} campaign={GAME} copied={shell.copied} fact={toast}
           pitch="Good putting takes practice. So do good habits. WhatYouAte helps with the second one."
           extra={<>
-            <div className="mt-2 text-sm font-semibold text-[#5a6b85]">{result.you} Strokes · {toPar(result.you, result.par)}</div>
+            <div className="kg-f mt-2.5 text-[15px] leading-tight text-[#5a6b85]">{result.you} Strokes · {toPar(result.you, result.par)}</div>
             <div className="[@media(max-height:760px)]:hidden"><Scorecard pars={result.pars} rows={[{ name: "You", card: result.card, color: BLUE }]} compact /></div>
-            <button onClick={() => setMenu("friend")} className="mt-1.5 text-sm font-semibold text-[#3f7fd6]">Play A Friend Instead →</button>
+            <button onClick={() => setMenu("friend")} className="kg-f mt-1.5 text-[15px] text-[#3f7fd6]">Play A Friend Instead →</button>
           </>}
-          onBoard={() => shell.setBoardOpen(true)} onJoin={() => shell.setJoinOpen(true)} onAgain={() => setRun(r => r + 1)} onShare={share} />}
+          onBoard={() => shell.setBoardOpen(true)} onJoin={() => shell.setJoinOpen(true)} onAgain={() => setRun(r => r + 1)} onShare={share} /></div>}
       </BoardArea>
 
       <ShellPopups shell={shell} game={GAME} todayNote="Today's Challenge: same 9 holes and computer for everyone. Resets at midnight." />
@@ -1140,27 +1230,48 @@ export default function KitchenGolf() {
   );
 }
 
-/** A paper mini-putt scorecard: holes across the top, par, then a row per player; birdies circled, holes in one gold. */
+// how a hole went, as a chip colour: gold for a hole in one, green under par, blue for par, orange for a bogey, grey
+// for worse, red for picking up
+function chipTone(s: number, par: number) {
+  return s >= PICKUP ? "bg-[#e8505b] text-white shadow-[0_2px_0_#a8262f]"
+    : s === 1 ? "bg-gradient-to-b from-[#FFF07A] to-[#FFB618] text-[#0E1F45] shadow-[0_2px_0_#B86E00]"
+    : s < par ? "bg-[#2eaa6e] text-white shadow-[0_2px_0_#1d7a4c]"
+    : s === par ? "bg-[#3f7fd6] text-white shadow-[0_2px_0_#19429A]"
+    : s === par + 1 ? "bg-[#ff9a2e] text-white shadow-[0_2px_0_#b8620a]"
+    : "bg-[#8a97ab] text-white shadow-[0_2px_0_#5d6a7e]";
+}
+// the same, for a score in the scorecard: only the ones worth noticing stand out
+function cellTone(s: number, par: number) {
+  return s >= PICKUP ? "bg-[#e8505b] text-white"
+    : s === 1 ? "bg-gradient-to-b from-[#FFF07A] to-[#FFB618] text-[#0E1F45] shadow-[0_1px_0_#B86E00]"
+    : s < par ? "bg-[#2eaa6e] text-white"
+    : s === par ? "text-[#0E1F45]"
+    : s === par + 1 ? "text-[#e07800]"
+    : "text-[#c8463c]";
+}
+
+/** The scorecard: holes across the top on a navy strip (this hole in yellow), par, then a row per player; birdies and
+ *  better in green, holes in one gold, bogeys orange, picking up red. */
 function Scorecard({ pars, rows, cur, compact }: { pars: number[]; rows: Row[]; cur?: number; compact?: boolean }) {
   const cols = Array.from({ length: ROUND_HOLES }, (_, i) => i);
   return (
-    <div className={`w-full overflow-hidden rounded-xl border border-[#e8dcc3] tabular-nums ${compact ? "mt-1 text-[10px] [&>div]:py-[1px]" : "mt-2 text-[11px] shadow-[inset_0_1px_3px_rgba(120,90,40,0.12)]"}`}
-      style={{ background: "#fffaf0", backgroundImage: "repeating-linear-gradient(180deg, transparent 0 19px, rgba(63,127,214,0.08) 19px 20px)" }}>
-      <div className="flex items-center bg-[#c8463c] px-1.5 py-[3px] font-bold text-white">
-        <span className="w-[62px] shrink-0 text-left">Hole</span>{cols.map(i => <span key={i} className={`flex-1 text-center ${cur === i ? "rounded bg-white/25" : ""}`}>{i + 1}</span>)}<span className="w-7 shrink-0 text-right">Tot</span>
+    <div className={`w-full overflow-hidden rounded-2xl bg-white text-[#0E1F45] shadow-[0_0_0_2px_#16336C,0_3px_0_2px_#0E1F45] ${compact ? "mb-1 mt-1.5" : "mb-0.5 mt-3"}`}>
+      <div className={`kg-f kg-ribbon flex items-center px-1.5 text-white ${compact ? "py-[2px] text-[11px]" : "py-[4px] text-[13px]"}`}>
+        <span className="w-[68px] shrink-0 text-left">Hole</span>
+        {cols.map(i => <span key={i} className="flex flex-1 justify-center"><span className={`flex h-[18px] min-w-[18px] items-center justify-center rounded-full px-1 ${cur === i ? "bg-[#FFE65C] text-[#0E1F45]" : ""}`}>{i + 1}</span></span>)}
+        <span className="w-7 shrink-0 text-right">Tot</span>
       </div>
-      <div className="flex items-center px-1.5 py-[3px] text-[#8a7a5c]">
-        <span className="w-[62px] shrink-0 text-left font-semibold">Par</span>{cols.map(i => <span key={i} className="flex-1 text-center">{pars[i] ?? ""}</span>)}<span className="w-7 shrink-0 text-right font-semibold">{sum(pars)}</span>
+      <div className={`kg-f flex items-center bg-[#eef3fb] px-1.5 text-[#6a7b96] ${compact ? "py-0 text-[11px]" : "py-[2px] text-[12px]"}`}>
+        <span className="w-[68px] shrink-0 text-left">Par</span>{cols.map(i => <span key={i} className="flex-1 text-center">{pars[i] ?? ""}</span>)}<span className="w-7 shrink-0 text-right">{sum(pars)}</span>
       </div>
       {rows.map((r, k) => (
-        <div key={k} className="flex items-center border-t border-[#efe4cd] px-1.5 py-[3px] font-semibold text-[#101b2e]">
-          <span className="flex w-[62px] shrink-0 items-center gap-1 truncate text-left"><span className="h-1.5 w-1.5 shrink-0 rounded-full" style={{ background: r.color }} /><span className="truncate">{r.name}</span></span>
+        <div key={k} className={`flex items-center border-t border-[#e3eaf6] px-1.5 ${compact ? "py-[1px]" : "py-[3px]"}`}>
+          <span className="kg-f flex w-[68px] shrink-0 items-center gap-[3px] text-left text-[12px]" style={{ letterSpacing: 0 }}><span className="h-[7px] w-[7px] shrink-0 rounded-full" style={{ background: r.color }} /><span className="truncate">{r.name}</span></span>
           {cols.map(i => {
-            const s = r.card[i], par = pars[i];
-            const cls = s === undefined ? "" : s === 1 ? "bg-[#f2c230] text-[#5a3d00]" : s < par ? "ring-[1.5px] ring-[#2eaa6e] text-[#1f8a52]" : s >= PICKUP ? "text-[#c8463c]" : "";
-            return <span key={i} className="flex flex-1 justify-center"><span className={`flex h-[17px] w-[17px] items-center justify-center rounded-full ${cls} ${cur === i ? "font-black" : ""}`}>{s === undefined ? "" : s}</span></span>;
+            const s = r.card[i];
+            return <span key={i} className="flex flex-1 justify-center"><span className={`kg-f flex items-center justify-center rounded-full ${compact ? "h-[17px] w-[17px] text-[11px]" : "h-[19px] w-[19px] text-[12px]"} ${s === undefined ? "" : cellTone(s, pars[i])}`}>{s === undefined ? "" : s}</span></span>;
           })}
-          <span className="w-7 shrink-0 text-right font-black">{r.card.length ? sum(r.card) : ""}</span>
+          <span className={`kg-f w-7 shrink-0 text-right ${compact ? "text-[13px]" : "text-[15px]"}`}>{r.card.length ? sum(r.card) : ""}</span>
         </div>
       ))}
     </div>
@@ -1174,7 +1285,7 @@ function MeatballIcon({ size }: { size: number }) {
     const cv = ref.current!, dpr = window.devicePixelRatio || 1, c = cv.getContext("2d")!;
     cv.width = size * dpr; cv.height = size * dpr; c.scale(dpr, dpr);
     let q = quatIdentity(), raf = 0;
-    const tick = () => { q = rollQuat(q, 0.5, 0.2, 1); c.clearRect(0, 0, size, size); drawMeatball(c, size / 2 - 2, size / 2 - 3, size * 0.36, q, 1); raf = requestAnimationFrame(tick); };
+    const tick = () => { q = rollQuat(q, 0.5, 0.2, 1); c.clearRect(0, 0, size, size); drawMeatball(c, size / 2 - 4, size / 2 - 5, size * 0.32, q, 1); raf = requestAnimationFrame(tick); };
     tick(); return () => cancelAnimationFrame(raf);
   }, [size]);
   return <canvas ref={ref} style={{ width: size, height: size }} aria-hidden />;
@@ -1183,10 +1294,11 @@ function SoundIcon({ muted }: { muted: boolean }) {
   return <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"><path d="M4 9v6h4l5 4V5L8 9z" fill="currentColor" />{muted ? <path d="M17 9l5 5m0-5l-5 5" /> : <><path d="M16.5 8.5a5 5 0 0 1 0 7" /><path d="M19 6a8.5 8.5 0 0 1 0 12" /></>}</svg>;
 }
 
+/** A game panel over the board: a light card with a navy edge and a chunky lip, on a soft navy backdrop. */
 function Card({ children }: { children: ReactNode }) {
   return (
-    <div className="absolute inset-0 z-10 flex items-center justify-center rounded-[22px] bg-[#101b2e]/35 p-5">
-      <div className="w-full max-w-[310px] rounded-3xl bg-white p-5 text-center shadow-2xl">{children}</div>
+    <div className="kg-backdrop absolute inset-0 z-10 flex items-center justify-center rounded-[22px] p-5">
+      <div className="kg-panel kg-pop max-h-full w-full max-w-[310px] overflow-y-auto p-5 text-center">{children}</div>
     </div>
   );
 }
