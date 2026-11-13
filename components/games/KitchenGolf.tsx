@@ -1049,7 +1049,7 @@ export default function KitchenGolf() {
               <div className="mt-2.5 flex flex-wrap justify-center gap-1">
                 {tour.map((t, i) => (
                   <span key={i} className="kg-f flex items-center gap-1 rounded-full bg-[#eef3fb] py-[2px] pl-[2px] pr-2 text-[11.5px] text-[#2c4470] shadow-[inset_0_0_0_1px_#d5e1f5]">
-                    <span className="flex h-[17px] w-[17px] items-center justify-center rounded-full bg-[#16336C] text-[10px] text-[#FFE65C]">{i + 1}</span>{t}
+                    <span className="flex h-[17px] w-[17px] items-center justify-center rounded-full bg-[#101B2E] text-[10px] text-[#FFE65C]">{i + 1}</span>{t}
                   </span>
                 ))}
               </div>
@@ -1139,7 +1139,7 @@ export default function KitchenGolf() {
             {rui.s === "waiting" && (<>
               <div className="kg-f text-[16px] text-[#5a6b85]">Your Room Code</div>
               <div className="mt-1.5 flex justify-center gap-1.5">
-                {rui.code.split("").map((ch, i) => <span key={i} className="kg-f flex h-[52px] w-[44px] items-center justify-center rounded-xl bg-gradient-to-b from-[#21468c] to-[#0E1F45] text-[30px] text-[#FFE65C] shadow-[0_4px_0_#050c1f,inset_0_1px_0_rgba(255,255,255,0.2)]">{ch}</span>)}
+                {rui.code.split("").map((ch, i) => <span key={i} className="kg-f flex h-[52px] w-[44px] items-center justify-center rounded-xl bg-gradient-to-b from-[#2A3852] to-[#101B2E] text-[30px] text-[#FFE65C] shadow-[0_4px_0_#050a14,inset_0_1px_0_rgba(255,255,255,0.12)]">{ch}</span>)}
               </div>
               <p className="mt-3 text-sm leading-snug text-[#4a5b77]">Send your friend the link. The game starts when you&apos;re both ready.</p>
               <button onClick={() => shareRoom(rui.code)} className="kg-btn mt-4 w-full py-3 text-[19px]">{shell.copied ? "Link Copied!" : "Share Link"}</button>
@@ -1255,7 +1255,7 @@ function cellTone(s: number, par: number) {
 function Scorecard({ pars, rows, cur, compact }: { pars: number[]; rows: Row[]; cur?: number; compact?: boolean }) {
   const cols = Array.from({ length: ROUND_HOLES }, (_, i) => i);
   return (
-    <div className={`w-full overflow-hidden rounded-2xl bg-white text-[#0E1F45] shadow-[0_0_0_2px_#16336C,0_3px_0_2px_#0E1F45] ${compact ? "mb-1 mt-1.5" : "mb-0.5 mt-3"}`}>
+    <div className={`w-full overflow-hidden rounded-2xl bg-white text-[#101B2E] shadow-[0_0_0_1.5px_#DDEBFF,0_8px_18px_-10px_rgba(16,27,46,0.35)] ${compact ? "mb-1 mt-1.5" : "mb-0.5 mt-3"}`}>
       <div className={`kg-f kg-ribbon flex items-center px-1.5 text-white ${compact ? "py-[2px] text-[11px]" : "py-[4px] text-[13px]"}`}>
         <span className="w-[68px] shrink-0 text-left">Hole</span>
         {cols.map(i => <span key={i} className="flex flex-1 justify-center"><span className={`flex h-[18px] min-w-[18px] items-center justify-center rounded-full px-1 ${cur === i ? "bg-[#FFE65C] text-[#0E1F45]" : ""}`}>{i + 1}</span></span>)}

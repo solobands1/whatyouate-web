@@ -217,7 +217,7 @@ export function drawHintPill(c: CanvasRenderingContext2D, cx: number, y: number,
   const h = 38, x = cx - w / 2, a = 0.9 + 0.1 * Math.sin(t / 300), slide = ((t / 700) % 1) * 5;
   c.save(); c.globalAlpha = a;
   c.fillStyle = "rgba(4,10,28,0.32)"; c.beginPath(); c.roundRect(x + 1, y + 4, w, h, h / 2); c.fill();
-  const g = c.createLinearGradient(0, y, 0, y + h); g.addColorStop(0, "#2c58ab"); g.addColorStop(1, "#0E1F45");
+  const g = c.createLinearGradient(0, y, 0, y + h); g.addColorStop(0, "#2A3852"); g.addColorStop(1, "#101B2E");
   c.fillStyle = g; c.beginPath(); c.roundRect(x, y, w, h, h / 2); c.fill();
   c.strokeStyle = "rgba(255,255,255,0.85)"; c.lineWidth = 2; c.beginPath(); c.roundRect(x + 1, y + 1, w - 2, h - 2, h / 2 - 1); c.stroke();
   c.strokeStyle = "#FFE65C"; c.lineWidth = 3; c.lineCap = "round"; c.lineJoin = "round";
@@ -304,8 +304,8 @@ export function ModesHelp({ today, free }: { today: string; free: string }) {
   );
   return (
     <div className="mt-4 space-y-2 rounded-2xl bg-[#eaf1fd] p-3">
-      {row("Today", "bg-[#FFD84A] text-[#0E1F45] shadow-[0_2px_0_#c98a00]", today)}
-      {row("Free Play", "bg-[#3F7FD6] text-white shadow-[0_2px_0_#2A5BA8]", free)}
+      {row("Today", "bg-[#DDEBFF] text-[#4F88E8]", today)}
+      {row("Free Play", "bg-[#5A95F5] text-white shadow-[0_2px_0_#3F78DB]", free)}
     </div>
   );
 }

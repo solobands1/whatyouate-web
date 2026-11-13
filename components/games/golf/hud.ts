@@ -6,7 +6,7 @@
 import { GAME_FONT } from "../gameFont";
 
 type C = CanvasRenderingContext2D;
-export const NAVY = "#0E1F45", NAVY2 = "#16336C", YEL1 = "#FFE65C", YEL2 = "#FFB618", YEL_LIP = "#B86E00";
+export const NAVY = "#101B2E", NAVY2 = "#24324D", YEL1 = "#FFE65C", YEL2 = "#FFB618", YEL_LIP = "#B86E00";
 export const gf = (size: number) => `${size}px ${GAME_FONT}`;
 const TAU = Math.PI * 2;
 
@@ -125,7 +125,7 @@ export function paintTab(g: C, t: Tab, px: number) {
     const pw = Math.max(0, Math.min(1, t.power ?? 0)), w = 204, x0 = cx - w / 2;
     g.fillStyle = "#081430"; rr(g, x0, y0 + 2.5, w, h, h / 2); g.fill();
     g.shadowColor = "transparent"; g.shadowBlur = 0; g.shadowOffsetY = 0;
-    g.fillStyle = lin(g, 0, y0, 0, y0 + h, [[0, "#24488f"], [1, NAVY2]]); rr(g, x0, y0, w, h, h / 2); g.fill();
+    g.fillStyle = lin(g, 0, y0, 0, y0 + h, [[0, "#2A3852"], [1, NAVY2]]); rr(g, x0, y0, w, h, h / 2); g.fill();
     g.strokeStyle = "rgba(255,255,255,0.18)"; g.lineWidth = 1; rr(g, x0 + 0.5, y0 + 0.5, w - 1, h - 1, h / 2 - 0.5); g.stroke();
     say(g, "Power", x0 + 13, y0 + 18, 13, "#ffffff", undefined, 0, "left");
     const tx0 = x0 + 62, tw = w - 62 - 46, ty = y0 + h / 2 - 5.5;
@@ -209,7 +209,7 @@ export function drawHint(c: C, cx: number, y: number, t: number) {
   const w = 214, h = 40, a = 0.88 + 0.12 * Math.sin(t / 300), bob = Math.sin(t / 220) * 2.5;
   c.save(); c.globalAlpha = a;
   c.fillStyle = "rgba(4,10,28,0.35)"; rr(c, cx - w / 2 + 1, y + 4, w, h, h / 2); c.fill();
-  c.fillStyle = lin(c, 0, y, 0, y + h, [[0, "#24488f"], [1, NAVY]]); rr(c, cx - w / 2, y, w, h, h / 2); c.fill();
+  c.fillStyle = lin(c, 0, y, 0, y + h, [[0, "#2A3852"], [1, NAVY]]); rr(c, cx - w / 2, y, w, h, h / 2); c.fill();
   c.strokeStyle = "rgba(255,255,255,0.85)"; c.lineWidth = 2; rr(c, cx - w / 2 + 1, y + 1, w - 2, h - 2, h / 2 - 1); c.stroke();
   say(c, "Drag Back To Putt", cx, y + 27, 19, "#ffffff");
   c.strokeStyle = "#ffffff"; c.lineWidth = 3.2; c.lineCap = "round"; c.lineJoin = "round";

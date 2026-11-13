@@ -925,10 +925,10 @@ export default function PeaTanks() {
           if (flip) { ctx.translate(AW / 2, cy); ctx.rotate(Math.PI); ctx.translate(-AW / 2, -cy); }
           const isNum = /^\d$/.test(big), bh = isNum ? 64 : 44;
           ctx.font = `${isNum ? 44 : 23}px ${GAME_FONT}`; const bwid = isNum ? 84 : Math.min(AW - 30, Math.max(40 + big.length * 11, ctx.measureText(big).width + 44));
-          const bx = AW / 2 - bwid / 2, by = cy - bh / 2 - (small ? 8 : 0), bhh = bh + (small ? 18 : 0);   // a panel like the kit's cards: navy edge, a lip under it
-          ctx.fillStyle = "rgba(4,10,30,0.25)"; rr(bx - 2, by + 6, bwid + 4, bhh, 20); ctx.fill();
-          ctx.fillStyle = "#0E1F45"; rr(bx - 2.5, by + 1.5, bwid + 5, bhh + 3, 20); ctx.fill();
-          ctx.fillStyle = "#16336C"; rr(bx - 2.5, by - 2.5, bwid + 5, bhh + 5, 20); ctx.fill();
+          const bx = AW / 2 - bwid / 2, by = cy - bh / 2 - (small ? 8 : 0), bhh = bh + (small ? 18 : 0);   // a panel like the kit's cards: white, a pale blue edge, a soft shadow
+          ctx.fillStyle = "rgba(16,27,46,0.18)"; rr(bx - 2, by + 6, bwid + 4, bhh, 20); ctx.fill();
+          ctx.fillStyle = "#D3E2F8"; rr(bx - 1.5, by + 1.5, bwid + 3, bhh + 2, 19.5); ctx.fill();
+          ctx.fillStyle = "#DDEBFF"; rr(bx - 1.5, by - 1.5, bwid + 3, bhh + 3, 19.5); ctx.fill();
           const pg = ctx.createLinearGradient(0, by, 0, by + bhh); pg.addColorStop(0, "#ffffff"); pg.addColorStop(1, "#eaf1fe");
           ctx.fillStyle = pg; rr(bx, by, bwid, bhh, 18); ctx.fill();
           ctx.textAlign = "center"; ctx.textBaseline = "alphabetic";
@@ -1101,7 +1101,7 @@ export default function PeaTanks() {
             <div className="mt-3 grid grid-cols-5 gap-1.5">
               {Array.from({ length: MISSIONS }, (_, i) => i + 1).map(k => (
                 <button key={k} disabled={k > reached} onClick={() => setStartAt(k)}
-                  className={`wk-f h-[40px] rounded-xl text-[17px] leading-none tabular-nums transition active:translate-y-[2px] ${k === startAt ? "bg-[linear-gradient(180deg,#5C9BF2,#3F7FD6)] text-white shadow-[0_3px_0_#2A5BA8]" : k <= reached ? "bg-white text-[#2A62C4] shadow-[0_3px_0_#a9c1e8,inset_0_0_0_1.5px_rgba(63,127,214,0.2)]" : "bg-[#e9edf3] text-[#b6bfcc]"}`}>{k}</button>
+                  className={`wk-f h-[40px] rounded-xl text-[17px] leading-none tabular-nums transition active:translate-y-[2px] ${k === startAt ? "bg-[linear-gradient(180deg,#84B6FF,#5A95F5)] text-white shadow-[0_3px_0_#3F78DB]" : k <= reached ? "bg-white text-[#4F88E8] shadow-[0_0_0_1.5px_#DDEBFF,0_3px_0_#D3E2F8]" : "bg-[#e9edf3] text-[#b6bfcc]"}`}>{k}</button>
               ))}
             </div>
             <button onClick={() => { if (pendingHow === "local") { setMenu("local"); } else if (pendingHow === "friend") { setMenu("friend"); } else startSolo("missions", false, startAt); }}

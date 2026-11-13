@@ -988,10 +988,10 @@ export default function FridgeRaid() {
       {fact && (phase === "over") && <FactCard fact={fact} />}
     </div>
   );
-  const btn = "game-font w-full rounded-2xl bg-[linear-gradient(180deg,#5c9bf2,#3f7fd6)] py-3 text-[19px] text-white shadow-[0_4px_0_#2a5ba8] active:translate-y-[2px] active:shadow-[0_2px_0_#2a5ba8] disabled:opacity-50";
-  const btn2 = "game-font w-full rounded-2xl bg-[#e3effe] py-3 text-[19px] text-[#3f7fd6] shadow-[0_4px_0_#c3d7f3] active:translate-y-[2px] active:shadow-[0_2px_0_#c3d7f3]";
-  const btnGo = "game-font w-full rounded-2xl bg-[linear-gradient(180deg,#46d98c,#22a964)] py-3 text-[21px] uppercase text-white shadow-[0_5px_0_#167a45] active:translate-y-[2px] active:shadow-[0_3px_0_#167a45]";
-  const chip = "game-font flex-1 rounded-2xl bg-white py-2.5 text-[16px] text-[#3f7fd6] shadow-[0_4px_0_rgba(16,42,86,0.16)] active:translate-y-[2px] active:shadow-[0_2px_0_rgba(16,42,86,0.16)]";
+  const btn = "game-font w-full rounded-2xl bg-[linear-gradient(180deg,#84B6FF,#5A95F5)] py-3 text-[19px] text-white shadow-[0_4px_0_#3F78DB] active:translate-y-[2px] active:shadow-[0_2px_0_#3F78DB] disabled:opacity-50";
+  const btn2 = "game-font w-full rounded-2xl bg-white py-3 text-[19px] text-[#4F88E8] shadow-[0_0_0_1.5px_#DDEBFF,0_4px_0_#D3E2F8] active:translate-y-[2px] active:shadow-[0_0_0_1.5px_#DDEBFF,0_2px_0_#D3E2F8]";
+  const btnGo = "game-font w-full rounded-2xl bg-[linear-gradient(180deg,#84B6FF,#5A95F5)] py-3 text-[21px] uppercase text-white shadow-[0_5px_0_#3F78DB] active:translate-y-[2px] active:shadow-[0_3px_0_#3F78DB]";
+  const chip = "game-font flex-1 rounded-2xl bg-white py-2.5 text-[16px] text-[#4F88E8] shadow-[0_0_0_1.5px_#DDEBFF,0_4px_0_#D3E2F8] active:translate-y-[2px] active:shadow-[0_0_0_1.5px_#DDEBFF,0_2px_0_#D3E2F8]";
 
   const liveCard = (): ReactNode => {
     if (opp !== "live" && offer) return card(<>
@@ -1228,10 +1228,10 @@ export default function FridgeRaid() {
       </div>
 
       {phase === "play" || phase === "place" ? (
-        // the turn banner: green while it's yours, dark while it's theirs, blue while hiding snacks
+        // the turn banner: green while it's yours (the one green left in the frame: it reads as "go"), near-black while it's theirs, blue while hiding snacks
         <div className="mt-2 flex h-[54px] shrink-0 items-center gap-2 rounded-2xl px-3 transition-colors duration-300"
-          style={{ background: phase === "place" ? "linear-gradient(180deg,#5c9bf2,#3f7fd6)" : myTurn ? "linear-gradient(180deg,#46d98c,#22a964)" : "linear-gradient(180deg,#2c4274,#172a52)",
-            boxShadow: `0 4px 0 ${phase === "place" ? "#2a5ba8" : myTurn ? "#167a45" : "#0b1630"}` }}>
+          style={{ background: phase === "place" ? "linear-gradient(180deg,#84B6FF,#5A95F5)" : myTurn ? "linear-gradient(180deg,#46d98c,#22a964)" : "linear-gradient(180deg,#2A3852,#101B2E)",
+            boxShadow: `0 4px 0 ${phase === "place" ? "#3F78DB" : myTurn ? "#167a45" : "#050a14"}` }}>
           <div className="min-w-0 flex-1">
             <div className="game-font flex items-baseline gap-1 truncate text-[22px] uppercase leading-none text-white" style={{ textShadow: "0 2px 0 rgba(0,0,0,0.18)" }}>
               <span className="truncate">{phase === "place" ? (placing ? "Hide Your Snacks" : "Get Set") : myTurn ? "Your Turn" : opp === "cpu" ? "Computer's Turn" : `${nameOf(other(pov))}'s Turn`}</span>
@@ -1250,7 +1250,7 @@ export default function FridgeRaid() {
           {opp === "live" && phase === "play" && (
             <div className="relative flex h-10 w-10 shrink-0 items-center justify-center rounded-full" aria-label={`${secsLeft} seconds left`}
               style={{ background: `conic-gradient(${secsLeft <= 10 ? "#ff5d6c" : "#ffffff"} ${(secsLeft / (TURN_MS / 1000)) * 360}deg, rgba(255,255,255,0.22) 0)` }}>
-              <div className="game-font flex h-[32px] w-[32px] items-center justify-center rounded-full text-[15px] tabular-nums text-white" style={{ background: myTurn ? "#22a964" : "#172a52" }}>{secsLeft}</div>
+              <div className="game-font flex h-[32px] w-[32px] items-center justify-center rounded-full text-[15px] tabular-nums text-white" style={{ background: myTurn ? "#22a964" : "#101B2E" }}>{secsLeft}</div>
             </div>
           )}
         </div>

@@ -330,18 +330,18 @@ export default function CartRush() {
       c.textAlign = "right"; c.font = font(600, 13); c.fillStyle = s.perfect ? "#1f9a5a" : "#7d8798";
       c.fillText(s.perfect ? "No extras: ×2 bonus" : "Extras: no ×2 this time", W - 15, 26);
       const lv = `Level ${level}`; c.font = `15px ${GAME_FONT}`; const lw = c.measureText(lv).width + 18, lx = W - 15 - lw, ly = 45;
-      c.fillStyle = "#167A45"; c.beginPath(); c.roundRect(lx, ly + 2, lw, 21, 10.5); c.fill();
-      const lg = c.createLinearGradient(0, ly, 0, ly + 21); lg.addColorStop(0, "#46D98C"); lg.addColorStop(1, "#22A964");
+      c.fillStyle = "#3F78DB"; c.beginPath(); c.roundRect(lx, ly + 2, lw, 21, 10.5); c.fill();
+      const lg = c.createLinearGradient(0, ly, 0, ly + 21); lg.addColorStop(0, "#84B6FF"); lg.addColorStop(1, "#5A95F5");
       c.fillStyle = lg; c.beginPath(); c.roundRect(lx, ly, lw, 21, 10.5); c.fill();
       c.fillStyle = "rgba(255,255,255,0.3)"; c.beginPath(); c.roundRect(lx + 5, ly + 1.5, lw - 10, 7, 3.5); c.fill();
-      c.textAlign = "center"; c.fillStyle = "rgba(10,90,50,0.45)"; c.fillText(lv, lx + lw / 2, ly + 16.5); c.fillStyle = "#fff"; c.fillText(lv, lx + lw / 2, ly + 15.5);
+      c.textAlign = "center"; c.fillStyle = "rgba(30,70,150,0.35)"; c.fillText(lv, lx + lw / 2, ly + 16.5); c.fillStyle = "#fff"; c.fillText(lv, lx + lw / 2, ly + 15.5);
       return L.cv;
     }
     function litButton(A: CartArt, bw: number, bh: number) {   // the lane pad's lit button: brand blue, a lip under it, a shine on top
       if (buttonCv && buttonK === A.k) return buttonCv;
       const L = layer(bw, bh + 3, A.k), c = L.c;
-      c.fillStyle = "#2A5BA8"; c.beginPath(); c.roundRect(0, 2.5, bw, bh, 11); c.fill();
-      const bg = c.createLinearGradient(0, 0, 0, bh); bg.addColorStop(0, "#74adf7"); bg.addColorStop(0.5, "#4f8fe6"); bg.addColorStop(1, "#3F7FD6");
+      c.fillStyle = "#3F78DB"; c.beginPath(); c.roundRect(0, 2.5, bw, bh, 11); c.fill();
+      const bg = c.createLinearGradient(0, 0, 0, bh); bg.addColorStop(0, "#84B6FF"); bg.addColorStop(0.5, "#6FA8FF"); bg.addColorStop(1, "#5A95F5");
       c.fillStyle = bg; c.beginPath(); c.roundRect(0, 0, bw, bh, 11); c.fill();
       const sh = c.createLinearGradient(0, 0, 0, bh * 0.5); sh.addColorStop(0, "rgba(255,255,255,0.42)"); sh.addColorStop(1, "rgba(255,255,255,0)");
       c.fillStyle = sh; c.beginPath(); c.roundRect(5, 2, bw - 10, bh * 0.45, [8, 8, 5, 5]); c.fill();

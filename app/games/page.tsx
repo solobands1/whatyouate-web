@@ -37,9 +37,9 @@ export const metadata: Metadata = {
 // A tile in the launcher: the game's poster, a badge on its bottom edge, the name in the display face, and a chunky Play.
 const HUB_CSS = `
 .hub-tile { background: linear-gradient(180deg, #ffffff 0%, #eef4ff 100%); border-radius: 24px;
-  box-shadow: 0 0 0 2.5px #16336C, 0 6px 0 2.5px #0E1F45, 0 20px 32px -16px rgba(14,31,69,0.6); transition: transform 120ms ease-out, box-shadow 120ms ease-out; }
-.hub-tile:active { transform: translateY(4px); box-shadow: 0 0 0 2.5px #16336C, 0 2px 0 2.5px #0E1F45, 0 10px 20px -14px rgba(14,31,69,0.6); }
-.hub-tile:active .wk-go { transform: translateY(3px); box-shadow: 0 1px 0 #167A45; }
+  box-shadow: 0 0 0 1.5px #DDEBFF, 0 18px 36px -18px rgba(16,27,46,0.4), 0 3px 8px -3px rgba(16,27,46,0.1); transition: transform 120ms ease-out, box-shadow 120ms ease-out; }
+.hub-tile:active { transform: translateY(3px); box-shadow: 0 0 0 1.5px #DDEBFF, 0 8px 16px -12px rgba(16,27,46,0.4); }
+.hub-tile:active .wk-go { transform: translateY(3px); box-shadow: 0 1px 0 #3F78DB; }
 @media (hover: hover) { .hub-tile:hover { transform: translateY(-3px); } .hub-tile:hover img { transform: scale(1.04); } }
 .hub-tile:focus-visible { outline: 4px solid #FFC21F; outline-offset: 5px; }
 `;
@@ -77,7 +77,7 @@ function Section({ title, body, icon, games, children }: { title: string; body: 
   return (
     <section className="mt-12 sm:mt-16">
       <div className="flex items-center gap-3">
-        <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-[linear-gradient(180deg,#2c58ab,#16336C)] text-[#FFE65C] shadow-[0_4px_0_#0b1a3a]">{icon}</span>
+        <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-[#DDEBFF] text-[#4F88E8]">{icon}</span>
         <div className="min-w-0">
           <h2 className="wk-f text-[28px] leading-none text-[#0E1F45] sm:text-[32px]">{title}</h2>
           <p className="mt-1 text-[14px] leading-snug" style={{ color: BODY }}>{body}</p>
@@ -119,7 +119,7 @@ export default function Games() {
 
       <main className="px-4 pt-28 sm:px-6 sm:pt-36">
         <div className="mx-auto max-w-[44rem] text-center">
-          <p className="wk-f inline-flex items-center gap-1.5 rounded-full bg-[linear-gradient(180deg,#2c58ab,#16336C)] px-3.5 py-1.5 text-[13px] tracking-[0.06em] text-[#FFE65C] shadow-[0_3px_0_#0b1a3a]">
+          <p className="wk-f inline-flex items-center gap-1.5 rounded-full bg-[#DDEBFF] px-3.5 py-1.5 text-[13px] tracking-[0.06em] text-[#4F88E8]">
             <SparkleIcon size={14} />Free Food Games
           </p>
           <h1 className="wk-f mt-5 text-balance text-[clamp(42px,11vw,76px)] leading-[0.95] text-[#0E1F45] [text-shadow:0_5px_0_#c3d7f5]">
