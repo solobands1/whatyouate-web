@@ -68,4 +68,11 @@ export const GAMES: Game[] = [
     daily: true,
     multiplayer: true,
   },
+  {
+    slug: "blenders-bacon",
+    name: "Blenders & Bacon",
+    tagline: "Race up the pantry. Blenders whirl you up, bacon slides you down. Play the computer, pass one phone, or play a friend live.",
+    daily: true,
+    multiplayer: true,
+  },
 ];

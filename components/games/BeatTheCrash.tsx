@@ -273,7 +273,7 @@ export default function BeatTheCrash() {
 
       <div className={HUD_ROW}>
         <HudStat label="Score" value={hud.score.toLocaleString()} />
-        <HudTag color={ZONE_COLOR[hud.zone]}>
+        <HudTag color={hud.zone === "steady" ? "#6FA8FF" : ZONE_COLOR[hud.zone]}>
           {ZONE_LABEL[hud.zone]}{hud.zone === "steady" && hud.mult > 1 ? ` ×${hud.mult.toFixed(1)}` : ""}
         </HudTag>
         <div className="flex shrink-0 items-center gap-1.5">

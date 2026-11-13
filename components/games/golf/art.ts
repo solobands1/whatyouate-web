@@ -235,7 +235,10 @@ export function drawLive(c: C, k: Course, parts: Part[], clock: number, t: numbe
       c.fillStyle = lin(c, 0, -hw, 0, hw, [[0, "#d7e8d8"], [0.45, "#a9c2ac"], [1, "#6e8a72"]]); rr(c, 0, -hw, len, hw * 2, 3); c.fill();
       c.strokeStyle = "rgba(255,255,255,0.6)"; c.lineWidth = 1; line(c, 3, -hw + 1, len - 3, -hw + 1);
       c.strokeStyle = "rgba(50,70,55,0.35)"; c.strokeRect(9, -DOOR_W + 1.5, len - 18, DOOR_W * 2 - 3);
-      c.fillStyle = rad(c, len - 16, hw + 4, 1, 6, [[0, "#fff1c0"], [1, "#a8781e"]], len - 18, hw + 2); circ(c, len - 16, hw + 4, 4.6); c.fill();
+      // the knob sits on the door's outer face, the one toward the player: the left door is drawn pointing right from its
+      // hinge and the right door pointing left (turned half a turn), so the right door's outer face is its other side
+      const ks = p.ax < W / 2 ? 1 : -1, ky = ks * (hw + 4);
+      c.fillStyle = rad(c, len - 16, ky, 1, 6, [[0, "#fff1c0"], [1, "#a8781e"]], len - 18, ky - 2 * ks); circ(c, len - 16, ky, 4.6); c.fill();
       c.fillStyle = lin(c, -3, 0, 4, 0, STEEL); rr(c, -3, -hw - 1, 7, hw * 2 + 2, 2); c.fill();
       c.restore();
     } else {   // the rolling pin, rolling back and forth

@@ -1148,7 +1148,7 @@ export default function FoodFight() {
         )}
 
         {isLocal && passTo && !matchEnd && !shell.held && (
-          <button onClick={() => passRef.current()} className="wk-backdrop absolute inset-0 z-10 flex items-center justify-center rounded-[22px] p-6">
+          <button onClick={() => passRef.current()} className="wk-backdrop wk-raise absolute inset-0 z-10 flex items-center justify-center rounded-[22px] p-6">
             <span className="wk-panel wk-pop flex w-full max-w-[270px] flex-col overflow-hidden text-center">
               <span className="wk-plate block px-4 py-2 text-[17px] leading-tight">Pass To {passTo}</span>
               <span className="flex flex-col items-center px-5 pb-5 pt-3.5">

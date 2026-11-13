@@ -51,5 +51,8 @@ export const KIT_CSS = `@layer components {
   -webkit-mask: radial-gradient(circle, #000 18%, transparent 68%); mask: radial-gradient(circle, #000 18%, transparent 68%); animation: wk-spin 18s linear infinite; }
 @keyframes wk-spin { to { transform: rotate(360deg) } }
 .wk-best { font-family: ${FRAME_FONT}; font-weight: 700; letter-spacing: -0.01em; color: #4F88E8; background: #EAF2FF; border-radius: 999px; }
+/* a popup's card sits a little above the middle (40% of the free space above it, 60% below), where a centred card looks
+   centred to the eye; when the card fills the space the spacers shrink to nothing */
+.wk-raise { flex-direction: column; } .wk-raise::before { content: ""; flex: 2 1 0; min-height: 0; } .wk-raise::after { content: ""; flex: 3 1 0; min-height: 0; }
 .wk-dot { animation: wk-dot 1s ease-in-out infinite; } @keyframes wk-dot { 0%, 100% { opacity: 0.25 } 50% { opacity: 1 } }
 }`;

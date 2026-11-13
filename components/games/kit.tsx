@@ -115,7 +115,7 @@ export function OverlayCard({ children, title, max = "max-w-[320px]", z = "z-10"
   children: ReactNode; title?: ReactNode; max?: string; z?: string; soft?: boolean; className?: string;
 }) {
   return (
-    <div className={`${soft ? "wk-backdrop-soft" : "wk-backdrop"} absolute inset-0 ${z} flex items-center justify-center rounded-[22px] p-4`}>
+    <div className={`${soft ? "wk-backdrop-soft" : "wk-backdrop"} absolute inset-0 ${z} wk-raise flex items-center justify-center rounded-[22px] p-4`}>
       <div className={`wk-panel wk-pop flex max-h-full w-full ${max} flex-col overflow-hidden text-center`}>
         {title && <Plate>{title}</Plate>}
         <div className={`min-h-0 overflow-y-auto px-5 pb-5 ${title ? "pt-4" : "pt-5"} [@media(max-height:700px)]:px-4 [@media(max-height:700px)]:pb-4 ${className}`}>{children}</div>
@@ -198,7 +198,7 @@ export function HudTag({ children, color, light = false, className = "" }: { chi
  *  The whole board is the button, so a tap anywhere starts. */
 export function StartCard({ label, title, how, onStart }: { label: string; title: string; how: ReactNode; onStart: () => void }) {
   return (
-    <button onClick={onStart} className="wk-backdrop-soft absolute inset-0 flex items-center justify-center rounded-[22px] p-5">
+    <button onClick={onStart} className="wk-backdrop-soft wk-raise absolute inset-0 flex items-center justify-center rounded-[22px] p-5">
       <span className="wk-panel wk-pop flex w-full max-w-[300px] flex-col overflow-hidden text-center">
         <span className="wk-plate block px-4 py-2 text-[17px] leading-tight">{label}</span>
         <span className="flex flex-col items-center px-5 pb-5 pt-3.5">
@@ -271,7 +271,7 @@ export function FactStrip({ toast, onDismiss, width, idle, sticky = false }: { t
 /** A popup over the whole game. `title` (optional) puts a navy title bar across the top. */
 export function Modal({ onClose, children, z = "z-20", title }: { onClose: () => void; children: ReactNode; z?: string; title?: ReactNode }) {
   return (
-    <div className={`wk-backdrop absolute inset-0 ${z} flex items-center justify-center p-5`} onClick={onClose}>
+    <div className={`wk-backdrop wk-raise absolute inset-0 ${z} flex items-center justify-center p-5`} onClick={onClose}>
       <div className="wk-panel wk-pop flex max-h-full w-full max-w-[380px] flex-col overflow-hidden" onClick={e => e.stopPropagation()}>
         {title && <Plate className="text-[23px]">{title}</Plate>}
         <div className={`flex min-h-0 flex-col overflow-y-auto px-5 pb-5 ${title ? "pt-4" : "pt-5"} [@media(max-height:700px)]:px-4 [@media(max-height:700px)]:pb-4`}>{children}</div>
@@ -425,7 +425,7 @@ export function Scoreboard({ game, token, initial, todayNote, onClose, onJoin }:
   const tabs: [string, string][] = [["today", "Today"], ["week", "This Week"], ["all", "All-Time"]];
   const podium = ["bg-[#fff4cc] shadow-[inset_0_0_0_1.5px_#f4d46a]", "bg-[#eef2f8] shadow-[inset_0_0_0_1.5px_#cdd7e5]", "bg-[#fdeadb] shadow-[inset_0_0_0_1.5px_#efc29d]"];
   return (
-    <div className="wk-backdrop absolute inset-0 z-30 flex items-center justify-center p-4" onClick={onClose}>
+    <div className="wk-backdrop wk-raise absolute inset-0 z-30 flex items-center justify-center p-4" onClick={onClose}>
       <div className="wk-panel wk-pop flex max-h-full w-full max-w-[400px] flex-col overflow-hidden" onClick={e => e.stopPropagation()}>
         <div className="wk-plate relative flex shrink-0 items-center justify-center gap-2 px-12 py-2.5 text-[23px] leading-tight">
           <TrophyIcon size={28} />Scoreboard

@@ -1167,7 +1167,7 @@ export default function KitchenGolf() {
         )}
 
         {isLocal && passTo && !matchEnd && !shell.held && !intro && !holeCard && (
-          <button onClick={() => passRef.current()} className="kg-backdrop absolute inset-0 z-10 flex items-center justify-center rounded-[22px] p-6">
+          <button onClick={() => passRef.current()} className="kg-backdrop wk-raise absolute inset-0 z-10 flex items-center justify-center rounded-[22px] p-6">
             <span className="kg-panel kg-pop w-full max-w-[264px] px-6 pb-5 pt-5 text-center">
               <span className="kg-f block text-[15px] text-[#5a6b85]">Pass To {passTo}</span>
               <span className="kg-f mt-0.5 block text-[28px] leading-tight text-[#0E1F45]">{passTo}&apos;s Putt</span>
@@ -1297,7 +1297,7 @@ function SoundIcon({ muted }: { muted: boolean }) {
 /** A game panel over the board: a light card with a navy edge and a chunky lip, on a soft navy backdrop. */
 function Card({ children }: { children: ReactNode }) {
   return (
-    <div className="kg-backdrop absolute inset-0 z-10 flex items-center justify-center rounded-[22px] p-5">
+    <div className="kg-backdrop wk-raise absolute inset-0 z-10 flex items-center justify-center rounded-[22px] p-5">
       <div className="kg-panel kg-pop max-h-full w-full max-w-[310px] overflow-y-auto p-5 text-center">{children}</div>
     </div>
   );

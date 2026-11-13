@@ -368,7 +368,7 @@ export default function BerryDash() {
 
       <div className={HUD_ROW}>
         <HudStat label="Score" value={hud.score.toLocaleString()} />
-        <HudTag color={STATUS_COLOR[hud.status]}>{STATUS_LABEL[hud.status].replace(/\b\w/g, c => c.toUpperCase())}</HudTag>
+        <HudTag color={hud.status === "run" ? "#6FA8FF" : STATUS_COLOR[hud.status]}>{STATUS_LABEL[hud.status].replace(/\b\w/g, c => c.toUpperCase())}</HudTag>
         <div className="flex shrink-0 items-center gap-1.5">
           <HudStat label="Best" value={best.toLocaleString()} align="right" />
           <PauseButton shell={shell} active={started && !over} />
