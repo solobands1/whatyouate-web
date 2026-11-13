@@ -13,7 +13,7 @@ export const APP_STORE_ID = "6762287393";
 
    The campaign ("ct") names the page, and when someone taps the link the site adds where their visit came from, e.g.
    "games-snack-merge-tiktok" (components/track.ts, onDocumentClick). Apple keeps the first 40 characters. */
-export const APP_STORE_PT = "";
+export const APP_STORE_PT = "128785665";
 export function appStoreLink(campaign: string) {
   if (!APP_STORE_PT) return `${APP_STORE_URL}?ct=${encodeURIComponent(campaign)}`;
   return `https://apps.apple.com/app/apple-store/id${APP_STORE_ID}?pt=${APP_STORE_PT}&ct=${encodeURIComponent(campaign)}&mt=8`;
