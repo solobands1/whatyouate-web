@@ -1,8 +1,8 @@
 import type { Metadata, Viewport } from "next";
-import PatsLawnmower from "@/components/games/PatsLawnmower";
+import MovePat from "./MovePat";
 
-// A private game for family and friends: not in the games list, the menu, the sitemap or robots.txt, and kept out of
-// search. Link previews show the game's own drawing (public/og/pat.png), never a photo of the property.
+// Pat's Lawnmower now lives on its own site (minimul.app/pat). This old address only forwards there, carrying Pat's
+// saved progress (MovePat). Kept out of search. To be removed once Pat has moved over.
 const DESC = "Help Pat finish the lawn before the cat gets in the way.";
 export const metadata: Metadata = {
   title: "Pat's Lawnmower",
@@ -12,7 +12,7 @@ export const metadata: Metadata = {
     title: "Pat's Lawnmower",
     description: DESC,
     type: "website",
-    url: "https://whatyouate.app/games/pat",
+    url: "https://minimul.app/pat",
     images: [{ url: "/og/pat.png", width: 1200, height: 630, alt: "Pat's Lawnmower: Pat on an orange lawn tractor mowing stripes, with the grey cat nearby" }],
   },
   twitter: { card: "summary_large_image", title: "Pat's Lawnmower", description: DESC, images: ["/og/pat.png"] },
@@ -28,5 +28,5 @@ export const viewport: Viewport = {
 };
 
 export default function PatPage() {
-  return <PatsLawnmower />;
+  return <MovePat />;
 }
