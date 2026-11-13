@@ -8,7 +8,7 @@ import { type C, type Imgs, type Rnd, TAU, poly, rr, circ, line, lin, rad, shade
 import { planks, sheen, butcherBlock, marble, granite, brushedSteel, blackGlass, frostedGlass, glossyTiles, subway, paintedWood, cabinetDoors } from "./materials";
 import { drawBump, drawBlock, drawZone, drawCup, drawTee, drawTube, drawGroundDeco, drawSurfaceDeco, drawTopDeco, drawOverDeco } from "./props";
 
-export const FOOD_IMGS = ["1f34e", "1f34a", "1f34b", "1f350", "1f9c0", "1f96c", "1f345", "1f966", "1f955", "1f95a", "1f33f"];
+export const FOOD_IMGS = ["1f34e", "1f34a", "1f34b", "1f350", "1f9c0", "1f96c", "1f345", "1f966", "1f955", "1f95a"];
 
 // ── rails ──
 type RailLook = { T: number; base: string; light: string; dark: string; grain?: boolean };
