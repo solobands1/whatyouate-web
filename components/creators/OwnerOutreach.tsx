@@ -105,7 +105,7 @@ export default function OwnerOutreach() {
   // Three places, so nobody already emailed ever shows up as someone new to review:
   //   To Review: creators not emailed yet (needs review or approved and waiting), grouped by block.
   //   In Progress: emailed and still in the sequence (follow-ups to come).
-  //   Finished: replied, signed up, no thanks, bounced, finished with no reply, or skipped.
+  //   No Longer Emailing: replied, signed up, no thanks, bounced, finished with no reply, or set to Don't Send.
   const groups = useMemo(() => {
     const all = data?.contacts ?? [];
     const notSent = all.filter((c) => !c.sent.length && c.decision !== "skip" && c.status === "queued");
@@ -239,7 +239,7 @@ export default function OwnerOutreach() {
         {groups.finished.length > 0 && (
           <details className="mt-8">
             <summary className="cursor-pointer text-[15px] font-semibold" style={{ color: INK }}>
-              Finished ({groups.finished.length})
+              No Longer Emailing ({groups.finished.length})
             </summary>
             <List title="" note="" rows={groups.finished} act={act} onEdit={setEditing} />
           </details>
