@@ -68,7 +68,10 @@ export default function OwnerOutreach() {
   const [editing, setEditing] = useState<OutreachContact | null>(null);
   const [confirmLive, setConfirmLive] = useState(false);
 
+  const [refreshing, setRefreshing] = useState(false);
+  const [loadedAt, setLoadedAt] = useState<number | null>(null);
   const load = useCallback(async () => {
+    setRefreshing(true);
     const { data: session } = await sb().auth.getSession();
     if (!session.session) {
       router.replace(`/creators/login?next=${encodeURIComponent("/creators/owner/outreach")}`);
@@ -77,8 +80,11 @@ export default function OwnerOutreach() {
     try {
       setData(await outreachList());
       setState("ready");
+      setLoadedAt(Date.now());
     } catch (e) {
       setState(/not_owner/.test(String((e as { message?: string })?.message)) ? "notOwner" : "error");
+    } finally {
+      setRefreshing(false);
     }
   }, [router]);
   useEffect(() => {
@@ -145,9 +151,16 @@ export default function OwnerOutreach() {
               Approve creators in blocks. Approved ones get email 1, then a follow-up on day 4 and day 10, Monday to Thursday.
             </p>
           </div>
-          <button type="button" onClick={() => load()} className="text-[14px] font-semibold" style={{ color: BLUE }}>
-            Refresh
-          </button>
+          <div className="flex flex-col items-end">
+            <button type="button" onClick={() => load()} disabled={refreshing} className="text-[14px] font-semibold disabled:opacity-60" style={{ color: BLUE }}>
+              {refreshing ? "Refreshing…" : "Refresh"}
+            </button>
+            {loadedAt && !refreshing && (
+              <span className="mt-0.5 text-[12px]" style={{ color: FAINT }}>
+                Updated {new Date(loadedAt).toLocaleTimeString("en-CA", { hour: "numeric", minute: "2-digit" })}
+              </span>
+            )}
+          </div>
         </div>
 
         {message && (
