@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { BackToOwner, Card } from "./Shell";
-import { ownerUsage, sb, syncSubscriptions, type OwnerUsage as Usage, type UsageFlag, type UsageFunnel, type UsageStatus, type UsageUser, type UsageDay } from "./api";
+import { ownerComeback, ownerUsage, sb, syncSubscriptions, type OwnerComeback, type OwnerUsage as Usage, type UsageFlag, type UsageFunnel, type UsageStatus, type UsageUser, type UsageDay } from "./api";
 import { BODY, INK } from "../site";
 
 // The owner's app usage page (/creators/owner/usage): how many people use the app, how far each one has got, when they
@@ -162,6 +162,7 @@ export default function OwnerUsage() {
         <Totals s={s} />
         <Funnel funnels={data.funnels} />
         <Daily days={data.daily} />
+        <Comebacks key={s.generatedAt} />
         <FollowUps users={data.users} />
       </div>
       <UserTable users={data.users} />
@@ -419,6 +420,77 @@ function MiniBars({ label, days, pick, perDay }: { label: string; days: UsageDay
         <span>Today</span>
       </div>
     </div>
+  );
+}
+
+// ---- Comeback pushes -----------------------------------------------------------------------
+// Read on its own (owner_comeback_stats in the app repo's supabase/comeback.sql), so the page never waits on it or breaks
+// without it. Remounted by Refresh through its key.
+
+const COMEBACK_STEPS: Record<number, string> = {
+  1: "Pick Up Where You Left Off",
+  2: "Something From Their Own Data",
+  3: "Still Here When You Want It",
+};
+
+function Comebacks() {
+  const [data, setData] = useState<OwnerComeback | null>(null);
+  const [state, setState] = useState<"loading" | "ready" | "notInstalled" | "error">("loading");
+  useEffect(() => {
+    let live = true;
+    ownerComeback()
+      .then((d) => { if (live) { setData(d); setState("ready"); } })
+      .catch((e: { code?: string; message?: string }) => {
+        if (!live) return;
+        const text = `${e?.code ?? ""} ${e?.message ?? ""}`;
+        setState(/PGRST202|Could not find the function|42883|42P01|does not exist/.test(text) ? "notInstalled" : "error");
+      });
+    return () => { live = false; };
+  }, []);
+  const total = data?.stages.reduce((a, st) => a + st.sent, 0) ?? 0;
+  return (
+    <Card className="mt-6 px-5 py-5 sm:px-7 sm:py-6">
+      <h2 className="text-[19px] font-bold tracking-[-0.02em]" style={{ color: INK }}>Comeback Pushes</h2>
+      <p className="text-[13px]" style={{ color: BODY }}>
+        After 3 days with nothing logged, the daily pushes stop and these three go out at 6pm their time. Back means they logged anything within 48 hours.
+      </p>
+      {state === "loading" && <p className="mt-4 text-[14px]" style={{ color: BODY }}>Loading…</p>}
+      {state === "notInstalled" && (
+        <p className="mt-4 text-[14px]" style={{ color: BODY }}>
+          These appear once supabase/comeback.sql from the app repo has been run in the Supabase SQL editor.
+        </p>
+      )}
+      {state === "error" && <p className="mt-4 text-[14px]" style={{ color: BODY }}>Couldn&apos;t load these. Try Refresh in a moment.</p>}
+      {state === "ready" && data && (
+        <>
+          <div className="mt-4 grid gap-3 md:grid-cols-3">
+            {data.stages.map((st) => {
+              const done = st.sent - st.waiting;
+              return (
+                <div key={st.stage} className="rounded-2xl bg-white/80 px-4 py-3.5 ring-1 ring-[#16233B]/[0.06]">
+                  <p className="text-[12px] font-medium" style={{ color: BODY }}>Day {st.day} · {COMEBACK_STEPS[st.stage] ?? `Step ${st.stage}`}</p>
+                  <p className="text-[26px] font-bold leading-[1.25] tracking-[-0.03em] tabular-nums" style={{ color: st.returnedPct == null ? FAINT : INK }}>
+                    {st.returnedPct == null ? "None yet" : pct(st.returnedPct)}
+                    {st.returnedPct != null && <span className="ml-1.5 text-[13px] font-semibold tracking-normal" style={{ color: BODY }}>back</span>}
+                  </p>
+                  <p className="mt-0.5 text-[12px] leading-[1.35] tabular-nums" style={{ color: FAINT }}>
+                    {n(st.sent)} sent · {n(st.returned)} back within 48h{done !== st.sent ? ` of ${n(done)} finished` : ""}
+                  </p>
+                  {(st.waiting > 0 || st.sent > 0) && (
+                    <p className="text-[12px] leading-[1.35] tabular-nums" style={{ color: FAINT }}>
+                      {st.waiting > 0 ? `${n(st.waiting)} still inside their 48 hours · ` : ""}{n(st.sent30d)} in the last 30 days
+                    </p>
+                  )}
+                </div>
+              );
+            })}
+          </div>
+          <p className="mt-3 text-[12.5px]" style={{ color: FAINT }}>
+            {total ? `Since ${data.firstSentAt ? fullDate(data.firstSentAt) : "the start"}. Staff and test accounts aren't counted.` : "Nothing sent yet. The first ones go out 3 days after someone stops logging."}
+          </p>
+        </>
+      )}
+    </Card>
   );
 }
 

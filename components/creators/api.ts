@@ -426,6 +426,25 @@ export type OwnerUsage = {
 };
 export const ownerUsage = (days = 30) => rpc<OwnerUsage>("owner_usage", { p_days: days });
 
+// ---- Comeback pushes (owner only; see comeback.sql in the app repo) ------------------------------------------------
+// After 3 days with nothing logged the app's daily pushes stop and three comeback pushes go out (quiet days 3, 7, 14).
+export type ComebackStage = {
+  stage: 1 | 2 | 3;
+  /** The quiet day it goes out on. */
+  day: number;
+  /** Pushes that reached a device (test and staff accounts left out). */
+  sent: number;
+  /** Of those, people who logged anything within 48 hours. */
+  returned: number;
+  /** Sent under 48 hours ago and no log yet. */
+  waiting: number;
+  sent30d: number;
+  /** returned out of the pushes whose 48 hours are over, or null before any are. */
+  returnedPct: number | null;
+};
+export type OwnerComeback = { generatedAt: string; windowHours: number; firstSentAt: string | null; stages: ComebackStage[] };
+export const ownerComeback = () => rpc<OwnerComeback>("owner_comeback_stats");
+
 // ---- Website attribution (owner only; see attribution.sql in the app repo) ---------------------------------------
 // Daily website counts by where the visit came from. No visitor data: just totals (components/track.ts sends them).
 export type AttributionEvent = "visit" | "game_open" | "game_play" | "app_click" | "share";
