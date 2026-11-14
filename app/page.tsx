@@ -333,7 +333,7 @@ export default function Home() {
           </nav>
           <Social className="text-white/80" />
           <span className="text-[13px] text-white/60">
-            © {new Date().getFullYear()} WhatYouAte. All rights reserved.
+            © {new Date().getFullYear()} Integrity Stack Inc. All rights reserved.
           </span>
         </div>
       </footer>

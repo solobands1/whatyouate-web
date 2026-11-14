@@ -178,7 +178,7 @@ export default function About() {
             <Social />
           </div>
           <span className="text-[13px]" style={{ color: "#9CADC6" }}>
-            © {new Date().getFullYear()} WhatYouAte. All rights reserved.
+            © {new Date().getFullYear()} Integrity Stack Inc. All rights reserved.
           </span>
         </div>
       </footer>

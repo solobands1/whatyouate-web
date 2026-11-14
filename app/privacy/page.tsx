@@ -35,8 +35,11 @@ export default function PrivacyPage() {
         <h1 style={{ fontSize: 28, fontWeight: 700, color: "#0F172A", letterSpacing: "-0.02em", marginBottom: 8 }}>
           Privacy Policy
         </h1>
-        <p style={{ fontSize: 12, color: "#9CA3AF", marginBottom: 40 }}>
-          Effective date: October 23, 2026. Governing law: Province of Ontario, Canada.
+        <p style={{ fontSize: 12, color: "#9CA3AF", marginBottom: 12 }}>
+          Effective date: November 13, 2026. Governing law: Province of Ontario, Canada.
+        </p>
+        <p style={{ fontSize: 13, color: "#6B7280", lineHeight: 1.7, marginBottom: 40 }}>
+          WhatYouAte (the "App") is owned and operated by Integrity Stack Inc., a Canadian corporation ("Integrity Stack", "we", "us"). This policy explains what we collect, how we use it, and the choices you have.
         </p>
 
         <div style={{ display: "flex", flexDirection: "column", gap: 28 }}>
@@ -124,6 +127,7 @@ export default function PrivacyPage() {
                 support@whatyouate.app
               </a>
             </p>
+            <p>Integrity Stack Inc., 1400-18 King St E, Toronto, Ontario M5C 1C4, Canada</p>
           </Section>
 
         </div>

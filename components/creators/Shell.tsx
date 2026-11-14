@@ -56,7 +56,7 @@ export default function Shell({ children, narrow = false, wide = false, full = f
             </>
           )}
           <span className="text-[13px] text-white/65">
-            © {new Date().getFullYear()} WhatYouAte. All rights reserved.
+            © {new Date().getFullYear()} Integrity Stack Inc. All rights reserved.
           </span>
         </div>
       </footer>
