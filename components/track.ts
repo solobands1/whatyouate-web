@@ -40,6 +40,9 @@ export const SHORT_LINKS = {
   "/tt/app": { to: APP_STORE_URL, source: "tiktok", label: "the App Store", app: true },
   "/tt/play": { to: "/games", source: "tiktok", label: "the games", path: "/games" },
   "/tt/creators": { to: "/creators", source: "tiktok", label: "the Creators Program", path: "/other" },
+  "/yt/app": { to: APP_STORE_URL, source: "youtube", label: "the App Store", app: true },
+  "/yt/play": { to: "/games", source: "youtube", label: "the games", path: "/games" },
+  "/yt/creators": { to: "/creators", source: "youtube", label: "the Creators Program", path: "/other" },
 } satisfies Record<string, ShortLinkDef>;
 export type ShortLinkPath = keyof typeof SHORT_LINKS;
 
