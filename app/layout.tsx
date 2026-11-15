@@ -44,6 +44,15 @@ export const metadata: Metadata = {
     description: DESCRIPTION,
     images: ["/og-v2.png"],
   },
+  // Declared here rather than as app/favicon.ico + app/icon.png, because Next adds a file-based favicon.ico to every
+  // page and nothing can take it off. Declared, a section can replace them: the owner pages use their own icon
+  // (app/creators/owner/layout.tsx). Same files and sizes as before, served from public/.
+  icons: {
+    icon: [
+      { url: "/favicon.ico", type: "image/x-icon", sizes: "16x16" },
+      { url: "/icon.png", type: "image/png", sizes: "64x64" },
+    ],
+  },
 };
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
