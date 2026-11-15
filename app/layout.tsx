@@ -52,7 +52,10 @@ export const metadata: Metadata = {
       { url: "/favicon.ico", type: "image/x-icon", sizes: "16x16" },
       { url: "/icon.png", type: "image/png", sizes: "64x64" },
     ],
+    // Home screen icon when the site is saved to a phone: the app's own App Store icon (a full square; iOS rounds it).
+    apple: [{ url: "/apple-touch-icon.png", type: "image/png", sizes: "180x180" }],
   },
+  appleWebApp: { title: "WhatYouAte" },
 };
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
