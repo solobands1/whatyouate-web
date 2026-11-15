@@ -9,7 +9,7 @@ export const metadata: Metadata = {
 
 export default function OwnerOutreachPage() {
   return (
-    <Shell signedIn full>
+    <Shell signedIn owner full>
       <OwnerOutreach />
     </Shell>
   );

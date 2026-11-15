@@ -9,7 +9,7 @@ export const metadata: Metadata = {
 
 export default function OwnerReportPage() {
   return (
-    <Shell signedIn wide>
+    <Shell signedIn owner wide>
       <OwnerReport />
     </Shell>
   );

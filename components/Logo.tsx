@@ -17,12 +17,15 @@ export function Wordmark({ className = "" }: { className?: string }) {
   );
 }
 
-/** App icon plus name, as in the site and app headers. `small` is the footer size. */
-export default function Logo({ small = false, light = false, priority = false }: { small?: boolean; light?: boolean; priority?: boolean }) {
+/**
+ * App icon plus name, as in the site and app headers. `small` is the footer size. `owner` swaps the app icon for the
+ * owner tile (the same blue tile with a bar chart, also the owner pages' tab icon), so the owner area is easy to spot.
+ */
+export default function Logo({ small = false, light = false, priority = false, owner = false }: { small?: boolean; light?: boolean; priority?: boolean; owner?: boolean }) {
   return (
     <span className={`flex items-center ${small ? "gap-2" : "gap-2.5"}`}>
       <Image
-        src={small ? "/icon.png" : "/icon-512.png"}
+        src={owner ? (small ? "/owner-icon.png" : "/owner-icon-512.png") : small ? "/icon.png" : "/icon-512.png"}
         alt=""
         width={small ? 22 : 30}
         height={small ? 22 : 30}

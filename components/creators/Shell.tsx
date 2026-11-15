@@ -10,9 +10,10 @@ export const CREATOR_EMAIL = "contact@whatyouate.app";
 /**
  * Header and footer shared by every creator page, matching the About page. Signed-in pages (dashboard,
  * kit, profile) leave out the public site: the logo goes to the dashboard, the menu only has Support
- * and Log Out, and the footer only the creator terms and privacy policy.
+ * and Log Out, and the footer only the creator terms and privacy policy. `owner` (the owner pages) shows the owner tile
+ * in the logo instead of the app icon.
  */
-export default function Shell({ children, narrow = false, wide = false, full = false, signedIn = false }: { children: React.ReactNode; narrow?: boolean; wide?: boolean; full?: boolean; signedIn?: boolean }) {
+export default function Shell({ children, narrow = false, wide = false, full = false, signedIn = false, owner = false }: { children: React.ReactNode; narrow?: boolean; wide?: boolean; full?: boolean; signedIn?: boolean; owner?: boolean }) {
   return (
     <div className="min-h-screen overflow-x-clip">
       {/* The header floats over the page, so its empty strip lets taps through to links underneath (like a page's back
@@ -20,7 +21,7 @@ export default function Shell({ children, narrow = false, wide = false, full = f
       <header className="pointer-events-none absolute inset-x-0 top-0 z-30 print:hidden">
         <div className="mx-auto flex max-w-[68rem] items-center justify-between px-6 py-6">
           <Link href={signedIn ? "/creators/dashboard" : "/"} className="pointer-events-auto">
-            <Logo priority />
+            <Logo priority owner={owner} />
           </Link>
           <div className="pointer-events-auto">{signedIn ? <CreatorMenu /> : <Menu />}</div>
         </div>
