@@ -162,11 +162,27 @@ export function trackPath(pathname: string): string {
 /** The creator and owner area is private and isn't counted. */
 const skipped = (pathname: string) => pathname.startsWith("/creators");
 
+// Our own visits don't count: automated browsers (navigator.webdriver, e.g. the game video recorder), and any browser
+// that has opened the owner area or visited once with ?notrack. The mark lives in localStorage, so it stays on that device.
+const NO_TRACK = "wya_notrack";
+function excluded(): boolean {
+  try {
+    if (navigator.webdriver) return true;
+    if (new URLSearchParams(window.location.search).has("notrack") || window.location.pathname.startsWith("/creators/owner")) {
+      window.localStorage.setItem(NO_TRACK, "1");
+    }
+    return window.localStorage.getItem(NO_TRACK) === "1";
+  } catch {
+    return false;
+  }
+}
+
 // ---- Sending -----------------------------------------------------------------------------
 
 /** Adds 1 to today's count. Resolves either way; never rejects. `keepalive` lets it finish while the page is leaving. */
 function send(event: TrackEvent, source: Source, path: string, keepalive = false): Promise<void> {
   if (!inBrowser()) return Promise.resolve();
+  if (excluded()) return Promise.resolve();
   if (!isLive()) {
     try { console.debug("[track]", event, source, path); } catch {}
     return Promise.resolve();
@@ -202,7 +218,9 @@ export function track(event: TrackEvent, opts: { path?: string; once?: string; k
 /** Called on every page change (components/Tracker.tsx): the visit, once per source, and the game opened, once per game. */
 export function pageView(pathname: string) {
   try {
-    if (!inBrowser() || skipped(pathname) || pathname in SHORT_LINKS) return;
+    if (!inBrowser()) return;
+    excluded();   // sets the device mark on owner pages and ?notrack, even though those pages aren't counted
+    if (skipped(pathname) || pathname in SHORT_LINKS) return;
     const source = sessionSource();
     track("visit", { once: `visit:${source}`, path: trackPath(pathname) });
     const m = /^\/games\/([a-z0-9-]+)\/?$/.exec(pathname);
