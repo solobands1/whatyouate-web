@@ -229,7 +229,7 @@ export default function BlendersBacon() {
     const t0 = performance.now();
     const step = (nw: number) => {
       if (genRef.current !== gen) { res(); return; }
-      const t = Math.min(1, (nw - t0) / ms); f(t);
+      const t = Math.max(0, Math.min(1, (nw - t0) / ms)); f(t);   // a frame stamped a hair before the start counts as 0
       if (t < 1) requestAnimationFrame(step); else res();
     };
     requestAnimationFrame(step);
@@ -255,8 +255,8 @@ export default function BlendersBacon() {
     let shown = 0;
     await tween(plan.end * 1000, t => {
       const el = cubeRef.current; if (!el) return;
-      const ts = t * plan.end;
-      const p = Math.pow(Math.min(1, ts / lastHit), 0.62) * (seq.length - 1), k = Math.min(seq.length - 1, Math.floor(p)), edge = p - k;
+      const ts = Math.max(0, t) * plan.end;
+      const p = Math.pow(Math.min(1, ts / lastHit), 0.62) * (seq.length - 1), k = Math.max(0, Math.min(seq.length - 1, Math.floor(p))), edge = p - k;
       if (k !== shown) { shown = k; setDieFx(d => (d && d.id === id ? { ...d, v: seq[k] } : d)); }
       // height: falling to the first hit, then a hop between each pair of hits
       let hop = 0, since = 1, hard = 0;
@@ -1205,7 +1205,7 @@ function DieArt({ v, col, size }: { v: number; col: (typeof COL)[number]; size: 
       <rect x="4" y="2" width="92" height="88" rx="24" fill={`url(#bbDie${col.lo.slice(1)})`} />
       <rect x="7.5" y="5.5" width="85" height="81" rx="21" fill="none" stroke="#fff" strokeOpacity="0.45" strokeWidth="3" />
       <path d="M16 12 h68 a14 14 0 0 1 10 6 q-38 -6 -86 6 a14 14 0 0 1 8 -12z" fill="#fff" opacity="0.35" />
-      {PIPS[v].map(p => {
+      {(PIPS[v] ?? []).map(p => {
         const cx = [27, 50, 73][p % 3], cy = [24, 46, 68][Math.floor(p / 3)];
         return <g key={p}><circle cx={cx} cy={cy + 1.6} r="8.6" fill={col.lip} opacity="0.55" /><circle cx={cx} cy={cy} r="8.6" fill="#fff" /><circle cx={cx - 2.4} cy={cy - 2.6} r="2.6" fill="#fff" opacity="0.9" /></g>;
       })}
