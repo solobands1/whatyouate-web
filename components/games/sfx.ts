@@ -27,6 +27,15 @@ export type Synth = {
   noise(dur: number, vol: number, filter: BiquadFilterType, freq: number, at?: number, toFreq?: number, q?: number, fast?: boolean): void;
   /** A soft mallet note (like a marimba): the note, a quiet octave and a little click of overtone. */
   mallet(freq: number, dur: number, vol: number, at?: number): void;
+  /** A little impact (a die on a wooden table): a few-millisecond tick of filtered noise for the contact, and a few short
+   *  ringing modes for the body, every part reaching full volume within `attack` seconds (about 1.5 ms by default:
+   *  quick enough to read as a hit, soft enough not to spike), so the whole thing is gone in well under a tenth of a
+   *  second. `modes` are [frequency, ring time in seconds (to -60 dB), level]; `click` is the tick's level (0 for none)
+   *  and `clickHz` the centre of its band. */
+  knock(vol: number, at: number, modes: readonly (readonly [number, number, number])[], click?: number, clickHz?: number, attack?: number): void;
+  /** One sung "ooh": a buzzy note through a soft vowel filter (`vowel` Hz), swelling in over `swell` of its length and
+   *  dying away, sliding to `slideTo`. A few at different pitches make a little crowd. */
+  hum(freq: number, dur: number, vol: number, at?: number, slideTo?: number, vowel?: number, swell?: number): void;
 };
 
 /** A note of the C major pentatonic scale: step 0 is C5, 5 is C6, -5 is C4. `base` moves the scale. */
@@ -282,6 +291,32 @@ class Sfx implements Synth {
     this.tone(freq * 2, dur * 0.6, "sine", vol * 0.22, at);
     this.tone(freq * 4.02, dur * 0.2, "sine", vol * 0.07, at);
   }
+  knock(vol: number, at: number, modes: readonly (readonly [number, number, number])[], click = 0, clickHz = 1800, attack = 0.0015) {
+    const c = this.ctx, b = this.bus; if (!c || !b) return;
+    const t = c.currentTime + at;
+    for (const [f, ring, lv] of modes) {
+      const v = vol * lv; if (v < 1e-4) continue;
+      const o = c.createOscillator(), g = c.createGain();
+      o.frequency.setValueAtTime(f, t);
+      g.gain.setValueAtTime(0, t); g.gain.linearRampToValueAtTime(v, t + attack); g.gain.exponentialRampToValueAtTime(v * 0.001, t + attack + ring);
+      o.connect(g); g.connect(b); o.start(t); o.stop(t + attack + ring + 0.01);
+    }
+    const buf = this.noiseBuf; if (!(click > 0) || !buf) return;
+    const s = c.createBufferSource(), bp = c.createBiquadFilter(), g = c.createGain();
+    s.buffer = buf; bp.type = "bandpass"; bp.frequency.setValueAtTime(clickHz, t); bp.Q.value = 0.9;
+    g.gain.setValueAtTime(0, t); g.gain.linearRampToValueAtTime(vol * click, t + attack); g.gain.exponentialRampToValueAtTime(vol * click * 0.003, t + attack + 0.005);
+    s.connect(bp); bp.connect(g); g.connect(b);
+    s.start(t, Math.random() * 0.9); s.stop(t + attack + 0.008);
+  }
+  hum(freq: number, dur: number, vol: number, at = 0, slideTo?: number, vowel = 450, swell = 0.3) {
+    const c = this.ctx, b = this.bus; if (!c || !b) return;
+    const t = c.currentTime + at, o = c.createOscillator(), f1 = c.createBiquadFilter(), lp = c.createBiquadFilter(), g = c.createGain();
+    o.type = "sawtooth"; o.frequency.setValueAtTime(freq, t); if (slideTo) o.frequency.exponentialRampToValueAtTime(slideTo, t + dur);
+    f1.type = "bandpass"; f1.frequency.value = vowel; f1.Q.value = 1.6;
+    lp.type = "lowpass"; lp.frequency.value = vowel * 2.2; lp.Q.value = 0.5;
+    g.gain.setValueAtTime(0.0001, t); g.gain.exponentialRampToValueAtTime(Math.max(0.0002, vol), t + dur * swell); g.gain.exponentialRampToValueAtTime(0.0001, t + dur);
+    o.connect(f1); f1.connect(lp); lp.connect(g); g.connect(b); o.start(t); o.stop(t + dur + 0.05);
+  }
 }
 
 /** The same synth, every sound pushed back by `d` seconds. */
@@ -290,6 +325,8 @@ function later(k: Synth, d: number): Synth {
     tone: (f, dur, type, vol, at = 0, slide) => k.tone(f, dur, type, vol, at + d, slide),
     noise: (dur, vol, filter, f, at = 0, to, q, fast) => k.noise(dur, vol, filter, f, at + d, to, q, fast),
     mallet: (f, dur, vol, at = 0) => k.mallet(f, dur, vol, at + d),
+    knock: (vol, at, modes, click, hz, attack) => k.knock(vol, at + d, modes, click, hz, attack),
+    hum: (f, dur, vol, at = 0, slide, vowel, swell) => k.hum(f, dur, vol, at + d, slide, vowel, swell),
   };
 }
 

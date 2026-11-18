@@ -14,7 +14,8 @@ import { apply, cpuCard, newState, BACON, BLENDERS, type State, type Side } from
 function rng(seed: number) { return () => { seed |= 0; seed = (seed + 0x6d2b79f5) | 0; let t = Math.imul(seed ^ (seed >>> 15), 1 | seed); t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t; return ((t ^ (t >>> 14)) >>> 0) / 4294967296; }; }
 
 // rough seconds each thing takes on screen (die, hops, blender, bacon, cards), plus thinking time before a roll
-const SEC = { die: 1.25, hop: 0.24, blender: 2.0, bacon: 1.6, mitt: 1.1, card: 1.0, play: 1.1, swap: 1.0, turn: 0.9, human: 1.8, cpu: 0.9 };
+// die: the tumble is 0.5 to 0.8 s (dicePlan, 2026-11-17; it was 0.92), then the number shows for 0.38 s
+const SEC = { die: 1.05, hop: 0.24, blender: 2.0, bacon: 1.6, mitt: 1.1, card: 1.0, play: 1.1, swap: 1.0, turn: 0.9, human: 1.8, cpu: 0.9 };
 
 export type Result = { winner: Side; turns: number; total: number; secs: number; midBehindWon: boolean | null; bigComeback: boolean | null;
   blenders: number; bacon: number; mitts: number; cards: number; swaps: number };

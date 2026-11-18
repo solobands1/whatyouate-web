@@ -29,7 +29,7 @@ import { CloseIcon, ReplayIcon, ShareIcon } from "./icons";
 import { BoardArt, BlenderArt, BW, BH, spotOf, blenderGeo, tubeAt, tubeD, tubeLen, baconAt, baconD, baconLen, CARD_INFO, CardIcon, DieIcon, type Pt } from "./bacon/art";
 import { apply, cpuCard, newState, cloneState, canPlay, scoreFor, other, LAST, type State, type Action, type Ev, type Side, type Card } from "./bacon/rules";
 import { Particles } from "./bacon/fx";
-import { Sound } from "./bacon/sound";
+import { Sound, dicePlan } from "./bacon/sound";
 
 const GAME = "blenders-bacon";
 const LAUNCH = "2026-11-13";                 // Today's Challenge #1 (move to launch day)
@@ -238,26 +238,41 @@ export default function BlendersBacon() {
   const floatWord = (text: string, at: Pt, col: string) => setWord({ id: Date.now() + Math.random(), text, at, col });
 
   const rollDie = async (v: number, side: Side, gen: number) => {
-    // the faces it shows on the way: quick flips at first, slowing down, ending on the roll
+    // The die drops in and tumbles to a stop along a plan of hits (bacon/sound.ts dicePlan): each hit is a clack in the
+    // sound and a landing here, so they line up. Between hits it hops (one gravity for every hop, so a shorter gap is a
+    // lower hop) and flips through faces, quick at first, showing the roll from the last hard hit on; then it rocks flat.
+    const plan = dicePlan(), hits = plan.hits, lastHit = hits[hits.length - 1].t;
     const seq: number[] = []; let last = 0;
     for (let k = 0; k < 8; k++) { let f = 1 + Math.floor(Math.random() * 6); if (f === last || (k === 7 && f === v)) f = (f % 6) + 1; seq.push(f); last = f; }
     seq.push(v);
-    const id = Date.now(), dir = Math.random() < 0.5 ? -1 : 1;
-    setDieFx({ id, v: seq[0], side, out: false }); setTurnPop(null); sound.current?.roll();
+    const id = Date.now(), dir = Math.random() < 0.5 ? -1 : 1, rock = (Math.random() < 0.5 ? -1 : 1) * (2.5 + Math.random() * 2);
+    const drop = 46, grav = (2 * drop) / (hits[0].t * hits[0].t);   // px/s²: falls `drop` px to the first hit
+    setDieFx({ id, v: seq[0], side, out: false }); setTurnPop(null);
     setMsg(autoRoll.current === "mine" ? "Time's Up! Rolling For You..." : autoRoll.current === "theirs" ? `${who(side)} Ran Out Of Time. Rolling For Them...` : isMe(side) && opp !== "phone" ? "Rolling..." : `${who(side)} ${opp === "phone" ? "Rolls" : "Is Rolling"}...`);
     autoRoll.current = null;
     await raf();
+    sound.current?.roll(plan);
     let shown = 0;
-    await tween(920, t => {
+    await tween(plan.end * 1000, t => {
       const el = cubeRef.current; if (!el) return;
-      const p = Math.pow(t, 0.62) * (seq.length - 0.001), k = Math.floor(p), edge = p - k;
+      const ts = t * plan.end;
+      const p = Math.pow(Math.min(1, ts / lastHit), 0.62) * (seq.length - 1), k = Math.min(seq.length - 1, Math.floor(p)), edge = p - k;
       if (k !== shown) { shown = k; setDieFx(d => (d && d.id === id ? { ...d, v: seq[k] } : d)); }
-      const e = easeOut(t), spin = (1 - e) * 600 * dir + Math.sin(edge * Math.PI) * 14 * (1 - t) * dir;
-      const hop = t < 0.5 ? -Math.sin((t / 0.5) * Math.PI) * 46 : t < 0.8 ? -Math.sin(((t - 0.5) / 0.3) * Math.PI) * 11 : -Math.sin(((t - 0.8) / 0.2) * Math.PI) * 3;
-      const roll = 1 - Math.sin(edge * Math.PI) * 0.22 * (1 - t), land = t > 0.47 && t < 0.55 ? 0.9 : 1;
-      el.style.transform = `translateY(${hop.toFixed(1)}px) rotate(${spin.toFixed(1)}deg) scale(${(roll * (2 - land)).toFixed(3)}, ${(land * (2 - roll)).toFixed(3)})`;
+      // height: falling to the first hit, then a hop between each pair of hits
+      let hop = 0, since = 1, hard = 0;
+      if (ts < hits[0].t) hop = -(drop - 0.5 * grav * ts * ts);
+      else for (let i = 0; i < hits.length; i++) {
+        const a = hits[i].t, b = i + 1 < hits.length ? hits[i + 1].t : -1;
+        if (ts >= a && (b < 0 || ts < b)) { since = ts - a; hard = hits[i].s; if (b > 0) hop = -0.5 * grav * since * (b - a - since); break; }
+      }
+      const q = Math.min(1, ts / lastHit), spin = (1 - easeOut(q)) * 600 * dir + Math.sin(edge * Math.PI) * 14 * (1 - q) * dir;
+      const rockA = ts > lastHit && ts < plan.settle ? rock * (1 - (ts - lastHit) / (plan.settle - lastHit)) : 0;
+      const squash = since < 0.05 ? 0.12 * hard * (1 - since / 0.05) : 0;
+      const roll = 1 - Math.sin(edge * Math.PI) * 0.22 * (1 - q);
+      el.style.transform = `translateY(${hop.toFixed(1)}px) rotate(${(spin + rockA).toFixed(1)}deg) scale(${(roll * (1 + squash)).toFixed(3)}, ${((2 - roll) * (1 - squash)).toFixed(3)})`;
     }, gen);
     if (genRef.current !== gen) return;
+    if (cubeRef.current) cubeRef.current.style.transform = "";
     setDieFx(d => (d && d.id === id ? { ...d, v } : d));
     setMsg(side === mySide || opp === "phone" ? `${opp === "phone" ? nameOf(side) + " Rolled" : "You Rolled"} A ${v}!` : `${who(side)} Rolled A ${v}.`);
     await wait(380);
