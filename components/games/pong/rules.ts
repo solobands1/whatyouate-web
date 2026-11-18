@@ -8,6 +8,7 @@
 //  - Sink 2 in a row (across turns too) and you're On Fire: the bowls' sweet spot grows a little until you miss.
 //  - Sink both berries of a turn and you get Berries Back: another turn straight away.
 //  - First to clear all 6 of the other player's bowls wins.
+//  - Trick shots: a sink that does something special is named and scores a bonus against the computer (see trickOf).
 //
 // The flight is worked out in the thrower's own frame: the thrower stands at y < 0 and throws toward +y, with the
 // target triangle near y = TL. The flight only uses + - * / and sqrt (no sin, cos or pow), which give the same answer in
@@ -127,6 +128,29 @@ export function flight(v: V3, standing: boolean[], fire: boolean): Flight {
   return end("stop");
 }
 
+// ── trick shots ────────────────────────────────────────────────────────────
+// Only the ones this flight can really do. A berry that hits the table early bounces up about 10 units, higher than a
+// rim (6.2), so it can drop in on the hop: a Bank Shot (and a bank is about as hard to land as a straight shot, about
+// 7% of a full pull wide, just at roughly half the power). A berry can touch the rim, rattle round and still drop:
+// a Rim Roll. One off the side of one bowl can drop into the next: a Bowl Hop. Not here: a second bounce only rises
+// about 3.8 (under the rim), so no Double Bounce; one berry sinks one bowl; and a full pull flies past the back row
+// (which takes about 81%), so a "full power" Long Shot can't sink.
+export type Trick = "bank" | "rim" | "hop";
+export const TRICKS: Record<Trick, { name: string; how: string }> = {
+  bank: { name: "Bank Shot", how: "Off The Table And In" },
+  rim: { name: "Rim Roll", how: "Round The Rim And In" },
+  hop: { name: "Bowl Hop", how: "Off One Bowl, Into Another" },
+};
+export const TRICK_PTS = 50;                    // the bonus for each trick shot against the computer
+/** The trick shot this flight made, if it sank: off another bowl first beats a bounce, which beats a rattle. */
+export function trickOf(f: Flight): Trick | null {
+  if (f.bowl < 0) return null;
+  if (f.hits.some(h => (h.k === "rim" || h.k === "wall") && h.bowl !== f.bowl)) return "hop";
+  if (f.hits.some(h => h.k === "table")) return "bank";
+  if (f.hits.filter(h => h.k === "rim" && h.bowl === f.bowl).length >= 2) return "rim";
+  return null;
+}
+
 // ── the computer ───────────────────────────────────────────────────────────
 /** How far (on the table) a launch at speed u travels before it comes down through rim height. */
 export function rangeAt(u: number) { const vz = u * SIN_E, vh = u * COS_E; return (vh * (vz + Math.sqrt(vz * vz + 2 * G * (Z0 - H)))) / G; }
@@ -165,13 +189,51 @@ export function pickBowl(standing: boolean[], rnd: () => number) {
  *  and looser for its first 2 turns (4 flicks), so a match always opens gently. */
 export function cpuWobble(round: number, flicks = 99) { return Math.max(0.64, 1 - 0.07 * (round - 1)) * (flicks < 4 ? 1.3 : 1); }
 export const CPU_PW = 0.048, CPU_AW = 0.031;    // its wobble at 1 (see sim.ts for what that gives)
-export function cpuFlick(standing: boolean[], rnd: () => number, wobble: number): V3 {
-  return aimAt(pickBowl(standing, rnd), rnd, CPU_PW * wobble, CPU_AW * wobble);
+export const CPU_TRY = 0.14;                    // how often (after its first 2 turns) the computer goes for a Bank Shot
+
+const banks = new Map<string, { i: number; p: number; w: number } | null>();
+/** The best Bank Shot at these bowls: the bowl with the widest run of powers that bounce in, and the middle of that run.
+ *  Found by flying the real flight at every power step (cached, so each layout of bowls is worked out once). */
+export function bankAim(standing: boolean[], fire: boolean) {
+  const key = standing.map(Number).join("") + (fire ? "f" : "");
+  if (banks.has(key)) return banks.get(key)!;
+  let best: { i: number; p: number; w: number } | null = null;
+  for (let i = 0; i < N_BOWLS; i++) {
+    if (!standing[i]) continue;
+    const [bx, by] = BOWLS[i], top = powerFor(Math.sqrt(bx * bx + (by - Y0) * (by - Y0))) - 0.1;
+    let run = 0, start = 0;
+    for (let k = 0, p = 0.1; p <= top + 1e-9; k++, p = 0.1 + k * 0.004) {
+      const f = flight(launchV(p, bx, by - Y0), standing, fire), ok = f.bowl === i && f.hits.some(h => h.k === "table");
+      if (ok) { if (!run) start = p; run++; }
+      if ((!ok || p + 0.004 > top + 1e-9) && run) {
+        const w = run * 0.004;
+        if (!best || w > best.w) best = { i, p: start + (run - 1) * 0.002, w };
+        run = 0;
+      }
+    }
+  }
+  banks.set(key, best);
+  return best;
 }
+/** The computer's flick: usually straight at the bowl it picks; now and then (never in its first 2 turns) it lines up a
+ *  Bank Shot instead, with the same wobble, so it lands about as often. `trying` says which, for the "aiming" chip. */
+export function cpuPlan(standing: boolean[], rnd: () => number, wobble: number, fire = false, flicks = 99): { v: V3; trying: Trick | null } {
+  if (flicks >= 4 && rnd() < CPU_TRY) {
+    const b = bankAim(standing, fire);
+    if (b) {
+      const [bx, by] = BOWLS[b.i], wild = rnd() < 0.07 ? 2.2 : 1;
+      const p = b.p + bell(rnd) * CPU_PW * wobble * wild, [ax, ay] = turn(bx, by - Y0, bell(rnd) * CPU_AW * wobble * wild);
+      return { v: launchV(p, ax, ay), trying: "bank" };
+    }
+  }
+  return { v: aimAt(pickBowl(standing, rnd), rnd, CPU_PW * wobble, CPU_AW * wobble), trying: null };
+}
+export function cpuFlick(standing: boolean[], rnd: () => number, wobble: number, fire = false, flicks = 99): V3 { return cpuPlan(standing, rnd, wobble, fire, flicks).v; }
 
 // ── the match ──────────────────────────────────────────────────────────────
-/** A flick: the launch speed and the bowl it sank (-1 for a miss). v is null when the turn clock ran out. */
-export type Action = { k: "flick"; v: V3 | null; bowl: number };
+/** A flick: the launch speed, the bowl it sank (-1 for a miss) and the trick shot it made, if any (the thrower's phone
+ *  works these out from the flight and the friend's phone takes them as final). v is null when the turn clock ran out. */
+export type Action = { k: "flick"; v: V3 | null; bowl: number; trick?: Trick };
 export type State = {
   bowls: [boolean[], boolean[]];   // each side's own bowls, true while standing
   turn: Side;
@@ -183,23 +245,26 @@ export type State = {
   sinks: [number, number];
   backs: [number, number];         // Berries Back turns earned
   fires: [number, number];         // times each side caught fire
+  tricks: [number, number];        // trick shots
   winner: Side | null;
   seq: number;                     // flicks applied, for live play's "who's newer"
 };
 export const newState = (first: Side = 0): State => ({
   bowls: [Array(N_BOWLS).fill(true), Array(N_BOWLS).fill(true)], turn: first, flick: 0, turnSinks: 0, streak: [0, 0], fire: [false, false],
-  flicks: [0, 0], sinks: [0, 0], backs: [0, 0], fires: [0, 0], winner: null, seq: 0,
+  flicks: [0, 0], sinks: [0, 0], backs: [0, 0], fires: [0, 0], tricks: [0, 0], winner: null, seq: 0,
 });
 export const cloneState = (s: State): State => ({
   ...s, bowls: [[...s.bowls[0]], [...s.bowls[1]]], streak: [...s.streak] as [number, number], fire: [...s.fire] as [boolean, boolean],
   flicks: [...s.flicks] as [number, number], sinks: [...s.sinks] as [number, number], backs: [...s.backs] as [number, number], fires: [...s.fires] as [number, number],
+  tricks: [...(s.tricks ?? [0, 0])] as [number, number],
 });
 export const left = (s: State, side: Side) => s.bowls[side].filter(Boolean).length;
 
 /** What happened, in order, for the animations. */
 export type Ev =
   | { e: "flick"; side: Side; v: V3 | null; bowl: number; fire: boolean; n: number; standing: boolean[] }
-  | { e: "sink"; side: Side; bowl: number; left: number }
+  | { e: "trick"; side: Side; kind: Trick; bowl: number }
+  | { e: "sink"; side: Side; bowl: number; left: number; streak: number }
   | { e: "miss"; side: Side; timeout: boolean }
   | { e: "fire"; side: Side; on: boolean }
   | { e: "back"; side: Side }
@@ -215,8 +280,9 @@ export function apply(s0: State, a: Action): { s: State; ev: Ev[] } | null {
   ev.push({ e: "flick", side: t, v: a.v, bowl: a.bowl, fire: s0.fire[t], n: s0.flick, standing: [...s0.bowls[target]] });
   s.flicks[t]++;
   if (a.bowl >= 0) {
+    if (a.trick && TRICKS[a.trick]) { s.tricks[t]++; ev.push({ e: "trick", side: t, kind: a.trick, bowl: a.bowl }); }
     s.bowls[target][a.bowl] = false; s.sinks[t]++; s.streak[t]++; s.turnSinks++;
-    ev.push({ e: "sink", side: t, bowl: a.bowl, left: left(s, target) });
+    ev.push({ e: "sink", side: t, bowl: a.bowl, left: left(s, target), streak: s.streak[t] });
     if (left(s, target) === 0) { s.winner = t; ev.push({ e: "win", side: t }); s.seq++; return { s, ev }; }
     if (s.streak[t] >= 2 && !s.fire[t]) { s.fire[t] = true; s.fires[t]++; ev.push({ e: "fire", side: t, on: true }); }
   } else {
@@ -235,9 +301,11 @@ export function apply(s0: State, a: Action): { s: State; ev: Ev[] } | null {
 }
 
 // ── the scoreboard ─────────────────────────────────────────────────────────
-/** One match against the computer: 100 a sink, up to 400 for accuracy (400 x sinks / flicks), and for a win 500 plus
- *  100 for each of your own bowls still standing. See the bounds at the top of BerryPong.tsx. */
-export function matchScore(won: boolean, sinks: number, flicks: number, bowlsLeft: number) {
+/** One match against the computer: 100 a sink, up to 400 for accuracy (400 x sinks / flicks), 50 for each trick shot,
+ *  and for a win 500 plus 100 for each of your own bowls still standing. Never more than a flawless match (2100) or 350
+ *  a flick, so the scoreboard's bounds hold; see the top of BerryPong.tsx. */
+export const MAX_MATCH = 2100;
+export function matchScore(won: boolean, sinks: number, flicks: number, bowlsLeft: number, tricks = 0) {
   const acc = flicks > 0 ? Math.floor((400 * sinks) / flicks) : 0;
-  return 100 * sinks + acc + (won ? 500 + 100 * bowlsLeft : 0);
+  return Math.min(MAX_MATCH, 350 * flicks, 100 * sinks + acc + TRICK_PTS * tricks + (won ? 500 + 100 * bowlsLeft : 0));
 }

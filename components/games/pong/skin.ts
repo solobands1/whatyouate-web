@@ -9,6 +9,8 @@ export const BP_CSS = `${GAME_FONT_CSS}
 @keyframes bp-float { 0% { opacity: 0; transform: translate(-50%, 6px) scale(0.7) } 18% { opacity: 1; transform: translate(-50%, 0) scale(1.06) } 28% { transform: translate(-50%, 0) scale(1) } 75% { opacity: 1 } 100% { opacity: 0; transform: translate(-50%, -24px) } }
 .bp-big { animation: bp-big 1.35s cubic-bezier(.2,.9,.3,1) forwards; }
 @keyframes bp-big { 0% { opacity: 0; transform: scale(0.5) } 16% { opacity: 1; transform: scale(1.1) } 26% { transform: scale(1) } 80% { opacity: 1; transform: scale(1) } 100% { opacity: 0; transform: scale(1.04) translateY(-10px) } }
+.bp-trick { animation: bp-trick 1.2s cubic-bezier(.2,.9,.3,1) forwards; }
+@keyframes bp-trick { 0% { opacity: 0; transform: scale(0.5) rotate(-3deg) } 14% { opacity: 1; transform: scale(1.12) rotate(-2deg) } 24% { transform: scale(1) rotate(-2deg) } 78% { opacity: 1; transform: scale(1) rotate(-2deg) } 100% { opacity: 0; transform: scale(0.9) translateY(-40px) rotate(-2deg) } }
 .bp-dot { animation: bp-dot 1s ease-in-out infinite; }
 @keyframes bp-dot { 0%, 100% { opacity: 0.25 } 50% { opacity: 1 } }
 .bp-flip { animation: bp-flip 560ms ease-in-out forwards; }

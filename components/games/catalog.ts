@@ -78,7 +78,7 @@ export const GAMES: Game[] = [
   {
     slug: "berry-pong",
     name: "Berry Pong",
-    tagline: "Flick blueberries into the other side's cereal bowls. Sink two in a row and you're on fire. Play the computer or a friend.",
+    tagline: "Flick blueberries into the other side's cereal bowls. Bank one off the table for a trick shot, sink two in a row and you're on fire.",
     daily: true,
     multiplayer: true,
   },

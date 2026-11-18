@@ -15,34 +15,57 @@
 //   On Fire comes up in about 95% of matches (decent player 1.0 times a match, computer 0.7); Berries Back in about 82%
 //     (you 0.8, computer 0.5)
 //   score per flick never passes 350 (a flawless match: 2100 from 6 flicks); most flicks in one match 45 (new player)
-import { apply, newState, flight, cpuFlick, cpuWobble, aimAt, pickBowl, matchScore, left, other, type State, type Side, type V3 } from "./rules";
+// With trick shots, 2026-11-17 (same seeds; the computer goes for a Bank Shot on 14% of its flicks after its first 2
+// turns; a trick celebration counted as 2.5 s):
+//   decent player vs round 1: computer wins 26% (was 25%); median 1.9 min (1.1 to 2.8, longest 4.8); hit rate 38% (computer 31%)
+//   average player: computer wins 46% (was 48%); median 2.3 min; new player: computer wins 66% (was 70%); median 2.6 min
+//   Free Play vs the decent player: computer wins 29% in round 2, 37% in round 3, 52% in round 5 (was 29, 39, 53)
+//   trick shots a match: the computer lands 0.4 to 0.6 (from 1.0 to 2.0 tries), a player who never aims for one 0.06
+//     (a lucky Rim Roll or Bowl Hop); at least one trick shot in 36% to 51% of matches
+//   a decent player who banks every flick hits 37% (straight shots 38%) and scores a median 1750 (straight 1460), p90
+//     2066; matchScore's caps keep every match within 2100 and 350 a flick
+import { apply, newState, flight, cpuPlan, cpuWobble, aimAt, pickBowl, matchScore, left, other, trickOf, bankAim, launchV, BOWLS, Y0, type State, type Side, type V3 } from "./rules";
 
 function rng(seed: number) { return () => { seed |= 0; seed = (seed + 0x6d2b79f5) | 0; let t = Math.imul(seed ^ (seed >>> 15), 1 | seed); t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t; return ((t ^ (t >>> 14)) >>> 0) / 4294967296; }; }
 
 // rough seconds each thing takes on screen (BerryPong.tsx's timings), plus aiming time before a flick
-export const SEC = { human: 3.0, cpu: 1.18, sink: 1.1, miss: 0.48, fire: 1.0, back: 1.3, turn: 0.35, maxMiss: 1.5 };
+export const SEC = { human: 3.0, cpu: 1.18, sink: 1.1, miss: 0.48, fire: 1.0, back: 1.3, turn: 0.35, maxMiss: 1.5, trick: 2.5 };
 
-export type Player = { pw: number; aw: number };
+/** A simulated player: how much their hand wobbles, and how often they go for a Bank Shot (0 for never). */
+export type Player = { pw: number; aw: number; bank?: number };
 export const DECENT: Player = { pw: 0.04, aw: 0.025 };
 export const AVERAGE: Player = { pw: 0.05, aw: 0.032 };
 export const NEWBIE: Player = { pw: 0.065, aw: 0.04 };
+export const BANKER: Player = { pw: 0.04, aw: 0.025, bank: 1 };   // a decent player who banks every flick (the scoreboard check)
+
+/** The player's flick: a bank at the best bank bowl when they go for one, else straight at the bowl the computer would pick. */
+function playerFlick(you: Player, standing: boolean[], fire: boolean, r: () => number): V3 {
+  if (you.bank && r() < you.bank) {
+    const b = bankAim(standing, fire);
+    if (b) { const [bx, by] = BOWLS[b.i]; return launchV(b.p + (r() + r() + r() - 1.5) * 2 * you.pw, bx + (r() + r() + r() - 1.5) * 2 * you.aw * (by - Y0), by - Y0); }
+  }
+  return aimAt(pickBowl(standing, r), r, you.pw, you.aw);
+}
 
 type Result = { winner: Side; secs: number; flicks: [number, number]; sinks: [number, number]; fires: [number, number]; backs: [number, number];
-  left: [number, number]; score: number };
+  tricks: [number, number]; tries: number; left: [number, number]; score: number };
 
 export function playOne(r: () => number, you: Player, round: number): Result {
   let s: State = newState(0);
-  let secs = 0;
+  let secs = 0, tries = 0;
   for (let guard = 0; guard < 2000 && s.winner === null; guard++) {
     const t = s.turn, standing = s.bowls[other(t)];
     secs += t === 0 ? SEC.human : SEC.cpu;
-    const v: V3 = t === 0 ? aimAt(pickBowl(standing, r), r, you.pw, you.aw) : cpuFlick(standing, r, cpuWobble(round, s.flicks[1]));
-    const f = flight(v, standing, s.fire[t]);
-    const out = apply(s, { k: "flick", v, bowl: f.bowl });
+    let v: V3;
+    if (t === 0) v = playerFlick(you, standing, s.fire[0], r);
+    else { const pl = cpuPlan(standing, r, cpuWobble(round, s.flicks[1]), s.fire[1], s.flicks[1]); v = pl.v; if (pl.trying) tries++; }
+    const f = flight(v, standing, s.fire[t]), trick = trickOf(f);
+    const out = apply(s, trick ? { k: "flick", v, bowl: f.bowl, trick } : { k: "flick", v, bowl: f.bowl });
     if (!out) throw new Error("illegal");
     secs += f.bowl >= 0 ? Math.min(f.t, 2.2) + SEC.sink : Math.min(f.t, SEC.maxMiss) + SEC.miss;
     for (const e of out.ev) {
-      if (e.e === "fire" && e.on) secs += SEC.fire;
+      if (e.e === "trick") secs += SEC.trick;
+      else if (e.e === "fire" && e.on) secs += SEC.fire;
       else if (e.e === "back") secs += SEC.back;
       else if (e.e === "turn") secs += SEC.turn;
     }
@@ -50,7 +73,8 @@ export function playOne(r: () => number, you: Player, round: number): Result {
   }
   const winner = s.winner as Side;
   return { winner, secs, flicks: [...s.flicks] as [number, number], sinks: [...s.sinks] as [number, number], fires: [...s.fires] as [number, number],
-    backs: [...s.backs] as [number, number], left: [left(s, 0), left(s, 1)], score: matchScore(winner === 0, s.sinks[0], s.flicks[0], left(s, 0)) };
+    backs: [...s.backs] as [number, number], tricks: [...s.tricks] as [number, number], tries, left: [left(s, 0), left(s, 1)],
+    score: matchScore(winner === 0, s.sinks[0], s.flicks[0], left(s, 0), s.tricks[0]) };
 }
 
 export function simulate(n = 2000, seed = 12345, you: Player = DECENT, round = 1) {
@@ -68,6 +92,8 @@ export function simulate(n = 2000, seed = 12345, you: Player = DECENT, round = 1
     yourFlicks: { median: q(pf, 0.5), p90: q(pf, 0.9), max: pf[pf.length - 1], min: pf[0] },
     hitRate: { you: (sum(x => x.sinks[0]) / sum(x => x.flicks[0])).toFixed(3), computer: (sum(x => x.sinks[1]) / sum(x => x.flicks[1])).toFixed(3) },
     onFirePerMatch: { you: (sum(x => x.fires[0]) / n).toFixed(2), computer: (sum(x => x.fires[1]) / n).toFixed(2), anyInMatch: pct(res.filter(x => x.fires[0] + x.fires[1] > 0).length) },
+    trickShotsPerMatch: { you: (sum(x => x.tricks[0]) / n).toFixed(2), computer: (sum(x => x.tricks[1]) / n).toFixed(2), computerTries: (sum(x => x.tries) / n).toFixed(2),
+      anyInMatch: pct(res.filter(x => x.tricks[0] + x.tricks[1] > 0).length) },
     berriesBackPerMatch: { you: (sum(x => x.backs[0]) / n).toFixed(2), computer: (sum(x => x.backs[1]) / n).toFixed(2), anyInMatch: pct(res.filter(x => x.backs[0] + x.backs[1] > 0).length) },
     yourScore: { median: q(scores, 0.5), p90: q(scores, 0.9), max: scores[scores.length - 1], worstPerFlick: Math.max(...res.map(x => x.score / Math.max(1, x.flicks[0]))).toFixed(1) },
   };
@@ -75,5 +101,5 @@ export function simulate(n = 2000, seed = 12345, you: Player = DECENT, round = 1
 
 if (typeof require !== "undefined" && typeof module !== "undefined" && require.main === module) {
   const n = Number(process.argv[2]) || 2000;
-  console.log(JSON.stringify([simulate(n, 12345, DECENT, 1), simulate(n, 777, DECENT, 2), simulate(n, 999, DECENT, 3), simulate(n, 4242, DECENT, 5), simulate(n, 2024, AVERAGE, 1), simulate(n, 31337, NEWBIE, 1)], null, 2));
+  console.log(JSON.stringify([simulate(n, 12345, DECENT, 1), simulate(n, 777, DECENT, 2), simulate(n, 999, DECENT, 3), simulate(n, 4242, DECENT, 5), simulate(n, 2024, AVERAGE, 1), simulate(n, 31337, NEWBIE, 1), simulate(n, 5150, BANKER, 1)], null, 2));
 }

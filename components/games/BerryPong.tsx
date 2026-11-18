@@ -5,8 +5,10 @@
 // finger stays below it, so it never covers the berry or the aim dots) and let go. A berry that drops into a bowl sinks
 // it and that bowl lifts off the table. Sink 2 in a row and you're On Fire (a flame trail and a slightly bigger sweet
 // spot until you miss); sink both berries of a turn and you get Berries Back, another turn. First to clear all 6 of the
-// other player's bowls wins. The rules and the berry's flight live in pong/rules.ts, the art in pong/art.ts, the balance
-// check in pong/sim.ts.
+// other player's bowls wins. Trick shots (a Bank Shot off the table, a Rim Roll, a Bowl Hop off one bowl into another)
+// get a banner, a cheer and, the first time each one happens in a match, a short slow-motion replay; against the
+// computer each scores a 50 point bonus, and the computer goes for a Bank Shot now and then. The rules and the berry's
+// flight live in pong/rules.ts, the art in pong/art.ts, the balance check in pong/sim.ts.
 // Three ways to play:
 //  - Computer: Today (one match; the computer's throws come from today's seed, so they're the same for everyone) or Free
 //    Play (beat the computer to move on to the next round; its hand gets a little steadier each round).
@@ -19,15 +21,17 @@
 //    "Stepped Away" with the clock stopped, and 30 seconds a flick (run out and that berry is a miss).
 //
 // Scoreboard (against the computer only; Same Phone and Play A Friend post nothing), as rules.matchScore:
-//   one match = 100 x sinks + floor(400 x sinks / flicks) + (won ? 500 + 100 x your own bowls still standing : 0)
+//   one match = 100 x sinks + floor(400 x sinks / flicks) + 50 x trick shots + (won ? 500 + 100 x your own bowls still
+//               standing : 0), never more than 2100 or 350 x flicks (the bounds below; trick shots can't push past them)
 //   Today is one match. Free Play is a run of matches (win and the next round starts; a loss, or Stop And Save, ends the
 //   run) and posts the run's total.
 //   drops = your flicks in the run (every berry you flicked, in every match of the run).
 //   Bounds for game_score_problem's "berry-pong" check:
 //     drops >= 2            you always flick first and get your whole first turn (2 berries) before the computer throws
-//     score <= 350 x drops  a win needs at least 6 flicks: 100f + 400 + 500 + 600 <= 350f when f >= 6; a loss sinks at
-//                           most 5: 100f + 400 <= 350f when f >= 2; a run is a sum of matches, so the bound holds for it
-//     daily score <= 2100   the best possible match: 6 sinks from 6 flicks, none of your bowls lost (600 + 400 + 500 + 600)
+//     score <= 350 x drops  each match is capped at 350 x its flicks (matchScore); a run is a sum of matches, so the bound
+//                           holds for it (without the cap a flawless 6-flick win with trick shots would pass it)
+//     daily score <= 2100   each match is capped at 2100, the best match without trick shots: 6 sinks from 6 flicks,
+//                           none of your bowls lost (600 + 400 + 500 + 600)
 //     ms >= 1000 x drops    a flick isn't taken until 1 second after your last one (MIN_FLICK_MS), every flick's flight
 //                           plays before the next, and the match ends with a landing and a celebration of over a second,
 //                           so a server check of ms >= drops x 900 has room to spare
@@ -43,10 +47,10 @@ import { type Mode, type Toast, GameScreen, GameHeader, BoardArea, PrizeLogo, Ga
 import { GAME_FONT, loadGameFont } from "./gameFont";
 import { PlayIcon, ReplayIcon, ShareIcon } from "./icons";
 import { BP_CSS } from "./pong/skin";
-import { FlameIcon, RackIcon, BerryDot } from "./pong/icons";
+import { FlameIcon, RackIcon, BerryDot, TrickIcon } from "./pong/icons";
 import { BW, type Cam, type BowlArt, makeCam, P, flat, toWorld, bowlAt, GLAZE, paintScene, paintLight, bowlArt, berrySprite, flameSprite, drawHint, tablePath } from "./pong/art";
-import { apply, newState, flight, pullAim, pullV, freeAt, cpuFlick, cpuWobble, matchScore, left, other, FLICKS, N_BOWLS, BR, H, TL, TW, Y0, Z0,
-  BOWLS, type State, type Action, type Ev, type Side, type V3, type Flight } from "./pong/rules";
+import { apply, newState, flight, pullAim, pullV, freeAt, cpuPlan, cpuWobble, matchScore, left, other, trickOf, FLICKS, N_BOWLS, BR, H, TL, TW, Y0, Z0, G as GRAV,
+  BOWLS, BACK, ROW, TRICKS, TRICK_PTS, type State, type Action, type Ev, type Side, type V3, type Flight, type Trick } from "./pong/rules";
 import { Sound } from "./pong/sound";
 
 const GAME = "berry-pong";
@@ -67,7 +71,7 @@ const FACTS: Toast[] = [
 
 type Opp = "cpu" | "phone" | "live";
 type Phase = "start" | "names" | "idle" | "gate" | "play" | "between" | "rematch" | "over" | "doneToday";
-type Final = { score: number; won: boolean; round: number; sinks: number; flicks: number; fires: number; backs: number; left: number };
+type Final = { score: number; won: boolean; round: number; sinks: number; flicks: number; fires: number; backs: number; left: number; tricks?: number; trickNames?: string[] };
 type View = { bowls: [boolean[], boolean[]]; turn: Side; flick: number; fire: [boolean, boolean] };
 const viewOf = (s: State): View => ({ bowls: [[...s.bowls[0]], [...s.bowls[1]]], turn: s.turn, flick: s.flick, fire: [...s.fire] as [boolean, boolean] });
 
@@ -105,9 +109,20 @@ function replay(first: Side, actions: Action[]): State | null {
   return s;
 }
 
+/** Every trick shot in a match so far, in order, from its list of flicks (for the end card and the share text). */
+function tricksIn(first: Side, actions: Action[]) {
+  let s = newState(first); const out: { side: Side; kind: Trick }[] = [];
+  for (const a of actions) { const o = apply(s, a); if (!o) break; for (const e of o.ev) if (e.e === "trick") out.push({ side: e.side, kind: e.kind }); s = o.s; }
+  return out;
+}
+
 // motion and the board's moving parts (all in board units)
 const easeOut = (t: number) => 1 - Math.pow(1 - t, 3);
-type Fly = { pts: number[]; dt: number; dur: number; t0: number; thrower: Side; fire: boolean; fade: number; hits: Flight["hits"]; fired: number; gone: boolean };
+// a berry in the air: `from` and `rate` play part of the path in slow motion (the trick shot replay), with a trail
+type Fly = { pts: number[]; dt: number; dur: number; t0: number; thrower: Side; fire: boolean; fade: number; hits: Flight["hits"]; fired: number; gone: boolean;
+  from?: number; rate?: number; trail?: boolean };
+type Ring = { x: number; y: number; t0: number; r: number };          // a bounce mark spreading on the table (board units)
+type BackFx = { t0: number; from: { x: number; y: number }; to: { x: number; y: number }; s0: number; s1: number };
 type SinkFx = { side: Side; i: number; t0: number; x: number; y: number; size: number };
 type Part = { kind: "drop" | "star" | "flame" | "confetti"; x: number; y: number; vx: number; vy: number; g: number; life: number; max: number; r: number; col: string; rot: number; vr: number; hot?: boolean };
 const CONFETTI = ["#6FA8FF", "#FF7A93", "#FFD25C", "#9CC4FF", "#FFB0BF", "#4F88E8"];
@@ -136,11 +151,12 @@ export default function BerryPong() {
   const [round, setRound] = useState(1);
   const [turnPop, setTurnPop] = useState<{ id: number; side: Side } | null>(null);
   const [word, setWord] = useState<{ id: number; text: string; x: number; y: number; col: string } | null>(null);
-  const [big, setBig] = useState<{ id: number; kind: "fire" | "back" | "win"; text: string; col: string } | null>(null);
+  const [big, setBig] = useState<{ id: number; kind: "fire" | "back" | "win" | "trick"; text: string; col: string; trick?: Trick; sub?: string } | null>(null);
+  const [replaying, setReplaying] = useState(false);    // the slow-motion replay of a trick shot is on
   const [flip, setFlip] = useState(0);                  // Same Phone: the table turning round (a quick fade)
   const [aiming, setAiming] = useState(false);          // the computer is lining up a flick
   const runStart = useRef(0);
-  const runRef = useRef({ round: 1, score: 0, flicks: 0, sinks: 0, fires: 0, backs: 0, last: 0 });
+  const runRef = useRef({ round: 1, score: 0, flicks: 0, sinks: 0, fires: 0, backs: 0, last: 0, tricks: 0, trickNames: [] as string[] });
   const sound = useRef<Sound | null>(null);         // plays through the shared games sound (./sfx)
   const genRef = useRef(0);                             // bumps on every reset, so an old animation stops where it is
   const chain = useRef<Promise<void>>(Promise.resolve());
@@ -219,6 +235,11 @@ export default function BerryPong() {
   const lastPull = useRef<({ px: number; py: number } | null)[]>([null, null]);
   const canActRef = useRef(false);
   const shake = useRef(0);
+  const shakeAmp = useRef(1);
+  const rings = useRef<Ring[]>([]);
+  const backFx = useRef<BackFx | null>(null);
+  const skipReplay = useRef(false);
+  const seenTricks = useRef(new Set<string>());         // "side-kind": trick shots already replayed this match
 
   useEffect(() => {
     const im = new Image(); im.src = foodPng("1fad0");
@@ -260,14 +281,14 @@ export default function BerryPong() {
     if (!L.berry && berryImg.current) L.berry = berrySprite(berryImg.current, k, 48);
     c.setTransform(k, 0, 0, k, 0, 0);
     const sk = shake.current > 0 ? (shake.current -= dt) / 260 : 0;
-    if (sk > 0) c.translate(Math.sin(now / 22) * 1.6 * sk, Math.cos(now / 27) * 1.2 * sk);
+    if (sk > 0) c.translate(Math.sin(now / 22) * 1.6 * sk * shakeAmp.current, Math.cos(now / 27) * 1.2 * sk * shakeAmp.current);
     c.drawImage(L.scene, 0, 0, BW, cam.BH);
     // the flying berry, in the viewer's world
     const f = fly.current;
     if (cv.dataset.fly !== (f && !f.gone ? String(f.thrower) : "")) cv.dataset.fly = f && !f.gone ? String(f.thrower) : "";   // for the tests: whose berry is in the air
     let berry: { x: number; y: number; z: number; t: number } | null = null;
     if (f && !f.gone) {
-      const t = (now - f.t0) / 1000, [x, y, z] = flyPos(f, t), [wx, wy, wz] = toWorld(x, y, z, f.thrower, view);
+      const t = (f.from ?? 0) + ((now - f.t0) / 1000) * (f.rate ?? 1), [x, y, z] = flyPos(f, t), [wx, wy, wz] = toWorld(x, y, z, f.thrower, view);
       berry = { x: wx, y: wy, z: wz, t };
     }
     // shadows: standing bowls (fading as they lift away), then the berry's on the table
@@ -280,6 +301,14 @@ export default function BerryPong() {
       bowlList.push({ side, i, wy: bowlAt(side, i, view)[1], lift, art: artOf(side, i, view) });
     }
     for (const b of bowlList) { const s = b.art.shadow; c.globalAlpha = 1 - easeOut(b.lift); c.drawImage(s.cv, s.x, s.y, s.w, s.h); }
+    c.globalAlpha = 1;
+    // bounce marks: a soft ring spreading on the table where the berry hit it
+    rings.current = rings.current.filter(r => now - r.t0 < 600);
+    for (const r of rings.current) {
+      const q = (now - r.t0) / 600, sp = P(cam, r.x, r.y, 0), rr = (r.r + q * 9) * sp.s;
+      c.globalAlpha = (1 - q) * 0.75; c.strokeStyle = "#ffffff"; c.lineWidth = 2 * (1 - q) + 0.5;
+      c.beginPath(); c.ellipse(sp.x, sp.y, rr, rr * flat(r.y, 0), 0, 0, Math.PI * 2); c.stroke();
+    }
     c.globalAlpha = 1;
     if (berry && berry.x > -TW / 2 && berry.x < TW / 2 && berry.y > 0 && berry.y < TL && berry.z > -1) {
       // softer, wider and fainter the higher the berry is
@@ -367,11 +396,35 @@ export default function BerryPong() {
       } else { c.save(); c.translate(p.x, p.y); c.rotate(p.rot); c.scale(1, Math.cos(p.rot * 1.7)); c.fillStyle = p.col; c.fillRect(-p.r, -p.r * 0.45, p.r * 2, p.r * 0.9); c.restore(); }
     }
     c.globalAlpha = 1;
+    // the replay's trail: the last moment of the path in fading dots behind the berry
+    if (f && !f.gone && f.trail && berry) {
+      for (let j = 1; j <= 12; j++) {
+        const tt = berry.t - j * 0.03; if (tt < (f.from ?? 0) - 0.3 || tt < 0) break;
+        const [x, y, z] = flyPos(f, tt), [wx, wy, wz] = toWorld(x, y, z, f.thrower, view), p = P(cam, wx, wy, wz), r = Math.max(1, BR * p.s * 0.55 * (1 - j / 14));
+        c.globalAlpha = 0.75 * (1 - j / 13); c.fillStyle = "#ffffff"; c.strokeStyle = "#6FA8FF"; c.lineWidth = 1.2;
+        c.beginPath(); c.arc(p.x, p.y, r, 0, Math.PI * 2); c.fill(); c.stroke();
+      }
+      c.globalAlpha = 1;
+    }
+    // Berries Back: two berries arcing home to the thrower's end, the second a beat behind
+    const bf = backFx.current;
+    if (bf && L.berry) {
+      for (let n = 0; n < 2; n++) {
+        const q = Math.max(0, Math.min(1, (now - bf.t0 - n * 130) / 620)); if (q <= 0) continue;
+        const e = easeOut(q), dx = (n ? 1 : -1) * 18 * Math.sin(q * Math.PI);
+        const x = bf.from.x + (bf.to.x - bf.from.x) * e + dx, y = bf.from.y + (bf.to.y - bf.from.y) * e - Math.sin(q * Math.PI) * 60, size = bf.s0 + (bf.s1 - bf.s0) * e;
+        if (q < 1) { c.globalAlpha = 1; c.drawImage(L.berry, x - size / 2, y - size / 2, size, size); }
+        else { const a = Math.max(0, 1 - (now - bf.t0 - n * 130 - 620) / 380); if (a > 0) { c.globalAlpha = a * 0.8; c.strokeStyle = "#6FA8FF"; c.lineWidth = 2.5; c.beginPath(); c.arc(bf.to.x, bf.to.y, size * (0.6 + (1 - a) * 0.9), 0, Math.PI * 2); c.stroke(); } }
+      }
+      c.globalAlpha = 1;
+      if (now - bf.t0 > 1200) backFx.current = null;
+    }
     if (L.light) c.drawImage(L.light, 0, 0, BW, cam.BH);
     // the aim: dots along the first part of the flight (longer for more power), and last flick's dots faintly
-    const dots = (px: number, py: number, alpha: number, r0: number) => {
+    const dots = (px: number, py: number, alpha: number, r0: number, long = false) => {
       const a = pullAim(px, py); if (!a.ok) return;
-      const v = pullV(px, py), T = 0.02 + 0.05 * a.p, n = Math.max(3, Math.round(T / 0.009));
+      // normally just the start of the flight; on your very first flick of a match, up to the top of the arc, so the shape reads
+      const v = pullV(px, py), T = long ? v[2] / GRAV : 0.02 + 0.05 * a.p, n = Math.max(3, Math.round(T / (long ? 0.03 : 0.009)));
       for (let j = 1; j <= n; j++) {
         const tt = (j / n) * T, [x, y, z] = freeAt(v, tt), p = P(cam, x, y, z), q = j / n, r = r0 * (1 - q * 0.45);
         c.globalAlpha = alpha * (1 - q * 0.55);
@@ -382,7 +435,7 @@ export default function BerryPong() {
     if (myTurn && !f) {
       const lastP = lastPull.current[view];
       if (lastP) dots(lastP.px, lastP.py, drag.current ? 0.22 : 0.3, 2.4);
-      if (drag.current) dots(drag.current.px, drag.current.py, 1, 4.2);
+      if (drag.current) dots(drag.current.px, drag.current.py, 1, 4.2, g.current.flicks[view] === 0 && !lastP);
       else if (g.current.flicks[view] === 0) drawHint(c, BW / 2, lp.y + (cam.BH - lp.y) * 0.46, "Drag Back Anywhere Here", now, GAME_FONT);
     }
   };
@@ -407,12 +460,13 @@ export default function BerryPong() {
   const floatWord = (text: string, x: number, y: number, col: string) => setWord({ id: Date.now() + Math.random(), text, x, y, col });
   const bigWord = (kind: "fire" | "back" | "win", text: string, col: string) => setBig({ id: Date.now() + Math.random(), kind, text, col });
   useEffect(() => { if (!word) return; const t = setTimeout(() => setWord(w => (w && w.id === word.id ? null : w)), 1250); return () => clearTimeout(t); }, [word]);
-  useEffect(() => { if (!big) return; const t = setTimeout(() => setBig(b => (b && b.id === big.id ? null : b)), 1400); return () => clearTimeout(t); }, [big]);
+  const bigTrick = (kind: Trick, text: string, col: string, sub: string) => setBig({ id: Date.now() + Math.random(), kind: "trick", trick: kind, text, col, sub });
+  useEffect(() => { if (!big) return; const t = setTimeout(() => setBig(b => (b && b.id === big.id ? null : b)), big.kind === "trick" ? 1250 : 1400); return () => clearTimeout(t); }, [big]);
   useEffect(() => { if (!turnPop) return; const t = setTimeout(() => setTurnPop(p => (p && p.id === turnPop.id ? null : p)), 1150); return () => clearTimeout(t); }, [turnPop]);
 
   /** Plays a flick's flight on the board: the berry along its path, rim wobbles and taps as it hits things, and the
    *  plop and splash if it drops in. Resolves when the berry has landed (or rolled away). */
-  const playFlight = async (e: Extract<Ev, { e: "flick" }>, gen: number): Promise<Flight | null> => {
+  const playFlight = async (e: Extract<Ev, { e: "flick" }>, gen: number, streak = 1, trick = false): Promise<Flight | null> => {
     if (!e.v) return null;
     let f = flight(e.v, e.standing, e.fire);
     if (f.bowl !== e.bowl) { console.warn("Berry Pong: this phone's flight disagreed with the thrower's; showing theirs"); f = fakeFlight(e.v, e.bowl, f); }   // can't happen with the same numbers
@@ -430,25 +484,62 @@ export default function BerryPong() {
           wobble.current.set(key, { t0: performance.now(), amp: h.k === "rim" ? 0.075 : 0.04 });
           if (h.k === "rim") { sound.current?.rim(); for (let n = 0; n < 5; n++) addPart({ kind: "star", x: p.x, y: p.y, vx: (Math.random() - 0.5) * 90, vy: -30 - Math.random() * 60, g: 120, max: 0.35, r: 2.6 + Math.random() * 1.6, col: "#ffffff", vr: 6 }); }
           else sound.current?.tap(0.6);
-        } else if (h.k === "table") sound.current?.tap(1);
+        } else if (h.k === "table") { sound.current?.tap(1); markTable(F, h.t, view); }
       }
     }, gen);
     if (genRef.current !== gen) return f;
     F.gone = true;
-    if (sinking) {
-      const a = artOf(target, f.bowl, view), [x, y, z] = toWorld(f.x, f.y, H - 1.5, e.side, view), p = P(camRef.current, x, y, z);
-      const m = a.milk, sx = Math.max(m.x - m.rx * 0.6, Math.min(m.x + m.rx * 0.6, p.x)), sy = Math.max(m.y - m.ry * 0.5, Math.min(m.y + m.ry * 0.5, p.y));
-      sinks.current.push({ side: target, i: f.bowl, t0: performance.now(), x: sx, y: sy, size: 2 * BR * VIS * p.s });
-      sound.current?.plop(); shake.current = 160;
-      const spread = a.rx * 0.9;
-      for (let n = 0; n < 16; n++) {
-        const ang = -Math.PI / 2 + (Math.random() - 0.5) * 2.4, sp = (60 + Math.random() * 110) * (spread / 40);
-        addPart({ kind: "drop", x: sx + (Math.random() - 0.5) * 6, y: sy, vx: Math.cos(ang) * sp * 0.8, vy: Math.sin(ang) * sp, g: 520 * (spread / 40), max: 0.5 + Math.random() * 0.25, r: (1.1 + Math.random() * 1.6) * (spread / 40) + 0.6, col: "#FFFDF7" });
-      }
-    }
+    if (sinking) { splash(target, f, e.side, view, trick); sound.current?.plop(streak); }
     fly.current = null;
     return f;
   };
+  /** A bounce mark on the table where the berry is at time t of its flight. */
+  const markTable = (F: Fly, t: number, view: Side) => {
+    const [x, y] = flyPos(F, t), [wx, wy] = toWorld(x, y, 0, F.thrower, view);
+    rings.current.push({ x: wx, y: wy, t0: performance.now(), r: BR * 1.2 });
+  };
+  /** The berry dropping into the milk: rings in the bowl, a splash of milk drops, the bowl and its neighbours wobbling,
+   *  and the board giving a little shake (more for a trick shot). */
+  const splash = (target: Side, f: Flight, thrower: Side, view: Side, big: boolean) => {
+    const a = artOf(target, f.bowl, view), [x, y, z] = toWorld(f.x, f.y, H - 1.5, thrower, view), p = P(camRef.current, x, y, z);
+    const m = a.milk, sx = Math.max(m.x - m.rx * 0.6, Math.min(m.x + m.rx * 0.6, p.x)), sy = Math.max(m.y - m.ry * 0.5, Math.min(m.y + m.ry * 0.5, p.y));
+    sinks.current.push({ side: target, i: f.bowl, t0: performance.now(), x: sx, y: sy, size: 2 * BR * VIS * p.s });
+    shake.current = big ? 300 : 180; shakeAmp.current = big ? 1.9 : 1.1;
+    const now0 = performance.now(), [bx, by] = BOWLS[f.bowl];
+    wobble.current.set(keyOf(target, f.bowl), { t0: now0, amp: 0.09 });
+    BOWLS.forEach(([ox, oy], j) => { if (j !== f.bowl && Math.abs(ox - bx) + Math.abs(oy - by) < 22) wobble.current.set(keyOf(target, j), { t0: now0 + 40, amp: 0.035 }); });
+    const spread = a.rx * 0.9, n = big ? 26 : 16;
+    for (let k = 0; k < n; k++) {
+      const ang = -Math.PI / 2 + (Math.random() - 0.5) * 2.4, sp = (60 + Math.random() * (big ? 150 : 110)) * (spread / 40);
+      addPart({ kind: "drop", x: sx + (Math.random() - 0.5) * 6, y: sy, vx: Math.cos(ang) * sp * 0.8, vy: Math.sin(ang) * sp, g: 520 * (spread / 40), max: 0.5 + Math.random() * 0.25, r: (1.1 + Math.random() * 1.6) * (spread / 40) + 0.6, col: "#FFFDF7" });
+    }
+  };
+  /** A trick shot's slow-motion replay: the last 0.75 s of the flight again at 0.42x speed with a trail, the rims and the
+   *  table reacting as it goes, and the splash again at the end. A tap on the board skips it. */
+  const replayFlight = (f: Flight, thrower: Side, fire: boolean, streak: number, gen: number) => new Promise<void>(res => {
+    const from = Math.max(0, f.t - 0.75), rate = 0.42, view = viewerRef.current(), target = other(thrower);
+    const F: Fly = { pts: f.pts, dt: f.dt, dur: ((f.t - from) / rate) * 1000, t0: performance.now(), thrower, fire, fade: 1, hits: f.hits, fired: 0, gone: false, from, rate, trail: true };
+    while (F.fired < F.hits.length && F.hits[F.fired].t < from) F.fired++;
+    fly.current = F; skipReplay.current = false; setReplaying(true); sound.current?.replay();
+    const done = (landed: boolean) => {
+      F.gone = true; if (fly.current === F) fly.current = null; setReplaying(false);
+      if (landed && genRef.current === gen && f.bowl >= 0) { splash(target, f, thrower, view, false); sound.current?.plop(streak); }
+      res();
+    };
+    const step = (nw: number) => {
+      if (genRef.current !== gen) { done(false); return; }
+      const tt = from + ((nw - F.t0) / 1000) * rate;
+      while (F.fired < F.hits.length && F.hits[F.fired].t <= tt) {
+        const h = F.hits[F.fired++];
+        if ((h.k === "rim" || h.k === "wall") && h.bowl >= 0) wobble.current.set(keyOf(target, h.bowl), { t0: performance.now(), amp: h.k === "rim" ? 0.075 : 0.04 });
+        else if (h.k === "table") markTable(F, h.t, view);
+      }
+      if (skipReplay.current) { done(false); return; }
+      if (tt >= f.t) { done(true); return; }
+      requestAnimationFrame(step);
+    };
+    requestAnimationFrame(step);
+  });
   /** A stand-in flight into (or past) the bowl the sender said, for the rare case the two phones disagree. */
   const fakeFlight = (v: V3, bowl: number, real: Flight): Flight => {
     if (bowl < 0) return { ...real, bowl: -1, end: "stop", hits: real.hits.filter(h => h.k !== "sink"), t: Math.min(real.t, 1.2) };
@@ -467,7 +558,8 @@ export default function BerryPong() {
 
   const play = async (evs: Ev[], after: State, gen: number) => {
     const V = vw.current, alive = () => genRef.current === gen;
-    let lastFlight: Flight | null = null;
+    let lastFlight: Flight | null = null, lastFire = false, tricked = false;
+    const sinkEv = evs.find(x => x.e === "sink"), streak = sinkEv && sinkEv.e === "sink" ? sinkEv.streak : 1, hasTrick = evs.some(x => x.e === "trick");
     for (const e of evs) {
       if (!alive()) return;
       if (e.e === "flick") {
@@ -476,11 +568,22 @@ export default function BerryPong() {
           const lp = launchPt(), them = autoFlick.current === "theirs"; autoFlick.current = null;
           floatWord(them ? `${who(e.side)} Ran Out Of Time` : "Time's Up", lp.x, them ? 60 : lp.y - 40, "#5A6B85"); await wait(700); lastFlight = null; continue;
         }
-        lastFlight = await playFlight(e, gen);
+        lastFire = e.fire;
+        lastFlight = await playFlight(e, gen, streak, hasTrick);
+      } else if (e.e === "trick") {
+        tricked = true;
+        const info = TRICKS[e.kind], mine = isMe(e.side), key = `${e.side}-${e.kind}`, first = !seenTricks.current.has(key);
+        seenTricks.current.add(key);
+        sound.current?.trick();
+        bigTrick(e.kind, `${info.name}!`, mine ? "#4F88E8" : "#B9486A", opp === "cpu" && e.side === 0 ? `${info.how} · +${TRICK_PTS}` : info.how);
+        setMsg(opp === "cpu" ? (e.side === 0 ? `${info.name}! +${TRICK_PTS} Bonus Points.` : `The Computer Made A ${info.name}.`) : `${opp === "phone" || !mine ? nameOf(e.side) : "You"}: ${info.name}!`);
+        // the first time each trick happens in a match (for each side), a slow-motion replay; after that just the banner
+        if (first && lastFlight) { await wait(950); if (!alive()) return; await replayFlight(lastFlight, e.side, lastFire, streak, gen); if (!alive()) return; await wait(200); }
+        else await wait(1000);
       } else if (e.e === "sink") {
         const view = viewerRef.current(), target = other(e.side), a = artOf(target, e.bowl, view);
         const top = Math.min(...BOWLS.map((_, j) => { const b = artOf(target, j, view); return b.rim.y - b.ry; }));   // above the whole triangle
-        floatWord(sinkWord(lastFlight), BW / 2, Math.max(24, top - 34), isMe(e.side) ? "#2F5FB0" : "#B9486A");
+        if (!tricked) floatWord(sinkWord(lastFlight), BW / 2, Math.max(24, top - 34), isMe(e.side) ? "#2F5FB0" : "#B9486A");
         setMsg(isMe(e.side) && opp !== "phone" ? (e.left === 1 ? "One Bowl Left!" : `Sunk One! ${e.left} To Go.`) : `${who(e.side)} Sank One. ${e.left} Left.`);
         await wait(330);
         if (!alive()) return;
@@ -489,7 +592,7 @@ export default function BerryPong() {
         await wait(780);
         V.bowls[target][e.bowl] = false; lifts.current.delete(keyOf(target, e.bowl)); bump();
       } else if (e.e === "miss") {
-        if (lastFlight) { const [x, y] = [lastFlight.x, lastFlight.y], view = viewerRef.current(), [wx, wy] = toWorld(x, y, 0, e.side, view), p = P(camRef.current, Math.max(-TW / 2, Math.min(TW / 2, wx)), Math.max(8, Math.min(TL - 4, wy)), 4); floatWord(whyMissed(lastFlight), Math.max(60, Math.min(BW - 60, p.x)), Math.max(40, Math.min(camRef.current.BH - 40, p.y - 26)), "#5A6B85"); sound.current?.out(); }
+        if (lastFlight) { const [x, y] = [lastFlight.x, lastFlight.y], view = viewerRef.current(), [wx, wy] = toWorld(x, y, 0, e.side, view), p = P(camRef.current, Math.max(-TW / 2, Math.min(TW / 2, wx)), Math.max(8, Math.min(TL - 4, wy)), 4); floatWord(whyMissed(lastFlight), Math.max(60, Math.min(BW - 60, p.x)), Math.max(40, Math.min(camRef.current.BH - 40, p.y - 26)), "#5A6B85"); if (lastFlight.rims > 0) sound.current?.ooh(); else sound.current?.out(); }
         setMsg(isMe(e.side) && opp !== "phone" ? "Missed." : `${who(e.side)} Missed.`);
         await wait(lastFlight ? 480 : 200);
       } else if (e.e === "fire") {
@@ -499,7 +602,13 @@ export default function BerryPong() {
       } else if (e.e === "back") {
         sound.current?.back(); bigWord("back", "Berries Back!", "#4F88E8");
         setMsg(isMe(e.side) && opp !== "phone" ? "Both In! You Go Again." : `Both In! ${who(e.side)} Goes Again.`);
-        V.flick = 0; bump(); await wait(1300);
+        // the two berries fly home from the bowls to the thrower's end, then the berry pips fill back up
+        const view = viewerRef.current(), cam = camRef.current, [fx, fy, fz] = toWorld(0, BACK - ROW, H + 4, e.side, view), [tx, ty, tz] = toWorld(0, Y0, Z0, e.side, view);
+        const a0 = P(cam, fx, fy, fz), a1 = P(cam, tx, ty, tz);
+        backFx.current = { t0: performance.now(), from: { x: a0.x, y: a0.y }, to: { x: a1.x, y: a1.y }, s0: 2 * BR * VIS * a0.s, s1: 2 * BR * VIS * a1.s };
+        await wait(620); if (!alive()) return;
+        sound.current?.refill(0); setTimeout(() => { if (alive()) sound.current?.refill(1); }, 130);
+        V.flick = 0; bump(); await wait(720);
       } else if (e.e === "win") {
         const good = opp === "phone" || e.side === mySide;
         if (good) sound.current?.win(); else sound.current?.lose();
@@ -530,7 +639,8 @@ export default function BerryPong() {
   const halt = () => {
     genRef.current++; pending.current = 0; chain.current = Promise.resolve(); setBusy(false);
     fly.current = null; sinks.current = []; lifts.current.clear(); wobble.current.clear(); parts.current = []; drag.current = null;
-    setWord(null); setBig(null); setTurnPop(null); setAiming(false);
+    rings.current = []; backFx.current = null; skipReplay.current = false;
+    setWord(null); setBig(null); setTurnPop(null); setAiming(false); setReplaying(false);
   };
   const showTurn = (side: Side) => {
     setTurnPop({ id: Date.now(), side });
@@ -561,15 +671,15 @@ export default function BerryPong() {
   };
   /** A flick from a pull (yours, on this phone): fly it here, then share the launch and the result. */
   const flickFrom = (px: number, py: number) => {
-    const G = g.current, t = G.turn, v = pullV(px, py), f = flight(v, G.bowls[other(t)], G.fire[t]);
+    const G = g.current, t = G.turn, v = pullV(px, py), f = flight(v, G.bowls[other(t)], G.fire[t]), trick = trickOf(f);
     lastPull.current[t] = { px, py }; lastFlickAt.current = performance.now();
-    act({ k: "flick", v, bowl: f.bowl });
+    act(trick ? { k: "flick", v, bowl: f.bowl, trick } : { k: "flick", v, bowl: f.bowl });
   };
 
   // ── starting things ────────────────────────────────────────────────────
   const resetBoard = (first: Side = 0) => {
     halt();
-    g.current = newState(first); vw.current = viewOf(g.current); log.current = []; lastPull.current = [null, null];
+    g.current = newState(first); vw.current = viewOf(g.current); log.current = []; lastPull.current = [null, null]; seenTricks.current.clear();
     setFinal(null); bump();
   };
   const todayRecord = (): Final | null => { try { const v = localStorage.getItem(todayKey); return v ? JSON.parse(v) : null; } catch { return null; } };
@@ -577,7 +687,7 @@ export default function BerryPong() {
     const daily = mode === "daily";
     if (daily && todayRecord()) { setFinal(todayRecord()); go("doneToday"); return; }
     cpuRng.current = mulberry32(daily ? dailySeed(CPU_SALT) : Math.floor(Math.random() * 1e9));
-    runRef.current = { round: 1, score: 0, flicks: 0, sinks: 0, fires: 0, backs: 0, last: 0 };
+    runRef.current = { round: 1, score: 0, flicks: 0, sinks: 0, fires: 0, backs: 0, last: 0, tricks: 0, trickNames: [] };
     resetBoard(0); runStart.current = performance.now(); setRound(1); go("play"); showTurn(0);
   };
   const nextRound = () => {
@@ -627,8 +737,9 @@ export default function BerryPong() {
     if (phaseRef.current !== "play") return;
     if (opp === "cpu") {
       const G = g.current, won = winner === 0, R0 = runRef.current;
-      const pts = matchScore(won, G.sinks[0], G.flicks[0], left(G, 0));
+      const pts = matchScore(won, G.sinks[0], G.flicks[0], left(G, 0), G.tricks[0]);
       R0.score += pts; R0.flicks += G.flicks[0]; R0.sinks += G.sinks[0]; R0.fires += G.fires[0]; R0.backs += G.backs[0]; R0.last = pts;
+      R0.tricks += G.tricks[0]; R0.trickNames.push(...tricksIn(0, log.current).filter(x => x.side === 0).map(x => TRICKS[x.kind].name));
       if (won && mode === "endless") { go("between"); bump(); return; }
       endRun(won, left(G, 0));
       return;
@@ -639,25 +750,36 @@ export default function BerryPong() {
   /** Ends a run against the computer: the game-over card, and the score to the scoreboard. */
   const endRun = (won: boolean, bowlsLeft: number) => {
     const R0 = runRef.current;
-    const f: Final = { score: R0.score, won, round: R0.round, sinks: R0.sinks, flicks: R0.flicks, fires: R0.fires, backs: R0.backs, left: bowlsLeft };
+    const f: Final = { score: R0.score, won, round: R0.round, sinks: R0.sinks, flicks: R0.flicks, fires: R0.fires, backs: R0.backs, left: bowlsLeft, tricks: R0.tricks, trickNames: [...R0.trickNames] };
     setFinal(f); go("over");
     if (R0.score > readBest(bestKey)) { saveBest(bestKey, R0.score); setBest(R0.score); }
     if (mode === "daily") try { localStorage.setItem(todayKey, JSON.stringify(f)); } catch {}
     shell.finishRef.current({ score: R0.score, drops: R0.flicks, ms: performance.now() - runStart.current });
   };
 
-  // the computer's flick: line it up a moment, then let go
+  // the computer's flick: line it up a moment (saying so when it's going for a trick shot), then let go. Each flick's
+  // plan is worked out once (so a pause mid-aim doesn't draw from Today's dice again) and kept until that flick happens.
+  const cpuPlanRef = useRef<{ gen: number; seq: number; plan: ReturnType<typeof cpuPlan> } | null>(null);
+  const [cpuTry, setCpuTry] = useState<Trick | null>(null);
+  const planCpu = () => {
+    const H2 = g.current, P0 = cpuPlanRef.current;
+    if (P0 && P0.gen === genRef.current && P0.seq === H2.seq) return P0.plan;
+    const plan = cpuPlan(H2.bowls[0], cpuRng.current, cpuWobble(mode === "daily" ? 1 : runRef.current.round, H2.flicks[1]), H2.fire[1], H2.flicks[1]);
+    cpuPlanRef.current = { gen: genRef.current, seq: H2.seq, plan };
+    return plan;
+  };
   useEffect(() => {
     if (opp !== "cpu" || phase !== "play" || busy || paused) { setAiming(false); return; }
     const G = g.current; if (G.winner !== null || G.turn !== 1) return;
-    setAiming(true);
+    const plan = planCpu();
+    setCpuTry(plan.trying); setAiming(true);
     const t = setTimeout(() => {
       const H2 = g.current;
       if (phaseRef.current !== "play" || busyRef.current || H2.turn !== 1 || H2.winner !== null) return;
       setAiming(false);
-      const standing = H2.bowls[0], v = cpuFlick(standing, cpuRng.current, cpuWobble(mode === "daily" ? 1 : runRef.current.round, H2.flicks[1]));
-      act({ k: "flick", v, bowl: flight(v, standing, H2.fire[1]).bowl });
-    }, G.flick === 1 ? 950 : 1400);
+      const standing = H2.bowls[0], v = planCpu().v, f = flight(v, standing, H2.fire[1]), trick = trickOf(f);
+      act(trick ? { k: "flick", v, bowl: f.bowl, trick } : { k: "flick", v, bowl: f.bowl });
+    }, G.flick === 1 ? (plan.trying ? 1250 : 950) : (plan.trying ? 1700 : 1400));
     return () => clearTimeout(t);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [opp, phase, busy, paused, g.current.seq]);
@@ -672,6 +794,7 @@ export default function BerryPong() {
   const toBoard = (e: React.PointerEvent) => { const r = canvasRef.current!.getBoundingClientRect(); return { x: ((e.clientX - r.left) / r.width) * BW, y: ((e.clientY - r.top) / r.height) * camRef.current.BH }; };
   const onDown = (e: React.PointerEvent<HTMLCanvasElement>) => {
     sound.current?.unlock();
+    if (fly.current?.trail) { skipReplay.current = true; return; }   // a tap skips the slow-motion replay
     if (!canActRef.current || drag.current) return;
     const p = toBoard(e), lp = launchPt();
     if (p.y < lp.y + 2 * BR * VIS * lp.s * 0.5 + 10) { setMsg("Drag Back From Below Your Berry."); return; }   // below the berry, so your finger never covers it
@@ -905,12 +1028,16 @@ export default function BerryPong() {
     const label = mode === "daily" ? `Berry Pong #${n} (Today's Challenge)` : "Berry Pong (Free Play)";
     const how = mode === "daily" ? (f.won ? `Beat the computer with ${f.left} ${f.left === 1 ? "bowl" : "bowls"} left 🎉` : "The computer cleared my bowls this time.")
       : f.won ? `Beat ${f.round} rounds 🎉` : `Made it to round ${f.round}.`;
-    shell.share(`${label}\n${how}\n${f.score.toLocaleString()} pts · ${f.sinks} of ${f.flicks} berries in\nCan you beat it? whatyouate.app/games/${GAME}`);
+    const tk = f.tricks ?? 0, names = [...new Set(f.trickNames ?? [])].join(", ");
+    const tricks = `🎯 ${tk} trick ${tk === 1 ? "shot" : "shots"}${names ? ` (${names})` : ""}`;
+    shell.share(`${label}\n${how}\n${f.score.toLocaleString()} pts · ${f.sinks} of ${f.flicks} berries in\n${tricks}\nCan you beat it? whatyouate.app/games/${GAME}`);
   };
   const shareDuel = (winner: Side) => {
     const L0 = left(G, other(winner)) === 0 ? left(G, winner) : 0;
     const head = opp === "phone" ? `${nameOf(winner)} beat ${nameOf(other(winner))} with ${L0} ${L0 === 1 ? "bowl" : "bowls"} left 🎉` : winner === mySide ? `I beat ${nameOf(other(mySide))} with ${L0} ${L0 === 1 ? "bowl" : "bowls"} left 🎉` : `${nameOf(winner)} beat me this time`;
-    shell.share(`Berry Pong (${opp === "phone" ? "Same Phone" : "Play A Friend"})\n${head}\nPlay a friend: whatyouate.app/games/${GAME}`);
+    const meSide = opp === "phone" ? winner : mySide, tw = G.tricks[meSide], tl = G.tricks[other(meSide)];
+    const tricks = `🎯 Trick shots: ${opp === "phone" ? nameOf(meSide) : "me"} ${tw}, ${nameOf(other(meSide))} ${tl}`;
+    shell.share(`Berry Pong (${opp === "phone" ? "Same Phone" : "Play A Friend"})\n${head}\n${tricks}\nPlay a friend: whatyouate.app/games/${GAME}`);
   };
   const factFor = (f: Final): Toast => FACTS[(mode === "daily" ? dailySeed(FACT_SALT) : f.score + f.flicks) % FACTS.length];
 
@@ -969,6 +1096,16 @@ export default function BerryPong() {
 
   const winner = G.winner;
   const statLine = (f: Final) => `${f.sinks} Of ${f.flicks} Berries In${f.fires ? ` · On Fire ${f.fires}x` : ""}${f.backs ? ` · Berries Back ${f.backs}x` : ""}`;
+  /** The trick shot count for the end cards: a drawn icon, how many, and which (or how to get one when there were none). */
+  const trickRow = (n: number, names: string[], who2?: string) => (
+    <div className="mx-auto mt-3 flex max-w-[300px] items-center gap-2.5 rounded-2xl bg-[#EAF2FF] px-3 py-2 text-left" data-tricks={n}>
+      <TrickIcon kind={n ? (names[0] === "Rim Roll" ? "rim" : names[0] === "Bowl Hop" ? "hop" : "bank") : "bank"} size={30} />
+      <div className="min-w-0">
+        <div className="wk-f text-[16px] leading-none text-[#101B2E]">{who2 ? `${who2}: ` : ""}{n} Trick {n === 1 ? "Shot" : "Shots"}</div>
+        <div className="mt-1 truncate text-[12px] font-medium leading-tight text-[#4F88E8]">{n ? [...new Set(names)].join(", ") : "Try bouncing one off the table and in"}</div>
+      </div>
+    </div>
+  );
   const overlay = (): ReactNode => {
     if (leaving) return <LeaveCard live={live} onLeave={toStart} onStay={() => setLeaving(false)} />;
     const lc = liveCard(); if (lc) return lc;
@@ -978,6 +1115,7 @@ export default function BerryPong() {
           "Drag back under your berry and let go to flick it at your friend's bowls.",
           "You get 2 berries a turn. Sink both for Berries Back, another turn.",
           "Sink 2 in a row and you're On Fire until you miss.",
+          "Trick shots: bounce one off the table and in for a Bank Shot.",
           "Clear all 6 of their bowls to win. You get 30 seconds a flick.",
         ]} />
     );
@@ -1010,7 +1148,7 @@ export default function BerryPong() {
       return (
         <GameOver label={mode === "daily" ? `Today's Challenge #${n}` : "Free Play"} headline={headline} score={final.score} best={best} mode={mode}
           posted={shell.scores.posted} joined={!!shell.player} campaign={GAME} copied={shell.copied} fact={factFor(final)}
-          extra={<><p className="mt-3 text-[13px] font-semibold text-[#5a6b85]">{statLine(final)}</p><ChangeModeLink onClick={toStart} className="mt-1" /></>}
+          extra={<>{trickRow(final.tricks ?? 0, final.trickNames ?? [])}<p className="mt-2 text-[13px] font-semibold text-[#5a6b85]">{statLine(final)}</p><ChangeModeLink onClick={toStart} className="mt-1" /></>}
           pitch="What you eat changes how you feel. WhatYouAte shows you how your meals affect your energy."
           onBoard={() => shell.setBoardOpen(true)} onJoin={() => shell.setJoinOpen(true)}
           onAgain={() => { autoStart.current = true; if (mode === "daily") pickMode("endless"); else setRun(r => r + 1); }} onShare={() => shareCpu(final)} />
@@ -1051,6 +1189,7 @@ export default function BerryPong() {
         <div className="mt-2 flex justify-center"><RackIcon standing={G.bowls[winner]} color={colOf(winner).lo} edge={colOf(winner).lip} near size={60} /></div>
         <div className="wk-f mt-2 text-[32px] leading-tight">{head}</div>
         <p className="mt-1 text-sm text-[#5a6b85]">{opp === "live" && winner === mySide ? "You" : w} cleared all 6 with {kept} of {opp === "live" && winner === mySide ? "your" : "their"} own {kept === 1 ? "bowl" : "bowls"} still standing.</p>
+        <p className="wk-f mt-2 text-[14px] text-[#4F88E8]" data-tricks={`${G.tricks[0]},${G.tricks[1]}`}>Trick Shots: {opp === "phone" ? nameOf(0) : who(mySide)} {G.tricks[opp === "phone" ? 0 : mySide]} · {opp === "phone" ? nameOf(1) : nameOf(other(mySide))} {G.tricks[opp === "phone" ? 1 : other(mySide)]}</p>
         {theyWant && <p className="wk-f mt-2 rounded-2xl bg-[#e3effe] px-3 py-2 text-[15px] text-[#4F88E8]">{nameOf(other(mySide))} Wants A Rematch!</p>}
         {phase === "rematch" ? (
           <p className="wk-f mt-4 text-[16px] text-[#4F88E8]">Waiting For {nameOf(other(mySide))} To Say Rematch...</p>
@@ -1086,7 +1225,7 @@ export default function BerryPong() {
       {theirAim && (
         <div className="bp-chip wk-f pointer-events-none absolute left-1/2 top-2 z-[6] flex items-center gap-1.5 whitespace-nowrap rounded-full bg-white/95 py-1 pl-1 pr-3 text-[13px] text-[#101B2E] shadow-[0_6px_16px_-8px_rgba(16,27,46,0.5)]" data-aiming>
           <span className="flex h-[22px] w-[22px] items-center justify-center rounded-full" style={{ background: COL[1].lo }}><BerryDot size={16} /></span>
-          {opp === "cpu" ? "Computer Is Aiming" : `${nameOf(V.turn)} Is Aiming`}
+          {opp === "cpu" ? (cpuTry ? `Computer Is Going For A ${TRICKS[cpuTry].name}` : "Computer Is Aiming") : `${nameOf(V.turn)} Is Aiming`}
           <span>{[0, 1, 2].map(k => <span key={k} className="bp-dot" style={{ animationDelay: `${k * 0.2}s` }}>.</span>)}</span>
         </div>
       )}
@@ -1096,12 +1235,27 @@ export default function BerryPong() {
       )}
       {big && (
         <div key={big.id} className="pointer-events-none absolute inset-0 z-[9] flex items-center justify-center" style={{ paddingBottom: boardH * 0.18 }} data-big={big.kind}>
+          {big.kind === "trick" && big.trick ? (
+            <span className="bp-trick wk-f flex items-center gap-2.5 whitespace-nowrap rounded-[22px] bg-white py-2.5 pl-3 pr-5 shadow-[0_18px_40px_-16px_rgba(16,27,46,0.6)]" data-trick={big.trick}>
+              <TrickIcon kind={big.trick} size={Math.max(36, Math.min(46, boardW * 0.12))} />
+              <span className="flex flex-col items-start">
+                <span className="leading-none" style={{ fontSize: Math.max(24, Math.min(32, boardW * 0.08)), color: big.col }}>{big.text}</span>
+                {big.sub && <span className="mt-1 text-[12px] uppercase leading-none tracking-[0.08em] text-[#5A6B85]">{big.sub}</span>}
+              </span>
+            </span>
+          ) : (
           <span className="bp-big wk-f flex items-center gap-2 whitespace-nowrap rounded-full bg-white px-5 py-2.5 shadow-[0_18px_40px_-16px_rgba(16,27,46,0.6)]"
             style={{ fontSize: Math.max(24, Math.min(34, boardW * 0.085)), color: big.col }}>
             {big.kind === "fire" && <span className="bp-flame inline-flex"><FlameIcon size={34} /></span>}
             {big.kind === "back" && <span className="flex gap-0.5"><BerryDot size={26} /><BerryDot size={26} /></span>}
             {big.text}
           </span>
+          )}
+        </div>
+      )}
+      {replaying && (
+        <div className="bp-chip wk-f pointer-events-none absolute left-1/2 top-2 z-[7] flex items-center gap-1.5 whitespace-nowrap rounded-full bg-white/95 py-1 pl-2 pr-3 text-[13px] text-[#101B2E] shadow-[0_6px_16px_-8px_rgba(16,27,46,0.5)]" data-replay>
+          <ReplayIcon size={15} color="#4F88E8" />Slow-Mo Replay<span className="text-[11px] text-[#8A9AB5]">Tap To Skip</span>
         </div>
       )}
       {turnPop && turnPopText && !big && (
@@ -1206,6 +1360,7 @@ export default function BerryPong() {
           "Land it in one of the other side's cereal bowls to sink it. That bowl comes off the table.",
           <span key="b">You get 2 berries a turn. Sink both and you get <b>Berries Back</b>: another turn.</span>,
           <span key="f">Sink 2 in a row and you&apos;re <b>On Fire</b>: the bowls are a little easier to hit until you miss. Clear all 6 to win.</span>,
+          <span key="t"><b>Trick shots</b>: flick softer so a berry bounces off the table and in (<b>Bank Shot</b>), or watch for a <b>Rim Roll</b> or a <b>Bowl Hop</b> off one bowl into the next. Each scores {TRICK_PTS} bonus points against the computer.</span>,
         ]}>
           <ModesHelp today="everyone faces the same computer today. One match: win with more of your bowls left and fewer misses for more points." free="beat the computer to move on to the next round. It gets a little sharper each round." />
         </HelpModal>

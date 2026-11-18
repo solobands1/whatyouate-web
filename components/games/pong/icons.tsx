@@ -1,6 +1,6 @@
-// Berry Pong's drawn icons (flat SVG, no emoji): the On Fire flame, a little rack of bowls for the tray, and the single
-// berry cut from the blueberry emoji for the flick pips. (The sound switch is the kit's SoundButton, as in every game.)
-import { BOWLS } from "./rules";
+// Berry Pong's drawn icons (flat SVG, no emoji): the On Fire flame, a little rack of bowls for the tray, the single
+// berry cut from the blueberry emoji for the flick pips, and one for each trick shot. (The sound switch is the kit's SoundButton, as in every game.)
+import { BOWLS, type Trick } from "./rules";
 
 type P = { size?: number; className?: string };
 const box = (size: number, className?: string) => ({ width: size, height: size, className, "aria-hidden": true as const, focusable: "false" as const });
@@ -39,5 +39,39 @@ export function BerryDot({ size = 18, dim = false, className = "" }: { size?: nu
     <span aria-hidden className={`bp-pip inline-block shrink-0 rounded-full ${className}`}
       style={{ width: size, height: size, backgroundImage: "url(/games/foods/1fad0.png)", backgroundSize: `${160 * k}px ${160 * k}px`,
         backgroundPosition: `${-6.5 * k}px ${-70.5 * k}px`, opacity: dim ? 0.28 : 1, filter: dim ? "grayscale(0.6)" : undefined, transform: dim ? "scale(0.86)" : undefined }} />
+  );
+}
+
+/** A trick shot's icon, in the site's blues: the berry's path (dashed) and where it went in. Bank Shot: down to the
+ *  table and up into a bowl. Rim Roll: a loop round a bowl's rim. Bowl Hop: off one bowl and into the next. */
+export function TrickIcon({ kind, size = 30, className }: P & { kind: Trick }) {
+  const bowl = (cx: number, cy: number, w: number) => (
+    <g>
+      <path d={`M${cx - w / 2} ${cy}h${w}c0 ${w * 0.55}-${w * 0.22} ${w * 0.62}-${w / 2} ${w * 0.62}s-${w / 2}-${w * 0.07}-${w / 2}-${w * 0.62}z`} fill="#6FA8FF" />
+      <ellipse cx={cx} cy={cy} rx={w / 2} ry={w * 0.16} fill="#EAF2FF" stroke="#4F88E8" strokeWidth="1.3" />
+    </g>
+  );
+  const path = { fill: "none", stroke: "#4F88E8", strokeWidth: 1.8, strokeLinecap: "round" as const, strokeDasharray: "2.2 2.4" };
+  return (
+    <svg viewBox="0 0 32 32" {...box(size, className)}>
+      {kind === "bank" && <>
+        <path d="M2.5 27.5h17" stroke="#B9C9E3" strokeWidth="1.6" strokeLinecap="round" />
+        <path d="M4 5.5c3.4.4 5.6 9 7.4 21.4C13.2 17 18 12.6 23 16" {...path} />
+        {bowl(24.5, 17.5, 10)}
+        <circle cx="4" cy="5.5" r="2.6" fill="#2F5FB0" />
+      </>}
+      {kind === "rim" && <>
+        {bowl(16, 18, 16)}
+        <path d="M6.5 14.2C8 8.6 24 8.6 25.5 14.2" {...path} strokeDasharray="none" />
+        <path d="M25.9 10.8l-.3 3.9-3.7-1.2" fill="none" stroke="#4F88E8" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" />
+        <circle cx="7" cy="13.6" r="2.6" fill="#2F5FB0" />
+      </>}
+      {kind === "hop" && <>
+        {bowl(8.5, 20, 11)}
+        {bowl(23.5, 20, 11)}
+        <path d="M3 6c3 0 5.6 4.5 7.6 12.4C12.4 11 17 8.6 23.5 18" {...path} />
+        <circle cx="3" cy="6" r="2.4" fill="#2F5FB0" />
+      </>}
+    </svg>
   );
 }
